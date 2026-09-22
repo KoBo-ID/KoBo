@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Heart, MapPin, Footprints, Shield, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Star, Heart, MapPin, Footprints, ChevronLeft, ChevronRight, Calendar, GraduationCap } from 'lucide-react';
 import { Kos } from '../../types';
 import { GenderBadge, Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
 import { useAppStore } from '../../store/AppContext';
+import { formatDistance } from '../../utils/geo';
 
 interface ListingCardProps {
   kos: Kos;
   onOpenSurvey?: (kos: Kos) => void;
+  distance?: number;
 }
 
-export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) => {
+export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, distance }) => {
   const navigate = useNavigate();
   const { currentUser, toggleWishlist, hoveredKosId, setHoveredKosId } = useAppStore();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -37,6 +38,11 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
     }).format(val);
   };
 
+  const distanceLabel =
+    distance !== undefined
+      ? `${formatDistance(distance)} dari titik lokasi`
+      : `${kos.campusProximity.distanceMeters} m ke ${kos.campusProximity.campusName}`;
+
   return (
     <div
       onMouseEnter={() => setHoveredKosId(kos.id)}
@@ -46,22 +52,23 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
       style={{
         backgroundColor: 'var(--bg-surface)',
         borderRadius: 'var(--radius-lg)',
-        border: `1.5px solid ${isHovered ? 'var(--primary)' : 'var(--border-subtle)'}`,
+        border: `1px solid ${isHovered ? 'var(--primary)' : 'var(--border-subtle)'}`,
         boxShadow: isHovered ? 'var(--shadow-hover)' : 'var(--shadow-sm)',
         overflow: 'hidden',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
+        height: '100%',
         transition: 'all var(--duration-normal) var(--ease-out-spring)',
       }}
     >
-      {/* Photo Carousel Area */}
+      {/* Photo Area */}
       <div
         style={{
           position: 'relative',
           width: '100%',
-          aspectRatio: '4 / 3',
+          aspectRatio: '16 / 10',
           backgroundColor: 'var(--bg-muted)',
           overflow: 'hidden',
         }}
@@ -77,7 +84,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
           }}
         />
 
-        {/* Carousel Prev/Next Controls */}
+        {/* Carousel Controls */}
         {kos.images.length > 1 && (
           <div
             style={{
@@ -86,7 +93,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '0 0.5rem',
+              padding: '0 0.4rem',
               pointerEvents: 'none',
             }}
           >
@@ -95,10 +102,10 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
               className="interactive-tap"
               style={{
                 pointerEvents: 'auto',
-                width: '28px',
-                height: '28px',
+                width: '24px',
+                height: '24px',
                 borderRadius: '50%',
-                backgroundColor: 'rgba(255, 255, 255, 0.85)',
+                backgroundColor: 'rgba(255, 255, 255, 0.88)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -107,17 +114,17 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
               }}
               aria-label="Foto sebelumnya"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={14} />
             </button>
             <button
               onClick={handleNextImage}
               className="interactive-tap"
               style={{
                 pointerEvents: 'auto',
-                width: '28px',
-                height: '28px',
+                width: '24px',
+                height: '24px',
                 borderRadius: '50%',
-                backgroundColor: 'rgba(255, 255, 255, 0.85)',
+                backgroundColor: 'rgba(255, 255, 255, 0.88)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -126,7 +133,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
               }}
               aria-label="Foto berikutnya"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={14} />
             </button>
           </div>
         )}
@@ -135,11 +142,11 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
         <div
           style={{
             position: 'absolute',
-            bottom: '0.65rem',
+            bottom: '0.5rem',
             left: '50%',
             transform: 'translateX(-50%)',
             display: 'flex',
-            gap: '0.35rem',
+            gap: '0.3rem',
             zIndex: 2,
           }}
         >
@@ -147,37 +154,37 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
             <span
               key={i}
               style={{
-                width: i === activeImageIndex ? '14px' : '6px',
-                height: '6px',
+                width: i === activeImageIndex ? '12px' : '5px',
+                height: '5px',
                 borderRadius: 'var(--radius-pill)',
-                backgroundColor: i === activeImageIndex ? 'white' : 'rgba(255, 255, 255, 0.5)',
+                backgroundColor: i === activeImageIndex ? 'white' : 'rgba(255, 255, 255, 0.55)',
                 transition: 'all 0.2s ease',
               }}
             />
           ))}
         </div>
 
-        {/* Top Badges (Gender + Discount) */}
+        {/* Top Badges */}
         <div
           style={{
             position: 'absolute',
-            top: '0.75rem',
-            left: '0.75rem',
+            top: '0.55rem',
+            left: '0.55rem',
             display: 'flex',
             alignItems: 'center',
-            gap: '0.4rem',
+            gap: '0.35rem',
             zIndex: 2,
           }}
         >
           <GenderBadge gender={kos.gender} size="sm" />
-          {kos.studentDiscountLabel && (
-            <Badge variant="discount" size="sm">
-              🎓 {kos.studentDiscountLabel}
+          {kos.studentDiscountAmount > 0 && (
+            <Badge variant="discount" size="sm" icon={<GraduationCap size={11} />}>
+              {kos.studentDiscountLabel}
             </Badge>
           )}
         </div>
 
-        {/* Wishlist Button */}
+        {/* Wishlist */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -186,12 +193,12 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
           className="interactive-tap"
           style={{
             position: 'absolute',
-            top: '0.75rem',
-            right: '0.75rem',
-            width: '32px',
-            height: '32px',
+            top: '0.55rem',
+            right: '0.55rem',
+            width: '28px',
+            height: '28px',
             borderRadius: '50%',
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backgroundColor: 'rgba(255, 255, 255, 0.92)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -201,22 +208,22 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
           }}
           aria-label="Simpan ke favorit"
         >
-          <Heart size={18} fill={isSaved ? 'var(--status-overdue)' : 'none'} />
+          <Heart size={15} fill={isSaved ? 'var(--status-overdue)' : 'none'} />
         </button>
 
-        {/* Sisa Kamar Pill */}
+        {/* Remaining Rooms */}
         {kos.availableRooms <= 3 && (
           <div
             style={{
               position: 'absolute',
-              bottom: '0.75rem',
-              right: '0.75rem',
+              bottom: '0.5rem',
+              right: '0.5rem',
               backgroundColor: 'rgba(15, 23, 42, 0.8)',
               color: 'white',
-              fontSize: '0.7rem',
+              fontSize: '0.68rem',
               fontWeight: 600,
-              padding: '0.2rem 0.5rem',
-              borderRadius: 'var(--radius-sm)',
+              padding: '0.18rem 0.45rem',
+              borderRadius: 'var(--radius-xs)',
               backdropFilter: 'blur(4px)',
             }}
           >
@@ -225,26 +232,33 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
         )}
       </div>
 
-      {/* Card Content with healthy spacing */}
-      <div style={{ padding: '1.125rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', flex: 1 }}>
-        {/* Rating & District */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 700, color: 'var(--text-main)' }}>
-            <Star size={14} fill="var(--accent)" color="var(--accent)" />
+      {/* Compact Content */}
+      <div style={{ padding: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.78rem', fontWeight: 700 }}>
+            <Star size={13} fill="var(--accent)" color="var(--accent)" />
             <span>{kos.rating}</span>
-            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({kos.reviewCount} ulasan)</span>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({kos.reviewCount})</span>
           </div>
-          <span style={{ color: 'var(--text-muted)' }}>{kos.district}</span>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.2rem',
+              fontSize: '0.72rem',
+              color: 'var(--text-muted)',
+              minWidth: 0,
+            }}
+          >
+            <MapPin size={11} />
+            <span className="truncate-1">{kos.district}</span>
+          </span>
         </div>
 
-        {/* Separator between metadata and editorial content */}
-        <div style={{ height: '1px', backgroundColor: 'var(--border-subtle)', margin: '0.1rem 0' }} />
-
-        {/* Kos Title */}
         <h3
           className="truncate-1"
           style={{
-            fontSize: '1.05rem',
+            fontSize: '0.92rem',
             fontWeight: 700,
             color: 'var(--text-main)',
             lineHeight: 1.3,
@@ -253,58 +267,35 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
           {kos.name}
         </h3>
 
-        {/* Distance to Campus */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.35rem',
-            fontSize: '0.785rem',
+            gap: '0.3rem',
+            fontSize: '0.75rem',
             color: 'var(--primary)',
             fontWeight: 600,
           }}
         >
-          <Footprints size={14} />
-          <span>
-            {kos.campusProximity.distanceMeters}m ke {kos.campusProximity.campusName}
-          </span>
+          <Footprints size={13} />
+          <span className="truncate-1">{distanceLabel}</span>
         </div>
 
-        {/* Private Amenities Chips */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', margin: '0.2rem 0' }}>
-          {kos.privateAmenities.slice(0, 3).map((amenity, idx) => (
-            <span
-              key={idx}
-              style={{
-                fontSize: '0.72rem',
-                color: 'var(--text-muted)',
-                backgroundColor: 'var(--bg-muted)',
-                padding: '0.2rem 0.5rem',
-                borderRadius: 'var(--radius-xs)',
-              }}
-            >
-              {amenity}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.5rem',
+            marginTop: 'auto',
+            paddingTop: '0.3rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem', minWidth: 0 }}>
+            <span style={{ fontSize: '1.02rem', fontWeight: 800, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
+              {formatRupiah(kos.priceMonthlyStart)}
             </span>
-          ))}
-          {kos.privateAmenities.length > 3 && (
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-subtle)', padding: '0.2rem 0.25rem' }}>
-              +{kos.privateAmenities.length - 3} lainnya
-            </span>
-          )}
-        </div>
-
-        {/* Bottom Price & Quick CTA */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 'auto' }}>
-          <div>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>
-              Mulai dari
-            </span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
-              <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                {formatRupiah(kos.priceMonthlyStart)}
-              </span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>/bln</span>
-            </div>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>/bln</span>
           </div>
 
           <button
@@ -320,17 +311,18 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey }) =
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '0.35rem',
-              padding: '0.45rem 0.8rem',
+              gap: '0.3rem',
+              padding: '0.35rem 0.6rem',
               borderRadius: 'var(--radius-btn)',
-              fontSize: '0.785rem',
-              fontWeight: 600,
-              backgroundColor: 'var(--bg-muted)',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              backgroundColor: 'var(--primary-light)',
               color: 'var(--primary)',
-              border: '1px solid var(--border-subtle)',
+              border: '1px solid hsla(176, 55%, 80%, 0.9)',
+              flexShrink: 0,
             }}
           >
-            <Calendar size={13} />
+            <Calendar size={12} />
             <span>Survey</span>
           </button>
         </div>

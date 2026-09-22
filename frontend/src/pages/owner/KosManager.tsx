@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Plus, Edit, Trash2, Eye, Bed, MapPin, CheckCircle2 } from 'lucide-react';
+import { Building2, Plus, Edit, Trash2, Eye, Bed, MapPin, CheckCircle2, Footprints } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
 import { Kos, Room } from '../../types';
 import { KosFormModal } from '../../components/owner/KosFormModal';
@@ -132,8 +132,8 @@ export const KosManager: React.FC = () => {
                     {kos.address}
                   </p>
 
-                  <p style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.2rem' }}>
-                    🚶 {kos.campusProximity.distanceMeters}m ke {kos.campusProximity.campusName}
+                  <p style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.2rem' }}>
+                    <Footprints size={13} /> {kos.campusProximity.distanceMeters}m ke {kos.campusProximity.campusName}
                   </p>
                 </div>
               </div>

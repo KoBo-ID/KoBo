@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Minus, Compass, GraduationCap, MapPin, Navigation } from 'lucide-react';
+import { Plus, Minus, Compass, GraduationCap, Navigation } from 'lucide-react';
 import { Kos } from '../../types';
 import { useAppStore } from '../../store/AppContext';
-import { CAMPUSES } from '../../data/campuses';
 
 interface InteractiveMapProps {
   kosList: Kos[];
@@ -17,10 +16,10 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   height = '100%',
 }) => {
   const navigate = useNavigate();
-  const { hoveredKosId, setHoveredKosId, selectedCampusId } = useAppStore();
+  const { hoveredKosId, setHoveredKosId, activeLocation } = useAppStore();
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  const activeCampus = CAMPUSES.find((c) => c.id === selectedCampusId) || CAMPUSES[0];
+  const activeAreaLabel = activeLocation ? activeLocation.label : 'Jakarta Barat';
 
   const formatAbbreviatedRupiah = (val: number) => {
     const juta = val / 1000000;
@@ -134,7 +133,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
           }}
         >
           <GraduationCap size={14} color="#FBBF24" />
-          <span>{activeCampus.shortName}</span>
+          <span>{activeAreaLabel}</span>
         </div>
         <div
           style={{

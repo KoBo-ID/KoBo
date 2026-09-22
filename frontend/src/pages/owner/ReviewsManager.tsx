@@ -44,8 +44,8 @@ export const ReviewsManager: React.FC = () => {
           {(
             [
               { id: 'all', label: 'Semua Ulasan' },
-              { id: 5, label: '★ 5 Bintang' },
-              { id: 4, label: '★ 4 Bintang' },
+              { id: 5, label: 'Bintang 5' },
+              { id: 4, label: 'Bintang 4' },
             ] as const
           ).map((item) => {
             const isActive = filterRating === item.id;
@@ -137,16 +137,16 @@ export const ReviewsManager: React.FC = () => {
             {/* Sub-Ratings Chips */}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
               <span style={{ fontSize: '0.72rem', backgroundColor: 'var(--bg-muted)', padding: '0.2rem 0.5rem', borderRadius: 'var(--radius-xs)' }}>
-                Kebersihan: {rev.subRatings.cleanliness}★
+                Kebersihan: {rev.subRatings.cleanliness}/5
               </span>
               <span style={{ fontSize: '0.72rem', backgroundColor: 'var(--bg-muted)', padding: '0.2rem 0.5rem', borderRadius: 'var(--radius-xs)' }}>
-                Wi-Fi: {rev.subRatings.wifi}★
+                Wi-Fi: {rev.subRatings.wifi}/5
               </span>
               <span style={{ fontSize: '0.72rem', backgroundColor: 'var(--bg-muted)', padding: '0.2rem 0.5rem', borderRadius: 'var(--radius-xs)' }}>
-                Respon Pemilik: {rev.subRatings.owner}★
+                Respon Pemilik: {rev.subRatings.owner}/5
               </span>
               <span style={{ fontSize: '0.72rem', backgroundColor: 'var(--bg-muted)', padding: '0.2rem 0.5rem', borderRadius: 'var(--radius-xs)' }}>
-                Ketenangan: {rev.subRatings.quietness}★
+                Ketenangan: {rev.subRatings.quietness}/5
               </span>
             </div>
 

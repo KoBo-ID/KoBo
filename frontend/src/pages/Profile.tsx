@@ -34,7 +34,7 @@ export const Profile: React.FC = () => {
           Profil Akun & Verifikasi Kampus
         </h1>
         <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-          Kelola informasi identitas mahasiswa dan status kartu tanda mahasiswa (KTM) Anda.
+          Kelola informasi identitas dan status Kartu Tanda Mahasiswa (KTM) untuk klaim diskon sewa.
         </p>
       </div>
 
@@ -153,7 +153,7 @@ export const Profile: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.65rem', borderBottom: '1px solid var(--border-subtle)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Peran Akun:</span>
                 <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>
-                  {currentUser.role === 'student' ? 'Mahasiswa / Pencari Kos' : 'Pemilik Kos'}
+                  {currentUser.role === 'student' ? 'Pencari Kos / Mahasiswa' : 'Pemilik Kos'}
                 </span>
               </div>
 
@@ -169,7 +169,7 @@ export const Profile: React.FC = () => {
                   }}
                   icon={<Building2 size={15} />}
                 >
-                  Beralih ke {currentUser.role === 'student' ? 'Mode Pemilik Kos' : 'Mode Mahasiswa'}
+                  Beralih ke {currentUser.role === 'student' ? 'Mode Pemilik Kos' : 'Mode Pencari Kos'}
                 </Button>
               </div>
             </div>

@@ -34,7 +34,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
     addReview({
       kosId,
       authorName: currentUser.name,
-      authorCampus: currentUser.campus || 'Mahasiswa Binus',
+      authorCampus: currentUser.campus || 'Penyewa KoBo',
       authorAvatar: currentUser.avatar,
       ratingOverall: newRating,
       subRatings: {
@@ -85,11 +85,9 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '1.5rem',
-              fontWeight: 800,
             }}
           >
-            ★
+            <Star size={22} fill="currentColor" />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
@@ -99,7 +97,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
               <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>/ 5.0</span>
             </div>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Berdasarkan {kosReviews.length} ulasan mahasiswa terverifikasi
+              Berdasarkan {kosReviews.length} ulasan terverifikasi
             </p>
           </div>
         </div>
@@ -216,7 +214,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
 
           <div>
             <label style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>
-              Ulasan & Catatan untuk Rekan Mahasiswa:
+              Ulasan & Catatan untuk Rekan Penyewa:
             </label>
             <textarea
               rows={3}
@@ -291,7 +289,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                         }}
                       >
                         <ShieldCheck size={12} />
-                        <span>Mahasiswa Terverifikasi</span>
+                        <span>Penyewa Terverifikasi</span>
                       </span>
                     )}
                   </div>

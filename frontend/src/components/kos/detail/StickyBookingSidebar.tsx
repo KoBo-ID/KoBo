@@ -92,7 +92,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           >
             <GraduationCap size={18} style={{ flexShrink: 0 }} />
             <span>
-              Diskon Mahasiswa {formatRupiah(kos.studentDiscountAmount)}/bln otomatis aktif via KTM!
+              Diskon KTM {formatRupiah(kos.studentDiscountAmount)}/bln otomatis aktif setelah verifikasi!
             </span>
           </div>
         )}

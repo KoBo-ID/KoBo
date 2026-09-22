@@ -44,19 +44,19 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
     const tenantFirstName = room.tenantName ? room.tenantName.split(' ')[0] : 'Kak';
 
     if (tone === 'santun') {
-      return `Halo Kak ${tenantFirstName}, salam hangat dari ${kos.owner.name} (${kos.name}) yaa 😊
+      return `Halo Kak ${tenantFirstName}, salam hangat dari ${kos.owner.name} (${kos.name}) yaa.
 
 Semoga perkuliahan dan aktivitasnya di ${room.tenantCampus || 'kampus'} berjalan lancar selalu.
 
 Sekadar mengingatkan santun ya Kak, untuk tagihan sewa kamar *Nomor ${room.roomNumber}* periode bulan ini sebesar *${formatRupiah(room.priceMonthly)}* telah jatuh tempo pada tanggal ${room.dueDate || '5'}.
 
 Pembayaran dapat ditransfer ke:
-🏦 *BCA: 89108 081234567890*
+*BCA: 89108 081234567890*
 a.n. ${kos.owner.name}
 
 Apabila sudah melakukan transfer atau ada kendala tanggal kiriman beasiswa/uang saku, silakan kabari kami ya Kak. Kuitansi resmi digital akan langsung diterbitkan begitu pembayaran terverifikasi.
 
-Terima kasih banyak atas kerjasamanya Kak ${tenantFirstName}! 🙏`;
+Terima kasih banyak atas kerjasamanya Kak ${tenantFirstName}!`;
     }
 
     return `Yth. Sdr/i ${room.tenantName},

@@ -7,6 +7,7 @@ import {
   Share2,
   ShieldCheck,
   Footprints,
+  GraduationCap,
 } from 'lucide-react';
 import { useAppStore } from '../store/AppContext';
 import { PhotoHeroMosaic } from '../components/kos/PhotoHeroMosaic';
@@ -59,8 +60,8 @@ export const Detail: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <GenderBadge gender={kos.gender} />
           {kos.studentDiscountLabel && (
-            <Badge variant="discount">
-              🎓 {kos.studentDiscountLabel}
+            <Badge variant="discount" icon={<GraduationCap size={12} />}>
+              {kos.studentDiscountLabel}
             </Badge>
           )}
           <span
@@ -87,7 +88,7 @@ export const Detail: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 700, color: 'var(--text-main)' }}>
                 <Star size={16} fill="var(--accent)" color="var(--accent)" />
                 <span>{kos.rating}</span>
-                <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({kos.reviewCount} ulasan mahasiswa)</span>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({kos.reviewCount} ulasan)</span>
               </div>
               <span>·</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>

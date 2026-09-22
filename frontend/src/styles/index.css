@@ -141,6 +141,12 @@ img {
   text-overflow: ellipsis;
 }
 
+@media (max-width: 640px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+}
+
 .truncate-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -205,17 +211,138 @@ img {
   z-index: 1000 !important;
 }
 
-/* Campus Center Marker */
-.kobo-campus-pin {
-  background-color: var(--accent);
-  color: white;
-  padding: 0.35rem 0.6rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: 700;
-  box-shadow: var(--shadow-lg);
-  display: flex;
+/* Campus / Nearby POI Marker */
+.kobo-poi-pin {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  transform: translate(-50%, -50%);
+  background-color: var(--bg-surface);
+  color: var(--text-muted);
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+}
+
+.kobo-poi-pin::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid var(--bg-surface);
+}
+
+.kobo-poi-pin svg {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* Location Reference Pin (the search anchor point) */
+.kobo-location-pin {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  pointer-events: auto;
+}
+
+.kobo-location-pin__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: var(--text-main);
+  color: var(--text-inverse);
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: var(--shadow-lg);
+}
+
+.kobo-location-pin__chip svg {
+  color: hsl(190, 95%, 62%);
+  flex-shrink: 0;
+}
+
+.kobo-location-pin__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--accent);
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 0 4px hsla(190, 95%, 42%, 0.3), var(--shadow-md);
+}
+
+/* Price Range Slider with visible increments */
+.kobo-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.kobo-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    to right,
+    var(--primary) 0%,
+    var(--primary) var(--fill, 50%),
+    var(--border-subtle) var(--fill, 50%),
+    var(--border-subtle) 100%
+  );
+}
+
+.kobo-range::-moz-range-track {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    to right,
+    var(--primary) 0%,
+    var(--primary) var(--fill, 50%),
+    var(--border-subtle) var(--fill, 50%),
+    var(--border-subtle) 100%
+  );
+}
+
+.kobo-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background-color: var(--bg-surface);
+  border: 2.5px solid var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.kobo-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: var(--bg-surface);
+  border: 2.5px solid var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.kobo-range:focus-visible {
+  box-shadow: none;
 }

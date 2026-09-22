@@ -147,23 +147,6 @@ export const OwnerLogin: React.FC = () => {
           </p>
         </div>
 
-        {/* Back to search */}
-        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-          <button
-            onClick={() => navigate('/')}
-            style={{
-              fontSize: '0.85rem',
-              color: 'var(--text-muted)',
-              fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-            }}
-            className="interactive-tap"
-          >
-            ← Kembali ke Halaman Utama
-          </button>
-        </div>
       </div>
     </div>
   );

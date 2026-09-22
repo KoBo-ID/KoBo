@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Home,
   User,
   LogOut,
-  ChevronDown,
   Building2,
   Calendar,
   CheckCircle2,
@@ -95,7 +94,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                 letterSpacing: '0.01em',
               }}
             >
-              Kos Dekat Kampus
+              Kos Terverifikasi
             </span>
           </div>
         </Link>
@@ -205,7 +204,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                       }}
                     >
                       <CheckCircle2 size={13} />
-                      <span>Mahasiswa Terverifikasi</span>
+                      <span>Identitas Terverifikasi</span>
                     </div>
                   )}
                 </div>

@@ -263,7 +263,7 @@ export const MyKos: React.FC = () => {
               <Home size={40} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>Belum Ada Kamar Kos yang Disewa</h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.3rem', maxWidth: '360px', margin: '0.3rem auto 1.5rem' }}>
-                Temukan kos idaman Anda di sekitar kampus dengan diskon mahasiswa dan bayar dengan mudah.
+                Temukan kos idaman Anda di sekitar titik lokasi pilihan, klaim diskon KTM, dan bayar dengan mudah.
               </p>
               <Link to="/search">
                 <Button variant="primary" size="md">

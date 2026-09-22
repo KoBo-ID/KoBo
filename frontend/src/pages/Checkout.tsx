@@ -8,8 +8,8 @@ import {
   Calendar,
   CheckCircle2,
   Lock,
-  ArrowLeft,
   Building,
+  Footprints,
 } from 'lucide-react';
 import { useAppStore } from '../store/AppContext';
 import { KtmUploadCard } from '../components/booking/KtmUploadCard';
@@ -92,30 +92,13 @@ export const Checkout: React.FC = () => {
   };
 
   return (
-    <div className="app-container" style={{ maxWidth: '960px', paddingTop: '2rem', paddingBottom: '4rem' }}>
-      {/* Back button */}
-      <button
-        onClick={() => navigate(-1)}
-        className="interactive-tap"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '0.4rem',
-          fontSize: '0.875rem',
-          color: 'var(--text-muted)',
-          marginBottom: '1.25rem',
-        }}
-      >
-        <ArrowLeft size={16} />
-        <span>Kembali ke Detail Kos</span>
-      </button>
-
+    <div className="app-container" style={{ maxWidth: '960px', paddingTop: '1.5rem', paddingBottom: '4rem' }}>
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
           Formulir Pengajuan Sewa & Pembayaran
         </h1>
         <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-          Selesaikan data penyewa dan klaim diskon mahasiswa sebelum melakukan transfer.
+          Selesaikan data penyewa dan klaim diskon KTM sebelum melakukan transfer.
         </p>
       </div>
 
@@ -149,7 +132,7 @@ export const Checkout: React.FC = () => {
               }}
             >
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem' }}>
-                Data Diri Mahasiswa Penyewa
+                Data Diri Penyewa
               </h3>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -327,8 +310,8 @@ export const Checkout: React.FC = () => {
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                   Kamar {selectedRoom.roomNumber} ({selectedRoom.roomType})
                 </p>
-                <p style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.2rem' }}>
-                  🚶 {kos.campusProximity.distanceMeters}m ke {kos.campusProximity.campusName}
+                <p style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.2rem' }}>
+                  <Footprints size={12} /> {kos.campusProximity.distanceMeters}m ke {kos.campusProximity.campusName}
                 </p>
               </div>
             </div>

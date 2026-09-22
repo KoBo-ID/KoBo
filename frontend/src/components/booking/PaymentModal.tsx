@@ -73,7 +73,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         roomNumber: `${selectedRoom.roomNumber} (Lt. ${selectedRoom.floor})`,
         studentName: currentUser.name,
         studentPhone: currentUser.phone,
-        studentCampus: currentUser.campus || 'Mahasiswa Binus',
+        studentCampus: currentUser.campus || 'Penyewa KoBo',
         ktmVerified: studentDiscountApplied,
         monthlyRent: baseMonthly,
         applicationFee,

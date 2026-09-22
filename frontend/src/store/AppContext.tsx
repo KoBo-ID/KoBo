@@ -7,6 +7,7 @@ import {
   UserProfile,
   RoomStatus,
   Room,
+  LocationPin,
 } from '../types';
 import { INITIAL_KOS_LIST } from '../data/mockKos';
 import { INITIAL_REVIEWS } from '../data/mockReviews';
@@ -31,8 +32,8 @@ interface AppContextType {
   // Search & Filter State
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  selectedCampusId: string;
-  setSelectedCampusId: (campusId: string) => void;
+  activeLocation: LocationPin | null;
+  setActiveLocation: (location: LocationPin | null) => void;
   genderFilter: 'all' | 'campur' | 'putra' | 'putri';
   setGenderFilter: (gender: 'all' | 'campur' | 'putra' | 'putri') => void;
   sortBy: 'rating' | 'price_asc' | 'distance_asc';
@@ -122,7 +123,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Search & Filter State (Default sort: Rating highest per idea.md)
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedCampusId, setSelectedCampusId] = useState<string>('');
+  const [activeLocation, setActiveLocation] = useState<LocationPin | null>(null);
   const [genderFilter, setGenderFilter] = useState<'all' | 'campur' | 'putra' | 'putri'>('all');
   const [sortBy, setSortBy] = useState<'rating' | 'price_asc' | 'distance_asc'>('rating');
   const [maxPrice, setMaxPrice] = useState<number>(3000000);
@@ -389,8 +390,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedOwnerKosId,
         searchQuery,
         setSearchQuery,
-        selectedCampusId,
-        setSelectedCampusId,
+        activeLocation,
+        setActiveLocation,
         genderFilter,
         setGenderFilter,
         sortBy,

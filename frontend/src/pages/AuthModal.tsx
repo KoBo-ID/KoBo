@@ -90,7 +90,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             }}
           >
             <GraduationCap size={16} />
-            <span>Saya Mahasiswa</span>
+            <span>Saya Pencari Kos</span>
           </button>
 
           <button

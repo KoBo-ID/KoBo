@@ -51,7 +51,7 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
             </h3>
           </div>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-            Aturan disepakati di awal untuk menghindari sengketa antara mahasiswa dan pengelola kos.
+            Aturan disepakati di awal untuk menghindari sengketa antara penyewa dan pengelola kos.
           </p>
         </div>
 

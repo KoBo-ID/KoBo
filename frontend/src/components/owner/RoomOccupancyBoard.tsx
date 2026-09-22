@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, FileText, UserPlus, CheckCircle2, Clock, AlertTriangle, AlertCircle, Sparkles, Filter, ChevronRight } from 'lucide-react';
+import { MessageSquare, FileText, UserPlus, CheckCircle2, Clock, AlertTriangle, AlertCircle, Sparkles, Filter, ChevronRight, GraduationCap } from 'lucide-react';
 import { Room, RoomStatus, Kos } from '../../types';
 import { RoomStatusBadge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -120,11 +120,11 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
           {(
             [
               { id: 'all', label: 'Semua Status' },
-              { id: 'paid', label: '🟢 Lunas' },
-              { id: 'due', label: '🟡 Jatuh Tempo' },
-              { id: 'overdue', label: '🔴 Menunggak' },
-              { id: 'vacant', label: '⚪ Kosong' },
-              { id: 'booking', label: '🔵 Booking' },
+              { id: 'paid', label: 'Lunas' },
+              { id: 'due', label: 'Jatuh Tempo' },
+              { id: 'overdue', label: 'Menunggak' },
+              { id: 'vacant', label: 'Kosong' },
+              { id: 'booking', label: 'Booking' },
             ] as const
           ).map((item) => {
             const isActive = filterStatus === item.id;
@@ -219,8 +219,8 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                       {room.tenantName || 'Penghuni Aktif'}
                     </div>
                     {room.tenantCampus && (
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
-                        🎓 {room.tenantCampus}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                        <GraduationCap size={12} /> {room.tenantCampus}
                       </div>
                     )}
 

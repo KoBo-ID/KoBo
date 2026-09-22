@@ -68,7 +68,7 @@ export const OwnerProfile: React.FC = () => {
               </div>
 
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.35rem', maxWidth: '640px', lineHeight: 1.5 }}>
-                {owner.bio || 'Pengelola kos profesional di kawasan kampus yang berkomitmen memberikan hunian aman, bersih, dan nyaman bagi mahasiswa perantau.'}
+                {owner.bio || 'Pengelola kos profesional yang berkomitmen memberikan hunian aman, bersih, dan nyaman bagi para penyewa.'}
               </p>
             </div>
           </div>

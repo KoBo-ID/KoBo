@@ -126,6 +126,21 @@ export interface Campus {
   suggestedDistricts: string[];
 }
 
+export type LocationSource = 'preset' | 'geolocation' | 'kos';
+
+export interface LocationPin {
+  id: string;
+  label: string;
+  area: string;
+  city: string;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
+  source: LocationSource;
+  aliases?: string[];
+}
+
 export interface VisitBooking {
   id: string;
   kosId: string;

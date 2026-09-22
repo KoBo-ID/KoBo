@@ -9,61 +9,85 @@ import {
   CheckCircle2,
   MessageSquare,
   MapPin,
-  Clock,
   BadgeCheck,
   Wallet,
   ShieldCheck,
+  CalendarCheck,
+  LocateFixed,
+  UtensilsCrossed,
+  ShoppingCart,
+  Shirt,
 } from 'lucide-react';
 import { useAppStore } from '../store/AppContext';
-import { CAMPUSES } from '../data/campuses';
+import { PRESET_LOCATIONS } from '../data/locations';
 import { Kos } from '../types';
 import { ListingCard } from '../components/kos/ListingCard';
 import { Button } from '../components/ui/Button';
+import { Pill } from '../components/ui/Pill';
 import { VisitModal } from '../components/booking/VisitModal';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const { kosList, setSelectedCampusId } = useAppStore();
+  const { kosList } = useAppStore();
 
   const [searchInput, setSearchInput] = useState('');
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [selectedVisitKos, setSelectedVisitKos] = useState<Kos | null>(null);
+
+  const trimmedInput = searchInput.trim().toLowerCase();
+
+  const matchedLocations = PRESET_LOCATIONS.filter(
+    (loc) =>
+      !trimmedInput ||
+      loc.label.toLowerCase().includes(trimmedInput) ||
+      loc.city.toLowerCase().includes(trimmedInput) ||
+      loc.aliases?.some((alias) => alias.includes(trimmedInput))
+  );
+
+  const matchedKos = trimmedInput
+    ? kosList.filter(
+        (kos) =>
+          kos.name.toLowerCase().includes(trimmedInput) ||
+          kos.district.toLowerCase().includes(trimmedInput) ||
+          kos.city.toLowerCase().includes(trimmedInput)
+      )
+    : [];
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchInput.trim()) {
+    const query = searchInput.trim();
+    if (!query) {
       navigate('/search');
       return;
     }
 
-    const matchedCampus = CAMPUSES.find(
-      (c) =>
-        c.name.toLowerCase().includes(searchInput.toLowerCase()) ||
-        c.shortName.toLowerCase().includes(searchInput.toLowerCase())
+    const exactLocation = PRESET_LOCATIONS.find(
+      (loc) =>
+        loc.label.toLowerCase() === query.toLowerCase() ||
+        loc.aliases?.some((alias) => alias === query.toLowerCase())
     );
 
-    if (matchedCampus) {
-      setSelectedCampusId(matchedCampus.id);
-      navigate(`/search?campus=${matchedCampus.id}`);
+    if (exactLocation) {
+      navigate(`/search?loc=${exactLocation.id}`);
     } else {
-      navigate(`/search?q=${encodeURIComponent(searchInput)}`);
+      navigate(`/search?q=${encodeURIComponent(query)}`);
     }
   };
 
-  const handleSelectCampus = (campusId: string) => {
-    setSelectedCampusId(campusId);
-    navigate(`/search?campus=${campusId}`);
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      navigate('/search');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) =>
+        navigate(`/search?lat=${position.coords.latitude}&lng=${position.coords.longitude}`),
+      () => navigate('/search'),
+      { enableHighAccuracy: false, timeout: 8000 }
+    );
   };
 
   const featuredKos = kosList.slice(0, 4);
-
-  const filteredCampuses = searchInput.trim()
-    ? CAMPUSES.filter(
-        (c) =>
-          c.name.toLowerCase().includes(searchInput.toLowerCase()) ||
-          c.shortName.toLowerCase().includes(searchInput.toLowerCase()) ||
-          c.city.toLowerCase().includes(searchInput.toLowerCase())
-      )
-    : [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--section-gap)' }}>
@@ -76,53 +100,63 @@ export const Home: React.FC = () => {
           borderBottom: '1px solid var(--border-subtle)',
         }}
       >
-        <div className="app-container" style={{ textAlign: 'center', maxWidth: '860px' }}>
-          {/* Trust Label */}
-          <div
+        <div className="app-container" style={{ textAlign: 'center', maxWidth: '780px' }}>
+          {/* Tagline */}
+          <span
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
+              display: 'block',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
               color: 'var(--primary)',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              marginBottom: '1.25rem',
+              marginBottom: '1rem',
             }}
           >
-            <ShieldCheck size={15} />
-            <span>Platform Kos Mahasiswa Terverifikasi Dekat Kampus</span>
+            Kos Booking with KoBo
+          </span>
+
+          {/* Trust Pill */}
+          <div style={{ marginBottom: '1.1rem' }}>
+            <Pill tone="primary" icon={<ShieldCheck size={14} />}>
+              Platform Kos Terverifikasi
+            </Pill>
           </div>
 
           <h1
             style={{
-              fontSize: '2.75rem',
+              fontSize: '2.6rem',
               fontWeight: 800,
               color: 'var(--text-main)',
               letterSpacing: '-0.03em',
               lineHeight: 1.15,
-              marginBottom: '1rem',
+              marginBottom: '0.9rem',
             }}
           >
-            Cari &amp; Sewa Kos Dekat Kampus,{' '}
-            <span style={{ color: 'var(--primary)' }}>Survey Fisik Gratis</span> &amp; Diskon KTM.
+            Cari Kos Terverifikasi,{' '}
+            <span style={{ color: 'var(--primary)' }}>Survey Dulu</span>, Baru Sewa.
           </h1>
 
           <p
             style={{
-              fontSize: '1.1rem',
+              fontSize: '1.02rem',
               color: 'var(--text-muted)',
               lineHeight: 1.6,
-              marginBottom: '2.5rem',
-              maxWidth: '680px',
+              marginBottom: '2.25rem',
+              maxWidth: '560px',
               marginLeft: 'auto',
               marginRight: 'auto',
             }}
           >
-            Transparansi penuh tanpa calo. Cek estimasi waktu jalan kaki ke gerbang kampus, aturan denda tertulis sejak awal, dan bayar aman dengan kuitansi resmi.
+            Tentukan titik lokasimu, lihat kos dan kampus terdekat di peta, lalu sewa dengan aturan yang tertulis jelas. Untuk mahasiswa maupun pekerja.
           </p>
 
-          {/* ── Pill Search Bar (Issue 2 & 5) ── */}
-          <div style={{ position: 'relative', maxWidth: '640px', margin: '0 auto' }}>
+          {/* ── Location Search Bar ── */}
+          <div
+            style={{ position: 'relative', maxWidth: '660px', margin: '0 auto' }}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setSuggestionsOpen(false);
+            }}
+          >
             <form
               id="hero-search-form"
               onSubmit={handleSearchSubmit}
@@ -131,9 +165,9 @@ export const Home: React.FC = () => {
                 alignItems: 'center',
                 backgroundColor: 'var(--bg-surface)',
                 borderRadius: '9999px',
-                padding: '0.45rem 0.45rem 0.45rem 1.5rem',
+                padding: '0.4rem 0.4rem 0.4rem 1.4rem',
                 boxShadow: 'var(--shadow-lg)',
-                gap: '0.5rem',
+                gap: '0.4rem',
                 border: 'none',
               }}
             >
@@ -143,9 +177,11 @@ export const Home: React.FC = () => {
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Ketik kampus (Binus Syahdan, Anggrek, UI Depok, ITB)..."
+                onFocus={() => setSuggestionsOpen(true)}
+                placeholder="Cari area, lokasi, atau nama kos..."
                 style={{
                   width: '100%',
+                  minWidth: 0,
                   border: 'none',
                   outline: 'none',
                   fontSize: '0.95rem',
@@ -154,6 +190,28 @@ export const Home: React.FC = () => {
                   color: 'var(--text-main)',
                 }}
               />
+              <button
+                type="button"
+                onClick={handleUseMyLocation}
+                className="interactive-tap hide-on-mobile"
+                title="Gunakan lokasi saya"
+                aria-label="Gunakan lokasi saya"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '9999px',
+                  color: 'var(--primary)',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  backgroundColor: 'var(--primary-light)',
+                  flexShrink: 0,
+                }}
+              >
+                <LocateFixed size={15} />
+                <span>Lokasi Saya</span>
+              </button>
               <Button
                 type="submit"
                 variant="primary"
@@ -165,7 +223,7 @@ export const Home: React.FC = () => {
             </form>
 
             {/* Autocomplete Dropdown */}
-            {filteredCampuses.length > 0 && (
+            {suggestionsOpen && (matchedLocations.length > 0 || matchedKos.length > 0) && (
               <div
                 className="animate-slide-up"
                 style={{
@@ -178,38 +236,61 @@ export const Home: React.FC = () => {
                   overflow: 'hidden',
                   boxShadow: 'var(--shadow-xl)',
                   border: '1px solid var(--border-subtle)',
-                  padding: '0.5rem 0',
+                  padding: '0.4rem 0',
                   zIndex: 'var(--z-dropdown)',
                   textAlign: 'left',
                 }}
               >
-                {filteredCampuses.map((c) => (
+                {matchedLocations.slice(0, 4).map((loc) => (
                   <button
-                    key={c.id}
+                    key={loc.id}
                     type="button"
-                    onClick={() => {
-                      setSearchInput(c.name);
-                      handleSelectCampus(c.id);
-                    }}
+                    onClick={() => navigate(`/search?loc=${loc.id}`)}
                     className="interactive-tap"
                     style={{
                       width: '100%',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.75rem',
-                      padding: '0.75rem 1.25rem',
+                      padding: '0.65rem 1.25rem',
                       textAlign: 'left',
                     }}
                   >
-                    <GraduationCap size={18} color="var(--primary)" />
-                    <div>
+                    <MapPin size={17} color="var(--primary)" style={{ flexShrink: 0 }} />
+                    <span>
                       <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', display: 'block' }}>
-                        {c.name}
+                        {loc.label}
                       </span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {c.city} · Dekat {c.suggestedDistricts.join(', ')}
+                        {loc.area === loc.label ? loc.city : `${loc.area}, ${loc.city}`} · Jadikan titik acuan peta
                       </span>
-                    </div>
+                    </span>
+                  </button>
+                ))}
+                {matchedKos.slice(0, 3).map((kos) => (
+                  <button
+                    key={kos.id}
+                    type="button"
+                    onClick={() => navigate(`/kos/${kos.id}`)}
+                    className="interactive-tap"
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.65rem 1.25rem',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <Building2 size={17} color="var(--text-subtle)" style={{ flexShrink: 0 }} />
+                    <span style={{ minWidth: 0 }}>
+                      <span className="truncate-1" style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', display: 'block' }}>
+                        {kos.name}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {kos.district}, {kos.city}
+                      </span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -245,13 +326,13 @@ export const Home: React.FC = () => {
               letterSpacing: '0.05em',
             }}
           >
-            Standar Pengalaman Sewa Mahasiswa
+            Standar Pengalaman Sewa
           </span>
           <h2 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em', marginTop: '0.35rem' }}>
             Mengapa Memilih Kos Lewat KoBo?
           </h2>
           <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '0.4rem', maxWidth: '560px', margin: '0.4rem auto 0' }}>
-            Kami menghilangkan kekhawatiran klasik mahasiswa rantau: foto palsu, denda sepihak, dan perlakuan diskriminatif.
+            Kami menghilangkan kekhawatiran klasik penyewa kos: foto palsu, denda sepihak, dan biaya tersembunyi.
           </p>
         </div>
 
@@ -279,18 +360,10 @@ export const Home: React.FC = () => {
             }}
           >
             <div>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  color: 'var(--primary)',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  marginBottom: '0.85rem',
-                }}
-              >
-                <BadgeCheck size={13} /> Otomatis via WhatsApp
+              <div style={{ marginBottom: '0.85rem' }}>
+                <Pill size="sm" tone="primary" icon={<BadgeCheck size={12} />}>
+                  Otomatis via WhatsApp
+                </Pill>
               </div>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.4rem' }}>
                 Survey Fisik Gratis
@@ -352,21 +425,21 @@ export const Home: React.FC = () => {
                   }}
                 >
                   <p style={{ marginBottom: '0.3rem', color: 'var(--text-main)' }}>
-                    Halo <strong>Bima</strong>! 👋 Survey kamar kos di
+                    Halo <strong>Bima</strong>, survey kamar kos di
                   </p>
                   <p style={{ fontWeight: 700, color: 'var(--primary)', marginBottom: '0.4rem' }}>
-                    🏠 Kos Menteng Syahdan
+                    Kos Menteng Syahdan
                   </p>
                   <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.72rem', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 600 }}>
-                      📅 Kamis, 25 Sep
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.72rem', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 600 }}>
+                      <CalendarCheck size={11} /> Kamis, 25 Sep
                     </span>
                     <span style={{ fontSize: '0.72rem', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 600 }}>
-                      🕙 10:00 WIB
+                      10:00 WIB
                     </span>
                   </div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Dikonfirmasi oleh pemilik kos ✅
+                  <p style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <CheckCircle2 size={12} color="var(--primary)" /> Dikonfirmasi oleh pemilik kos
                   </p>
                 </div>
               </div>
@@ -394,21 +467,13 @@ export const Home: React.FC = () => {
             }}
           >
             <div>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  color: 'var(--accent)',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  marginBottom: '0.85rem',
-                }}
-              >
-                <GraduationCap size={13} /> Verifikasi KTM
+              <div style={{ marginBottom: '0.85rem' }}>
+                <Pill size="sm" tone="accent" icon={<GraduationCap size={12} />}>
+                  Verifikasi KTM
+                </Pill>
               </div>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.4rem' }}>
-                Diskon Khusus Mahasiswa
+                Diskon Khusus Pelajar &amp; Mahasiswa
               </h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.65 }}>
                 Verifikasi KTM satu kali. Dapatkan potongan sewa bulanan hingga Rp 150.000/bulan langsung — tanpa kuota, tanpa kode promo.
@@ -494,7 +559,7 @@ export const Home: React.FC = () => {
                         fontWeight: 800,
                       }}
                     >
-                      Harga KTM ✓
+                      Harga KTM
                     </span>
                   </div>
                 </div>
@@ -539,18 +604,10 @@ export const Home: React.FC = () => {
             }}
           >
             <div>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  color: 'var(--primary)',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  marginBottom: '0.85rem',
-                }}
-              >
-                <Radar size={13} /> Radar Sekitar
+              <div style={{ marginBottom: '0.85rem' }}>
+                <Pill size="sm" tone="primary" icon={<Radar size={12} />}>
+                  Radar Sekitar
+                </Pill>
               </div>
               <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.4rem' }}>
                 Radar &amp; Transparansi Denda
@@ -563,10 +620,10 @@ export const Home: React.FC = () => {
             {/* Middle: POI Walking Distance Indicator */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.55rem' }}>
               {[
-                { icon: '🎓', label: 'Binus Syahdan', dist: '300m', color: 'var(--primary)' },
-                { icon: '🍜', label: 'Warteg Bu Ida', dist: '80m', color: 'hsl(28, 80%, 45%)' },
-                { icon: '🛒', label: 'Indomaret 24 Jam', dist: '50m', color: 'hsl(210, 80%, 48%)' },
-                { icon: '👕', label: 'Laundry Kiloan', dist: '120m', color: 'hsl(270, 60%, 48%)' },
+                { icon: <GraduationCap size={14} color="var(--primary)" />, label: 'Binus Syahdan', dist: '300m', color: 'var(--primary)' },
+                { icon: <UtensilsCrossed size={14} color="hsl(28, 80%, 45%)" />, label: 'Warteg Bu Ida', dist: '80m', color: 'hsl(28, 80%, 45%)' },
+                { icon: <ShoppingCart size={14} color="hsl(210, 80%, 48%)" />, label: 'Indomaret 24 Jam', dist: '50m', color: 'hsl(210, 80%, 48%)' },
+                { icon: <Shirt size={14} color="hsl(270, 60%, 48%)" />, label: 'Laundry Kiloan', dist: '120m', color: 'hsl(270, 60%, 48%)' },
               ].map((poi) => (
                 <div
                   key={poi.label}
@@ -576,11 +633,24 @@ export const Home: React.FC = () => {
                     gap: '0.65rem',
                     backgroundColor: 'var(--bg-page)',
                     borderRadius: 'var(--radius-sm)',
-                    padding: '0.5rem 0.75rem',
+                    padding: '0.5rem 0.65rem',
                     border: '1px solid var(--border-subtle)',
                   }}
                 >
-                  <span style={{ fontSize: '1rem' }}>{poi.icon}</span>
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: 'var(--radius-xs)',
+                      backgroundColor: 'var(--bg-muted)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {poi.icon}
+                  </span>
                   <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', flex: 1 }}>
                     {poi.label}
                   </span>
@@ -637,7 +707,7 @@ export const Home: React.FC = () => {
               Pilihan Terverifikasi
             </span>
             <h2 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em', marginTop: '0.2rem' }}>
-              Rekomendasi Kos Mahasiswa Terpopuler
+              Rekomendasi Kos Terpopuler
             </h2>
           </div>
           <Link to="/search">
@@ -650,8 +720,8 @@ export const Home: React.FC = () => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '1.5rem',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+            gap: '1.25rem',
           }}
         >
           {featuredKos.map((kos) => (
@@ -697,7 +767,7 @@ export const Home: React.FC = () => {
               Khusus Pemilik Kos Terverifikasi
             </span>
             <h2 style={{ fontSize: '2rem', fontWeight: 800, color: 'white', lineHeight: 1.25, marginBottom: '0.75rem' }}>
-              Kelola Kos Lebih Rapi &amp; Santun, Dapatkan Anak Kos Berkualitas
+              Kelola Kos Lebih Rapi &amp; Santun, Dapatkan Penyewa Berkualitas
             </h2>
             <p style={{ fontSize: '0.95rem', color: 'rgba(255, 255, 255, 0.9)', lineHeight: 1.6 }}>
               Gunakan Papan Okupansi Kamar 5 status, kirim pengingat tagihan WhatsApp otomatis tanpa rasa canggung, dan cetak kuitansi resmi digital dalam 1 klik.

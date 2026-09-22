@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CAMPUSES } from '../../data/campuses';
+import { PRESET_LOCATIONS } from '../../data/locations';
 
 export const Footer: React.FC = () => {
   return (
@@ -44,22 +44,25 @@ export const Footer: React.FC = () => {
                 Ko<span style={{ color: 'var(--primary)' }}>Bo</span>
               </span>
             </div>
+            <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', letterSpacing: '0.04em', marginBottom: '0.35rem' }}>
+              Kos Booking with KoBo
+            </p>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-              Platform persewaan kos mahasiswa modern, bersih, dan bebas calo. Menghubungkan mahasiswa dengan pemilik kos secara transparan dan manusiawi.
+              Platform persewaan kos modern, bersih, dan bebas calo. Menghubungkan penyewa dengan pemilik kos secara transparan dan manusiawi.
             </p>
           </div>
 
           <div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem' }}>Kampus Populer</h4>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem' }}>Lokasi Populer</h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              {CAMPUSES.map((c) => (
-                <li key={c.id}>
+              {PRESET_LOCATIONS.map((loc) => (
+                <li key={loc.id}>
                   <Link
-                    to={`/search?campus=${c.id}`}
+                    to={`/search?loc=${loc.id}`}
                     style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}
                     className="interactive-tap"
                   >
-                    Kos Dekat {c.shortName}
+                    Kos di {loc.label}, {loc.city}
                   </Link>
                 </li>
               ))}
@@ -67,7 +70,7 @@ export const Footer: React.FC = () => {
           </div>
 
           <div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem' }}>Untuk Mahasiswa</h4>
+            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem' }}>Untuk Pencari Kos</h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               <li>
                 <Link to="/search" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -133,7 +136,7 @@ export const Footer: React.FC = () => {
             color: 'var(--text-subtle)',
           }}
         >
-          <p>© 2026 KoBo Indonesia. Dibuat dengan penuh dedikasi untuk Mahasiswa &amp; Bapak/Ibu Kos.</p>
+          <p>© 2026 KoBo Indonesia. Dibuat dengan penuh dedikasi untuk pencari kos &amp; Bapak/Ibu pemilik kos.</p>
           <div style={{ display: 'flex', gap: '1.5rem' }}>
             <span>Syarat &amp; Ketentuan</span>
             <span>Kebijakan Privasi</span>

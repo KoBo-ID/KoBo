@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
 import { MobileNav } from './MobileNav';
+import { BackButton } from '../ui/BackButton';
 
 export const OwnerLayout: React.FC = () => {
   const { kosList, selectedOwnerKosId, setSelectedOwnerKosId, currentUser } = useAppStore();
@@ -277,7 +278,7 @@ export const OwnerLayout: React.FC = () => {
               >
                 {kosList.map((kos) => (
                   <option key={kos.id} value={kos.id}>
-                    🏠 {kos.name} — {kos.rooms.length} kamar
+                    {kos.name} — {kos.rooms.length} kamar
                   </option>
                 ))}
               </select>
@@ -306,6 +307,9 @@ export const OwnerLayout: React.FC = () => {
         </div>
 
         <main style={{ flex: 1 }}>
+          <div className="app-container" style={{ paddingTop: '1rem' }}>
+            <BackButton />
+          </div>
           <Outlet />
         </main>
       </div>
