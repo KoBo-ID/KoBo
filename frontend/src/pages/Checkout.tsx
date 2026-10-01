@@ -14,6 +14,7 @@ import {
 import { useAppStore } from '../store/AppContext';
 import { KtmUploadCard } from '../components/booking/KtmUploadCard';
 import { Button } from '../components/ui/Button';
+import { BackButton } from '../components/ui/BackButton';
 import { Input } from '../components/ui/Input';
 
 export const Checkout: React.FC = () => {
@@ -94,6 +95,7 @@ export const Checkout: React.FC = () => {
   return (
     <div className="app-container" style={{ maxWidth: '960px', paddingTop: '1.5rem', paddingBottom: '4rem' }}>
       <div style={{ marginBottom: '2rem' }}>
+        <BackButton style={{ marginBottom: '0.5rem' }} />
         <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
           Formulir Pengajuan Sewa & Pembayaran
         </h1>

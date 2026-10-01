@@ -10,7 +10,8 @@ import {
   List,
   LocateFixed,
   Building2,
-  RotateCcw,
+  SlidersHorizontal,
+  ChevronDown,
 } from 'lucide-react';
 import { useAppStore } from '../store/AppContext';
 import { CAMPUSES } from '../data/campuses';
@@ -18,7 +19,7 @@ import { PRESET_LOCATIONS } from '../data/locations';
 import { ListingCard } from '../components/kos/ListingCard';
 import { LeafletMap } from '../components/kos/LeafletMap';
 import { Button } from '../components/ui/Button';
-import { Pill } from '../components/ui/Pill';
+import { Popover } from '../components/ui/Popover';
 import { useResizeObserver } from '../hooks/useResizeObserver';
 import { Kos, LocationPin } from '../types';
 import { averageLatLng, formatDistance, haversineMeters } from '../utils/geo';
@@ -27,7 +28,6 @@ const PRICE_MIN = 800000;
 const PRICE_MAX = 3500000;
 const PRICE_STEP = 100000;
 const RADIUS_METERS = 5000;
-const TICK_VALUES = [1000000, 1500000, 2000000, 2500000, 3000000, 3500000];
 const NEARBY_CAMPUS_METERS = 3000;
 
 type Suggestion =
@@ -290,7 +290,7 @@ export const Search: React.FC = () => {
     !!searchQuery ||
     filterDiscountOnly ||
     filterSurveyOnly ||
-    maxPrice < 3000000;
+    maxPrice < PRICE_MAX;
 
   const handleResetFilters = () => {
     applyLocation(null);
@@ -298,10 +298,20 @@ export const Search: React.FC = () => {
     setSearchQuery('');
     setFilterDiscountOnly(false);
     setFilterSurveyOnly(false);
-    setMaxPrice(3000000);
+    setMaxPrice(PRICE_MAX);
     setLocationInput('');
     setSearchParams({}, { replace: true });
   };
+
+  const secondaryFilterCount =
+    (filterDiscountOnly ? 1 : 0) + (filterSurveyOnly ? 1 : 0) + (maxPrice < PRICE_MAX ? 1 : 0);
+
+  const sortOptions = [
+    { id: 'rating', label: 'Rating Tertinggi' },
+    { id: 'price_asc', label: 'Harga Terendah' },
+    { id: 'distance_asc', label: activeLocation ? 'Terdekat dari Titik Lokasi' : 'Terdekat ke Kampus' },
+  ] as const;
+  const currentSortLabel = sortOptions.find((o) => o.id === sortBy)?.label ?? 'Urutkan';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - var(--header-height))' }}>
@@ -327,97 +337,64 @@ export const Search: React.FC = () => {
               if (!e.currentTarget.contains(e.relatedTarget as Node)) setSuggestionsOpen(false);
             }}
           >
-            <form
-              onSubmit={handleSubmit}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.6rem',
-                height: '48px',
-                padding: '0 0.5rem 0 1rem',
-                backgroundColor: 'var(--bg-page)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: 'var(--radius-input)',
-                width: '100%',
-              }}
-            >
-              <SearchIcon size={17} color="var(--primary)" style={{ flexShrink: 0 }} />
-              <input
-                type="text"
-                value={locationInput}
-                onChange={(e) => {
-                  setLocationInput(e.target.value);
-                  setSuggestionsOpen(true);
-                }}
-                onFocus={() => setSuggestionsOpen(true)}
-                placeholder="Cari area, lokasi, atau nama kos..."
-                aria-label="Cari lokasi atau kos"
-                style={{
-                  border: 'none',
-                  outline: 'none',
-                  backgroundColor: 'transparent',
-                  fontSize: '0.9rem',
-                  color: 'var(--text-main)',
-                  flex: 1,
-                  minWidth: 0,
-                  fontFamily: 'var(--font-sans)',
-                }}
-              />
-              {locationInput && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLocationInput('');
+            <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div className="kobo-searchfield" style={{ flex: 1, minWidth: 0 }}>
+                <SearchIcon size={17} />
+                <input
+                  type="text"
+                  value={locationInput}
+                  onChange={(e) => {
+                    setLocationInput(e.target.value);
                     setSuggestionsOpen(true);
                   }}
-                  aria-label="Bersihkan pencarian"
-                  style={{ color: 'var(--text-subtle)', display: 'flex', flexShrink: 0 }}
-                >
-                  <X size={15} />
-                </button>
-              )}
+                  onFocus={() => setSuggestionsOpen(true)}
+                  placeholder="Cari area, lokasi, atau nama kos..."
+                  aria-label="Cari lokasi atau kos"
+                />
+                {locationInput && (
+                  <button
+                    type="button"
+                    className="kobo-searchfield__clear"
+                    onClick={() => {
+                      setLocationInput('');
+                      setSuggestionsOpen(true);
+                    }}
+                    aria-label="Bersihkan pencarian"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
+                className="kobo-icon-btn"
                 onClick={handleUseMyLocation}
-                className="interactive-tap"
                 aria-label="Gunakan lokasi saya"
                 title="Gunakan lokasi saya"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  padding: '0.45rem 0.7rem',
-                  borderRadius: 'var(--radius-sm)',
-                  color: isLocating ? 'var(--text-subtle)' : 'var(--text-main)',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  flexShrink: 0,
-                  backgroundColor: 'var(--bg-surface)',
-                  border: '1px solid var(--border-subtle)',
-                }}
               >
-                <LocateFixed size={15} color="var(--primary)" />
-                <span className="hide-on-mobile">Lokasi Saya</span>
+                <LocateFixed size={16} color={isLocating ? 'var(--text-subtle)' : undefined} />
               </button>
-              <Button type="submit" variant="primary" size="sm" style={{ flexShrink: 0, height: '36px' }}>
+              <Button type="submit" variant="primary" style={{ flexShrink: 0, height: 'var(--control-height-lg)' }}>
                 Cari
               </Button>
             </form>
 
-            {/* Active location pin indicator */}
-            {activeLocation && (
-              <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <Pill tone="primary" size="sm" icon={<MapPin size={12} />}>
-                  Titik aktif: {activeLocation.label}
+            {searchQuery.trim() && !activeLocation && (
+              <div style={{ marginTop: '0.5rem' }}>
+                <span className="kobo-token">
+                  {searchQuery}
                   <button
                     type="button"
-                    onClick={() => applyLocation(null)}
-                    aria-label="Hapus titik lokasi"
-                    style={{ display: 'inline-flex', color: 'inherit', marginLeft: '0.1rem' }}
+                    aria-label="Hapus kata kunci"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setLocationInput('');
+                      setSearchParams({}, { replace: true });
+                    }}
                   >
                     <X size={12} />
                   </button>
-                </Pill>
+                </span>
               </div>
             )}
 
@@ -505,7 +482,7 @@ export const Search: React.FC = () => {
             )}
           </div>
 
-          {/* Row 2: Chips + aligned sort & price controls */}
+          {/* Row 2: gender segmented (left) + Filter / Urutkan popovers (right) */}
           <div
             style={{
               display: 'flex',
@@ -515,7 +492,7 @@ export const Search: React.FC = () => {
               gap: '0.75rem',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div className="kobo-segmented" role="group" aria-label="Tipe kos">
               {(
                 [
                   { id: 'all', label: 'Semua Tipe' },
@@ -528,168 +505,135 @@ export const Search: React.FC = () => {
                 return (
                   <button
                     key={item.id}
+                    type="button"
+                    aria-pressed={isActive}
                     onClick={() => setGenderFilter(item.id)}
-                    className="interactive-tap"
-                    style={{
-                      padding: '0.32rem 0.7rem',
-                      borderRadius: 'var(--radius-badge)',
-                      fontSize: '0.78rem',
-                      fontWeight: isActive ? 700 : 500,
-                      backgroundColor: isActive ? 'var(--text-main)' : 'var(--bg-muted)',
-                      color: isActive ? 'white' : 'var(--text-muted)',
-                      border: '1px solid',
-                      borderColor: isActive ? 'var(--text-main)' : 'var(--border-subtle)',
-                    }}
                   >
                     {item.label}
                   </button>
                 );
               })}
-
-              <div style={{ width: '1px', height: '18px', backgroundColor: 'var(--border-subtle)', margin: '0 0.15rem' }} />
-
-              <button
-                onClick={() => setFilterDiscountOnly(!filterDiscountOnly)}
-                className="interactive-tap"
-                style={{
-                  padding: '0.32rem 0.7rem',
-                  borderRadius: 'var(--radius-badge)',
-                  fontSize: '0.78rem',
-                  fontWeight: filterDiscountOnly ? 700 : 500,
-                  backgroundColor: filterDiscountOnly ? 'var(--accent-light)' : 'var(--bg-muted)',
-                  color: filterDiscountOnly ? 'var(--accent)' : 'var(--text-muted)',
-                  border: '1px solid',
-                  borderColor: filterDiscountOnly ? 'hsla(190, 85%, 70%, 0.9)' : 'var(--border-subtle)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                }}
-              >
-                <GraduationCap size={14} />
-                <span>Diskon KTM</span>
-              </button>
-
-              <button
-                onClick={() => setFilterSurveyOnly(!filterSurveyOnly)}
-                className="interactive-tap"
-                style={{
-                  padding: '0.32rem 0.7rem',
-                  borderRadius: 'var(--radius-badge)',
-                  fontSize: '0.78rem',
-                  fontWeight: filterSurveyOnly ? 700 : 500,
-                  backgroundColor: filterSurveyOnly ? 'var(--primary-light)' : 'var(--bg-muted)',
-                  color: filterSurveyOnly ? 'var(--primary)' : 'var(--text-muted)',
-                  border: '1px solid',
-                  borderColor: filterSurveyOnly ? 'hsla(176, 55%, 75%, 0.9)' : 'var(--border-subtle)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                }}
-              >
-                <CalendarCheck size={14} />
-                <span>Bisa Survey Gratis</span>
-              </button>
             </div>
 
-            {/* Sort + Price: same height, aligned in one control cluster */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <label
-                  htmlFor="search-sort"
-                  style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}
-                >
-                  Urutkan
-                </label>
-                <select
-                  id="search-sort"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                  style={{
-                    height: '40px',
-                    padding: '0 0.75rem',
-                    borderRadius: 'var(--radius-input)',
-                    border: '1px solid var(--border-subtle)',
-                    backgroundColor: 'var(--bg-surface)',
-                    color: 'var(--text-main)',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <option value="rating">Rating Tertinggi</option>
-                  <option value="price_asc">Harga Terendah</option>
-                  <option value="distance_asc">
-                    {activeLocation ? 'Terdekat dari Titik Lokasi' : 'Terdekat ke Kampus'}
-                  </option>
-                </select>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Popover
+                label="Filter pencarian"
+                trigger={(p) => (
+                  <button
+                    {...p}
+                    type="button"
+                    className={`kobo-control${secondaryFilterCount > 0 ? ' is-active' : ''}`}
+                  >
+                    <SlidersHorizontal size={15} />
+                    Filter
+                    {secondaryFilterCount > 0 && (
+                      <span className="kobo-control__count">{secondaryFilterCount}</span>
+                    )}
+                    <ChevronDown size={14} />
+                  </button>
+                )}
+              >
+                {({ close }) => (
+                  <>
+                    <div className="kobo-popover__title">Filter Tambahan</div>
+                    <button
+                      type="button"
+                      className="kobo-optionrow"
+                      aria-pressed={filterDiscountOnly}
+                      onClick={() => setFilterDiscountOnly(!filterDiscountOnly)}
+                    >
+                      <GraduationCap size={16} />
+                      <span>Diskon KTM</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="kobo-optionrow"
+                      aria-pressed={filterSurveyOnly}
+                      onClick={() => setFilterSurveyOnly(!filterSurveyOnly)}
+                    >
+                      <CalendarCheck size={16} />
+                      <span>Bisa Survey Gratis</span>
+                    </button>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <label
-                  htmlFor="search-price"
-                  style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}
-                >
-                  Maks. Sewa
-                </label>
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '190px', height: '40px' }}>
-                  <input
-                    id="search-price"
-                    type="range"
-                    className="kobo-range"
-                    min={PRICE_MIN}
-                    max={PRICE_MAX}
-                    step={PRICE_STEP}
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(Number(e.target.value))}
-                    style={{ ['--fill' as string]: priceFillPercent(maxPrice) }}
-                  />
-                  <div style={{ position: 'relative', height: '7px', marginTop: '1px' }}>
-                    {TICK_VALUES.map((tick) => (
-                      <span
-                        key={tick}
+                    <div style={{ padding: '0.75rem 0.25rem 0.25rem' }}>
+                      <div
                         style={{
-                          position: 'absolute',
-                          left: priceFillPercent(tick),
-                          transform: 'translateX(-50%)',
-                          width: '2px',
-                          height: '3px',
-                          borderRadius: 'var(--radius-pill)',
-                          backgroundColor: maxPrice >= tick ? 'var(--primary)' : 'var(--border-strong)',
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          justifyContent: 'space-between',
+                          marginBottom: '0.4rem',
                         }}
+                      >
+                        <label
+                          htmlFor="search-price"
+                          style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}
+                        >
+                          Maks. Sewa
+                        </label>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                          {formatJuta(maxPrice)}
+                        </span>
+                      </div>
+                      <input
+                        id="search-price"
+                        type="range"
+                        className="kobo-range"
+                        min={PRICE_MIN}
+                        max={PRICE_MAX}
+                        step={PRICE_STEP}
+                        value={maxPrice}
+                        onChange={(e) => setMaxPrice(Number(e.target.value))}
+                        style={{ ['--fill' as string]: priceFillPercent(maxPrice) }}
                       />
-                    ))}
-                  </div>
-                </div>
-                <span
-                  style={{
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    color: 'var(--text-main)',
-                    minWidth: '58px',
-                    textAlign: 'right',
-                  }}
-                >
-                  {formatJuta(maxPrice)}
-                </span>
-              </div>
+                    </div>
 
-              {hasActiveFilters && (
-                <button
-                  onClick={handleResetFilters}
-                  className="interactive-tap"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.3rem',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    color: 'var(--accent)',
-                  }}
-                >
-                  <RotateCcw size={13} />
-                  <span>Reset</span>
-                </button>
-              )}
+                    <div className="kobo-popover__footer">
+                      {hasActiveFilters && (
+                        <button
+                          type="button"
+                          onClick={handleResetFilters}
+                          style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)' }}
+                        >
+                          Reset
+                        </button>
+                      )}
+                      <Button type="button" variant="primary" size="sm" onClick={close}>
+                        Selesai
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </Popover>
+
+              <Popover
+                label="Urutkan hasil"
+                trigger={(p) => (
+                  <button {...p} type="button" className="kobo-control">
+                    {currentSortLabel}
+                    <ChevronDown size={14} />
+                  </button>
+                )}
+              >
+                {({ close }) => (
+                  <>
+                    {sortOptions.map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        role="menuitemradio"
+                        className="kobo-optionrow"
+                        aria-checked={sortBy === opt.id}
+                        onClick={() => {
+                          setSortBy(opt.id);
+                          close();
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </Popover>
             </div>
           </div>
         </div>
@@ -814,7 +758,9 @@ export const Search: React.FC = () => {
               display: mobileViewMode === 'list' ? 'none' : 'block',
               position: 'sticky',
               top: `calc(var(--header-height) + ${filterBarHeight}px + 1rem)`,
-              height: `min(calc(100vh - var(--header-height) - ${filterBarHeight}px - 2rem), 560px)`,
+              // 3.5rem (vs the 1rem top offset) leaves a real ~2.5rem gap below
+              // the map instead of the 1rem that let it run into the viewport edge.
+              height: `min(calc(100vh - var(--header-height) - ${filterBarHeight}px - 3.5rem), 520px)`,
               minHeight: '400px',
               zIndex: 0,
               isolation: 'isolate',
@@ -885,6 +831,13 @@ export const Search: React.FC = () => {
         @media (min-width: 560px) {
           .search-cards-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+        /* 3 across only from 1280px: at 1024px the 64% feed column is ~614px,
+           which would squeeze each card under 200px. */
+        @media (min-width: 1280px) {
+          .search-cards-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
         }
         @media (min-width: 1024px) {

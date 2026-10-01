@@ -1,23 +1,11 @@
 import React, { useState } from 'react';
-import {
-  Building2,
-  Users,
-  DollarSign,
-  AlertCircle,
-  Plus,
-  FileText,
-  MessageSquare,
-  Sparkles,
-  TrendingUp,
-  CheckCircle2,
-  UserPlus,
-} from 'lucide-react';
+import { Users, DollarSign, AlertCircle, Plus, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
-import { RoomOccupancyBoard } from '../../components/owner/RoomOccupancyBoard';
+import { RoomOccupancyBoard, formatDueDate } from '../../components/owner/RoomOccupancyBoard';
 import { WhatsAppModal } from '../../components/owner/WhatsAppModal';
 import { KuitansiModal } from '../../components/owner/KuitansiModal';
 import { KosFormModal } from '../../components/owner/KosFormModal';
-import { Room, Kos, RoomStatus } from '../../types';
+import { Room, RoomStatus } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
@@ -27,7 +15,6 @@ export const OwnerDashboard: React.FC = () => {
     kosList,
     selectedOwnerKosId,
     updateRoomStatus,
-    addToast,
   } = useAppStore();
 
   const selectedKos = kosList.find((k) => k.id === selectedOwnerKosId) || kosList[0];
@@ -36,6 +23,7 @@ export const OwnerDashboard: React.FC = () => {
   const [whatsAppTargetRoom, setWhatsAppTargetRoom] = useState<Room | null>(null);
   const [kuitansiTargetRoom, setKuitansiTargetRoom] = useState<Room | null>(null);
   const [fastIntakeTargetRoom, setFastIntakeTargetRoom] = useState<Room | null>(null);
+  const [statusFilter, setStatusFilter] = useState<RoomStatus | 'all'>('all');
   const [isAddKosModalOpen, setIsAddKosModalOpen] = useState(false);
 
   // Fast intake form state
@@ -62,6 +50,42 @@ export const OwnerDashboard: React.FC = () => {
   const overdueRooms = selectedKos.rooms.filter((r) => r.status === 'overdue');
   const totalOverdueReceivables = overdueRooms.reduce((acc, r) => acc + r.priceMonthly, 0);
 
+  const attentionRooms = selectedKos.rooms
+    .filter((r) => r.status === 'overdue' || r.status === 'due')
+    .sort((a, b) => (b.daysOverdue ?? 0) - (a.daysOverdue ?? 0));
+
+  const kpiTiles: {
+    filter: RoomStatus | 'all';
+    label: string;
+    icon: React.ReactNode;
+    value: string;
+    meta: string;
+    rail?: number;
+  }[] = [
+    {
+      filter: 'all',
+      label: 'Tingkat Okupansi',
+      icon: <Users size={14} />,
+      value: `${occupiedRooms} / ${totalRooms} (${occupancyPercentage}%)`,
+      meta: `${selectedKos.availableRooms} kamar kosong siap huni`,
+      rail: occupancyPercentage,
+    },
+    {
+      filter: 'paid',
+      label: 'Sewa Terkumpul (Bulan Ini)',
+      icon: <DollarSign size={14} />,
+      value: formatRupiah(totalRevenueCollected),
+      meta: `Dari ${paidRooms.length} kamar berstatus Lunas`,
+    },
+    {
+      filter: 'overdue',
+      label: 'Piutang Belum Terbayar',
+      icon: <AlertCircle size={14} />,
+      value: formatRupiah(totalOverdueReceivables),
+      meta: `${overdueRooms.length} kamar terlambat bayar`,
+    },
+  ];
+
   const handleExecuteIntake = (e: React.FormEvent) => {
     e.preventDefault();
     if (!fastIntakeTargetRoom) return;
@@ -78,6 +102,83 @@ export const OwnerDashboard: React.FC = () => {
     setIntakeCampus('');
     setFastIntakeTargetRoom(null);
   };
+
+  /* Urgent work goes above the table so it is the first thing seen; when
+     there is nothing to chase it drops below, where a reassuring empty state
+     belongs rather than occupying the top of the screen. */
+  const hasAttention = attentionRooms.length > 0;
+  const attentionSection = (
+        <section aria-labelledby="attention-title" style={hasAttention ? { marginBottom: '2rem' } : { marginTop: '2rem' }}>
+          <h2 id="attention-title" style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+            Perlu Perhatian
+          </h2>
+          {attentionRooms.length === 0 ? (
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              Semua kamar terbayar. Tidak ada tagihan yang perlu ditindaklanjuti.
+            </p>
+          ) : (
+            <ul
+              style={{
+                listStyle: 'none',
+                margin: 0,
+                padding: 0,
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-card)',
+                backgroundColor: 'var(--bg-surface)',
+              }}
+            >
+              {attentionRooms.map((room, i) => (
+                <li
+                  key={room.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '0.75rem',
+                    padding: '0.8rem 1rem',
+                    borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  <span>
+                    <strong>Kamar {room.roomNumber}</strong>
+                    {' · '}
+                    {room.tenantName || 'Penghuni Aktif'}
+                    {' · '}
+                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatRupiah(room.priceMonthly)}</span>
+                    {' · '}
+                    <span style={{ color: 'var(--text-muted)' }}>Jatuh tempo {formatDueDate(room.dueDate)}</span>
+                    {room.daysOverdue && room.daysOverdue > 0 ? (
+                      <span style={{ color: 'var(--status-overdue)', fontWeight: 700 }}>
+                        {' '}(Telat {room.daysOverdue} hari)
+                      </span>
+                    ) : null}
+                  </span>
+                  <span style={{ display: 'flex', gap: '0.5rem' }}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<MessageSquare size={14} />}
+                      onClick={() => setWhatsAppTargetRoom(room)}
+                    >
+                      Kirim Tagihan WhatsApp
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<CheckCircle2 size={14} />}
+                      onClick={() => updateRoomStatus(selectedKos.id, room.id, 'paid')}
+                    >
+                      Tandai Lunas
+                    </Button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+  );
 
   return (
     <div className="app-container" style={{ maxWidth: '1180px', paddingTop: '2rem', paddingBottom: '4rem' }}>
@@ -127,155 +228,58 @@ export const OwnerDashboard: React.FC = () => {
         </Button>
       </div>
 
-      {/* Operational KPI Summary Cards */}
+      {/* KPI tiles: each one also filters the room table below */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: '1.25rem',
+          gap: '1rem',
           marginBottom: '2rem',
         }}
       >
-        {/* KPI 1: Okupansi */}
-        <div
-          style={{
-            backgroundColor: 'var(--bg-surface)',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border-subtle)',
-            padding: '1.35rem',
-            boxShadow: 'var(--shadow-sm)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>
-              Tingkat Okupansi Kamar
-            </span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.35rem' }}>
-              <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                {occupiedRooms} / {totalRooms}
-              </span>
-              <span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 700 }}>
-                ({occupancyPercentage}%)
-              </span>
-            </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.2rem', display: 'block' }}>
-              {selectedKos.availableRooms} kamar kosong siap huni
-            </span>
-          </div>
-
-          <div
+        {kpiTiles.map((tile) => (
+          <button
+            key={tile.filter}
+            type="button"
+            className="kobo-stat"
+            aria-pressed={statusFilter === tile.filter}
+            onClick={() => setStatusFilter(tile.filter)}
             style={{
-              width: '46px',
-              height: '46px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--primary-light)',
-              color: 'var(--primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              textAlign: 'left',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              borderColor: statusFilter === tile.filter ? 'var(--text-main)' : undefined,
             }}
           >
-            <Users size={22} />
-          </div>
-        </div>
-
-        {/* KPI 2: Total Pendapatan Lunas */}
-        <div
-          style={{
-            backgroundColor: 'var(--bg-surface)',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border-subtle)',
-            padding: '1.35rem',
-            boxShadow: 'var(--shadow-sm)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>
-              Sewa Terkumpul (Bulan Ini)
+            <span className="kobo-stat__label">
+              {tile.icon}
+              {tile.label}
             </span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.35rem' }}>
-              <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--status-paid)' }}>
-                {formatRupiah(totalRevenueCollected)}
+            <span className="kobo-stat__value">{tile.value}</span>
+            {tile.rail !== undefined && (
+              <span className="kobo-stat__rail" aria-hidden="true">
+                <span style={{ ['--pct' as string]: tile.rail + '%' }} />
               </span>
-            </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.2rem', display: 'block' }}>
-              Dari {paidRooms.length} kamar berstatus Lunas
-            </span>
-          </div>
-
-          <div
-            style={{
-              width: '46px',
-              height: '46px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--status-paid-bg)',
-              color: 'var(--status-paid)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <DollarSign size={22} />
-          </div>
-        </div>
-
-        {/* KPI 3: Piutang Menunggak */}
-        <div
-          style={{
-            backgroundColor: 'var(--bg-surface)',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border-subtle)',
-            padding: '1.35rem',
-            boxShadow: 'var(--shadow-sm)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, display: 'block' }}>
-              Piutang Belum Terbayar
-            </span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', marginTop: '0.35rem' }}>
-              <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--status-overdue)' }}>
-                {formatRupiah(totalOverdueReceivables)}
-              </span>
-            </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.2rem', display: 'block' }}>
-              {overdueRooms.length} kamar terlambat bayar
-            </span>
-          </div>
-
-          <div
-            style={{
-              width: '46px',
-              height: '46px',
-              borderRadius: '12px',
-              backgroundColor: 'var(--status-overdue-bg)',
-              color: 'var(--status-overdue)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <AlertCircle size={22} />
-          </div>
-        </div>
+            )}
+            <span className="kobo-stat__meta">{tile.meta}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Main Feature: Interactive 5-Color Room Board */}
+      {hasAttention && attentionSection}
+
       <RoomOccupancyBoard
         kos={selectedKos}
+        filterStatus={statusFilter}
+        onFilterStatusChange={setStatusFilter}
         onOpenWhatsApp={(room) => setWhatsAppTargetRoom(room)}
         onOpenKuitansi={(room) => setKuitansiTargetRoom(room)}
         onFastIntake={(room) => setFastIntakeTargetRoom(room)}
       />
+
+      {!hasAttention && attentionSection}
+
+
 
       {/* WhatsApp Reminder Modal */}
       {whatsAppTargetRoom && (

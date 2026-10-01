@@ -1,0 +1,760 @@
+/* ════════════════════════════════════════════════════════════════════
+   KoBo shared component primitives
+   ────────────────────────────────────────────────────────────────────
+   Layout and token application stay in inline styles, matching the rest
+   of the codebase. This file owns everything inline styles CANNOT
+   express: :hover, :focus-visible, [aria-*] states, media queries and
+   pseudo-elements.
+
+   Colour discipline: tables and stat tiles carry NO tinted backgrounds.
+   Status colour lives only in .kobo-status__dot.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════════════
+   VIEWPORT TIERS
+   Primary target is a NON-FULLSCREEN window: ~1280px wide, ~650px of
+   usable height. These tiers only add breathing room where the viewport
+   genuinely has it; the base layout is correct without any of them.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Taller windows: maximised on a 900p+ display, or F11 fullscreen */
+@media (min-height: 860px) {
+  :root {
+    --section-gap: 4.25rem;
+    --hero-canvas-max: 760px;
+    --sticky-top: calc(var(--header-height) + 2rem);
+  }
+}
+
+@media (min-height: 1040px) {
+  :root {
+    --section-gap: 5rem;
+    --hero-canvas-max: 880px;
+  }
+}
+
+/* Wide monitors: --container-max already widens to 1600px on its own,
+   so only the gutters need to grow. */
+@media (min-width: 1600px) {
+  .app-container {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   SHARED CONTROL PRIMITIVES
+   One height, one radius, one focus treatment across every filter bar,
+   toolbar and table action.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Generic trigger: popover buttons, sort buttons, select shells */
+.kobo-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: var(--control-height);
+  padding: 0 0.85rem;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out-spring),
+              background-color var(--duration-fast) var(--ease-out-spring),
+              color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-control:hover {
+  border-color: var(--border-strong);
+}
+
+.kobo-control[aria-expanded='true'],
+.kobo-control.is-active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background-color: var(--primary-subtle);
+}
+
+.kobo-control:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Numeric count bubble - a legitimate --radius-pill use */
+.kobo-control__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 0.3rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--primary);
+  color: var(--text-inverse);
+  font-size: 0.68rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Square icon-only button. ALWAYS give these an aria-label. */
+.kobo-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  flex-shrink: 0;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out-spring),
+              border-color var(--duration-fast) var(--ease-out-spring),
+              background-color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-icon-btn:hover {
+  color: var(--primary);
+  border-color: var(--border-strong);
+  background-color: var(--primary-subtle);
+}
+
+.kobo-icon-btn--sm {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+}
+
+/* Borderless variant for dense table rows */
+.kobo-icon-btn--ghost {
+  border-color: transparent;
+  background-color: transparent;
+}
+
+.kobo-icon-btn--ghost:hover {
+  border-color: var(--border-subtle);
+}
+
+/* Segmented control for a mutually exclusive choice that must stay
+   visible in a toolbar. Buttons must carry aria-pressed. */
+.kobo-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-muted);
+}
+
+.kobo-segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: calc(var(--control-height) - 8px);
+  padding: 0 0.7rem;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out-spring),
+              color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-segmented button:hover {
+  color: var(--text-main);
+}
+
+.kobo-segmented button[aria-pressed='true'] {
+  background-color: var(--bg-surface);
+  color: var(--text-main);
+  font-weight: 700;
+  box-shadow: var(--shadow-xs);
+}
+
+/* Search field shell.
+   Keep ONLY the icon, the input and a clear button inside this element.
+   Submit and geolocation buttons are SIBLINGS of this shell, never
+   nested inside it - nested borders are what made the old bar cluttered. */
+.kobo-searchfield {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 1;
+  min-width: 0;
+  height: var(--control-height-lg);
+  padding: 0 0.85rem;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--border-strong);
+  background-color: var(--bg-surface);
+  transition: border-color var(--duration-fast) var(--ease-out-spring),
+              box-shadow var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-searchfield:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.kobo-searchfield > svg {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.kobo-searchfield input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.kobo-searchfield input::placeholder {
+  color: var(--text-subtle);
+}
+
+/* The shell renders the focus ring, so suppress the input's own */
+.kobo-searchfield input:focus-visible {
+  box-shadow: none;
+}
+
+.kobo-searchfield__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  color: var(--text-subtle);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out-spring),
+              background-color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-searchfield__clear:hover {
+  color: var(--text-main);
+  background-color: var(--bg-muted);
+}
+
+/* Removable active-filter token */
+.kobo-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.3rem 0.25rem 0.55rem;
+  border-radius: var(--radius-badge);
+  border: 1px solid var(--primary-light);
+  background-color: var(--primary-subtle);
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.kobo-token button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-xs);
+  color: inherit;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-token button:hover {
+  background-color: var(--primary-light);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   POPOVER + MENU
+   Anchored overlay panels. The trigger must set aria-expanded and
+   aria-controls; the panel must close on Escape and on outside click,
+   and return focus to its trigger.
+   ════════════════════════════════════════════════════════════════════ */
+
+.kobo-popover-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.kobo-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--z-dropdown);
+  min-width: 300px;
+  max-width: min(360px, calc(100vw - 2rem));
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-xl);
+}
+
+.kobo-popover--left {
+  right: auto;
+  left: 0;
+}
+
+.kobo-popover__title {
+  margin-bottom: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kobo-popover__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Toggle row inside a popover */
+.kobo-optionrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.55rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out-spring),
+              color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-optionrow:hover {
+  background-color: var(--bg-muted);
+}
+
+.kobo-optionrow[aria-pressed='true'],
+.kobo-optionrow[aria-checked='true'] {
+  color: var(--primary);
+  background-color: var(--primary-subtle);
+}
+
+/* Dropdown menu - replaces per-row native <select> elements */
+.kobo-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 210px;
+  padding: 0.3rem;
+}
+
+.kobo-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out-spring),
+              color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-menu button:hover {
+  background-color: var(--bg-muted);
+}
+
+.kobo-menu button[aria-checked='true'] {
+  color: var(--primary);
+  background-color: var(--primary-subtle);
+}
+
+.kobo-menu__sep {
+  height: 1px;
+  margin: 0.3rem 0;
+  background-color: var(--border-subtle);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   DATA TABLE
+   Restrained SaaS table. Colour is carried ONLY by .kobo-status__dot -
+   never by a row or cell background.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* NOTE on overflow: setting overflow-x alone does NOT keep the other axis
+   visible - CSS computes overflow-y to `auto` as soon as one axis is not
+   `visible`, which creates a clipping context and cuts off a row's action
+   Popover. So horizontal scrolling is enabled ONLY below the width where the
+   table genuinely needs it; on desktop the wrapper never clips. */
+.kobo-table-wrap {
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-surface);
+}
+
+@media (max-width: 1023px) {
+  .kobo-table-wrap {
+    overflow-x: auto;
+  }
+}
+
+.kobo-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.85rem;
+}
+
+.kobo-table caption {
+  padding: 0 1rem 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-align: left;
+}
+
+.kobo-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.7rem 1rem;
+  background-color: var(--bg-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.kobo-table tbody td {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  vertical-align: middle;
+}
+
+.kobo-table tbody tr {
+  transition: background-color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-table tbody tr:hover {
+  background-color: var(--bg-page);
+}
+
+.kobo-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Floor / section group header row */
+.kobo-table__group th {
+  position: static;
+  padding: 0.55rem 1rem;
+  background-color: var(--bg-page);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: left;
+}
+
+.kobo-table tbody tr.kobo-table__group:first-child th {
+  border-top: none;
+}
+
+/* Column helpers */
+.kobo-table__num {
+  font-variant-numeric: tabular-nums;
+}
+
+.kobo-table__right {
+  text-align: right;
+}
+
+.kobo-table__muted {
+  color: var(--text-muted);
+}
+
+.kobo-table__strong {
+  font-weight: 700;
+}
+
+.kobo-table__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+/* Actions stay fully visible on touch; they dim until hover on pointer
+   devices so a long table reads calmly. focus-within keeps them
+   reachable by keyboard. */
+@media (hover: hover) {
+  .kobo-table__actions {
+    opacity: 0.55;
+    transition: opacity var(--duration-fast) var(--ease-out-spring);
+  }
+
+  .kobo-table tbody tr:hover .kobo-table__actions,
+  .kobo-table__actions:focus-within {
+    opacity: 1;
+  }
+}
+
+.kobo-table__empty {
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* Status indicator - the ONLY place colour is allowed in a table.
+   Set the hue per row: style={{ '--dot': 'var(--status-paid)' }} */
+.kobo-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.kobo-status__dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--dot, var(--status-vacant));
+}
+
+/* Hollow dot so a vacant room reads as absence rather than a state */
+.kobo-status--hollow .kobo-status__dot {
+  background-color: transparent;
+  box-shadow: inset 0 0 0 2px var(--dot, var(--status-vacant));
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   STAT TILE
+   Neutral KPI tile: no tinted background, no coloured numeral. The
+   figure is always --text-main so the eye is not pulled by hue.
+   ════════════════════════════════════════════════════════════════════ */
+
+.kobo-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+}
+
+.kobo-stat__label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.kobo-stat__label svg {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+}
+
+.kobo-stat__value {
+  color: var(--text-main);
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.kobo-stat__meta {
+  color: var(--text-subtle);
+  font-size: 0.74rem;
+}
+
+/* Thin rail for occupancy-style stats */
+.kobo-stat__rail {
+  height: 4px;
+  margin-top: 0.15rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--bg-muted);
+  overflow: hidden;
+}
+
+.kobo-stat__rail > span {
+  display: block;
+  height: 100%;
+  width: var(--pct, 0%);
+  border-radius: var(--radius-pill);
+  background-color: var(--primary);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   BACK LINK
+   Sits on the same baseline as a page title. Never rendered by a layout.
+   ════════════════════════════════════════════════════════════════════ */
+
+.kobo-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-back:hover {
+  color: var(--primary);
+}
+
+.kobo-back svg {
+  transition: transform var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-back:hover svg {
+  transform: translateX(-2px);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   HERO - split copy/canvas layout and the 3D stage
+   ════════════════════════════════════════════════════════════════════ */
+
+.kobo-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2.25rem;
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  .kobo-hero {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 3rem;
+  }
+}
+
+/* Square stage. aspect-ratio reserves the space so nothing shifts while
+   the three.js chunk is still in flight. */
+.kobo-hero-canvas {
+  position: relative;
+  width: 100%;
+  max-width: var(--hero-canvas-max);
+  margin-inline: auto;
+  aspect-ratio: 3 / 2; /* wider than tall, so the section reads across */
+}
+
+/* The scene is a SECTION of a taller, wider building, so instead of a hard
+   rounded card edge, the crop feathers out into the page on all four sides -
+   the floors above and below dissolve rather than stop. Applied identically to
+   the canvas and the poster so the cross-fade between them is seamless. */
+.kobo-hero-canvas canvas,
+.kobo-hero-canvas__poster {
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent 0, #000 3%, #000 97%, transparent 100%),
+    linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to bottom, transparent 0, #000 3%, #000 97%, transparent 100%),
+    linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+  mask-composite: intersect;
+}
+
+.kobo-hero-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Poster: the loading state, the reduced-motion fallback, the no-WebGL
+   fallback and the sub-768px render, all in one element. */
+.kobo-hero-canvas__poster {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  transition: opacity var(--duration-slow) var(--ease-in-out-smooth);
+}
+
+.kobo-hero-canvas__poster.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Below 768px the 3D chunk is never fetched - poster only, and smaller. */
+@media (max-width: 767px) {
+  .kobo-hero-canvas {
+    max-width: 430px;
+  }
+}
+
+/* A decorative WebGL canvas must never animate for reduced-motion users,
+   so the poster stays put even if a stale is-hidden class is applied. */
+@media (prefers-reduced-motion: reduce) {
+  .kobo-hero-canvas__poster.is-hidden {
+    opacity: 1;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   FEATURED KOS GRID - 1 / 2 / 4 columns, cards stretch to fill the row
+   ════════════════════════════════════════════════════════════════════ */
+.kobo-featured-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 560px) {
+  .kobo-featured-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .kobo-featured-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

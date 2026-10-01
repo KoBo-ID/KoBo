@@ -88,7 +88,23 @@
   --filter-bar-height: 64px;
   --sidebar-width: 240px;
   --section-gap: 3.5rem;
-  --container-max: 1280px;
+
+  /* Fluid content column.
+     - At <=1392px wide the column fills the viewport (capped 1280px).
+     - Between 1392px and 1739px it tracks 92vw, so margins stay a constant 4vw.
+     - At >=1739px it settles at 1600px so very wide monitors stop stretching lines.
+     Verified tiers: 1280x650 (primary), 1600x900, 1920x1080. */
+  --container-max: clamp(1280px, 92vw, 1600px);
+
+  /* Shared control metrics so filter bars, selects and icon buttons line up */
+  --control-height: 40px;
+  --control-height-lg: 44px;
+
+  /* Hero 3D canvas edge length; grows on taller viewports (see index.css tiers) */
+  --hero-canvas-max: 680px; /* width of the 5:4 stage; hero is full-viewport */
+
+  /* Offset used by every sticky panel below the header */
+  --sticky-top: calc(var(--header-height) + 1.5rem);
 
   /* Prevent background layout shift on modal dialogs */
   scrollbar-gutter: stable;

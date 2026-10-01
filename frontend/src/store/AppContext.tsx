@@ -126,7 +126,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeLocation, setActiveLocation] = useState<LocationPin | null>(null);
   const [genderFilter, setGenderFilter] = useState<'all' | 'campur' | 'putra' | 'putri'>('all');
   const [sortBy, setSortBy] = useState<'rating' | 'price_asc' | 'distance_asc'>('rating');
-  const [maxPrice, setMaxPrice] = useState<number>(3000000);
+  // Must equal PRICE_MAX in pages/Search.tsx. "No price filter" means the
+  // slider sits at its maximum; defaulting below it silently hid listings and
+  // made the Filter badge count a permanently-active filter.
+  const [maxPrice, setMaxPrice] = useState<number>(3500000);
   const [filterDiscountOnly, setFilterDiscountOnly] = useState<boolean>(false);
   const [filterSurveyOnly, setFilterSurveyOnly] = useState<boolean>(false);
   const [hoveredKosId, setHoveredKosId] = useState<string | null>(null);

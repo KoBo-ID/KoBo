@@ -1,5 +1,5 @@
 import React from 'react';
-import { CreditCard, Calendar, GraduationCap, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { CreditCard, Calendar, GraduationCap, ShieldCheck } from 'lucide-react';
 import { Room, Kos } from '../../../types';
 import { Button } from '../../ui/Button';
 
@@ -30,15 +30,29 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
 
   const appFee = 25000;
   const isVacant = selectedRoom.status === 'vacant';
+  const hasDiscount = kos.studentDiscountAmount > 0;
+  const total =
+    (hasDiscount ? selectedRoom.priceMonthly - kos.studentDiscountAmount : selectedRoom.priceMonthly) * leaseMonths +
+    appFee;
 
+  /* Height budget @1280x720 (worst case: discounted kos, 4 fee lines).
+     price 44 + lease 52 + fees 126 (4 lines + sep + KTM caption) + CTAs 100
+     + trust 28 = 350 content, + 4 gaps x 14 = 56, + padding 48  =>  ~454px.
+     Sticky window = 720 - 72 header - 24 top offset ~= 504px, so the card
+     clears it with ~50px to spare and paddingBottom keeps a visible gap.
+     maxHeight/overflowY remain only as a safety valve for shorter windows. */
   return (
     <aside
       style={{
         position: 'sticky',
-        top: 'calc(var(--header-height) + 1.5rem)',
+        top: 'var(--sticky-top)',
         zIndex: 'var(--z-sticky)',
         width: '100%',
         maxWidth: '360px',
+        paddingBottom: '1.5rem',
+        maxHeight: 'calc(100vh - var(--header-height) - 3rem)',
+        overflowY: 'auto',
+        overscrollBehavior: 'contain',
       }}
     >
       <div
@@ -47,10 +61,10 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           borderRadius: 'var(--radius-card)',
           border: '1.5px solid var(--border-subtle)',
           boxShadow: 'var(--shadow-md)',
-          padding: '1.75rem 1.5rem',
+          padding: '1.5rem',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1.25rem',
+          gap: '0.875rem',
         }}
       >
         {/* Top Price Header */}
@@ -60,7 +74,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
               display: 'flex',
               alignItems: 'baseline',
               gap: '0.35rem',
-              marginBottom: '0.15rem',
+              marginBottom: '0',
               flexWrap: 'nowrap',
             }}
           >
@@ -74,32 +88,9 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           </span>
         </div>
 
-        {/* Student Discount Banner */}
-        {kos.studentDiscountAmount > 0 && (
-          <div
-            style={{
-              backgroundColor: 'var(--accent-light)',
-              border: '1px solid hsla(24, 95%, 53%, 0.2)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '0.65rem 0.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.6rem',
-              fontSize: '0.8rem',
-              color: 'var(--accent)',
-              fontWeight: 700,
-            }}
-          >
-            <GraduationCap size={18} style={{ flexShrink: 0 }} />
-            <span>
-              Diskon KTM {formatRupiah(kos.studentDiscountAmount)}/bln otomatis aktif setelah verifikasi!
-            </span>
-          </div>
-        )}
-
         {/* Lease Duration Tabs */}
         <div>
-          <label style={{ fontSize: '0.82rem', fontWeight: 600, display: 'block', marginBottom: '0.4rem', color: 'var(--text-muted)' }}>
+          <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
             Pilihan Durasi Sewa:
           </label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem' }}>
@@ -110,7 +101,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
                 onClick={() => onSelectLeaseMonths(m)}
                 className="interactive-tap"
                 style={{
-                  padding: '0.45rem 0.25rem',
+                  padding: '0.4rem 0.25rem',
                   borderRadius: 'var(--radius-btn)',
                   fontSize: '0.8rem',
                   fontWeight: leaseMonths === m ? 700 : 500,
@@ -130,11 +121,11 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           style={{
             backgroundColor: 'var(--bg-page)',
             borderRadius: 'var(--radius-sm)',
-            padding: '0.85rem 1rem',
+            padding: '0.7rem 0.85rem',
             fontSize: '0.8125rem',
             display: 'flex',
             flexDirection: 'column',
-            gap: '0.4rem',
+            gap: '0.3rem',
             border: '1px solid var(--border-subtle)',
           }}
         >
@@ -142,16 +133,33 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
             <span>Sewa ({leaseMonths} Bulan)</span>
             <span>{formatRupiah(selectedRoom.priceMonthly * leaseMonths)}</span>
           </div>
+          {hasDiscount && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <GraduationCap size={13} />
+                Diskon Mahasiswa (KTM)
+              </span>
+              <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
+                -{formatRupiah(kos.studentDiscountAmount * leaseMonths)}
+              </span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
             <span>Biaya Layanan & Kuitansi Digital</span>
             <span>{formatRupiah(appFee)}</span>
           </div>
-          <div style={{ height: '1px', backgroundColor: 'var(--border-subtle)', margin: '0.35rem 0' }} />
+          <div style={{ height: '1px', backgroundColor: 'var(--border-subtle)', margin: '0.25rem 0' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: 'var(--text-main)', fontSize: '0.875rem' }}>
             <span>Total Estimasi</span>
-            <span>{formatRupiah(selectedRoom.priceMonthly * leaseMonths + appFee)}</span>
+            <span>{formatRupiah(total)}</span>
           </div>
+          {hasDiscount && (
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-subtle)', margin: '0.15rem 0 0' }}>
+              Diskon aktif otomatis setelah verifikasi KTM.
+            </p>
+          )}
         </div>
+
 
         {/* Strict CTA Visual Hierarchy: Exactly ONE Dominant Primary CTA */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
@@ -180,7 +188,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
 
         <div
           style={{
-            paddingTop: '0.75rem',
+            paddingTop: '0.65rem',
             borderTop: '1px solid var(--border-subtle)',
             display: 'flex',
             alignItems: 'center',

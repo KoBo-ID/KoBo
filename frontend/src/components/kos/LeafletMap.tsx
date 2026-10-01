@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
+// Imported here rather than in styles/index.css so Leaflet's CSS is code-split
+// into the chunk that actually renders a map.
+import 'leaflet/dist/leaflet.css';
 import { Link } from 'react-router-dom';
 import { MapPin, Star } from 'lucide-react';
 import { Campus, Kos, LocationPin } from '../../types';

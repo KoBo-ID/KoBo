@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home,
   User,
   LogOut,
-  Building2,
   Calendar,
   CheckCircle2,
 } from 'lucide-react';
@@ -20,6 +19,36 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
 
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
+  /* On Home the bar starts transparent over the full-viewport hero and only
+     turns solid once the hero has scrolled past it. Every other route keeps
+     the solid bar. Only colours change between states - heights, paddings and
+     border widths are identical - so no element ever moves. */
+  const isHome = location.pathname === '/';
+  const [overHero, setOverHero] = useState(isHome);
+  useEffect(() => {
+    if (!isHome) {
+      setOverHero(false);
+      return;
+    }
+    const hero = document.getElementById('kobo-hero');
+    if (!hero) return;
+    const headerPx =
+      parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 72;
+    // Shrink the root by the bar's height: the hero counts as "under the bar"
+    // until its bottom edge passes the bar's bottom edge.
+    const io = new IntersectionObserver(([entry]) => setOverHero(entry.isIntersecting), {
+      rootMargin: `-${headerPx}px 0px 0px 0px`,
+    });
+    io.observe(hero);
+    return () => io.disconnect();
+  }, [isHome]);
+  const solid = !overHero;
+
+  const chipFill = solid ? 'var(--bg-muted)' : 'rgba(255, 255, 255, 0.3)';
+  const chipBorder = solid ? 'transparent' : 'rgba(255, 255, 255, 0.6)';
+  const fade =
+    'background-color var(--duration-normal) ease, border-color var(--duration-normal) ease, backdrop-filter var(--duration-normal) ease';
+
   const activeRentalsCount = rentals.filter((r) => r.paymentStatus === 'paid').length;
   const activeVisitsCount = visits.filter((v) => v.status === 'scheduled').length;
 
@@ -29,9 +58,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
         position: 'sticky',
         top: 0,
         zIndex: 'var(--z-header)',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid var(--border-subtle)',
+        backgroundColor: solid ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0)',
+        backdropFilter: solid ? 'blur(12px)' : 'none',
+        borderBottom: `1px solid ${solid ? 'var(--border-subtle)' : 'transparent'}`,
+        transition: fade,
         height: 'var(--header-height)',
         display: 'flex',
         alignItems: 'center',
@@ -58,45 +88,26 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
             flexShrink: 0,
           }}
         >
-          <div
+          {/* The favicon mark is already brand teal on transparent, so it needs
+              no coloured tile behind it. */}
+          <img
+            src="/favicon.svg"
+            alt=""
+            width={34}
+            height={34}
+            style={{ display: 'block', flexShrink: 0 }}
+          />
+          <span
             style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: 'var(--radius-sm)',
-              backgroundColor: 'var(--primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: 'var(--shadow-sm)',
-              color: 'white',
+              fontSize: '1.35rem',
+              fontWeight: 800,
+              color: 'var(--text-main)',
+              letterSpacing: '-0.025em',
+              lineHeight: 1,
             }}
           >
-            <Building2 size={22} />
-          </div>
-          <div>
-            <span
-              style={{
-                fontSize: '1.35rem',
-                fontWeight: 800,
-                color: 'var(--text-main)',
-                letterSpacing: '-0.025em',
-                lineHeight: 1,
-                display: 'block',
-              }}
-            >
-              Ko<span style={{ color: 'var(--primary)' }}>Bo</span>
-            </span>
-            <span
-              style={{
-                fontSize: '0.68rem',
-                fontWeight: 600,
-                color: 'var(--text-muted)',
-                letterSpacing: '0.01em',
-              }}
-            >
-              Kos Terverifikasi
-            </span>
-          </div>
+            Ko<span style={{ color: 'var(--primary)' }}>Bo</span>
+          </span>
         </Link>
 
         {/* Zone 2: Navigation Actions (Kos Saya + User Profile only) */}
@@ -111,7 +122,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
               alignItems: 'center',
               gap: '0.4rem',
               padding: '0.5rem 0.75rem',
-              borderRadius: 'var(--radius-sm)',
+              borderRadius: '10px',
+              backgroundColor: chipFill,
+              border: `1px solid ${chipBorder}`,
+              backdropFilter: solid ? 'none' : 'blur(6px)',
+              transition: fade,
               position: 'relative',
             }}
           >
@@ -148,10 +163,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '0.2rem',
+                padding: '0.3rem',
                 borderRadius: '50%',
-                border: 'none',
-                backgroundColor: 'transparent',
+                backgroundColor: chipFill,
+                border: `1px solid ${chipBorder}`,
+                backdropFilter: solid ? 'none' : 'blur(6px)',
+                transition: fade,
               }}
             >
               <img

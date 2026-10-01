@@ -1,15 +1,35 @@
 import React, { useState } from 'react';
-import { MessageSquare, FileText, UserPlus, CheckCircle2, Clock, AlertTriangle, AlertCircle, Sparkles, Filter, ChevronRight, GraduationCap } from 'lucide-react';
+import { MessageSquare, FileText, UserPlus, CheckCircle2, MoreHorizontal } from 'lucide-react';
 import { Room, RoomStatus, Kos } from '../../types';
-import { RoomStatusBadge } from '../ui/Badge';
-import { Button } from '../ui/Button';
+import { Popover } from '../ui/Popover';
 import { useAppStore } from '../../store/AppContext';
+
+export const STATUS_META: Record<RoomStatus, { label: string; dot: string }> = {
+  paid: { label: 'Lunas', dot: 'var(--status-paid)' },
+  due: { label: 'Jatuh Tempo', dot: 'var(--status-due)' },
+  overdue: { label: 'Menunggak', dot: 'var(--status-overdue)' },
+  vacant: { label: 'Kosong', dot: 'var(--status-vacant)' },
+  booking: { label: 'Booking', dot: 'var(--status-booking)' },
+};
+
+const STATUS_ORDER: RoomStatus[] = ['paid', 'due', 'overdue', 'vacant', 'booking'];
+const COLUMN_COUNT = 6;
+
+export const formatDueDate = (value?: string): string => {
+  if (!value) return 'Tanggal 5';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+};
 
 interface RoomOccupancyBoardProps {
   kos: Kos;
   onOpenWhatsApp: (room: Room) => void;
   onOpenKuitansi: (room: Room) => void;
   onFastIntake: (room: Room) => void;
+  /** Optional controlled status filter (the dashboard KPI tiles drive it). */
+  filterStatus?: RoomStatus | 'all';
+  onFilterStatusChange?: (status: RoomStatus | 'all') => void;
 }
 
 export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
@@ -17,18 +37,20 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
   onOpenWhatsApp,
   onOpenKuitansi,
   onFastIntake,
+  filterStatus: controlledStatus,
+  onFilterStatusChange,
 }) => {
   const { updateRoomStatus } = useAppStore();
-  const [filterStatus, setFilterStatus] = useState<RoomStatus | 'all'>('all');
+  const [internalStatus, setInternalStatus] = useState<RoomStatus | 'all'>('all');
   const [selectedFloor, setSelectedFloor] = useState<number | 'all'>('all');
 
-  const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
+  const filterStatus = controlledStatus ?? internalStatus;
+  const setFilterStatus = onFilterStatusChange ?? setInternalStatus;
+
+  const formatRupiah = (val: number) =>
+    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+
+  const floors = Array.from(new Set(kos.rooms.map((r) => r.floor))).sort((a, b) => a - b);
 
   const filteredRooms = kos.rooms.filter((room) => {
     const matchesStatus = filterStatus === 'all' || room.status === filterStatus;
@@ -36,358 +58,260 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
     return matchesStatus && matchesFloor;
   });
 
-  const getStatusBorderAndBg = (status: RoomStatus) => {
-    switch (status) {
-      case 'paid':
-        return {
-          bg: 'var(--status-paid-bg)',
-          border: 'var(--status-paid-border)',
-          accent: 'var(--status-paid)',
-        };
-      case 'due':
-        return {
-          bg: 'var(--status-due-bg)',
-          border: 'var(--status-due-border)',
-          accent: 'var(--status-due)',
-        };
+  const visibleFloors = floors.filter((f) => filteredRooms.some((r) => r.floor === f));
+
+  const countFor = (status: RoomStatus | 'all') =>
+    status === 'all' ? kos.rooms.length : kos.rooms.filter((r) => r.status === status).length;
+
+  const statusFilters: { id: RoomStatus | 'all'; label: string }[] = [
+    { id: 'all', label: 'Semua' },
+    ...STATUS_ORDER.map((s) => ({ id: s, label: STATUS_META[s].label })),
+  ];
+
+  const countStyle: React.CSSProperties = {
+    color: 'var(--text-subtle)',
+    fontVariantNumeric: 'tabular-nums',
+    fontWeight: 600,
+  };
+
+  const statusClass = (s: RoomStatus) => (s === 'vacant' ? 'kobo-status kobo-status--hollow' : 'kobo-status');
+
+  const renderPrimaryAction = (room: Room) => {
+    const btnClass = 'kobo-icon-btn kobo-icon-btn--sm kobo-icon-btn--ghost';
+    switch (room.status) {
       case 'overdue':
-        return {
-          bg: 'var(--status-overdue-bg)',
-          border: 'var(--status-overdue-border)',
-          accent: 'var(--status-overdue)',
-        };
+      case 'due':
+        return (
+          <button
+            type="button"
+            className={btnClass}
+            aria-label={`Kirim tagihan WhatsApp Kamar ${room.roomNumber}`}
+            title="Kirim tagihan WhatsApp"
+            onClick={() => onOpenWhatsApp(room)}
+          >
+            <MessageSquare size={15} />
+          </button>
+        );
+      case 'paid':
+        return (
+          <button
+            type="button"
+            className={btnClass}
+            aria-label={`Lihat kuitansi Kamar ${room.roomNumber}`}
+            title="Kuitansi"
+            onClick={() => onOpenKuitansi(room)}
+          >
+            <FileText size={15} />
+          </button>
+        );
       case 'vacant':
-        return {
-          bg: 'var(--status-vacant-bg)',
-          border: 'var(--status-vacant-border)',
-          accent: 'var(--status-vacant)',
-        };
+        return (
+          <button
+            type="button"
+            className={btnClass}
+            aria-label={`Check-in penghuni Kamar ${room.roomNumber}`}
+            title="Check-in penghuni"
+            onClick={() => onFastIntake(room)}
+          >
+            <UserPlus size={15} />
+          </button>
+        );
       case 'booking':
-        return {
-          bg: 'var(--status-booking-bg)',
-          border: 'var(--status-booking-border)',
-          accent: 'var(--status-booking)',
-        };
+        return (
+          <button
+            type="button"
+            className={btnClass}
+            aria-label={`Aktivasi booking Kamar ${room.roomNumber} menjadi Lunas`}
+            title="Aktivasi menjadi Lunas"
+            onClick={() => updateRoomStatus(kos.id, room.id, 'paid')}
+          >
+            <CheckCircle2 size={15} />
+          </button>
+        );
     }
   };
 
   return (
-    <div
-      style={{
-        backgroundColor: 'var(--bg-surface)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border-subtle)',
-        padding: '1.5rem',
-        boxShadow: 'var(--shadow-sm)',
-      }}
-    >
-      {/* Board Header & Filters */}
+    <section aria-labelledby="room-board-title" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
+          alignItems: 'flex-end',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: '1rem',
-          marginBottom: '1.5rem',
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-              Peta Okupansi & Status Kamar
-            </h3>
-            <span
-              style={{
-                backgroundColor: 'var(--primary-light)',
-                color: 'var(--primary)',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                padding: '0.2rem 0.55rem',
-                borderRadius: 'var(--radius-badge)',
-              }}
-            >
-              {kos.rooms.length} Total Kamar
-            </span>
-          </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-            Pantau status pembayaran sewa real-time, kirim tagihan WhatsApp santun, dan terbitkan kuitansi digital.
+          <h2 id="room-board-title" style={{ fontSize: '1.15rem', fontWeight: 700 }}>
+            Status Kamar
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+            {kos.rooms.length} kamar. Pantau pembayaran, kirim tagihan, dan terbitkan kuitansi.
           </p>
         </div>
 
-        {/* Filter Status Chips */}
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          {(
-            [
-              { id: 'all', label: 'Semua Status' },
-              { id: 'paid', label: 'Lunas' },
-              { id: 'due', label: 'Jatuh Tempo' },
-              { id: 'overdue', label: 'Menunggak' },
-              { id: 'vacant', label: 'Kosong' },
-              { id: 'booking', label: 'Booking' },
-            ] as const
-          ).map((item) => {
-            const isActive = filterStatus === item.id;
-            return (
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {floors.length > 1 && (
+            <div className="kobo-segmented" role="group" aria-label="Filter lantai">
+              <button type="button" aria-pressed={selectedFloor === 'all'} onClick={() => setSelectedFloor('all')}>
+                Semua Lantai
+              </button>
+              {floors.map((f) => (
+                <button key={f} type="button" aria-pressed={selectedFloor === f} onClick={() => setSelectedFloor(f)}>
+                  Lt. {f}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="kobo-segmented" role="group" aria-label="Filter status kamar" style={{ flexWrap: 'wrap' }}>
+            {statusFilters.map((item) => (
               <button
                 key={item.id}
+                type="button"
+                aria-pressed={filterStatus === item.id}
                 onClick={() => setFilterStatus(item.id)}
-                className="interactive-tap"
-                style={{
-                  padding: '0.3rem 0.65rem',
-                  borderRadius: 'var(--radius-badge)',
-                  fontSize: '0.785rem',
-                  fontWeight: isActive ? 700 : 500,
-                  backgroundColor: isActive ? 'var(--text-main)' : 'var(--bg-muted)',
-                  color: isActive ? 'white' : 'var(--text-muted)',
-                  border: '1px solid',
-                  borderColor: isActive ? 'var(--text-main)' : 'var(--border-subtle)',
-                  transition: 'all var(--duration-fast) var(--ease-out-spring)',
-                }}
               >
                 {item.label}
+                <span style={countStyle}>{countFor(item.id)}</span>
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Visual Room Grid (5-Color Responsive Matrix) */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: '1rem',
-        }}
-      >
-        {filteredRooms.map((room) => {
-          const colors = getStatusBorderAndBg(room.status);
+      <div className="kobo-table-wrap">
+        <table className="kobo-table">
+          <caption style={{ captionSide: 'top', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+            Daftar kamar {kos.name} per lantai beserta penghuni, jatuh tempo, dan status pembayaran.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Kamar</th>
+              <th scope="col" className="kobo-table__right">Harga</th>
+              <th scope="col">Penghuni</th>
+              <th scope="col">Jatuh Tempo</th>
+              <th scope="col">Status</th>
+              <th scope="col" className="kobo-table__right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRooms.length === 0 && (
+              <tr>
+                <td colSpan={COLUMN_COUNT} className="kobo-table__empty">
+                  Tidak ada kamar yang cocok dengan filter ini.
+                </td>
+              </tr>
+            )}
 
-          return (
-            <div
-              key={room.id}
-              className="card-hover-lift"
-              style={{
-                backgroundColor: colors.bg,
-                border: `1.5px solid ${colors.border}`,
-                borderRadius: 'var(--radius-md)',
-                padding: '1.125rem',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                minHeight: '190px',
-                position: 'relative',
-              }}
-            >
-              {/* Room Top Bar */}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span
-                      style={{
-                        fontSize: '1.2rem',
-                        fontWeight: 800,
-                        color: 'var(--text-main)',
-                        lineHeight: 1,
-                      }}
-                    >
-                      Kamar {room.roomNumber}
-                    </span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-subtle)' }}>
-                      (Lt. {room.floor})
-                    </span>
-                  </div>
-
-                  <RoomStatusBadge status={room.status} size="sm" />
-                </div>
-
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.65rem' }}>
-                  {room.roomType} · {room.size} · {formatRupiah(room.priceMonthly)}/bln
-                </div>
-
-                {/* Tenant Information or Vacant Notice */}
-                {room.status !== 'vacant' ? (
-                  <div
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '0.6rem 0.75rem',
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                      {room.tenantName || 'Penghuni Aktif'}
-                    </div>
-                    {room.tenantCampus && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
-                        <GraduationCap size={12} /> {room.tenantCampus}
-                      </div>
-                    )}
-
-                    {/* Due Date & Overdue Days */}
-                    <div style={{ marginTop: '0.4rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-subtle)' }}>
-                        Jatuh Tempo: {room.dueDate || 'Tanggal 5'}
-                      </span>
-                      {room.daysOverdue && room.daysOverdue > 0 && (
-                        <span
-                          style={{
-                            fontSize: '0.72rem',
-                            fontWeight: 800,
-                            color: 'var(--status-overdue)',
-                            backgroundColor: 'white',
-                            padding: '0.1rem 0.4rem',
-                            borderRadius: 'var(--radius-xs)',
-                          }}
-                        >
-                          Telat {room.daysOverdue} Hari
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '0.85rem 0.75rem',
-                      textAlign: 'center',
-                      fontSize: '0.8rem',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    Kamar ini sedang kosong dan siap disewa mahasiswa.
-                  </div>
-                )}
-              </div>
-
-              {/* Bottom Actions based on Room Status */}
-              <div
-                style={{
-                  marginTop: '0.85rem',
-                  paddingTop: '0.65rem',
-                  borderTop: '1px solid rgba(0,0,0,0.06)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '0.5rem',
-                }}
-              >
-                {/* Status Quick Switcher */}
-                <select
-                  value={room.status}
-                  onChange={(e) => updateRoomStatus(kos.id, room.id, e.target.value as RoomStatus)}
-                  style={{
-                    fontSize: '0.72rem',
-                    padding: '0.25rem 0.5rem',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-strong)',
-                    backgroundColor: 'white',
-                    color: 'var(--text-main)',
-                    cursor: 'pointer',
-                  }}
-                  aria-label="Ubah status kamar"
-                >
-                  <option value="paid">Ubah: Lunas</option>
-                  <option value="due">Ubah: Jatuh Tempo</option>
-                  <option value="overdue">Ubah: Menunggak</option>
-                  <option value="vacant">Ubah: Kosong</option>
-                  <option value="booking">Ubah: Booking</option>
-                </select>
-
-                {/* Primary Action Button */}
-                {(room.status === 'overdue' || room.status === 'due') && (
-                  <button
-                    onClick={() => onOpenWhatsApp(room)}
-                    className="interactive-tap"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.3rem',
-                      padding: '0.35rem 0.7rem',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      backgroundColor: '#25D366',
-                      color: 'white',
-                      border: 'none',
-                    }}
-                  >
-                    <MessageSquare size={13} />
-                    <span>Tagih WA</span>
-                  </button>
-                )}
-
-                {room.status === 'paid' && (
-                  <button
-                    onClick={() => onOpenKuitansi(room)}
-                    className="interactive-tap"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.3rem',
-                      padding: '0.35rem 0.7rem',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      backgroundColor: 'var(--primary)',
-                      color: 'white',
-                      border: 'none',
-                    }}
-                  >
-                    <FileText size={13} />
-                    <span>Kuitansi</span>
-                  </button>
-                )}
-
-                {room.status === 'vacant' && (
-                  <button
-                    onClick={() => onFastIntake(room)}
-                    className="interactive-tap"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.3rem',
-                      padding: '0.35rem 0.7rem',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      backgroundColor: 'var(--text-main)',
-                      color: 'white',
-                      border: 'none',
-                    }}
-                  >
-                    <UserPlus size={13} />
-                    <span>Check-in</span>
-                  </button>
-                )}
-
-                {room.status === 'booking' && (
-                  <button
-                    onClick={() => updateRoomStatus(kos.id, room.id, 'paid')}
-                    className="interactive-tap"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.3rem',
-                      padding: '0.35rem 0.7rem',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      backgroundColor: 'var(--status-booking)',
-                      color: 'white',
-                      border: 'none',
-                    }}
-                  >
-                    <CheckCircle2 size={13} />
-                    <span>Aktivasi Lunas</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
+            {visibleFloors.map((floor) => (
+              <React.Fragment key={floor}>
+                <tr className="kobo-table__group">
+                  <th colSpan={COLUMN_COUNT} scope="colgroup">Lantai {floor}</th>
+                </tr>
+                {filteredRooms
+                  .filter((r) => r.floor === floor)
+                  .map((room) => {
+                    const isVacant = room.status === 'vacant';
+                    const late = room.daysOverdue && room.daysOverdue > 0 ? room.daysOverdue : 0;
+                    return (
+                      <tr key={room.id}>
+                        <td>
+                          <div className="kobo-table__strong">Kamar {room.roomNumber}</div>
+                          <div className="kobo-table__muted" style={{ fontSize: '0.75rem' }}>
+                            {room.roomType} · {room.size}
+                          </div>
+                        </td>
+                        <td className="kobo-table__num kobo-table__right">{formatRupiah(room.priceMonthly)}</td>
+                        <td>
+                          {isVacant ? (
+                            <span className="kobo-table__muted" aria-label="Belum ada penghuni">&mdash;</span>
+                          ) : (
+                            <>
+                              <div className="kobo-table__strong">{room.tenantName || 'Penghuni Aktif'}</div>
+                              {room.tenantCampus && (
+                                <div className="kobo-table__muted" style={{ fontSize: '0.75rem' }}>
+                                  {room.tenantCampus}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </td>
+                        <td>
+                          {isVacant ? (
+                            <span className="kobo-table__muted" aria-label="Tidak ada jatuh tempo">&mdash;</span>
+                          ) : (
+                            <>
+                              <span className="kobo-table__num">{formatDueDate(room.dueDate)}</span>
+                              {late > 0 && (
+                                <div style={{ color: 'var(--status-overdue)', fontSize: '0.75rem', fontWeight: 700 }}>
+                                  Telat {late} hari
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </td>
+                        <td>
+                          <span className={statusClass(room.status)} style={{ ['--dot' as string]: STATUS_META[room.status].dot }}>
+                            <span className="kobo-status__dot" aria-hidden="true" />
+                            {STATUS_META[room.status].label}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="kobo-table__actions">
+                            {renderPrimaryAction(room)}
+                            <Popover
+                              role="menu"
+                              label={`Ubah status Kamar ${room.roomNumber}`}
+                              panelClassName="kobo-menu"
+                              trigger={(p) => (
+                                <button
+                                  {...p}
+                                  type="button"
+                                  className="kobo-icon-btn kobo-icon-btn--sm kobo-icon-btn--ghost"
+                                  aria-label={`Aksi lainnya Kamar ${room.roomNumber}`}
+                                  title="Ubah status"
+                                >
+                                  <MoreHorizontal size={15} />
+                                </button>
+                              )}
+                            >
+                              {({ close }) => (
+                                <>
+                                  {STATUS_ORDER.map((s) => (
+                                    <button
+                                      key={s}
+                                      type="button"
+                                      role="menuitemradio"
+                                      aria-checked={room.status === s}
+                                      onClick={() => {
+                                        updateRoomStatus(kos.id, room.id, s);
+                                        close();
+                                      }}
+                                    >
+                                      <span
+                                        className={statusClass(s)}
+                                        style={{ ['--dot' as string]: STATUS_META[s].dot, color: 'inherit' }}
+                                      >
+                                        <span className="kobo-status__dot" aria-hidden="true" />
+                                        Ubah ke {STATUS_META[s].label}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </>
+                              )}
+                            </Popover>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
       </div>
-    </div>
+    </section>
   );
 };

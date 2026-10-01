@@ -16,22 +16,9 @@ export const BackButton: React.FC<BackButtonProps> = ({ label = 'Kembali', style
     <button
       type="button"
       onClick={() => (canGoBack ? navigate(-1) : navigate('/'))}
-      className="interactive-tap"
+      className="kobo-back"
       aria-label={label}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.4rem',
-        padding: '0.4rem 0.8rem 0.4rem 0.6rem',
-        borderRadius: 'var(--radius-btn)',
-        border: '1px solid var(--border-subtle)',
-        backgroundColor: 'var(--bg-surface)',
-        color: 'var(--text-main)',
-        fontSize: '0.82rem',
-        fontWeight: 600,
-        boxShadow: 'var(--shadow-xs)',
-        ...style,
-      }}
+      style={style}
     >
       <ArrowLeft size={15} />
       <span>{label}</span>

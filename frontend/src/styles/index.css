@@ -1,6 +1,10 @@
 @import './tokens.css';
 @import './animations.css';
-@import 'leaflet/dist/leaflet.css';
+/* Must follow tokens.css: its media queries re-declare :root tokens. */
+@import './components.css';
+/* NOTE: leaflet.css is imported by components/kos/LeafletMap.tsx, not here,
+   so Leaflet's CSS is code-split into the Search chunk instead of shipping
+   with the landing page. Do not re-add it to this file. */
 
 /* Modern CSS Reset */
 *, *::before, *::after {

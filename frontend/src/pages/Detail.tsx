@@ -21,6 +21,7 @@ import { Button } from '../components/ui/Button';
 import { RoomPicker } from '../components/kos/detail/RoomPicker';
 import { StickyBookingSidebar } from '../components/kos/detail/StickyBookingSidebar';
 import { Room } from '../types';
+import { BackButton } from '../components/ui/BackButton';
 
 export const Detail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -50,13 +51,16 @@ export const Detail: React.FC = () => {
     <div
       className="app-container"
       style={{
-        maxWidth: '1180px',
+        /* No maxWidth override: inherits the fluid --container-max so the kos
+           page has the same left/right gutters as Home and Search, which is
+           where users arrive from. */
         paddingTop: '2rem',
         paddingBottom: '4rem',
       }}
     >
       {/* Title & Top Metadata Zone */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <BackButton style={{ alignSelf: 'flex-start', marginBottom: '-0.25rem' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <GenderBadge gender={kos.gender} />
           {kos.studentDiscountLabel && (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import {
   Building2,
   LayoutDashboard,
@@ -10,13 +10,57 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
 import { MobileNav } from './MobileNav';
-import { BackButton } from '../ui/BackButton';
+import { Popover } from '../ui/Popover';
 
 export const OwnerLayout: React.FC = () => {
   const { kosList, selectedOwnerKosId, setSelectedOwnerKosId, currentUser } = useAppStore();
-  const location = useLocation();
 
   const selectedKos = kosList.find((k) => k.id === selectedOwnerKosId) || kosList[0];
+
+  const renderKosPicker = (minWidth = '0') => (
+    <Popover
+      align="left"
+      role="menu"
+      label="Pilih properti aktif"
+      panelClassName="kobo-menu"
+      trigger={(p) => (
+        <button
+          {...p}
+          type="button"
+          className="kobo-control"
+          style={{ width: '100%', justifyContent: 'space-between', minWidth }}
+        >
+          {/* min-width:0 lets the flex item shrink below its nowrap content
+              width; without it the label forces the button past the 200px
+              sidebar content box and overflows the rail. */}
+          <span className="truncate-1" style={{ minWidth: 0 }}>
+            {selectedKos?.name}
+          </span>
+          <ChevronDown size={14} />
+        </button>
+      )}
+    >
+      {({ close }) => (
+        <>
+          {kosList.map((kos) => (
+            <button
+              key={kos.id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={kos.id === selectedKos?.id}
+              onClick={() => {
+                setSelectedOwnerKosId(kos.id);
+                close();
+              }}
+            >
+              <span style={{ flex: 1 }}>{kos.name}</span>
+              <span style={{ color: 'var(--text-subtle)', fontWeight: 500 }}>{kos.rooms.length} kamar</span>
+            </button>
+          ))}
+        </>
+      )}
+    </Popover>
+  );
 
   const navItems = [
     { to: '/owner/dashboard', label: 'Papan Okupansi', icon: <LayoutDashboard size={18} /> },
@@ -80,30 +124,10 @@ export const OwnerLayout: React.FC = () => {
 
         {/* Sidebar Property Selector */}
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-          <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <span id="kos-picker-label" style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Properti Aktif
-          </label>
-          <select
-            value={selectedOwnerKosId}
-            onChange={(e) => setSelectedOwnerKosId(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '0.5rem 0.65rem',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-subtle)',
-              backgroundColor: 'var(--bg-muted)',
-              color: 'var(--text-main)',
-              cursor: 'pointer',
-            }}
-          >
-            {kosList.map((kos) => (
-              <option key={kos.id} value={kos.id}>
-                {kos.name} ({kos.rooms.length} kamar)
-              </option>
-            ))}
-          </select>
+          </span>
+          {renderKosPicker()}
         </div>
 
         {/* Navigation Tree */}
@@ -255,38 +279,15 @@ export const OwnerLayout: React.FC = () => {
 
           {/* Right: Properti Aktif selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Properti Aktif:
-            </span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <select
-                value={selectedOwnerKosId}
-                onChange={(e) => setSelectedOwnerKosId(e.target.value)}
-                style={{
-                  padding: '0.4rem 2rem 0.4rem 0.85rem',
-                  fontSize: '0.875rem',
-                  fontWeight: 700,
-                  borderRadius: 'var(--radius-md)',
-                  border: '1.5px solid var(--primary)',
-                  backgroundColor: 'var(--primary-subtle)',
-                  color: 'var(--primary)',
-                  cursor: 'pointer',
-                  appearance: 'none',
-                  minWidth: '200px',
-                  maxWidth: '320px',
-                }}
-              >
-                {kosList.map((kos) => (
-                  <option key={kos.id} value={kos.id}>
-                    {kos.name} — {kos.rooms.length} kamar
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                size={14}
-                color="var(--primary)"
-                style={{ position: 'absolute', right: '0.6rem', pointerEvents: 'none' }}
-              />
+            {/* Desktop already shows this picker in the sidebar, so the top-bar
+                copy is hidden >=900px to avoid two identical property pickers
+                on screen at once. Below 900px the sidebar is gone and this is
+                the only way to switch property. */}
+            <div className="owner-topbar-picker" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Properti Aktif:
+              </span>
+              {renderKosPicker('200px')}
             </div>
             {selectedKos && (
               <span
@@ -307,9 +308,6 @@ export const OwnerLayout: React.FC = () => {
         </div>
 
         <main style={{ flex: 1 }}>
-          <div className="app-container" style={{ paddingTop: '1rem' }}>
-            <BackButton />
-          </div>
           <Outlet />
         </main>
       </div>
@@ -329,6 +327,9 @@ export const OwnerLayout: React.FC = () => {
           }
           .owner-property-topbar {
             top: 0 !important;
+          }
+          .owner-topbar-picker {
+            display: none !important;
           }
         }
         @media (max-width: 899px) {

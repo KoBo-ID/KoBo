@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Building2, Plus, Edit, Trash2, Eye, Bed, MapPin, CheckCircle2, Footprints } from 'lucide-react';
+import { STATUS_META } from '../../components/owner/RoomOccupancyBoard';
+import { Plus, Edit, Trash2, Eye, MapPin, CheckCircle2, Footprints } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
-import { Kos, Room } from '../../types';
+import { Kos } from '../../types';
 import { KosFormModal } from '../../components/owner/KosFormModal';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
 import { Link } from 'react-router-dom';
 
 export const KosManager: React.FC = () => {
@@ -192,63 +192,49 @@ export const KosManager: React.FC = () => {
                 </Button>
               </div>
 
-              <div
-                style={{
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-md)',
-                  overflowX: 'auto',
-                }}
-              >
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', textAlign: 'left' }}>
+              <div className="kobo-table-wrap">
+                <table className="kobo-table">
+                  <caption style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', padding: 0 }}>
+                    Daftar kamar {kos.name}
+                  </caption>
                   <thead>
-                    <tr style={{ backgroundColor: 'var(--bg-muted)', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)' }}>
-                      <th style={{ padding: '0.65rem 1rem' }}>No. Kamar</th>
-                      <th style={{ padding: '0.65rem 1rem' }}>Lantai</th>
-                      <th style={{ padding: '0.65rem 1rem' }}>Tipe & Dimensi</th>
-                      <th style={{ padding: '0.65rem 1rem' }}>Harga Sewa</th>
-                      <th style={{ padding: '0.65rem 1rem' }}>Status</th>
-                      <th style={{ padding: '0.65rem 1rem' }}>Penghuni</th>
-                      <th style={{ padding: '0.65rem 1rem', textAlign: 'right' }}>Aksi</th>
+                    <tr>
+                      <th scope="col">No. Kamar</th>
+                      <th scope="col">Lantai</th>
+                      <th scope="col">Tipe &amp; Dimensi</th>
+                      <th scope="col" className="kobo-table__right">Harga Sewa</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Penghuni</th>
+                      <th scope="col" className="kobo-table__right">Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {kos.rooms.map((room) => (
-                      <tr key={room.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                        <td style={{ padding: '0.65rem 1rem', fontWeight: 700 }}>{room.roomNumber}</td>
-                        <td style={{ padding: '0.65rem 1rem' }}>Lt. {room.floor}</td>
-                        <td style={{ padding: '0.65rem 1rem' }}>{room.roomType} ({room.size})</td>
-                        <td style={{ padding: '0.65rem 1rem', fontWeight: 700, color: 'var(--primary)' }}>
-                          {formatRupiah(room.priceMonthly)}
-                        </td>
-                        <td style={{ padding: '0.65rem 1rem' }}>
+                      <tr key={room.id}>
+                        <td className="kobo-table__strong">{room.roomNumber}</td>
+                        <td>Lt. {room.floor}</td>
+                        <td>{room.roomType} ({room.size})</td>
+                        <td className="kobo-table__num kobo-table__right">{formatRupiah(room.priceMonthly)}</td>
+                        <td>
                           <span
-                            style={{
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                              padding: '0.15rem 0.45rem',
-                              borderRadius: 'var(--radius-badge)',
-                              backgroundColor: room.status === 'vacant' ? 'var(--status-vacant-bg)' : 'var(--status-paid-bg)',
-                              color: room.status === 'vacant' ? 'var(--status-vacant)' : 'var(--status-paid)',
-                              textTransform: 'capitalize',
-                            }}
+                            className={room.status === 'vacant' ? 'kobo-status kobo-status--hollow' : 'kobo-status'}
+                            style={{ ['--dot' as string]: STATUS_META[room.status].dot }}
                           >
-                            {room.status}
+                            <span className="kobo-status__dot" aria-hidden="true" />
+                            {STATUS_META[room.status].label}
                           </span>
                         </td>
-                        <td style={{ padding: '0.65rem 1rem', color: 'var(--text-muted)' }}>
-                          {room.tenantName || '-'}
-                        </td>
-                        <td style={{ padding: '0.65rem 1rem', textAlign: 'right' }}>
-                          <button
-                            onClick={() => deleteRoomFromKos(kos.id, room.id)}
-                            style={{
-                              color: 'var(--status-overdue)',
-                              fontSize: '0.75rem',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Hapus
-                          </button>
+                        <td className="kobo-table__muted">{room.tenantName || '—'}</td>
+                        <td>
+                          <div className="kobo-table__actions">
+                            <button
+                              type="button"
+                              onClick={() => deleteRoomFromKos(kos.id, room.id)}
+                              style={{ color: 'var(--status-overdue)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                            >
+                              Hapus
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

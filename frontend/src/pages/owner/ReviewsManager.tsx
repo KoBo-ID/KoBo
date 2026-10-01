@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, MessageSquare, CornerDownRight, Send, CheckCircle2, Filter } from 'lucide-react';
+import { Star, MessageSquare, CornerDownRight, Send } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
 import { Button } from '../../components/ui/Button';
 
@@ -39,35 +39,24 @@ export const ReviewsManager: React.FC = () => {
           </p>
         </div>
 
-        {/* Rating Filter Pills */}
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        {/* Rating Filter */}
+        <div className="kobo-segmented" role="group" aria-label="Filter rating ulasan">
           {(
             [
               { id: 'all', label: 'Semua Ulasan' },
               { id: 5, label: 'Bintang 5' },
               { id: 4, label: 'Bintang 4' },
             ] as const
-          ).map((item) => {
-            const isActive = filterRating === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setFilterRating(item.id)}
-                className="interactive-tap"
-                style={{
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.8rem',
-                  fontWeight: isActive ? 700 : 500,
-                  backgroundColor: isActive ? 'var(--text-main)' : 'var(--bg-muted)',
-                  color: isActive ? 'white' : 'var(--text-muted)',
-                  border: 'none',
-                }}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={filterRating === item.id}
+              onClick={() => setFilterRating(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       </div>
 
