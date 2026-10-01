@@ -29,15 +29,7 @@ export const ReviewsManager: React.FC = () => {
 
   return (
     <div className="app-container" style={{ maxWidth: '960px', paddingTop: '2.5rem', paddingBottom: '4rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem' }}>
-        <div>
-          <h1 style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-            Kelola Ulasan Mahasiswa (Manage Review)
-          </h1>
-          <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-            Pantau reputasi kos Anda dan berikan tanggapan resmi dari pemilik secara profesional.
-          </p>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
 
         {/* Rating Filter */}
         <div className="kobo-segmented" role="group" aria-label="Filter rating ulasan">

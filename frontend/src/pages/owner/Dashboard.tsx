@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Users, DollarSign, AlertCircle, Plus, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { Users, DollarSign, AlertCircle, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
 import { RoomOccupancyBoard, formatDueDate } from '../../components/owner/RoomOccupancyBoard';
 import { WhatsAppModal } from '../../components/owner/WhatsAppModal';
 import { KuitansiModal } from '../../components/owner/KuitansiModal';
-import { KosFormModal } from '../../components/owner/KosFormModal';
 import { Room, RoomStatus } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -24,7 +23,6 @@ export const OwnerDashboard: React.FC = () => {
   const [kuitansiTargetRoom, setKuitansiTargetRoom] = useState<Room | null>(null);
   const [fastIntakeTargetRoom, setFastIntakeTargetRoom] = useState<Room | null>(null);
   const [statusFilter, setStatusFilter] = useState<RoomStatus | 'all'>('all');
-  const [isAddKosModalOpen, setIsAddKosModalOpen] = useState(false);
 
   // Fast intake form state
   const [intakeName, setIntakeName] = useState('');
@@ -182,52 +180,6 @@ export const OwnerDashboard: React.FC = () => {
 
   return (
     <div className="app-container" style={{ maxWidth: '1180px', paddingTop: '2rem', paddingBottom: '4rem' }}>
-      {/* Page Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '1.25rem',
-          marginBottom: '2rem',
-        }}
-      >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span
-              style={{
-                backgroundColor: 'var(--primary-light)',
-                color: 'var(--primary)',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                padding: '0.2rem 0.55rem',
-                borderRadius: 'var(--radius-badge)',
-                textTransform: 'uppercase',
-              }}
-            >
-              Dashboard Pemilik Kos
-            </span>
-          </div>
-
-          <h1 style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.35rem' }}>
-            Papan Okupansi &amp; Keuangan Kos
-          </h1>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-            Kelola operasional kamar, pantau setoran sewa, dan kirim kuitansi resmi dalam satu layar.
-          </p>
-        </div>
-
-        <Button
-          variant="primary"
-          size="md"
-          onClick={() => setIsAddKosModalOpen(true)}
-          icon={<Plus size={16} />}
-        >
-          Tambah Kos Baru
-        </Button>
-      </div>
-
       {/* KPI tiles: each one also filters the room table below */}
       <div
         style={{
@@ -302,10 +254,6 @@ export const OwnerDashboard: React.FC = () => {
       )}
 
       {/* Add New Kos Wizard Modal */}
-      <KosFormModal
-        isOpen={isAddKosModalOpen}
-        onClose={() => setIsAddKosModalOpen(false)}
-      />
 
       {/* Fast Tenant Intake Modal */}
       {fastIntakeTargetRoom && (

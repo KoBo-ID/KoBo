@@ -290,6 +290,13 @@
 .kobo-popover-anchor {
   position: relative;
   display: inline-flex;
+  max-width: 100%;
+}
+
+/* Fills its column instead of shrinking to the trigger's content width. */
+.kobo-popover-anchor--block {
+  display: flex;
+  width: 100%;
 }
 
 .kobo-popover {

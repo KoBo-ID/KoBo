@@ -17,8 +17,9 @@ export const OwnerLayout: React.FC = () => {
 
   const selectedKos = kosList.find((k) => k.id === selectedOwnerKosId) || kosList[0];
 
-  const renderKosPicker = (minWidth = '0') => (
+  const renderKosPicker = (minWidth = '0', anchorClassName?: string) => (
     <Popover
+      anchorClassName={anchorClassName}
       align="left"
       role="menu"
       label="Pilih properti aktif"
@@ -127,7 +128,7 @@ export const OwnerLayout: React.FC = () => {
           <span id="kos-picker-label" style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Properti Aktif
           </span>
-          {renderKosPicker()}
+          {renderKosPicker('0', 'kobo-popover-anchor--block')}
         </div>
 
         {/* Navigation Tree */}

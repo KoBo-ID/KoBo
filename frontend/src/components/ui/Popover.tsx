@@ -21,6 +21,10 @@ interface PopoverProps {
   label?: string;
   /** Extra classes on the panel, e.g. 'kobo-menu'. */
   panelClassName?: string;
+  /** Extra classes on the anchor. The anchor is inline-flex by default, so a
+   *  trigger with width:100% sizes to the anchor's own content, not its
+   *  column - pass 'kobo-popover-anchor--block' to make it fill instead. */
+  anchorClassName?: string;
 }
 
 /**
@@ -39,6 +43,7 @@ export const Popover: React.FC<PopoverProps> = ({
   role = 'dialog',
   label,
   panelClassName,
+  anchorClassName,
 }) => {
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -79,7 +84,7 @@ export const Popover: React.FC<PopoverProps> = ({
   }, [open, close]);
 
   return (
-    <div className="kobo-popover-anchor">
+    <div className={`kobo-popover-anchor${anchorClassName ? ' ' + anchorClassName : ''}`}>
       {trigger({
         ref: triggerRef,
         'aria-expanded': open,
