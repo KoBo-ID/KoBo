@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: kobo
       POSTGRES_DB: kobo
     ports:
-      - "5432:5432"
+      # 5434 on the host so it never collides with a locally installed Postgres on 5432.
+      - "5434:5432"
     volumes:
       # Postgres 18 images keep PGDATA in a versioned subdir, so mount the parent.
       - kobo_pgdata:/var/lib/postgresql
@@ -28,6 +29,9 @@ services:
       - "5433:5432"
     tmpfs:
       - /var/lib/postgresql
+    volumes:
+      # Creates kobo_shadow (prisma migrate diff) and kobo_e2e (Playwright) next to kobo_test.
+      - ./docker/init-test-dbs.sql:/docker-entrypoint-initdb.d/init-test-dbs.sql:ro
     # Test DB trades durability for speed; it is rebuilt by migrate deploy on every test run.
     command: ["postgres", "-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off"]
     healthcheck:

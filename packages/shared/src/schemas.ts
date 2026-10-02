@@ -165,6 +165,15 @@ export const visitIdInput = z.object({ visitId: z.string().min(1).max(64) })
 export const visitCompleteInput = z.object({ kosId: z.string().min(1).max(64), visitId: z.string().min(1).max(64) })
 
 // ---------------------------------------------------------------------------
+// Daftar tunggu (waiting list)
+// ---------------------------------------------------------------------------
+
+/** `roomType` null = any type. */
+export const waitlistJoinInput = z.object({ kosId: z.string().min(1).max(64), roomType: z.string().trim().min(1).max(60).nullable() })
+export const waitlistEntryInput = z.object({ entryId: z.string().min(1).max(64) })
+export const ownerWaitlistRemoveInput = z.object({ kosId: z.string().min(1).max(64), entryId: z.string().min(1).max(64) })
+
+// ---------------------------------------------------------------------------
 // Profile
 // ---------------------------------------------------------------------------
 

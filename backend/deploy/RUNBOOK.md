@@ -27,8 +27,18 @@ POSTGRES_DB=kobo
 # --- api ---
 DATABASE_URL=postgresql://kobo:<same password>@postgres:5432/kobo
 PORT=3000
-# Later slices will add (spec 5, 6, 8, 9): BETTER_AUTH_URL=https://<domain>, BETTER_AUTH_SECRET, RESEND_API_KEY,
-# PAYMENT_WEBHOOK_SECRET, R2 public-bucket S3 credentials. Add them here when those slices ship.
+BETTER_AUTH_URL=https://<domain>
+BETTER_AUTH_SECRET=<openssl rand -base64 32>
+PAYMENT_WEBHOOK_SECRET=<openssl rand -hex 32>
+# Email (unset RESEND_API_KEY and links are only logged, so set both in production)
+RESEND_API_KEY=<resend key>
+EMAIL_FROM=KoBo <no-reply@<domain>>
+# Photos: kobo-public bucket (its own token). All five must be set, or the server refuses to start in production.
+R2_ENDPOINT=https://<accountid>.r2.cloudflarestorage.com
+R2_PUBLIC_BUCKET=kobo-public
+R2_PUBLIC_ACCESS_KEY_ID=...
+R2_PUBLIC_SECRET_ACCESS_KEY=...
+R2_PUBLIC_BASE_URL=https://<photos domain>
 # --- cloudflare tunnel ---
 TUNNEL_TOKEN=<from Zero Trust dashboard>
 # --- backups (bucket kobo-backups, its OWN token, object read+write on that bucket only) ---
@@ -80,7 +90,7 @@ Cloudflare Zero Trust -> Networks -> Tunnels -> kobo -> Refresh token. Update `T
    ```json
    [{ "AllowedOrigins": ["https://<domain>"], "AllowedMethods": ["PUT", "HEAD", "GET"], "AllowedHeaders": ["Content-Type", "Content-Length"], "MaxAgeSeconds": 3600 }]
    ```
-   The API container reads `R2_ENDPOINT`, `R2_PUBLIC_BUCKET`, `R2_PUBLIC_ACCESS_KEY_ID`, `R2_PUBLIC_SECRET_ACCESS_KEY` and `R2_PUBLIC_BASE_URL` (the custom domain, no trailing slash) from `.env`. If any is missing the server silently falls back to the in-memory fake (check the startup log for `[storage]`), so photos would vanish on restart: confirm the log line is absent after deploy.
+   The API container reads `R2_ENDPOINT`, `R2_PUBLIC_BUCKET`, `R2_PUBLIC_ACCESS_KEY_ID`, `R2_PUBLIC_SECRET_ACCESS_KEY` and `R2_PUBLIC_BASE_URL` (the custom domain, no trailing slash) from `.env`. If any is missing the server refuses to start in production (unless `ALLOW_FAKE_STORAGE=1`, for e2e only), so a misconfigured release fails `/health` and rolls back.
 3. R2 `kobo-backups`: private, no public domain, its own API token scoped to this bucket only (Object Read & Write).
 4. Lifecycle rules on `kobo-backups`: prefix `daily/` delete after 14 days; `monthly/` after 180 days; `pre-deploy/` after 30 days.
 5. Healthchecks.io: check period 1 day, grace 3 h. UptimeRobot: HTTP monitor on `https://<domain>/health`.

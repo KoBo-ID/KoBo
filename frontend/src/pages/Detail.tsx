@@ -24,9 +24,11 @@ import { BackButton } from '../components/ui/BackButton';
 import { Avatar } from '../components/ui/Avatar';
 import { ErrorState, NotFoundState } from '../components/ui/QueryState';
 import { useTRPC } from '../lib/trpc';
+import { useWaitlistStatus } from '../lib/waitlist';
 import { isNotFound } from '../lib/queryErrors';
 import { kosDetailToKos, reviewsToLegacy } from '../utils/kosDetail';
 import type { KosDetail } from '../../../backend/src/trpc/router';
+import type { Room } from '../types';
 
 /** Reserves the final page's footprint (title row, 408px photo mosaic, two columns) so nothing jumps on load. */
 const DetailSkeleton: React.FC = () => {
@@ -93,9 +95,17 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
   const kos = useMemo(() => kosDetailToKos(detail), [detail]);
   const reviews = useMemo(() => reviewsToLegacy(detail), [detail]);
 
+  const waitlist = useWaitlistStatus(kos.id);
+  // undefined = not picking a queue; null = any type; a string = that type (set by clicking a full type).
+  const [joinType, setJoinType] = useState<string | null | undefined>(undefined);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  // Bookable = vacant and not held by a daftar tunggu offer for someone else; an offer made to me comes first.
+  const bookable = (r: Room) => r.status === 'vacant' && !r.reservedForWaitlist;
   const selectedRoom =
-    kos.rooms.find((r) => r.id === selectedRoomId) ?? kos.rooms.find((r) => r.status === 'vacant') ?? kos.rooms[0];
+    kos.rooms.find((r) => r.id === selectedRoomId) ??
+    kos.rooms.find((r) => r.offeredToMe) ??
+    kos.rooms.find(bookable) ??
+    kos.rooms[0];
   const [surveyModalOpen, setSurveyModalOpen] = useState(false);
   const [leaseMonths, setLeaseMonths] = useState<number>(1);
 
@@ -103,6 +113,8 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
     navigator.clipboard.writeText(window.location.href);
     addToast('Tautan kos berhasil disalin ke clipboard!', 'success');
   };
+
+  const handleBookOffer = (roomId: string) => navigate(`/checkout/${kos.id}?room=${roomId}&duration=${leaseMonths}`);
 
   const handleGoToCheckout = () => {
     if (!selectedRoom) return;
@@ -195,7 +207,15 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Room Picker Section */}
           {selectedRoom ? (
-            <RoomPicker rooms={kos.rooms} selectedRoom={selectedRoom} onSelectRoom={(r) => setSelectedRoomId(r.id)} />
+            <RoomPicker
+              rooms={kos.rooms}
+              selectedRoom={selectedRoom}
+              onSelectRoom={(r) => {
+                setSelectedRoomId(r.id);
+                setJoinType(undefined);
+              }}
+              onSelectFullType={setJoinType}
+            />
           ) : (
             <p style={{ color: 'var(--text-muted)' }}>Belum ada kamar yang terdaftar untuk kos ini.</p>
           )}
@@ -284,6 +304,7 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
             onSelectLeaseMonths={setLeaseMonths}
             onGoToCheckout={handleGoToCheckout}
             onOpenSurveyModal={() => setSurveyModalOpen(true)}
+            waitlist={{ status: waitlist.data, joinType, onBookOffer: handleBookOffer, onBackToBooking: () => setJoinType(undefined) }}
           />
         )}
       </div>

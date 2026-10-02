@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Users, DollarSign, AlertCircle, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { Users, DollarSign, AlertCircle, AlertTriangle, MessageSquare, CheckCircle2, Hourglass } from 'lucide-react';
 import type { BoardRoom } from '../../../../backend/src/trpc/router';
 import { RoomOccupancyBoard } from '../../components/owner/RoomOccupancyBoard';
 import { VisitsPanel } from '../../components/owner/VisitsPanel';
@@ -11,12 +11,14 @@ import { Button } from '../../components/ui/Button';
 import { ErrorState } from '../../components/ui/QueryState';
 import { formatDueDate, formatRupiah, useOwnerWorkspace } from '../../lib/ownerWorkspace';
 import { useRoomActions } from '../../lib/ownerActions';
+import { useOwnerVisits } from '../../lib/visits';
 import { useTRPC } from '../../lib/trpc';
 
 export const OwnerDashboard: React.FC = () => {
   const { selectedKos } = useOwnerWorkspace();
   const trpc = useTRPC();
   const board = useQuery({ ...trpc.owner.board.queryOptions({ kosId: selectedKos?.id ?? '' }), enabled: !!selectedKos });
+  const visits = useOwnerVisits(selectedKos?.id);
   const { busyRoomId, markPaid, endTenancy } = useRoomActions(selectedKos?.id);
 
   const [whatsAppTargetRoom, setWhatsAppTargetRoom] = useState<BoardRoom | null>(null);
@@ -35,7 +37,9 @@ export const OwnerDashboard: React.FC = () => {
   if (board.isError) {
     return <ErrorState message="Gagal memuat papan kamar." onRetry={() => void board.refetch()} />;
   }
-  if (!board.data) {
+  // Wait for the visits too, so the survey section lands in its final place (above or below the board)
+  // instead of pushing the board down once it arrives. A failed visits query does not block the page.
+  if (!board.data || visits.isPending) {
     return (
       <div role="status" aria-live="polite" style={{ minHeight: '40vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Memuat papan kamar…</span>
@@ -88,7 +92,11 @@ export const OwnerDashboard: React.FC = () => {
   const hasAttention = attentionRooms.length > 0;
   const attentionSection = (
     <section aria-labelledby="attention-title" style={hasAttention ? { marginBottom: '2rem' } : { marginTop: '2rem' }}>
-      <h2 id="attention-title" style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+      <h2 id="attention-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.75rem' }}>
+        {hasAttention && (
+          // Amber while invoices are only due; red once any is actually late (same escalation as "Telat N hari").
+          <AlertTriangle size={18} aria-hidden="true" color={attentionRooms.some((r) => r.daysOverdue > 0) ? 'var(--status-overdue)' : 'var(--status-due)'} />
+        )}
         Perlu Perhatian
       </h2>
       {!hasAttention ? (
@@ -154,10 +162,15 @@ export const OwnerDashboard: React.FC = () => {
     </section>
   );
 
+  /* Surveys follow the same rule as "Perlu Perhatian": a scheduled visit is something to act on (confirm, then
+     mark done), so it goes above the board; with none waiting it drops below with a quiet empty state. */
+  const hasVisitAttention = (visits.data ?? []).some((v) => v.status === 'SCHEDULED');
+  const visitsSection = <VisitsPanel kosId={selectedKos.id} promoted={hasVisitAttention} />;
+
   return (
     <div className="app-container" style={{ maxWidth: '1180px', paddingTop: '2rem', paddingBottom: '4rem' }}>
       {/* KPI tiles: each one also filters the room table below */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         {kpiTiles.map((tile) => (
           <button
             key={tile.filter}
@@ -185,9 +198,19 @@ export const OwnerDashboard: React.FC = () => {
             <span className="kobo-stat__meta">{tile.meta}</span>
           </button>
         ))}
+        {/* Not a room filter: the queue lives in the property manager, so this tile links there. */}
+        <Link to="/owner/kos" className="kobo-stat" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <span className="kobo-stat__label">
+            <Hourglass size={14} />
+            Daftar Tunggu
+          </span>
+          <span className="kobo-stat__value">{summary.waitlistCount} pengantre</span>
+          <span className="kobo-stat__meta">{summary.waitlistCount > 0 ? 'Mereka dapat email saat kamar kosong' : 'Belum ada yang mengantre'}</span>
+        </Link>
       </div>
 
       {hasAttention && attentionSection}
+      {hasVisitAttention && visitsSection}
 
       <RoomOccupancyBoard
         kosName={selectedKos.name}
@@ -201,8 +224,7 @@ export const OwnerDashboard: React.FC = () => {
       />
 
       {!hasAttention && attentionSection}
-
-      <VisitsPanel kosId={selectedKos.id} />
+      {!hasVisitAttention && visitsSection}
 
       {whatsAppTargetRoom && (
         <WhatsAppModal isOpen onClose={() => setWhatsAppTargetRoom(null)} room={whatsAppTargetRoom} kosName={selectedKos.name} />

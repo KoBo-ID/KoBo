@@ -49,6 +49,10 @@ export function useAuthActions() {
     qc.removeQueries({ queryKey: trpc.booking.pathKey() });
     qc.removeQueries({ queryKey: trpc.payment.pathKey() });
     qc.removeQueries({ queryKey: trpc.kuitansi.pathKey() });
+    qc.removeQueries({ queryKey: trpc.visit.pathKey() });
+    qc.removeQueries({ queryKey: trpc.owner.visits.pathKey() });
+    qc.removeQueries({ queryKey: trpc.waitlist.pathKey() });
+    qc.removeQueries({ queryKey: trpc.owner.waitlistEntries.pathKey() });
     qc.removeQueries({ queryKey: trpc.owner.myKos.pathKey() });
     qc.removeQueries({ queryKey: trpc.owner.board.pathKey() });
     // Everything user-scoped is stale now, not just auth.me.

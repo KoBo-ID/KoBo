@@ -8,8 +8,9 @@ import { paymentRouter } from './payment.ts'
 import { reviewRouter } from './review.ts'
 import { router } from './trpc.ts'
 import { visitRouter } from './visit.ts'
+import { waitlistRouter } from './waitlist.ts'
 
-export const appRouter = router({ auth: authRouter, kos: kosRouter, owner: ownerRouter, booking: bookingRouter, payment: paymentRouter, kuitansi: kuitansiRouter, review: reviewRouter, visit: visitRouter, demo: demoRouter })
+export const appRouter = router({ auth: authRouter, kos: kosRouter, owner: ownerRouter, booking: bookingRouter, payment: paymentRouter, kuitansi: kuitansiRouter, review: reviewRouter, visit: visitRouter, waitlist: waitlistRouter, demo: demoRouter })
 export type AppRouter = typeof appRouter
 export type { KosCard, KosSearchCard, KosDetail, RoomView, ReviewView, OwnerPublic } from './kos.ts'
 export type { OwnerPublicProfile, OwnerKos, OwnerBoard, BoardRoom, BoardSummary, OwnerReview, OwnerImage, ImagePresign } from './owner.ts'
@@ -18,3 +19,4 @@ export type { MeResult } from './auth.ts'
 export type { BookingCreated, BookingBreakdown, PaymentSummary, MyTenancy, MyInvoice, MyReview } from './booking.ts'
 export type { PaymentStatusResult } from './payment.ts'
 export type { MyVisit, OwnerVisit } from './visit.ts'
+export type { MyWaitlistEntry, OwnerWaitlistEntry, WaitlistOffer, WaitlistStatusResult } from './waitlist.ts'

@@ -28,11 +28,12 @@ model User {
   campusEmailVerifiedAt DateTime? @db.Timestamptz(3)
   isDemo                Boolean   @default(false)
 
-  sessions     Session[]
-  accounts     Account[]
-  ownerProfile OwnerProfile?
-  tenancies    Tenancy[]
-  visits       Visit[]
+  sessions        Session[]
+  accounts        Account[]
+  ownerProfile    OwnerProfile?
+  tenancies       Tenancy[]
+  visits          Visit[]
+  waitlistEntries WaitlistEntry[]
 }
 
 model Session {
@@ -133,6 +134,16 @@ enum VisitStatus {
   CANCELLED
 }
 
+enum WaitlistStatus {
+  WAITING
+  OFFERED
+  FULFILLED
+  EXPIRED
+  DECLINED
+  LEFT
+  REMOVED
+}
+
 enum OutboxStatus {
   PENDING
   SENT
@@ -190,11 +201,12 @@ model Kos {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  rooms  Room[]
-  rules  HouseRule[]
-  pois   Poi[]
-  images KosImage[]
-  visits Visit[]
+  rooms    Room[]
+  rules    HouseRule[]
+  pois     Poi[]
+  images   KosImage[]
+  visits   Visit[]
+  waitlist WaitlistEntry[]
 
   @@index([ownerId])
 }
@@ -211,7 +223,8 @@ model Room {
   priceMonthly Int
   occupancy    Occupancy @default(VACANT)
 
-  tenancies Tenancy[]
+  tenancies      Tenancy[]
+  waitlistOffers WaitlistEntry[]
 
   @@unique([kosId, roomNumber])
 }
@@ -335,6 +348,25 @@ model Visit {
   createdAt DateTime    @default(now()) @db.Timestamptz(3)
 
   @@index([kosId])
+  @@index([userId])
+}
+
+model WaitlistEntry {
+  id             String         @id @default(cuid(2))
+  kosId          String
+  kos            Kos            @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// null = any room type
+  roomType       String?
+  status         WaitlistStatus @default(WAITING)
+  offeredRoomId  String?
+  offeredRoom    Room?          @relation(fields: [offeredRoomId], references: [id], onDelete: SetNull)
+  offerExpiresAt DateTime?      @db.Timestamptz(3)
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  resolvedAt     DateTime?      @db.Timestamptz(3)
+
+  @@index([kosId, status, createdAt])
   @@index([userId])
 }
 

@@ -19,6 +19,10 @@ export interface Room {
   daysOverdue?: number;
   lastPaymentDate?: string;
   activeBookingRef?: string;
+  /** Daftar tunggu: a live offer holds this room for another student. */
+  reservedForWaitlist?: boolean;
+  /** Daftar tunggu: the live offer on this room is the signed-in student's. */
+  offeredToMe?: boolean;
 }
 
 export type PoiCategory = 'campus' | 'food' | 'laundry' | 'print' | 'market' | 'health';

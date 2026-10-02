@@ -1,7 +1,9 @@
 import React from 'react';
 import { CreditCard, Calendar, GraduationCap, ShieldCheck } from 'lucide-react';
+import type { WaitlistStatusResult } from '../../../../../backend/src/trpc/router';
 import { Room, Kos } from '../../../types';
 import { Button } from '../../ui/Button';
+import { JoinCard, OfferBanner, QueuedCard } from './WaitlistBox';
 
 interface StickyBookingSidebarProps {
   kos: Kos;
@@ -10,6 +12,14 @@ interface StickyBookingSidebarProps {
   onSelectLeaseMonths: (months: number) => void;
   onGoToCheckout: () => void;
   onOpenSurveyModal: () => void;
+  /** Daftar tunggu state of this kos. */
+  waitlist: {
+    status: WaitlistStatusResult | undefined;
+    /** Set when the student picked a full type in the room list (null = any type). */
+    joinType: string | null | undefined;
+    onBookOffer: (roomId: string) => void;
+    onBackToBooking: () => void;
+  };
 }
 
 export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
@@ -19,6 +29,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
   onSelectLeaseMonths,
   onGoToCheckout,
   onOpenSurveyModal,
+  waitlist,
 }) => {
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -29,11 +40,20 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
   };
 
   const appFee = 25000;
-  const isVacant = selectedRoom.status === 'vacant';
+  const isVacant = selectedRoom.status === 'vacant' && !selectedRoom.reservedForWaitlist;
   const hasDiscount = kos.studentDiscountAmount > 0;
   const total =
     (hasDiscount ? selectedRoom.priceMonthly - kos.studentDiscountAmount : selectedRoom.priceMonthly) * leaseMonths +
     appFee;
+
+  // Daftar tunggu: an offer to me wins, then my queue place, then the join form (full kos, or a full type picked in the list).
+  const { status } = waitlist;
+  const mine = status?.mine ?? null;
+  const offerEntry = mine?.status === 'OFFERED' ? mine : null;
+  const queuedEntry = mine?.status === 'WAITING' ? mine : null;
+  const full = status?.full ?? false;
+  const showJoin = !!status && !offerEntry && !queuedEntry && (full || waitlist.joinType !== undefined);
+  const showBooking = !showJoin && !(queuedEntry && full);
 
   /* Height budget @1280x720 (worst case: discounted kos, 4 fee lines).
      price 44 + lease 52 + fees 126 (4 lines + sep + campus caption) + CTAs 100
@@ -67,6 +87,13 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           gap: '0.875rem',
         }}
       >
+        {offerEntry && <OfferBanner entry={offerEntry} onBook={waitlist.onBookOffer} />}
+        {queuedEntry && <QueuedCard entry={queuedEntry} />}
+        {showJoin && status && (
+          <JoinCard key={String(waitlist.joinType)} kosId={kos.id} status={status} initialType={waitlist.joinType ?? null} onBack={full ? undefined : waitlist.onBackToBooking} />
+        )}
+
+        {showBooking && (<>
         {/* Top Price Header */}
         <div>
           <div
@@ -116,7 +143,8 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           </div>
         </div>
 
-        {/* Fees Breakdown Preview */}
+        {/* Fees Breakdown Preview (left out next to a daftar tunggu offer: the banner is the action and checkout shows the total) */}
+        {!offerEntry && (
         <div
           style={{
             backgroundColor: 'var(--bg-page)',
@@ -159,20 +187,23 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
             </p>
           )}
         </div>
+        )}
+        </>)}
 
-
-        {/* Strict CTA Visual Hierarchy: Exactly ONE Dominant Primary CTA */}
+        {/* Strict CTA Visual Hierarchy: Exactly ONE Dominant Primary CTA (with an offer, the banner's "Pesan Sekarang" is it) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            disabled={!isVacant}
-            onClick={onGoToCheckout}
-            icon={<CreditCard size={18} />}
-          >
-            {isVacant ? 'Ajukan Sewa & Bayar' : 'Kamar Saat Ini Terisi'}
-          </Button>
+          {showBooking && !offerEntry && (
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              disabled={!isVacant}
+              onClick={onGoToCheckout}
+              icon={<CreditCard size={18} />}
+            >
+              {isVacant ? 'Ajukan Sewa & Bayar' : 'Kamar Saat Ini Terisi'}
+            </Button>
+          )}
 
           {/* Subordinate Secondary Action: Ghost/Outline at Medium Size */}
           <Button

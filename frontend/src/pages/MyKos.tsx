@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Home, Calendar, FileText, FlaskConical, MessageSquare, ShieldCheck, Star } from 'lucide-react';
 import type { MyReview } from '../../../backend/src/trpc/router';
 import { ReviewFormModal } from '../components/kos/ReviewFormModal';
+import { WaitlistSection } from '../components/booking/WaitlistSection';
 import { useAppStore } from '../store/AppContext';
 import { Button } from '../components/ui/Button';
 import { Notice } from '../components/ui/Notice';
@@ -125,6 +126,7 @@ export const MyKos: React.FC = () => {
           {me && mine.isPending && <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat kamar Anda…</p>}
           {me && mine.isError && <ErrorState message="Gagal memuat daftar sewa Anda." onRetry={() => void mine.refetch()} minHeight="10rem" />}
           {simulate.isError && <Notice tone="error">{messageForError(simulate.error)}</Notice>}
+          {me && <WaitlistSection />}
 
           {rentals.map((t) => {
             const badge = TENANCY_BADGE[t.derivedStatus] ?? TENANCY_BADGE.paid;

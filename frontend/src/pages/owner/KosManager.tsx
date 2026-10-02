@@ -9,6 +9,7 @@ import { messageForError } from '../../lib/errors';
 import { formatRupiah, useOwnerWorkspace } from '../../lib/ownerWorkspace';
 import { KosFormModal } from '../../components/owner/KosFormModal';
 import { KosPhotosModal } from '../../components/owner/KosPhotosModal';
+import { WaitlistPanel } from '../../components/owner/WaitlistPanel';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
@@ -293,6 +294,8 @@ export const KosManager: React.FC = () => {
                 </table>
               </div>
             </div>
+
+            <WaitlistPanel kosId={kos.id} kosName={kos.name} />
           </div>
         ))}
       </div>

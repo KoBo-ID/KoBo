@@ -9,7 +9,7 @@ interface BuildingPosterProps {
 
 /**
  * Still frame of the live dorm-section scene, captured from the real three.js
- * render (transparent WebP, ~25KB). Used as:
+ * render (transparent WebP, 1428x952 = the canvas at 2x DPR, ~36KB). Used as:
  *   - the loading state while the three.js chunk streams in,
  *   - the prefers-reduced-motion fallback,
  *   - the no-WebGL fallback,
@@ -23,8 +23,8 @@ export const BuildingPoster: React.FC<BuildingPosterProps> = ({ className, decor
   <img
     src={posterUrl}
     className={className}
-    width={720}
-    height={480}
+    width={1428}
+    height={952}
     decoding="async"
     alt={decorative ? '' : 'Potongan gedung kos: kamar berperabot dengan pintu ke koridor'}
     aria-hidden={decorative || undefined}

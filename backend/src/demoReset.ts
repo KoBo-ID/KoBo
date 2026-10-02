@@ -7,7 +7,7 @@ import { buildSeed } from './db/seed.ts'
  * sign-ups are never touched.
  *
  * Demo-owned state:
- *  - everything the demo student has: tenancies (with invoices, payments, review), visits, profile fields;
+ *  - everything the demo student has: tenancies (with invoices, payments, review), visits, waitlist entries, profile fields;
  *  - the demo owner's profile, kos (edits, rooms, photos, rules, POIs, new kos), and the seeded tenants,
  *    invoices, payments and reviews of those kos (owner actions such as "Tandai Lunas", move-out and
  *    review replies all land there).
@@ -50,6 +50,9 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
       const scope = { OR: [{ userId: demoStudent.id }, { userId: { in: seedUserIds }, room: { kosId: { in: seedKosIds } } }] }
       const doomed = await tx.tenancy.findMany({ where: scope, select: { roomId: true } })
       await tx.tenancy.deleteMany({ where: scope })
+
+      // 3b. Daftar tunggu entries in the same scope: the demo student's anywhere, and seeded users' on the demo owner's kos.
+      await tx.waitlistEntry.deleteMany({ where: { OR: [{ userId: demoStudent.id }, { userId: { in: seedUserIds }, kosId: { in: seedKosIds } }] } })
 
       // 4. The demo owner's kos back to seed: fields, photos, rules, POIs.
       for (const { id, ...fields } of seedKos) await tx.kos.update({ where: { id }, data: fields as never })

@@ -37,6 +37,8 @@ export interface BoardSummary {
   collectedThisMonth: number
   /** Unpaid invoices of active tenancies already past their due date. */
   overdueAmount: number
+  /** Live daftar tunggu entries (WAITING or OFFERED). */
+  waitlistCount: number
 }
 
 const dateOnly = (d: Date) => d.toISOString().slice(0, 10)
@@ -94,7 +96,7 @@ export async function loadBoardSummary(prisma: PrismaClient, kosId: string, room
   const today = todayWIB(now)
   const monthStart = `${today.slice(0, 7)}-01`
   const monthEnd = addMonths(monthStart, 1)
-  const [month, overdue] = await Promise.all([
+  const [month, overdue, waitlistCount] = await Promise.all([
     prisma.invoice.findMany({
       where: {
         dueDate: { gte: new Date(`${monthStart}T00:00:00Z`), lt: new Date(`${monthEnd}T00:00:00Z`) },
@@ -107,6 +109,7 @@ export async function loadBoardSummary(prisma: PrismaClient, kosId: string, room
       _sum: { amount: true },
       where: { status: 'UNPAID', dueDate: { lt: new Date(`${today}T00:00:00Z`) }, tenancy: { status: 'ACTIVE', room: { kosId } } },
     }),
+    prisma.waitlistEntry.count({ where: { kosId, status: { in: ['WAITING', 'OFFERED'] } } }),
   ])
   const counts: Record<RoomStatus, number> = { paid: 0, due: 0, overdue: 0, vacant: 0, booking: 0 }
   for (const r of rooms) counts[r.status]++
@@ -117,5 +120,6 @@ export async function loadBoardSummary(prisma: PrismaClient, kosId: string, room
     expectedThisMonth: month.reduce((s, i) => s + i.amount, 0),
     collectedThisMonth: month.filter((i) => i.status === 'PAID').reduce((s, i) => s + i.amount, 0),
     overdueAmount: overdue._sum.amount ?? 0,
+    waitlistCount,
   }
 }

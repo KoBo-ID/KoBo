@@ -5,6 +5,7 @@ import { createPrisma } from './db/client.ts'
 import { startDemoReset } from './demoSchedule.ts'
 import { paymentWebhookSecret, requireEnv } from './env.ts'
 import { startOutboxWorker, transportFromEnv } from './outbox.ts'
+import { startWaitlistWorker } from './waitlist.ts'
 
 paymentWebhookSecret() // fail fast on a missing secret
 const prisma = createPrisma(requireEnv('DATABASE_URL'))
@@ -21,11 +22,15 @@ const server = serve({ fetch: createApp({ prisma, distDir }).fetch, port }, (inf
 // Not started from createApp: tests call drainOutbox() directly.
 const stopOutbox = startOutboxWorker(prisma, transportFromEnv(), 15_000)
 
+// Also not started from createApp: tests call advanceAllWaitlists() directly.
+const stopWaitlist = startWaitlistWorker(prisma)
+
 // Also not started from createApp. Restores demo-owned rows only (demoReset.ts).
 const stopDemoReset = startDemoReset(prisma)
 
 const shutdown = () => {
   stopOutbox()
+  stopWaitlist()
   stopDemoReset()
   server.close(() => void prisma.$disconnect().finally(() => process.exit(0)))
 }

@@ -57,6 +57,8 @@ export function kosDetailToKos(d: KosDetail): Kos {
       bedType: r.bedType,
       priceMonthly: r.priceMonthly,
       status: r.status,
+      reservedForWaitlist: r.reservedForWaitlist,
+      offeredToMe: r.offeredToMe,
     })),
   };
 }

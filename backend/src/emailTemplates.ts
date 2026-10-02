@@ -1,4 +1,4 @@
-/** Indonesian copy for every outbox template. Payload shape per template: { name: string, url: string }. */
+/** Indonesian copy for every outbox template. Payload shape per template: { name: string, url: string }; waitlist-offer adds { kosName, roomNumber, expiresAt }. */
 export interface RenderedEmail {
   subject: string
   html: string
@@ -8,6 +8,13 @@ export interface RenderedEmail {
 interface LinkPayload {
   name: string
   url: string
+}
+
+interface OfferPayload extends LinkPayload {
+  kosName: string
+  roomNumber: string
+  /** ISO timestamp of the offer deadline. */
+  expiresAt: string
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -46,9 +53,32 @@ const COPY: Record<string, Copy> = {
   },
 }
 
+const WIB_DATE = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'long', year: 'numeric' })
+const WIB_TIME = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+
+/** "3 Oktober 2026 pukul 14.30 WIB" */
+function deadlineWIB(iso: string): string | null {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return `${WIB_DATE.format(d)} pukul ${WIB_TIME.format(d).replace(':', '.')} WIB`
+}
+
+/** The daftar tunggu offer names the kos, the room and the deadline, so its copy is built per payload. */
+function offerCopy(p: Partial<OfferPayload>): Copy | null {
+  if (typeof p.kosName !== 'string' || typeof p.roomNumber !== 'string' || typeof p.expiresAt !== 'string') return null
+  const deadline = deadlineWIB(p.expiresAt)
+  if (!deadline) return null
+  return {
+    subject: `Kamar di ${p.kosName} tersedia untukmu`,
+    intro: `Kabar baik: kamar ${p.roomNumber} di ${p.kosName} sekarang tersedia dan kami simpan khusus untukmu. Pesan sebelum ${deadline}, setelah itu kamar ditawarkan ke pengantre berikutnya.`,
+    action: 'Pesan Kamar',
+    outro: 'Kamu tidak perlu membalas email ini. Jika sudah tidak berminat, abaikan saja atau pilih Lewati di halaman kos.',
+  }
+}
+
 export function renderEmail(template: string, payload: unknown): RenderedEmail | null {
-  const copy = COPY[template]
-  const p = payload as Partial<LinkPayload> | null
+  const p = payload as Partial<OfferPayload> | null
+  const copy = template === 'waitlist-offer' ? (p ? offerCopy(p) : null) : COPY[template]
   if (!copy || !p || typeof p.url !== 'string') return null
   const name = typeof p.name === 'string' && p.name.trim() ? p.name.trim() : 'Pengguna KoBo'
   const text = `Halo ${name},\n\n${copy.intro}\n\n${copy.action}: ${p.url}\n\n${copy.outro}\n\nTim KoBo`

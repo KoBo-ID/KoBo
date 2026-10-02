@@ -5,12 +5,15 @@ interface RoomPickerProps {
   rooms: Room[];
   selectedRoom: Room;
   onSelectRoom: (room: Room) => void;
+  /** A type with no bookable room was clicked: the student wants its daftar tunggu. */
+  onSelectFullType?: (roomType: string) => void;
 }
 
 export const RoomPicker: React.FC<RoomPickerProps> = ({
   rooms,
   selectedRoom,
   onSelectRoom,
+  onSelectFullType,
 }) => {
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -57,10 +60,14 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
       >
         {groupEntries.map(([roomType, groupRooms]) => {
           const firstRoom = groupRooms[0];
-          const vacantRooms = groupRooms.filter((r) => r.status === 'vacant');
+          // A room under a live daftar tunggu offer to someone else reads vacant but cannot be booked; mine comes first.
+          const vacantRooms = groupRooms
+            .filter((r) => r.status === 'vacant' && !r.reservedForWaitlist)
+            .sort((a, b) => Number(!!b.offeredToMe) - Number(!!a.offeredToMe));
+          const reservedCount = groupRooms.filter((r) => r.reservedForWaitlist).length;
           const vacantCount = vacantRooms.length;
           const isAvailable = vacantCount > 0;
-          const isSelected = selectedRoom.roomType === roomType;
+          const isSelected = isAvailable && selectedRoom.roomType === roomType;
 
           return (
             <div
@@ -68,6 +75,8 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
               onClick={() => {
                 if (isAvailable) {
                   onSelectRoom(vacantRooms[0]);
+                } else {
+                  onSelectFullType?.(roomType);
                 }
               }}
               className="interactive-tap"
@@ -76,7 +85,7 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
                 borderRadius: 'var(--radius-sm)',
                 padding: '1rem',
                 backgroundColor: isSelected ? 'var(--primary-light)' : 'var(--bg-page)',
-                cursor: isAvailable ? 'pointer' : 'not-allowed',
+                cursor: isAvailable || onSelectFullType ? 'pointer' : 'not-allowed',
                 opacity: isAvailable ? 1 : 0.6,
                 display: 'flex',
                 flexDirection: 'column',
@@ -102,6 +111,16 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
                 </span>
               </div>
 
+              {reservedCount > 0 && (
+                <span
+                  style={{ alignSelf: 'flex-start', fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-badge)', backgroundColor: 'var(--status-booking-bg)', color: 'var(--status-booking)' }}
+                >
+                  Dipesan antrean{reservedCount > 1 ? ` (${reservedCount})` : ''}
+                </span>
+              )}
+              {!isAvailable && onSelectFullType && (
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>Ikut daftar tunggu</span>
+              )}
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Ukuran: {firstRoom.size}
               </span>

@@ -100,7 +100,7 @@ describe('kos.detail', () => {
     const d = await caller.kos.detail({ id })
     expect(d.rooms.filter((r) => r.status === 'vacant')).toHaveLength(d.availableRooms)
     for (const r of d.rooms) {
-      expect(Object.keys(r).sort()).toEqual(['bedType', 'floor', 'id', 'priceMonthly', 'roomNumber', 'size', 'status', 'type'])
+      expect(Object.keys(r).sort()).toEqual(['bedType', 'floor', 'id', 'offeredToMe', 'priceMonthly', 'reservedForWaitlist', 'roomNumber', 'size', 'status', 'type'])
     }
     const order = d.rooms.map((r) => `${String(r.floor).padStart(3, '0')}|${r.roomNumber}`)
     expect(order).toEqual([...order].sort())

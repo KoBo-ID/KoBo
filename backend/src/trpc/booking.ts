@@ -4,6 +4,7 @@ import { bookingCreateInput } from '@kobo/shared/schemas'
 import type { RoomStatus } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
 import { mockInstructions } from '../payments.ts'
+import { advanceWaitlist, liveOffer } from '../waitlist.ts'
 import { reviewEditable, reviewEligible } from './review.ts'
 import { authedProcedure, router } from './trpc.ts'
 
@@ -13,6 +14,7 @@ export const HOLD_HOURS = 24
 const MAX_START_AHEAD_DAYS = 120
 
 export const CONFLICT_MESSAGE = 'Kamar baru saja dibooking orang lain.'
+export const OFFERED_ELSEWHERE_MESSAGE = 'Kamar ini sedang ditawarkan ke pengantre lain.'
 
 export interface BookingBreakdown {
   rent: number
@@ -84,6 +86,8 @@ export interface MyTenancy {
   review: MyReview | null
 }
 
+const OFFERED_ELSEWHERE = Symbol('offered-elsewhere')
+
 const dateOnly = (d: Date) => d.toISOString().slice(0, 10)
 
 /** Unique-violation on the one-live-tenancy-per-room index, whichever shape the driver adapter reports it in. */
@@ -125,11 +129,16 @@ export const bookingRouter = router({
     const externalId = `mock_${randomUUID()}`
 
     try {
-      return await prisma.$transaction(async (tx): Promise<BookingCreated> => {
+      const booked = await prisma.$transaction(async (tx): Promise<BookingCreated | typeof OFFERED_ELSEWHERE> => {
         await tx.tenancy.updateMany({
           where: { roomId: room.id, status: 'PENDING', expiresAt: { lt: now } },
           data: { status: 'ENDED', endedAt: now },
         })
+        // Holds lapse lazily, so settle the queue now: a room that just came free is already offered to #1 when the guard below runs.
+        await advanceWaitlist(tx, room.kosId, now)
+        const offer = await tx.waitlistEntry.findFirst({ where: { offeredRoomId: room.id, ...liveOffer(now) }, select: { userId: true } })
+        // Returned, not thrown: the advance above must commit so the room really is offered to #1 (and #1 gets the email).
+        if (offer && offer.userId !== ctx.user.id) return OFFERED_ELSEWHERE
         const tenancy = await tx.tenancy.create({
           data: {
             roomId: room.id,
@@ -146,6 +155,13 @@ export const bookingRouter = router({
         const payment = await tx.payment.create({
           data: { invoiceId: invoice.id, provider: 'MOCK', externalId, amount: breakdown.total, status: 'PENDING' },
         })
+        // Booking ends this student's place in the queue (their offer, or a waiting entry when they take another open room).
+        const queued = await tx.waitlistEntry.findMany({ where: { kosId: room.kosId, userId: ctx.user.id, status: { in: ['WAITING', 'OFFERED'] } }, select: { id: true, status: true, offeredRoomId: true } })
+        if (queued.length > 0) {
+          await tx.waitlistEntry.updateMany({ where: { id: { in: queued.map((q) => q.id) } }, data: { status: 'FULFILLED', resolvedAt: now } })
+          // An offer on a different room than the one booked is released to the next entry.
+          if (queued.some((q) => q.status === 'OFFERED' && q.offeredRoomId !== room.id)) await advanceWaitlist(tx, room.kosId, now)
+        }
         return {
           tenancyId: tenancy.id,
           roomId: room.id,
@@ -158,6 +174,8 @@ export const bookingRouter = router({
           payment: { id: payment.id, externalId, provider: 'MOCK', status: 'PENDING', amount: payment.amount, instructions: mockInstructions(externalId) },
         }
       })
+      if (booked === OFFERED_ELSEWHERE) throw new TRPCError({ code: 'CONFLICT', message: OFFERED_ELSEWHERE_MESSAGE })
+      return booked
     } catch (e) {
       if (isRoomTakenError(e)) throw new TRPCError({ code: 'CONFLICT', message: CONFLICT_MESSAGE })
       throw e

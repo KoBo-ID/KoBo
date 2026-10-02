@@ -11,6 +11,8 @@ import { queryCards } from './kosQueries.ts'
 import { ownerImageRouter } from './ownerImages.ts'
 import type { OwnerImage } from './ownerImages.ts'
 import { ownerVisitRouter, ownerVisits } from './visit.ts'
+import { ownerWaitlistEntries, ownerWaitlistRouter } from './waitlist.ts'
+import { advanceWaitlist, liveOffer } from '../waitlist.ts'
 import { authedProcedure, ownerOnlyProcedure, ownerProcedure, publicProcedure, router } from './trpc.ts'
 
 export type { BoardRoom, BoardSummary } from '../ownerBoard.ts'
@@ -93,6 +95,7 @@ const slugify = (name: string) =>
     .slice(0, 50) || 'kos'
 
 const ROOM_TAKEN = 'Nomor kamar ini sudah dipakai di kos ini.'
+const OFFER_ACTIVE = 'Masih ada penawaran daftar tunggu aktif.'
 
 export const ownerRouter = router({
   /**
@@ -203,6 +206,10 @@ export const ownerRouter = router({
 
   visit: ownerVisitRouter,
 
+  waitlistEntries: ownerWaitlistEntries,
+
+  waitlist: ownerWaitlistRouter,
+
   kos: router({
     /** No kosId exists yet, so this needs an OwnerProfile rather than ownerProcedure. */
     create: ownerOnlyProcedure.input(kosCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
@@ -256,6 +263,7 @@ export const ownerRouter = router({
       if (user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Akun demo bersifat hanya-baca dan tidak dapat menghapus kos.' })
       const busy = await ctx.prisma.tenancy.count({ where: { room: { kosId: input.kosId }, ...live(new Date()) } })
       if (busy > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kos ini masih memiliki sewa atau booking aktif. Akhiri sewa tersebut terlebih dahulu.' })
+      if ((await ctx.prisma.waitlistEntry.count({ where: { kosId: input.kosId, ...liveOffer(new Date()) } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: OFFER_ACTIVE })
       await ctx.prisma.kos.delete({ where: { id: input.kosId } })
       return { id: input.kosId }
     }),
@@ -264,7 +272,12 @@ export const ownerRouter = router({
   room: router({
     create: ownerProcedure.input(roomCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
       try {
-        return await ctx.prisma.room.create({ data: input, select: { id: true } })
+        // A new room may be the one a waiting student has been queueing for.
+        return await ctx.prisma.$transaction(async (tx) => {
+          const room = await tx.room.create({ data: input, select: { id: true } })
+          await advanceWaitlist(tx, input.kosId, new Date())
+          return room
+        })
       } catch (e) {
         if (isUniqueViolation(e)) throw new TRPCError({ code: 'CONFLICT', message: ROOM_TAKEN })
         throw e
@@ -276,7 +289,12 @@ export const ownerRouter = router({
       const { kosId, roomId, ...fields } = input
       let count = 0
       try {
-        count = (await ctx.prisma.room.updateMany({ where: { id: roomId, kosId }, data: fields })).count
+        // A changed type can make the room match a queued preference.
+        count = await ctx.prisma.$transaction(async (tx) => {
+          const res = await tx.room.updateMany({ where: { id: roomId, kosId }, data: fields })
+          if (res.count > 0) await advanceWaitlist(tx, kosId, new Date())
+          return res.count
+        })
       } catch (e) {
         if (isUniqueViolation(e)) throw new TRPCError({ code: 'CONFLICT', message: ROOM_TAKEN })
         throw e
@@ -290,6 +308,7 @@ export const ownerRouter = router({
       if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kamar tidak ditemukan.' })
       const busy = await ctx.prisma.tenancy.count({ where: { roomId: room.id, ...live(new Date()) } })
       if (busy > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kamar ini masih memiliki sewa atau booking aktif. Akhiri sewa tersebut terlebih dahulu.' })
+      if ((await ctx.prisma.waitlistEntry.count({ where: { offeredRoomId: room.id, ...liveOffer(new Date()) } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: OFFER_ACTIVE })
       await ctx.prisma.room.delete({ where: { id: room.id } })
       return { id: room.id }
     }),
@@ -308,6 +327,7 @@ export const ownerRouter = router({
         if (ended.count === 0) throw new TRPCError({ code: 'CONFLICT', message: 'Sewa ini sudah berakhir.' })
         await tx.room.update({ where: { id: t.roomId }, data: { occupancy: 'VACANT' } })
         await tx.payment.updateMany({ where: { invoice: { tenancyId: t.id }, status: 'PENDING' }, data: { status: 'FAILED' } })
+        await advanceWaitlist(tx, input.kosId, new Date())
         return { id: t.id }
       })
     }),

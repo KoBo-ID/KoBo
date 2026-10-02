@@ -4,6 +4,7 @@ import { PRICE_MAX, SEARCH_LIMIT, SEARCH_RADIUS_METERS } from '@kobo/shared/sear
 import type { RoomStatus } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
 import { Prisma } from '../generated/prisma/client.ts'
+import { liveOffer } from '../waitlist.ts'
 import { haversineSql, queryCards } from './kosQueries.ts'
 import type { KosCard } from './kosQueries.ts'
 import { publicProcedure, router } from './trpc.ts'
@@ -25,6 +26,10 @@ export interface RoomView {
   priceMonthly: number
   /** Derived (never stored): vacant / booking / paid / due / overdue. No tenant data is exposed. */
   status: RoomStatus
+  /** A live daftar tunggu offer is held for someone else: not selectable even though the room reads vacant. */
+  reservedForWaitlist: boolean
+  /** The live offer on this room is the signed-in student's. */
+  offeredToMe: boolean
 }
 
 export interface ReviewView {
@@ -124,7 +129,8 @@ export const kosRouter = router({
     if (!card) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kos tidak ditemukan.' })
 
     const now = new Date()
-    const [kos, rooms, rules, pois, reviews, subs] = await Promise.all([
+    const session = await ctx.getSession()
+    const [kos, rooms, rules, pois, reviews, subs, offers] = await Promise.all([
       prisma.kos.findUniqueOrThrow({
         where: { id: card.id },
         include: { nearestCampus: { select: { id: true, shortName: true } }, owner: { include: { user: true } } },
@@ -150,6 +156,7 @@ export const kosRouter = router({
         where: { tenancy: { room: { kosId: card.id } } },
         _avg: { cleanliness: true, wifi: true, ownerRating: true, quietness: true },
       }),
+      prisma.waitlistEntry.findMany({ where: { kosId: card.id, ...liveOffer(now) }, select: { offeredRoomId: true, userId: true } }),
     ])
 
     const ownerKosCount = await prisma.kos.count({ where: { ownerId: kos.ownerId } })
@@ -162,6 +169,7 @@ export const kosRouter = router({
           [...r.tenancies].sort((a, b) => (b.expiresAt?.getTime() ?? 0) - (a.expiresAt?.getTime() ?? 0))[0] ??
           null
         const unpaid = tenancy?.invoices[0]
+        const offer = offers.find((o) => o.offeredRoomId === r.id)
         return {
           id: r.id,
           roomNumber: r.roomNumber,
@@ -176,6 +184,8 @@ export const kosRouter = router({
             oldestUnpaidInvoice: unpaid ? { dueDate: dateOnly(unpaid.dueDate) } : null,
             now,
           }),
+          reservedForWaitlist: !!offer && offer.userId !== session?.user.id,
+          offeredToMe: !!offer && offer.userId === session?.user.id,
         }
       })
       .sort((a, b) => {
