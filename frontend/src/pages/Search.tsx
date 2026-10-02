@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   Search as SearchIcon,
   MapPin,
@@ -16,7 +17,22 @@ import {
 import { useAppStore } from '../store/AppContext';
 import { CAMPUSES } from '../data/campuses';
 import { PRESET_LOCATIONS } from '../data/locations';
+import { useTRPC } from '../lib/trpc';
+import { kosCardToKos } from '../utils/kosCard';
+import {
+  PRICE_MAX,
+  PRICE_MIN,
+  PRICE_STEP,
+  parseSearchParams,
+  serializeSearchParams,
+  type GenderFilter,
+  type SearchFilters,
+  type SortKey,
+} from '@kobo/shared/search';
+import type { KosSearchInput } from '@kobo/shared/schemas';
 import { ListingCard } from '../components/kos/ListingCard';
+import { KosCardSkeleton } from '../components/kos/KosCardSkeleton';
+import { ErrorState } from '../components/ui/QueryState';
 import { LeafletMap } from '../components/kos/LeafletMap';
 import { Button } from '../components/ui/Button';
 import { Popover } from '../components/ui/Popover';
@@ -24,10 +40,6 @@ import { useResizeObserver } from '../hooks/useResizeObserver';
 import { Kos, LocationPin } from '../types';
 import { averageLatLng, formatDistance, haversineMeters } from '../utils/geo';
 
-const PRICE_MIN = 800000;
-const PRICE_MAX = 3500000;
-const PRICE_STEP = 100000;
-const RADIUS_METERS = 5000;
 const NEARBY_CAMPUS_METERS = 3000;
 
 type Suggestion =
@@ -45,35 +57,51 @@ const priceFillPercent = (value: number) =>
 
 export const Search: React.FC = () => {
   const navigate = useNavigate();
+  const trpc = useTRPC();
   const [searchParams, setSearchParams] = useSearchParams();
-  const {
-    kosList,
-    searchQuery,
-    setSearchQuery,
-    activeLocation,
-    setActiveLocation,
-    genderFilter,
-    setGenderFilter,
-    sortBy,
-    setSortBy,
-    maxPrice,
-    setMaxPrice,
-    filterDiscountOnly,
-    setFilterDiscountOnly,
-    filterSurveyOnly,
-    setFilterSurveyOnly,
-    hoveredKosId,
-    setHoveredKosId,
-  } = useAppStore();
+  const { hoveredKosId, setHoveredKosId } = useAppStore();
 
   const [mobileViewMode, setMobileViewMode] = useState<'list' | 'map'>('list');
-  const [locationInput, setLocationInput] = useState('');
+  // What the user has typed into the search field; null means "show the active location's label".
+  const [typedInput, setTypedInput] = useState<string | null>(null);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [priceDraft, setPriceDraft] = useState<number | null>(null);
+  const priceTimer = useRef<number | undefined>(undefined);
   const filterBarRef = useRef<HTMLDivElement>(null);
   const filterBarDimensions = useResizeObserver(filterBarRef);
   const filterBarHeight = Math.max(filterBarDimensions.height, 112);
-  const hydratedRef = useRef(false);
+
+  // The URL is the single source of truth for every filter (spec section 10).
+  const filters = useMemo(() => parseSearchParams(searchParams), [searchParams]);
+  const updateFilters = (patch: Partial<SearchFilters>) =>
+    setSearchParams((prev) => serializeSearchParams({ ...parseSearchParams(prev), ...patch }), { replace: true });
+
+  useEffect(() => () => window.clearTimeout(priceTimer.current), []);
+
+  const searchQuery = filters.q;
+  const genderFilter = filters.gender;
+  const sortBy = filters.sort;
+  const filterDiscountOnly = filters.discountOnly;
+  const filterSurveyOnly = filters.surveyOnly;
+  const maxPrice = priceDraft ?? filters.maxPrice;
+  const setGenderFilter = (gender: GenderFilter) => updateFilters({ gender });
+  const setSortBy = (sort: SortKey) => updateFilters({ sort });
+  const setFilterDiscountOnly = (discountOnly: boolean) => updateFilters({ discountOnly });
+  const setFilterSurveyOnly = (surveyOnly: boolean) => updateFilters({ surveyOnly });
+  // The slider moves continuously; commit to the URL (and so to the server) once it settles.
+  const setMaxPrice = (value: number) => {
+    setPriceDraft(value);
+    window.clearTimeout(priceTimer.current);
+    priceTimer.current = window.setTimeout(() => {
+      updateFilters({ maxPrice: value });
+      setPriceDraft(null);
+    }, 250);
+  };
+
+  // All kos (the cached kos.list the home page also uses): autocomplete, kos-derived areas, and the total count.
+  const universe = useQuery(trpc.kos.list.queryOptions());
+  const kosList = useMemo(() => (universe.data ?? []).map(kosCardToKos), [universe.data]);
 
   // Derived location pins from kos districts (keeps new listings searchable)
   const areaLocations = useMemo<LocationPin[]>(() => {
@@ -109,42 +137,63 @@ export const Search: React.FC = () => {
     ];
   }, [areaLocations]);
 
-  // Hydrate search state from URL once
-  useEffect(() => {
-    if (hydratedRef.current) return;
-    hydratedRef.current = true;
-
-    const locParam = searchParams.get('loc');
-    const qParam = searchParams.get('q');
-    const latParam = searchParams.get('lat');
-    const lngParam = searchParams.get('lng');
-    if (locParam) {
-      const found = allLocations.find((loc) => loc.id === locParam);
-      if (found) {
-        setActiveLocation(found);
-        setLocationInput(found.label);
-      }
-    }
-    if (latParam && lngParam) {
-      const geoLocation: LocationPin = {
+  // The reference point is derived from the URL: a geolocation pair, or a preset / kos-area id.
+  const activeLocation = useMemo<LocationPin | null>(() => {
+    if (filters.lat !== null && filters.lng !== null) {
+      return {
         id: 'geo-me',
         label: 'Lokasi Saya',
         area: 'Sekitar Anda',
         city: 'Radius 5 km',
-        coordinates: { lat: Number(latParam), lng: Number(lngParam) },
+        coordinates: { lat: filters.lat, lng: filters.lng },
         source: 'geolocation',
       };
-      setActiveLocation(geoLocation);
-      setLocationInput(geoLocation.label);
     }
-    if (qParam) setSearchQuery(qParam);
-  }, [searchParams, allLocations, setActiveLocation, setSearchQuery]);
+    return filters.loc ? (allLocations.find((loc) => loc.id === filters.loc) ?? null) : null;
+  }, [filters.lat, filters.lng, filters.loc, allLocations]);
 
-  const applyLocation = (location: LocationPin | null) => {
-    setActiveLocation(location);
-    setLocationInput(location ? location.label : '');
+  const locationInput = typedInput ?? activeLocation?.label ?? '';
+  const setLocationInput = (value: string) => setTypedInput(value);
+
+  // A kos-area id (area-*) can only be resolved once kos.list has loaded; do not search unfiltered meanwhile.
+  const locationPending = !!filters.loc && !activeLocation && universe.isPending;
+  const searchInput = useMemo<KosSearchInput>(
+    () => ({
+      q: filters.q,
+      ...(activeLocation ? { lat: activeLocation.coordinates.lat, lng: activeLocation.coordinates.lng } : {}),
+      gender: filters.gender,
+      maxPrice: filters.maxPrice,
+      discountOnly: filters.discountOnly,
+      surveyOnly: filters.surveyOnly,
+      sort: filters.sort,
+    }),
+    [filters, activeLocation],
+  );
+  const search = useQuery({
+    ...trpc.kos.search.queryOptions(searchInput),
+    placeholderData: keepPreviousData,
+    enabled: !locationPending,
+  });
+  const searchPending = search.isPending;
+  const searchFailed = search.isError && !search.data;
+
+  // The list and the map render this same array.
+  const sortedKos = useMemo(() => (search.data ?? []).map(kosCardToKos), [search.data]);
+  const distanceById = useMemo(
+    () => new Map((search.data ?? []).map((card) => [card.id, card.distanceMeters])),
+    [search.data],
+  );
+
+  const applyLocation = (location: LocationPin | null, clearQuery = false) => {
+    setTypedInput(null);
     setSuggestionsOpen(false);
-    setSearchParams(location ? { loc: location.id } : {}, { replace: true });
+    const geo = location?.source === 'geolocation';
+    updateFilters({
+      loc: location && !geo ? location.id : null,
+      lat: location && geo ? location.coordinates.lat : null,
+      lng: location && geo ? location.coordinates.lng : null,
+      ...(clearQuery ? { q: '' } : {}),
+    });
   };
 
   const handleUseMyLocation = () => {
@@ -156,7 +205,7 @@ export const Search: React.FC = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setIsLocating(false);
-        const myLocation: LocationPin = {
+        applyLocation({
           id: 'geo-me',
           label: 'Lokasi Saya',
           area: 'Sekitar Anda',
@@ -166,8 +215,7 @@ export const Search: React.FC = () => {
             lng: position.coords.longitude,
           },
           source: 'geolocation',
-        };
-        applyLocation(myLocation);
+        });
       },
       () => {
         setIsLocating(false);
@@ -176,50 +224,6 @@ export const Search: React.FC = () => {
       { enableHighAccuracy: false, timeout: 8000 }
     );
   };
-
-  const distanceFor = (kos: Kos) =>
-    activeLocation
-      ? haversineMeters(activeLocation.coordinates, kos.coordinates)
-      : kos.campusProximity.distanceMeters;
-
-  // Filter algorithm
-  const filteredKos = kosList.filter((kos) => {
-    if (activeLocation && haversineMeters(activeLocation.coordinates, kos.coordinates) > RADIUS_METERS) {
-      return false;
-    }
-    if (genderFilter !== 'all' && kos.gender !== genderFilter) {
-      return false;
-    }
-    if (kos.priceMonthlyStart > maxPrice) {
-      return false;
-    }
-    if (filterDiscountOnly && kos.studentDiscountAmount <= 0) {
-      return false;
-    }
-    if (filterSurveyOnly && !kos.rooms.some((r) => r.status === 'vacant')) {
-      return false;
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchName = kos.name.toLowerCase().includes(q);
-      const matchAddress = kos.address.toLowerCase().includes(q);
-      const matchDistrict = kos.district.toLowerCase().includes(q);
-      const matchAmenities = [...kos.privateAmenities, ...kos.sharedAmenities].some((a) =>
-        a.toLowerCase().includes(q)
-      );
-      if (!matchName && !matchAddress && !matchDistrict && !matchAmenities) {
-        return false;
-      }
-    }
-    return true;
-  });
-
-  const sortedKos = [...filteredKos].sort((a, b) => {
-    if (sortBy === 'rating') return b.rating - a.rating;
-    if (sortBy === 'price_asc') return a.priceMonthlyStart - b.priceMonthlyStart;
-    if (sortBy === 'distance_asc') return distanceFor(a) - distanceFor(b);
-    return 0;
-  });
 
   const suggestions = useMemo<Suggestion[]>(() => {
     const q = locationInput.trim().toLowerCase();
@@ -261,18 +265,12 @@ export const Search: React.FC = () => {
     );
 
     if (exactLocation) {
-      applyLocation(exactLocation);
-      setSearchQuery('');
-      setSearchParams({ loc: exactLocation.id }, { replace: true });
+      applyLocation(exactLocation, true);
       return;
     }
 
-    if (q) {
-      setSearchQuery(q);
-      setSearchParams({ q }, { replace: true });
-    } else {
-      setSearchQuery('');
-    }
+    // A text search replaces the reference point, so the URL says exactly what is applied.
+    updateFilters({ q, loc: null, lat: null, lng: null });
   };
 
   const nearbyCampuses = activeLocation
@@ -293,13 +291,10 @@ export const Search: React.FC = () => {
     maxPrice < PRICE_MAX;
 
   const handleResetFilters = () => {
-    applyLocation(null);
-    setGenderFilter('all');
-    setSearchQuery('');
-    setFilterDiscountOnly(false);
-    setFilterSurveyOnly(false);
-    setMaxPrice(PRICE_MAX);
-    setLocationInput('');
+    window.clearTimeout(priceTimer.current);
+    setPriceDraft(null);
+    setTypedInput(null);
+    setSuggestionsOpen(false);
     setSearchParams({}, { replace: true });
   };
 
@@ -379,7 +374,7 @@ export const Search: React.FC = () => {
               </Button>
             </form>
 
-            {searchQuery.trim() && !activeLocation && (
+            {searchQuery.trim() && (
               <div style={{ marginTop: '0.5rem' }}>
                 <span className="kobo-token">
                   {searchQuery}
@@ -387,9 +382,8 @@ export const Search: React.FC = () => {
                     type="button"
                     aria-label="Hapus kata kunci"
                     onClick={() => {
-                      setSearchQuery('');
                       setLocationInput('');
-                      setSearchParams({}, { replace: true });
+                      updateFilters({ q: '' });
                     }}
                   >
                     <X size={12} />
@@ -421,10 +415,7 @@ export const Search: React.FC = () => {
                     <button
                       key={suggestion.location.id}
                       type="button"
-                      onClick={() => {
-                        applyLocation(suggestion.location);
-                        setSearchQuery('');
-                      }}
+                      onClick={() => applyLocation(suggestion.location, true)}
                       className="interactive-tap"
                       style={{
                         width: '100%',
@@ -543,7 +534,7 @@ export const Search: React.FC = () => {
                       onClick={() => setFilterDiscountOnly(!filterDiscountOnly)}
                     >
                       <GraduationCap size={16} />
-                      <span>Diskon KTM</span>
+                      <span>Diskon Mahasiswa</span>
                     </button>
                     <button
                       type="button"
@@ -712,24 +703,38 @@ export const Search: React.FC = () => {
                   {activeLocation ? `Kos di Sekitar ${activeLocation.label}` : 'Kos Terverifikasi'}
                 </h1>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                  Menampilkan <strong>{sortedKos.length}</strong> pilihan dari {kosList.length} kos terdaftar
+                  {searchPending || searchFailed ? (
+                    'Memuat daftar kos…'
+                  ) : (
+                    <>
+                      Menampilkan <strong>{sortedKos.length}</strong> pilihan dari {universe.data ? kosList.length : sortedKos.length} kos terdaftar
+                    </>
+                  )}
                 </p>
               </div>
             </div>
 
-            <div className="search-cards-grid">
+            {searchFailed && (
+              <ErrorState
+                message="Gagal memuat daftar kos. Periksa koneksi Anda lalu coba lagi."
+                onRetry={() => void search.refetch()}
+              />
+            )}
+
+            <div className="search-cards-grid" aria-busy={searchPending} style={searchFailed ? { display: 'none' } : undefined}>
+              {searchPending && [0, 1, 2, 3, 4, 5].map((i) => <KosCardSkeleton key={i} />)}
               {sortedKos.map((kos) => (
                 <div
                   key={kos.id}
                   onMouseEnter={() => setHoveredKosId(kos.id)}
                   onMouseLeave={() => setHoveredKosId(null)}
                 >
-                  <ListingCard kos={kos} distance={activeLocation ? distanceFor(kos) : undefined} />
+                  <ListingCard kos={kos} distance={activeLocation ? (distanceById.get(kos.id) ?? undefined) : undefined} />
                 </div>
               ))}
             </div>
 
-            {sortedKos.length === 0 && (
+            {!searchPending && !searchFailed && sortedKos.length === 0 && (
               <div
                 style={{
                   textAlign: 'center',

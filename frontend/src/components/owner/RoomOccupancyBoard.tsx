@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { MessageSquare, FileText, UserPlus, CheckCircle2, MoreHorizontal } from 'lucide-react';
-import { Room, RoomStatus, Kos } from '../../types';
+import { Link } from 'react-router-dom';
+import { MessageSquare, FileText, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import type { BoardRoom } from '../../../../backend/src/trpc/router';
+import { RoomStatus } from '../../types';
 import { Popover } from '../ui/Popover';
-import { useAppStore } from '../../store/AppContext';
+import { formatDueDate, formatRupiah } from '../../lib/ownerWorkspace';
 
 export const STATUS_META: Record<RoomStatus, { label: string; dot: string }> = {
   paid: { label: 'Lunas', dot: 'var(--status-paid)' },
@@ -15,44 +17,38 @@ export const STATUS_META: Record<RoomStatus, { label: string; dot: string }> = {
 const STATUS_ORDER: RoomStatus[] = ['paid', 'due', 'overdue', 'vacant', 'booking'];
 const COLUMN_COUNT = 6;
 
-export const formatDueDate = (value?: string): string => {
-  if (!value) return 'Tanggal 5';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-};
-
 interface RoomOccupancyBoardProps {
-  kos: Kos;
-  onOpenWhatsApp: (room: Room) => void;
-  onOpenKuitansi: (room: Room) => void;
-  onFastIntake: (room: Room) => void;
+  kosName: string;
+  rooms: BoardRoom[];
+  /** The room whose payment or move-out request is in flight; its actions are disabled. */
+  busyRoomId?: string | null;
+  onOpenWhatsApp: (room: BoardRoom) => void;
+  onMarkPaid: (room: BoardRoom) => void;
+  onEndTenancy: (room: BoardRoom) => void;
   /** Optional controlled status filter (the dashboard KPI tiles drive it). */
   filterStatus?: RoomStatus | 'all';
   onFilterStatusChange?: (status: RoomStatus | 'all') => void;
 }
 
 export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
-  kos,
+  kosName,
+  rooms,
+  busyRoomId,
   onOpenWhatsApp,
-  onOpenKuitansi,
-  onFastIntake,
+  onMarkPaid,
+  onEndTenancy,
   filterStatus: controlledStatus,
   onFilterStatusChange,
 }) => {
-  const { updateRoomStatus } = useAppStore();
   const [internalStatus, setInternalStatus] = useState<RoomStatus | 'all'>('all');
   const [selectedFloor, setSelectedFloor] = useState<number | 'all'>('all');
 
   const filterStatus = controlledStatus ?? internalStatus;
   const setFilterStatus = onFilterStatusChange ?? setInternalStatus;
 
-  const formatRupiah = (val: number) =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+  const floors = Array.from(new Set(rooms.map((r) => r.floor))).sort((a, b) => a - b);
 
-  const floors = Array.from(new Set(kos.rooms.map((r) => r.floor))).sort((a, b) => a - b);
-
-  const filteredRooms = kos.rooms.filter((room) => {
+  const filteredRooms = rooms.filter((room) => {
     const matchesStatus = filterStatus === 'all' || room.status === filterStatus;
     const matchesFloor = selectedFloor === 'all' || room.floor === selectedFloor;
     return matchesStatus && matchesFloor;
@@ -61,7 +57,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
   const visibleFloors = floors.filter((f) => filteredRooms.some((r) => r.floor === f));
 
   const countFor = (status: RoomStatus | 'all') =>
-    status === 'all' ? kos.rooms.length : kos.rooms.filter((r) => r.status === status).length;
+    status === 'all' ? rooms.length : rooms.filter((r) => r.status === status).length;
 
   const statusFilters: { id: RoomStatus | 'all'; label: string }[] = [
     { id: 'all', label: 'Semua' },
@@ -76,8 +72,11 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
 
   const statusClass = (s: RoomStatus) => (s === 'vacant' ? 'kobo-status kobo-status--hollow' : 'kobo-status');
 
-  const renderPrimaryAction = (room: Room) => {
-    const btnClass = 'kobo-icon-btn kobo-icon-btn--sm kobo-icon-btn--ghost';
+  const btnClass = 'kobo-icon-btn kobo-icon-btn--sm kobo-icon-btn--ghost';
+
+  /** The one-click action beside the status. Vacant rooms have none: a room fills through a real booking. */
+  const renderPrimaryAction = (room: BoardRoom) => {
+    const busy = busyRoomId === room.id;
     switch (room.status) {
       case 'overdue':
       case 'due':
@@ -93,41 +92,31 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
           </button>
         );
       case 'paid':
-        return (
-          <button
-            type="button"
+        return room.lastReceipt ? (
+          <Link
+            to={`/kuitansi/${room.lastReceipt.receiptNumber}`}
             className={btnClass}
             aria-label={`Lihat kuitansi Kamar ${room.roomNumber}`}
             title="Kuitansi"
-            onClick={() => onOpenKuitansi(room)}
           >
             <FileText size={15} />
-          </button>
-        );
-      case 'vacant':
-        return (
-          <button
-            type="button"
-            className={btnClass}
-            aria-label={`Check-in penghuni Kamar ${room.roomNumber}`}
-            title="Check-in penghuni"
-            onClick={() => onFastIntake(room)}
-          >
-            <UserPlus size={15} />
-          </button>
-        );
+          </Link>
+        ) : null;
       case 'booking':
-        return (
+        return room.invoice ? (
           <button
             type="button"
             className={btnClass}
-            aria-label={`Aktivasi booking Kamar ${room.roomNumber} menjadi Lunas`}
-            title="Aktivasi menjadi Lunas"
-            onClick={() => updateRoomStatus(kos.id, room.id, 'paid')}
+            disabled={busy}
+            aria-label={`Tandai Lunas Kamar ${room.roomNumber}`}
+            title="Tandai Lunas dan aktifkan sewa"
+            onClick={() => onMarkPaid(room)}
           >
             <CheckCircle2 size={15} />
           </button>
-        );
+        ) : null;
+      default:
+        return null;
     }
   };
 
@@ -147,7 +136,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
             Status Kamar
           </h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-            {kos.rooms.length} kamar. Pantau pembayaran, kirim tagihan, dan terbitkan kuitansi.
+            {rooms.length} kamar. Pantau pembayaran, kirim tagihan, dan terbitkan kuitansi.
           </p>
         </div>
 
@@ -184,7 +173,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
       <div className="kobo-table-wrap">
         <table className="kobo-table">
           <caption style={{ captionSide: 'top', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
-            Daftar kamar {kos.name} per lantai beserta penghuni, jatuh tempo, dan status pembayaran.
+            Daftar kamar {kosName} per lantai beserta penghuni, jatuh tempo, dan status pembayaran.
           </caption>
           <thead>
             <tr>
@@ -214,13 +203,13 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                   .filter((r) => r.floor === floor)
                   .map((room) => {
                     const isVacant = room.status === 'vacant';
-                    const late = room.daysOverdue && room.daysOverdue > 0 ? room.daysOverdue : 0;
+                    const late = room.daysOverdue;
                     return (
                       <tr key={room.id}>
                         <td>
                           <div className="kobo-table__strong">Kamar {room.roomNumber}</div>
                           <div className="kobo-table__muted" style={{ fontSize: '0.75rem' }}>
-                            {room.roomType} · {room.size}
+                            {room.type} · {room.size}
                           </div>
                         </td>
                         <td className="kobo-table__num kobo-table__right">{formatRupiah(room.priceMonthly)}</td>
@@ -229,10 +218,10 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             <span className="kobo-table__muted" aria-label="Belum ada penghuni">&mdash;</span>
                           ) : (
                             <>
-                              <div className="kobo-table__strong">{room.tenantName || 'Penghuni Aktif'}</div>
-                              {room.tenantCampus && (
+                              <div className="kobo-table__strong">{room.tenant?.name || 'Penghuni Aktif'}</div>
+                              {room.tenant?.campus && (
                                 <div className="kobo-table__muted" style={{ fontSize: '0.75rem' }}>
-                                  {room.tenantCampus}
+                                  {room.tenant.campus}
                                 </div>
                               )}
                             </>
@@ -243,7 +232,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             <span className="kobo-table__muted" aria-label="Tidak ada jatuh tempo">&mdash;</span>
                           ) : (
                             <>
-                              <span className="kobo-table__num">{formatDueDate(room.dueDate)}</span>
+                              <span className="kobo-table__num">{formatDueDate(room.invoice?.dueDate)}</span>
                               {late > 0 && (
                                 <div style={{ color: 'var(--status-overdue)', fontSize: '0.75rem', fontWeight: 700 }}>
                                   Telat {late} hari
@@ -261,47 +250,72 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                         <td>
                           <div className="kobo-table__actions">
                             {renderPrimaryAction(room)}
-                            <Popover
-                              role="menu"
-                              label={`Ubah status Kamar ${room.roomNumber}`}
-                              panelClassName="kobo-menu"
-                              trigger={(p) => (
-                                <button
-                                  {...p}
-                                  type="button"
-                                  className="kobo-icon-btn kobo-icon-btn--sm kobo-icon-btn--ghost"
-                                  aria-label={`Aksi lainnya Kamar ${room.roomNumber}`}
-                                  title="Ubah status"
-                                >
-                                  <MoreHorizontal size={15} />
-                                </button>
-                              )}
-                            >
-                              {({ close }) => (
-                                <>
-                                  {STATUS_ORDER.map((s) => (
+                            {!isVacant && (
+                              <Popover
+                                role="menu"
+                                label={`Aksi Kamar ${room.roomNumber}`}
+                                panelClassName="kobo-menu"
+                                trigger={(p) => (
+                                  <button
+                                    {...p}
+                                    type="button"
+                                    className="kobo-icon-btn kobo-icon-btn--sm kobo-icon-btn--ghost"
+                                    aria-label={`Aksi lainnya Kamar ${room.roomNumber}`}
+                                    title="Aksi lainnya"
+                                  >
+                                    <MoreHorizontal size={15} />
+                                  </button>
+                                )}
+                              >
+                                {({ close }) => (
+                                  <>
+                                    {room.invoice && (
+                                      <button
+                                        type="button"
+                                        role="menuitem"
+                                        disabled={busyRoomId === room.id}
+                                        onClick={() => {
+                                          onMarkPaid(room);
+                                          close();
+                                        }}
+                                      >
+                                        Tandai Lunas
+                                      </button>
+                                    )}
+                                    {(room.status === 'due' || room.status === 'overdue') && (
+                                      <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          onOpenWhatsApp(room);
+                                          close();
+                                        }}
+                                      >
+                                        Kirim Tagihan WhatsApp
+                                      </button>
+                                    )}
+                                    {room.lastReceipt && (
+                                      <Link to={`/kuitansi/${room.lastReceipt.receiptNumber}`} role="menuitem" className="kobo-menu__link" onClick={close}>
+                                        Lihat Kuitansi
+                                      </Link>
+                                    )}
+                                    <div className="kobo-menu__sep" role="separator" />
                                     <button
-                                      key={s}
                                       type="button"
-                                      role="menuitemradio"
-                                      aria-checked={room.status === s}
+                                      role="menuitem"
+                                      disabled={busyRoomId === room.id}
+                                      style={{ color: 'var(--status-overdue)' }}
                                       onClick={() => {
-                                        updateRoomStatus(kos.id, room.id, s);
+                                        onEndTenancy(room);
                                         close();
                                       }}
                                     >
-                                      <span
-                                        className={statusClass(s)}
-                                        style={{ ['--dot' as string]: STATUS_META[s].dot, color: 'inherit' }}
-                                      >
-                                        <span className="kobo-status__dot" aria-hidden="true" />
-                                        Ubah ke {STATUS_META[s].label}
-                                      </span>
+                                      {room.status === 'booking' ? 'Batalkan Booking' : 'Akhiri Sewa'}
                                     </button>
-                                  ))}
-                                </>
-                              )}
-                            </Popover>
+                                  </>
+                                )}
+                              </Popover>
+                            )}
                           </div>
                         </td>
                       </tr>

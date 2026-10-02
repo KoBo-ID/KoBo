@@ -10,9 +10,25 @@ import {
   FileText,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { Notice } from '../../components/ui/Notice';
+import { useSession } from '../../lib/session';
+import { useBecomeOwner } from '../../lib/owner';
+import { useAppStore } from '../../store/AppContext';
 
 export const OwnerLogin: React.FC = () => {
   const navigate = useNavigate();
+  const { me, isLoading } = useSession();
+  const { openAuthModal } = useAppStore();
+  const { becomeOwner, isPending, error } = useBecomeOwner();
+  const isDemo = !!me?.user.isDemo;
+
+  // One CTA, three meanings: sign in, open the workspace, or self-register as an owner.
+  const ctaLabel = !me ? 'Masuk untuk Mendaftar sebagai Pemilik' : me.isOwner ? 'Lanjut ke Dashboard Pemilik' : 'Daftarkan diri sebagai pemilik';
+  const onCta = () => {
+    if (!me) openAuthModal();
+    else if (me.isOwner) navigate('/owner/dashboard');
+    else void becomeOwner();
+  };
 
   const features = [
     { icon: <LayoutDashboard size={16} />, text: 'Papan Okupansi 5 Status Kamar' },
@@ -85,14 +101,14 @@ export const OwnerLogin: React.FC = () => {
             }}
           >
             <ShieldCheck size={14} />
-            <span>Akses Terbatas — Pemilik Properti Terverifikasi</span>
+            <span>Gratis untuk Pemilik Properti Kos</span>
           </div>
 
           <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.025em', marginBottom: '0.5rem' }}>
             Masuk ke Portal Pemilik Kos
           </h1>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '2rem' }}>
-            Ruang kerja ini hanya dapat diakses oleh pemilik properti kos yang telah terdaftar dan diverifikasi oleh tim KoBo.
+            Daftarkan akun Anda sebagai pemilik, lalu kelola kamar, tagihan, dan kuitansi kos Anda dari satu dashboard. Gratis.
           </p>
 
           {/* Feature highlights */}
@@ -127,10 +143,17 @@ export const OwnerLogin: React.FC = () => {
             icon={<ArrowRight size={18} />}
             iconPosition="right"
             style={{ width: '100%', justifyContent: 'center' }}
-            onClick={() => navigate('/owner/dashboard')}
+            isLoading={isPending}
+            disabled={isLoading || isPending || (isDemo && !me?.isOwner)}
+            onClick={onCta}
           >
-            Lanjut ke Dashboard Pemilik
+            {ctaLabel}
           </Button>
+          {error && (
+            <div style={{ marginTop: '1rem' }}>
+              <Notice tone="error">{error}</Notice>
+            </div>
+          )}
 
           <p
             style={{
@@ -140,10 +163,7 @@ export const OwnerLogin: React.FC = () => {
               marginTop: '1rem',
             }}
           >
-            Belum terdaftar sebagai mitra?{' '}
-            <span style={{ color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}>
-              Hubungi tim KoBo
-            </span>
+            {isDemo && !me?.isOwner ? 'Akun demo tidak dapat didaftarkan. Masuk dengan akun Anda sendiri.' : 'Akun Anda tetap sama untuk mencari kos dan mengelola kos.'}
           </p>
         </div>
 

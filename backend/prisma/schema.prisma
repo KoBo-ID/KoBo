@@ -1,0 +1,353 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// better-auth core models (documented Prisma schema) + KoBo user fields
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String   @id @default(cuid(2))
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
+
+  // KoBo
+  phone                 String?
+  campus                String?
+  campusEmail           String?
+  campusEmailVerifiedAt DateTime? @db.Timestamptz(3)
+  isDemo                Boolean   @default(false)
+
+  sessions     Session[]
+  accounts     Account[]
+  ownerProfile OwnerProfile?
+  tenancies    Tenancy[]
+  visits       Visit[]
+}
+
+model Session {
+  id        String   @id @default(cuid(2))
+  expiresAt DateTime @db.Timestamptz(3)
+  token     String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(cuid(2))
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid(2))
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([identifier])
+}
+
+// ---------------------------------------------------------------------------
+// KoBo domain
+// ---------------------------------------------------------------------------
+
+enum KosGender {
+  CAMPUR
+  PUTRA
+  PUTRI
+}
+
+enum ElectricityType {
+  INCLUDED
+  TOKEN
+}
+
+enum Occupancy {
+  VACANT
+  BOOKED
+  OCCUPIED
+}
+
+enum TenancyStatus {
+  PENDING
+  ACTIVE
+  ENDED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+}
+
+enum PaymentProvider {
+  MOCK
+  MANUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+enum VisitSlot {
+  PAGI
+  SIANG
+}
+
+enum VisitStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Campus {
+  id           String   @id @default(cuid(2))
+  name         String
+  shortName    String
+  city         String
+  lat          Float
+  lng          Float
+  emailDomains String[]
+
+  kos Kos[]
+}
+
+model OwnerProfile {
+  id           String   @id @default(cuid(2))
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio          String?
+  verified     Boolean  @default(false)
+  responseRate String?
+  memberSince  DateTime @default(now()) @db.Timestamptz(3)
+
+  kos Kos[]
+}
+
+model Kos {
+  id       String       @id @default(cuid(2))
+  slug     String       @unique
+  name     String
+  gender   KosGender
+  address  String
+  district String
+  city     String
+  lat      Float
+  lng      Float
+  ownerId  String
+  owner    OwnerProfile @relation(fields: [ownerId], references: [id])
+
+  electricityType       ElectricityType
+  privateAmenities      String[]
+  sharedAmenities       String[]
+  studentDiscountAmount Int             @default(0)
+  applicationFee        Int             @default(25000)
+
+  // Written on create / location edit only. Everything else (rating, price, rooms) is computed on read.
+  nearestCampusId     String?
+  nearestCampus       Campus? @relation(fields: [nearestCampusId], references: [id])
+  nearestCampusMeters Int?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  rooms  Room[]
+  rules  HouseRule[]
+  pois   Poi[]
+  images KosImage[]
+  visits Visit[]
+
+  @@index([ownerId])
+}
+
+model Room {
+  id           String    @id @default(cuid(2))
+  kosId        String
+  kos          Kos       @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  roomNumber   String
+  floor        Int
+  type         String
+  size         String
+  bedType      String
+  priceMonthly Int
+  occupancy    Occupancy @default(VACANT)
+
+  tenancies Tenancy[]
+
+  @@unique([kosId, roomNumber])
+}
+
+model Tenancy {
+  id             String        @id @default(cuid(2))
+  roomId         String
+  room           Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  status         TenancyStatus
+  startDate      DateTime      @db.Timestamptz(3)
+  durationMonths Int
+  expiresAt      DateTime?     @db.Timestamptz(3)
+  endedAt        DateTime?     @db.Timestamptz(3)
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+
+  invoices Invoice[]
+  review   Review?
+
+  @@index([roomId])
+  @@index([userId])
+}
+
+model Invoice {
+  id          String        @id @default(cuid(2))
+  tenancyId   String
+  tenancy     Tenancy       @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  periodStart DateTime      @db.Date
+  dueDate     DateTime      @db.Date
+  amount      Int
+  status      InvoiceStatus @default(UNPAID)
+
+  payments Payment[]
+
+  @@index([tenancyId])
+}
+
+model Payment {
+  id         String          @id @default(cuid(2))
+  invoiceId  String
+  invoice    Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  provider   PaymentProvider
+  externalId String?         @unique
+  receiptNo  Int             @unique @default(autoincrement())
+  amount     Int
+  status     PaymentStatus   @default(PENDING)
+  paidAt     DateTime?       @db.Timestamptz(3)
+  createdAt  DateTime        @default(now()) @db.Timestamptz(3)
+
+  @@index([invoiceId])
+}
+
+model Review {
+  id              String    @id @default(cuid(2))
+  tenancyId       String    @unique
+  tenancy         Tenancy   @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  rating          Int
+  cleanliness     Int?
+  wifi            Int?
+  ownerRating     Int?
+  quietness       Int?
+  comment         String
+  // Snapshot of the author's campus-email verification at write time; never recomputed.
+  verifiedStudent Boolean   @default(false)
+  ownerReply      String?
+  ownerReplyAt    DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+model HouseRule {
+  id            String   @id @default(cuid(2))
+  kosId         String
+  kos           Kos      @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  tier          Int
+  categoryTitle String
+  rules         String[]
+  penaltyAmount Int?
+  penaltyClause String?
+
+  @@index([kosId])
+}
+
+model Poi {
+  id             String @id @default(cuid(2))
+  kosId          String
+  kos            Kos    @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  category       String
+  name           String
+  distanceMeters Int
+  walkMinutes    Int
+  description    String
+
+  @@index([kosId])
+}
+
+model KosImage {
+  id     String  @id @default(cuid(2))
+  kosId  String
+  kos    Kos     @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  // Uploaded photos use `key` (R2 object key); seeded photos keep an external `url`.
+  key    String?
+  url    String?
+  order  Int
+  width  Int?
+  height Int?
+
+  @@index([kosId])
+}
+
+model Visit {
+  id        String      @id @default(cuid(2))
+  kosId     String
+  kos       Kos         @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime    @db.Date
+  timeSlot  VisitSlot
+  status    VisitStatus @default(SCHEDULED)
+  notes     String?
+  createdAt DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@index([kosId])
+  @@index([userId])
+}
+
+model EmailOutbox {
+  id            String       @id @default(cuid(2))
+  to            String
+  template      String
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  nextAttemptAt DateTime     @default(now()) @db.Timestamptz(3)
+  sentAt        DateTime?    @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([status, nextAttemptAt])
+}

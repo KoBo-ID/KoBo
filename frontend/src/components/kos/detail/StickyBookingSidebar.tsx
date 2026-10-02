@@ -36,7 +36,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
     appFee;
 
   /* Height budget @1280x720 (worst case: discounted kos, 4 fee lines).
-     price 44 + lease 52 + fees 126 (4 lines + sep + KTM caption) + CTAs 100
+     price 44 + lease 52 + fees 126 (4 lines + sep + campus caption) + CTAs 100
      + trust 28 = 350 content, + 4 gaps x 14 = 56, + padding 48  =>  ~454px.
      Sticky window = 720 - 72 header - 24 top offset ~= 504px, so the card
      clears it with ~50px to spare and paddingBottom keeps a visible gap.
@@ -137,7 +137,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                 <GraduationCap size={13} />
-                Diskon Mahasiswa (KTM)
+                Diskon Mahasiswa
               </span>
               <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
                 -{formatRupiah(kos.studentDiscountAmount * leaseMonths)}
@@ -155,7 +155,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           </div>
           {hasDiscount && (
             <p style={{ fontSize: '0.7rem', color: 'var(--text-subtle)', margin: '0.15rem 0 0' }}>
-              Diskon aktif otomatis setelah verifikasi KTM.
+              Diskon aktif otomatis setelah verifikasi email kampus.
             </p>
           )}
         </div>

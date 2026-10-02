@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
   User,
   LogOut,
   Calendar,
   CheckCircle2,
+  Building2,
+  LogIn,
 } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
+import { useScheduledVisitCount } from '../../lib/visits';
+import { useAuthActions, useSession } from '../../lib/session';
+import { useLiveTenancyCount } from '../../lib/booking';
 
 interface NavbarProps {
   onOpenAuth?: () => void;
@@ -15,7 +20,10 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
   const location = useLocation();
-  const { currentUser, rentals, visits } = useAppStore();
+  const navigate = useNavigate();
+  const { addToast } = useAppStore();
+  const { me } = useSession();
+  const { logout } = useAuthActions();
 
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
@@ -44,13 +52,27 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
   }, [isHome]);
   const solid = !overHero;
 
-  const chipFill = solid ? 'var(--bg-muted)' : 'rgba(255, 255, 255, 0.3)';
+  // The chips exist to lift the controls off the hero art. Once the bar itself
+  // is solid they are redundant, so they fade out entirely rather than sitting
+  // as grey blocks on a white bar.
+  const chipFill = solid ? 'transparent' : 'rgba(255, 255, 255, 0.3)';
   const chipBorder = solid ? 'transparent' : 'rgba(255, 255, 255, 0.6)';
   const fade =
     'background-color var(--duration-normal) ease, border-color var(--duration-normal) ease, backdrop-filter var(--duration-normal) ease';
 
-  const activeRentalsCount = rentals.filter((r) => r.paymentStatus === 'paid').length;
-  const activeVisitsCount = visits.filter((v) => v.status === 'scheduled').length;
+  const handleLogout = async () => {
+    setProfileDropdownOpen(false);
+    try {
+      await logout();
+      addToast('Anda telah keluar.', 'info');
+      navigate('/');
+    } catch {
+      addToast('Gagal keluar. Silakan coba lagi.', 'error');
+    }
+  };
+
+  const activeRentalsCount = useLiveTenancyCount();
+  const activeVisitsCount = useScheduledVisitCount();
 
   return (
     <header
@@ -83,9 +105,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.65rem',
+            gap: '0.6rem',
             textDecoration: 'none',
             flexShrink: 0,
+            /* Same chip treatment as "Kos Saya". Padding and radius are applied
+               in BOTH states so only the colours cross-fade and the logo never
+               shifts position. */
+            padding: '0.3rem 0.8rem 0.3rem 0.5rem',
+            borderRadius: '12px',
+            backgroundColor: chipFill,
+            border: `1px solid ${chipBorder}`,
+            backdropFilter: solid ? 'none' : 'blur(6px)',
+            transition: fade,
           }}
         >
           {/* The favicon mark is already brand teal on transparent, so it needs
@@ -153,7 +184,34 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
             )}
           </Link>
 
+          {/* Logged out: a single sign-in chip. Logged in: avatar + menu. */}
+          {!me && (
+            <button
+              type="button"
+              onClick={() => onOpenAuth?.()}
+              className="interactive-tap"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontSize: '0.875rem',
+                fontWeight: 700,
+                color: 'var(--primary)',
+                padding: '0.5rem 0.9rem',
+                borderRadius: '10px',
+                backgroundColor: chipFill,
+                border: `1px solid ${chipBorder}`,
+                backdropFilter: solid ? 'none' : 'blur(6px)',
+                transition: fade,
+              }}
+            >
+              <LogIn size={16} />
+              <span>Masuk</span>
+            </button>
+          )}
+
           {/* User Profile Trigger */}
+          {me && (
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setProfileDropdownOpen((prev) => !prev)}
@@ -171,17 +229,38 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                 transition: fade,
               }}
             >
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: profileDropdownOpen ? '2px solid var(--primary)' : '2px solid var(--border-subtle)',
-                }}
-              />
+              {me.user.image ? (
+                <img
+                  src={me.user.image}
+                  alt={me.user.name}
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: profileDropdownOpen ? '2px solid var(--primary)' : '2px solid var(--border-subtle)',
+                  }}
+                />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--primary-light)',
+                    color: 'var(--primary)',
+                    fontSize: '0.8rem',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: profileDropdownOpen ? '2px solid var(--primary)' : '2px solid var(--border-subtle)',
+                  }}
+                >
+                  {me.user.name.trim().charAt(0).toUpperCase()}
+                </span>
+              )}
             </button>
 
             {/* Dropdown Menu */}
@@ -203,12 +282,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
               >
                 <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
                   <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                    {currentUser.name}
+                    {me!.user.name}
                   </p>
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {currentUser.email}
+                    {me!.user.email}
                   </p>
-                  {currentUser.ktmVerified && (
+                  {me!.campusVerified && (
                     <div
                       style={{
                         display: 'flex',
@@ -221,10 +300,29 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                       }}
                     >
                       <CheckCircle2 size={13} />
-                      <span>Identitas Terverifikasi</span>
+                      <span>Mahasiswa Terverifikasi</span>
                     </div>
                   )}
                 </div>
+
+                {me!.isOwner && (
+                  <Link
+                    to="/owner/dashboard"
+                    onClick={() => setProfileDropdownOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.65rem',
+                      padding: '0.65rem 1rem',
+                      fontSize: '0.875rem',
+                      color: 'var(--text-main)',
+                    }}
+                    className="interactive-tap"
+                  >
+                    <Building2 size={16} color="var(--text-muted)" />
+                    <span>Ruang Kerja Pemilik</span>
+                  </Link>
+                )}
 
                 <Link
                   to="/profile"
@@ -240,7 +338,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                   className="interactive-tap"
                 >
                   <User size={16} color="var(--text-muted)" />
-                  <span>Profil &amp; Verifikasi KTM</span>
+                  <span>Profil &amp; Email Kampus</span>
                 </Link>
 
                 <Link
@@ -263,10 +361,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                 <div style={{ height: '1px', backgroundColor: 'var(--border-subtle)', margin: '0.35rem 0' }} />
 
                 <button
-                  onClick={() => {
-                    setProfileDropdownOpen(false);
-                    if (onOpenAuth) onOpenAuth();
-                  }}
+                  onClick={handleLogout}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -280,11 +375,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                   className="interactive-tap"
                 >
                   <LogOut size={16} />
-                  <span>Ganti Akun / Masuk</span>
+                  <span>Keluar</span>
                 </button>
               </div>
             )}
           </div>
+          )}
         </nav>
       </div>
     </header>

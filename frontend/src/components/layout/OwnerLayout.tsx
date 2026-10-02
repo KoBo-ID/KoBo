@@ -1,5 +1,6 @@
 import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   Building2,
   LayoutDashboard,
@@ -9,13 +10,71 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
+import { useAuthActions, useSession } from '../../lib/session';
+import { useTRPC } from '../../lib/trpc';
+import { pickKos } from '../../lib/ownerWorkspace';
+import type { OwnerWorkspace } from '../../lib/ownerWorkspace';
+import { ErrorState } from '../ui/QueryState';
 import { MobileNav } from './MobileNav';
+import { DemoNotice } from './DemoNotice';
 import { Popover } from '../ui/Popover';
 
 export const OwnerLayout: React.FC = () => {
-  const { kosList, selectedOwnerKosId, setSelectedOwnerKosId, currentUser } = useAppStore();
+  const { addToast } = useAppStore();
+  const trpc = useTRPC();
+  const [params, setParams] = useSearchParams();
+  const kosQuery = useQuery(trpc.owner.myKos.queryOptions());
+  const kosList = kosQuery.data ?? [];
+  // The selection lives in the URL (`?kos=`), so it survives reloads and can be linked.
+  const selectedKos = pickKos(kosList, params.get('kos'));
+  const selectKos = (id: string) => {
+    const next = new URLSearchParams(params);
+    next.set('kos', id);
+    setParams(next, { replace: true });
+  };
+  const navSearch = selectedKos ? `?kos=${encodeURIComponent(selectedKos.id)}` : '';
+  const workspace: OwnerWorkspace = { kosList, selectedKos, selectKos };
+  const { me } = useSession();
+  const { logout } = useAuthActions();
+  const navigate = useNavigate();
+  // OwnerGuard only renders this layout for a signed-in owner, so `me` is set; the fallbacks cover the sign-out frame.
+  const userName = me?.user.name ?? '';
+  const userImage = me?.user.image ?? null;
+  const initial = userName.trim().charAt(0).toUpperCase();
 
-  const selectedKos = kosList.find((k) => k.id === selectedOwnerKosId) || kosList[0];
+  const handleLogout = async () => {
+    try {
+      await logout();
+      addToast('Anda telah keluar.', 'info');
+      navigate('/');
+    } catch {
+      addToast('Gagal keluar. Silakan coba lagi.', 'error');
+    }
+  };
+
+  const avatar = (size: number) =>
+    userImage ? (
+      <img src={userImage} alt={userName} style={{ width: `${size}px`, height: `${size}px`, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+    ) : (
+      <span
+        aria-hidden="true"
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          borderRadius: '50%',
+          backgroundColor: 'var(--primary-light)',
+          color: 'var(--primary)',
+          fontWeight: 800,
+          fontSize: '0.8rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        {initial}
+      </span>
+    );
 
   const renderKosPicker = (minWidth = '0', anchorClassName?: string) => (
     <Popover
@@ -35,7 +94,7 @@ export const OwnerLayout: React.FC = () => {
               width; without it the label forces the button past the 200px
               sidebar content box and overflows the rail. */}
           <span className="truncate-1" style={{ minWidth: 0 }}>
-            {selectedKos?.name}
+            {selectedKos?.name ?? 'Belum ada kos'}
           </span>
           <ChevronDown size={14} />
         </button>
@@ -43,6 +102,9 @@ export const OwnerLayout: React.FC = () => {
     >
       {({ close }) => (
         <>
+          {kosList.length === 0 && (
+            <span style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Belum ada kos terdaftar.</span>
+          )}
           {kosList.map((kos) => (
             <button
               key={kos.id}
@@ -50,12 +112,12 @@ export const OwnerLayout: React.FC = () => {
               role="menuitemradio"
               aria-checked={kos.id === selectedKos?.id}
               onClick={() => {
-                setSelectedOwnerKosId(kos.id);
+                selectKos(kos.id);
                 close();
               }}
             >
               <span style={{ flex: 1 }}>{kos.name}</span>
-              <span style={{ color: 'var(--text-subtle)', fontWeight: 500 }}>{kos.rooms.length} kamar</span>
+              <span style={{ color: 'var(--text-subtle)', fontWeight: 500 }}>{kos.totalRooms} kamar</span>
             </button>
           ))}
         </>
@@ -136,7 +198,7 @@ export const OwnerLayout: React.FC = () => {
           {navItems.map((item) => (
             <NavLink
               key={item.to}
-              to={item.to}
+              to={{ pathname: item.to, search: navSearch }}
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',
@@ -159,21 +221,20 @@ export const OwnerLayout: React.FC = () => {
         {/* Bottom: User Identity + Logout — NO "Portal Mahasiswa" link */}
         <div style={{ padding: '1rem', borderTop: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-muted)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', padding: '0 0.25rem' }}>
-            <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
-              style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-            />
+            {avatar(32)}
             <div style={{ overflow: 'hidden', flex: 1 }}>
               <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-main)' }} className="truncate-1">
-                {currentUser.name}
+                {userName}
               </div>
               <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600 }}>
                 Mitra Pemilik Aktif
               </div>
             </div>
             <button
+              type="button"
               title="Keluar"
+              aria-label="Keluar"
+              onClick={handleLogout}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -241,13 +302,9 @@ export const OwnerLayout: React.FC = () => {
 
           {/* Mobile: current user avatar only */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
-              style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }}
-            />
+            {avatar(30)}
             <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>
-              {currentUser.name.split(' ')[0]}
+              {userName.split(' ')[0]}
             </span>
           </div>
         </header>
@@ -302,14 +359,23 @@ export const OwnerLayout: React.FC = () => {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {selectedKos.rooms.filter(r => r.status !== 'vacant').length}/{selectedKos.rooms.length} terisi
+                {selectedKos.occupiedRooms}/{selectedKos.totalRooms} terisi
               </span>
             )}
           </div>
         </div>
 
+        <DemoNotice />
         <main style={{ flex: 1 }}>
-          <Outlet />
+          {kosQuery.isPending ? (
+            <div role="status" aria-live="polite" style={{ minHeight: '40vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Memuat properti Anda…</span>
+            </div>
+          ) : kosQuery.isError ? (
+            <ErrorState message="Gagal memuat properti Anda." onRetry={() => void kosQuery.refetch()} />
+          ) : (
+            <Outlet context={workspace} />
+          )}
         </main>
       </div>
 

@@ -1,8 +1,12 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AppProvider } from './store/AppContext';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { lazyWithReload } from './lib/lazyWithReload';
+import { TRPCProvider, queryClient, trpcClient } from './lib/trpc';
+import { AppProvider, useAppStore } from './store/AppContext';
 import { StudentLayout } from './components/layout/StudentLayout';
 import { OwnerLayout } from './components/layout/OwnerLayout';
+import { OwnerGuard } from './components/layout/OwnerGuard';
 import { ToastContainer } from './components/ui/Toast';
 
 // Home stays eagerly imported: it is the landing route, so splitting it would
@@ -15,36 +19,54 @@ import { Home } from './pages/Home';
    budget the lazy three.js hero chunk spends. */
 
 // Student / tenant routes
-const Search = lazy(() =>
+const Search = lazyWithReload(() =>
   import('./pages/Search').then((m) => ({ default: m.Search }))
 );
-const Detail = lazy(() =>
+const Detail = lazyWithReload(() =>
   import('./pages/Detail').then((m) => ({ default: m.Detail }))
 );
-const Checkout = lazy(() =>
+const Checkout = lazyWithReload(() =>
   import('./pages/Checkout').then((m) => ({ default: m.Checkout }))
 );
-const MyKos = lazy(() =>
+const MyKos = lazyWithReload(() =>
   import('./pages/MyKos').then((m) => ({ default: m.MyKos }))
 );
-const Profile = lazy(() =>
+const Profile = lazyWithReload(() =>
   import('./pages/Profile').then((m) => ({ default: m.Profile }))
 );
-const OwnerProfile = lazy(() =>
+const OwnerProfile = lazyWithReload(() =>
   import('./pages/OwnerProfile').then((m) => ({ default: m.OwnerProfile }))
 );
-const OwnerLogin = lazy(() =>
+const OwnerLogin = lazyWithReload(() =>
   import('./pages/owner/OwnerLogin').then((m) => ({ default: m.OwnerLogin }))
 );
 
+const ResetPassword = lazyWithReload(() =>
+  import('./pages/ResetPassword').then((m) => ({ default: m.ResetPassword }))
+);
+const VerifyEmail = lazyWithReload(() =>
+  import('./pages/VerifyEmail').then((m) => ({ default: m.VerifyEmail }))
+);
+const Kuitansi = lazyWithReload(() =>
+  import('./pages/Kuitansi').then((m) => ({ default: m.Kuitansi }))
+);
+const NotFound = lazyWithReload(() =>
+  import('./pages/NotFound').then((m) => ({ default: m.NotFound }))
+);
+
+// The sign-in dialog (and, further down the chain, the better-auth client) loads on first open.
+const AuthModal = lazyWithReload(() =>
+  import('./pages/AuthModal').then((m) => ({ default: m.AuthModal }))
+);
+
 // Owner workspace routes
-const OwnerDashboard = lazy(() =>
+const OwnerDashboard = lazyWithReload(() =>
   import('./pages/owner/Dashboard').then((m) => ({ default: m.OwnerDashboard }))
 );
-const KosManager = lazy(() =>
+const KosManager = lazyWithReload(() =>
   import('./pages/owner/KosManager').then((m) => ({ default: m.KosManager }))
 );
-const ReviewsManager = lazy(() =>
+const ReviewsManager = lazyWithReload(() =>
   import('./pages/owner/ReviewsManager').then((m) => ({ default: m.ReviewsManager }))
 );
 
@@ -70,8 +92,20 @@ const RouteFallback: React.FC = () => (
   </div>
 );
 
+const AuthModalHost: React.FC = () => {
+  const { authModalOpen, closeAuthModal } = useAppStore();
+  if (!authModalOpen) return null;
+  return (
+    <Suspense fallback={null}>
+      <AuthModal isOpen onClose={closeAuthModal} />
+    </Suspense>
+  );
+};
+
 export function App() {
   return (
+    <QueryClientProvider client={queryClient}>
+    <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
     <AppProvider>
       <BrowserRouter>
         <Suspense fallback={<RouteFallback />}>
@@ -84,22 +118,31 @@ export function App() {
               <Route path="/checkout/:id" element={<Checkout />} />
               <Route path="/my-kos" element={<MyKos />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/kuitansi/:receiptNo" element={<Kuitansi />} />
               <Route path="/owner/:id" element={<OwnerProfile />} />
               <Route path="/owner/login" element={<OwnerLogin />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/verifikasi-email" element={<VerifyEmail />} />
+              <Route path="*" element={<NotFound />} />
             </Route>
 
             {/* Owner SaaS Workspace Route Tree */}
-            <Route element={<OwnerLayout />}>
-              <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-              <Route path="/owner/kos" element={<KosManager />} />
-              <Route path="/owner/reviews" element={<ReviewsManager />} />
+            <Route element={<OwnerGuard />}>
+              <Route element={<OwnerLayout />}>
+                <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+                <Route path="/owner/kos" element={<KosManager />} />
+                <Route path="/owner/reviews" element={<ReviewsManager />} />
+              </Route>
             </Route>
           </Routes>
         </Suspense>
 
+        <AuthModalHost />
         <ToastContainer />
       </BrowserRouter>
     </AppProvider>
+    </TRPCProvider>
+    </QueryClientProvider>
   );
 }
 

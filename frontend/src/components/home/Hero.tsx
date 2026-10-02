@@ -1,7 +1,8 @@
 import React, { useState, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Building2, MapPin, LocateFixed, X } from 'lucide-react';
-import { useAppStore } from '../../store/AppContext';
+import { useQuery } from '@tanstack/react-query';
+import { useTRPC } from '../../lib/trpc';
 import { PRESET_LOCATIONS } from '../../data/locations';
 import { Button } from '../ui/Button';
 import { HeroScene } from './HeroScene';
@@ -17,7 +18,10 @@ const getDesktopServer = () => false;
 
 export const Hero: React.FC = () => {
   const navigate = useNavigate();
-  const { kosList } = useAppStore();
+  const trpc = useTRPC();
+  // Same query (and cache entry) as FeaturedKos: one request feeds both.
+  const { data } = useQuery(trpc.kos.list.queryOptions());
+  const kosList = data ?? [];
   // Copy is left-aligned beside the canvas on desktop, centred when stacked.
   const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktop, getDesktopServer);
 

@@ -1,14 +1,19 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, Calendar, User, Building2 } from 'lucide-react';
-import { useAppStore } from '../../store/AppContext';
+import { useScheduledVisitCount } from '../../lib/visits';
+import { useLiveTenancyCount } from '../../lib/booking';
+
+const OWNER_WORKSPACE = ['/owner/dashboard', '/owner/kos', '/owner/reviews'];
 
 export const MobileNav: React.FC = () => {
   const location = useLocation();
-  const { activePersona, rentals, visits } = useAppStore();
-  const isOwner = activePersona === 'owner';
+  const rentalsCount = useLiveTenancyCount();
+  // Persona follows the route: the owner workspace gets the owner dock. Access to it is enforced by OwnerGuard.
+  const isOwner = OWNER_WORKSPACE.includes(location.pathname);
 
-  const totalBadges = rentals.filter((r) => r.paymentStatus === 'paid').length + visits.filter((v) => v.status === 'scheduled').length;
+  const visitsCount = useScheduledVisitCount();
+  const totalBadges = rentalsCount + visitsCount;
 
   return (
     <div
@@ -119,7 +124,7 @@ export const MobileNav: React.FC = () => {
       ) : (
         <>
           <Link
-            to="/owner/dashboard"
+            to={{ pathname: '/owner/dashboard', search: location.search }}
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -135,7 +140,7 @@ export const MobileNav: React.FC = () => {
           </Link>
 
           <Link
-            to="/owner/kos"
+            to={{ pathname: '/owner/kos', search: location.search }}
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -151,7 +156,7 @@ export const MobileNav: React.FC = () => {
           </Link>
 
           <Link
-            to="/owner/reviews"
+            to={{ pathname: '/owner/reviews', search: location.search }}
             style={{
               display: 'flex',
               flexDirection: 'column',

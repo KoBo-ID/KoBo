@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   Star,
   MapPin,
-  Heart,
   Share2,
   ShieldCheck,
   Footprints,
@@ -20,23 +20,84 @@ import { GenderBadge, Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { RoomPicker } from '../components/kos/detail/RoomPicker';
 import { StickyBookingSidebar } from '../components/kos/detail/StickyBookingSidebar';
-import { Room } from '../types';
 import { BackButton } from '../components/ui/BackButton';
+import { Avatar } from '../components/ui/Avatar';
+import { ErrorState, NotFoundState } from '../components/ui/QueryState';
+import { useTRPC } from '../lib/trpc';
+import { isNotFound } from '../lib/queryErrors';
+import { kosDetailToKos, reviewsToLegacy } from '../utils/kosDetail';
+import type { KosDetail } from '../../../backend/src/trpc/router';
+
+/** Reserves the final page's footprint (title row, 408px photo mosaic, two columns) so nothing jumps on load. */
+const DetailSkeleton: React.FC = () => {
+  const block = (h: string, extra?: React.CSSProperties) => (
+    <div style={{ height: h, backgroundColor: 'var(--bg-muted)', borderRadius: 'var(--radius-lg)', ...extra }} />
+  );
+  return (
+    <div
+      className="app-container"
+      role="status"
+      aria-busy="true"
+      aria-label="Memuat detail kos"
+      style={{ paddingTop: '2rem', paddingBottom: '4rem' }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        {block('1.5rem', { width: '12rem' })}
+        {block('2.6rem', { width: 'min(26rem, 80%)' })}
+        {block('1.2rem', { width: 'min(34rem, 90%)' })}
+      </div>
+      {block('408px')}
+      <div className="detail-split-layout" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2.5rem', marginTop: '2.5rem', alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {block('16rem')}
+          {block('7rem')}
+          {block('14rem')}
+        </div>
+        {block('28rem')}
+      </div>
+    </div>
+  );
+};
 
 export const Detail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id = '' } = useParams<{ id: string }>();
+  const trpc = useTRPC();
+  const { data, isPending, error, refetch } = useQuery(trpc.kos.detail.queryOptions({ id }));
+
+  if (isPending) return <DetailSkeleton />;
+  if (error) {
+    if (isNotFound(error)) {
+      return (
+        <NotFoundState
+          title="Kos tidak ditemukan"
+          text="Kos yang Anda cari tidak ada atau sudah tidak tersedia. Coba cari kos lain."
+          linkTo="/search"
+          linkLabel="Cari Kos Lain"
+        />
+      );
+    }
+    return (
+      <div className="app-container" style={{ paddingTop: '2rem' }}>
+        <ErrorState message="Gagal memuat detail kos. Periksa koneksi Anda lalu coba lagi." onRetry={() => void refetch()} />
+      </div>
+    );
+  }
+  // key: switching between kos resets the room and lease selection.
+  return <DetailView key={data.id} detail={data} />;
+};
+
+const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
   const navigate = useNavigate();
-  const { kosList, currentUser, toggleWishlist, addToast } = useAppStore();
+  const { addToast } = useAppStore();
 
-  const kos = kosList.find((k) => k.id === id) || kosList[0];
+  const kos = useMemo(() => kosDetailToKos(detail), [detail]);
+  const reviews = useMemo(() => reviewsToLegacy(detail), [detail]);
 
-  const [selectedRoom, setSelectedRoom] = useState<Room>(
-    kos.rooms.find((r) => r.status === 'vacant') || kos.rooms[0]
-  );
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const selectedRoom =
+    kos.rooms.find((r) => r.id === selectedRoomId) ?? kos.rooms.find((r) => r.status === 'vacant') ?? kos.rooms[0];
   const [surveyModalOpen, setSurveyModalOpen] = useState(false);
   const [leaseMonths, setLeaseMonths] = useState<number>(1);
-
-  const isSaved = currentUser.savedKosIds.includes(kos.id);
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -44,6 +105,7 @@ export const Detail: React.FC = () => {
   };
 
   const handleGoToCheckout = () => {
+    if (!selectedRoom) return;
     navigate(`/checkout/${kos.id}?room=${selectedRoom.id}&duration=${leaseMonths}`);
   };
 
@@ -91,7 +153,7 @@ export const Detail: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.4rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 700, color: 'var(--text-main)' }}>
                 <Star size={16} fill="var(--accent)" color="var(--accent)" />
-                <span>{kos.rating}</span>
+                <span>{detail.rating ?? '–'}</span>
                 <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({kos.reviewCount} ulasan)</span>
               </div>
               <span>·</span>
@@ -110,14 +172,6 @@ export const Detail: React.FC = () => {
               icon={<Share2 size={16} />}
             >
               Bagikan
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => toggleWishlist(kos.id)}
-              icon={<Heart size={16} fill={isSaved ? 'var(--status-overdue)' : 'none'} color={isSaved ? 'var(--status-overdue)' : 'currentColor'} />}
-            >
-              {isSaved ? 'Tersimpan' : 'Simpan'}
             </Button>
           </div>
         </div>
@@ -140,11 +194,11 @@ export const Detail: React.FC = () => {
         {/* Left Column (65% on Desktop) */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Room Picker Section */}
-          <RoomPicker
-            rooms={kos.rooms}
-            selectedRoom={selectedRoom}
-            onSelectRoom={setSelectedRoom}
-          />
+          {selectedRoom ? (
+            <RoomPicker rooms={kos.rooms} selectedRoom={selectedRoom} onSelectRoom={(r) => setSelectedRoomId(r.id)} />
+          ) : (
+            <p style={{ color: 'var(--text-muted)' }}>Belum ada kamar yang terdaftar untuk kos ini.</p>
+          )}
 
           <hr className="section-divider" />
 
@@ -164,16 +218,11 @@ export const Detail: React.FC = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <img
+              <Avatar
                 src={kos.owner.avatar}
-                alt={kos.owner.name}
-                style={{
-                  width: '56px',
-                  height: '56px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '2px solid var(--primary-light)',
-                }}
+                name={kos.owner.name}
+                size={56}
+                style={{ border: '2px solid var(--primary-light)' }}
               />
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -219,20 +268,24 @@ export const Detail: React.FC = () => {
           {/* Verified Student Reviews */}
           <ReviewsSection
             kosId={kos.id}
-            ratingOverall={kos.rating}
-            reviewCount={kos.reviewCount}
+            ratingOverall={detail.rating}
+            reviewCount={detail.reviewCount}
+            subRatings={detail.subRatings}
+            reviews={reviews}
           />
         </div>
 
         {/* Right Column: Sticky Booking Widget (35% on Desktop) */}
-        <StickyBookingSidebar
-          kos={kos}
-          selectedRoom={selectedRoom}
-          leaseMonths={leaseMonths}
-          onSelectLeaseMonths={setLeaseMonths}
-          onGoToCheckout={handleGoToCheckout}
-          onOpenSurveyModal={() => setSurveyModalOpen(true)}
-        />
+        {selectedRoom && (
+          <StickyBookingSidebar
+            kos={kos}
+            selectedRoom={selectedRoom}
+            leaseMonths={leaseMonths}
+            onSelectLeaseMonths={setLeaseMonths}
+            onGoToCheckout={handleGoToCheckout}
+            onOpenSurveyModal={() => setSurveyModalOpen(true)}
+          />
+        )}
       </div>
 
       {/* Free Visit Modal */}

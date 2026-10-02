@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Minus, Compass, GraduationCap, Navigation } from 'lucide-react';
-import { Kos } from '../../types';
+import { Kos, LocationPin } from '../../types';
 import { useAppStore } from '../../store/AppContext';
 
 interface InteractiveMapProps {
   kosList: Kos[];
+  /** Search reference point (filters live in the URL now, not the store). */
+  activeLocation?: LocationPin | null;
   onSelectKos?: (kos: Kos) => void;
   height?: string | number;
 }
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({
   kosList,
+  activeLocation = null,
   onSelectKos,
   height = '100%',
 }) => {
   const navigate = useNavigate();
-  const { hoveredKosId, setHoveredKosId, activeLocation } = useAppStore();
+  const { hoveredKosId, setHoveredKosId } = useAppStore();
   const [zoomLevel, setZoomLevel] = useState(1);
 
   const activeAreaLabel = activeLocation ? activeLocation.label : 'Jakarta Barat';

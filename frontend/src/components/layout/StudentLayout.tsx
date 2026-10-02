@@ -1,24 +1,23 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
 import { MobileNav } from './MobileNav';
-import { AuthModal } from '../../pages/AuthModal';
+import { DemoNotice } from './DemoNotice';
+import { useAppStore } from '../../store/AppContext';
 
 export const StudentLayout: React.FC = () => {
-  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const { openAuthModal } = useAppStore();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <Navbar onOpenAuth={() => setAuthModalOpen(true)} />
+      <Navbar onOpenAuth={openAuthModal} />
+      <DemoNotice />
       <main style={{ flex: 1 }}>
         <Outlet />
       </main>
       <Footer />
       <MobileNav />
-
-      {/* Global Student Auth Modal */}
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </div>
   );
 };

@@ -132,7 +132,7 @@ export const WhyKobo: React.FC = () => (
               </div>
             </div>
   
-            {/* ── Pillar B: KTM Discount – Interactive Price Preview ── */}
+            {/* ── Pillar B: Campus-email discount – Interactive Price Preview ── */}
             <div
               style={{
                 backgroundColor: 'var(--bg-surface)',
@@ -150,11 +150,11 @@ export const WhyKobo: React.FC = () => (
                   Diskon Khusus Pelajar &amp; Mahasiswa
                 </h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                  Verifikasi KTM satu kali. Dapatkan potongan sewa bulanan hingga Rp 150.000/bulan langsung — tanpa kuota, tanpa kode promo.
+                  Verifikasi email kampus (.ac.id) satu kali. Dapatkan potongan sewa bulanan hingga Rp 150.000/bulan langsung — tanpa kuota, tanpa kode promo.
                 </p>
               </div>
   
-              {/* Middle: KTM Price Reduction Mockup */}
+              {/* Middle: Student price reduction mockup */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <div
                   style={{
@@ -167,7 +167,7 @@ export const WhyKobo: React.FC = () => (
                     gap: '0.55rem',
                   }}
                 >
-                  {/* KTM Verified Badge */}
+                  {/* Campus-verified badge */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <div
                       style={{
@@ -180,7 +180,7 @@ export const WhyKobo: React.FC = () => (
                         letterSpacing: '0.03em',
                       }}
                     >
-                      KTM VERIFIED
+                      KAMPUS TERVERIFIKASI
                     </div>
                     <CheckCircle2 size={15} color="var(--primary)" />
                     <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>Bima Sakti — Binus</span>
@@ -233,7 +233,7 @@ export const WhyKobo: React.FC = () => (
                           fontWeight: 800,
                         }}
                       >
-                        Harga KTM
+                        Harga Mahasiswa
                       </span>
                     </div>
                   </div>

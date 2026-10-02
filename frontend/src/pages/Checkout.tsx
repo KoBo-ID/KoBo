@@ -1,386 +1,335 @@
 import React, { useState } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import {
-  CreditCard,
-  QrCode,
-  ShieldCheck,
-  GraduationCap,
-  Calendar,
-  CheckCircle2,
-  Lock,
-  Building,
-  Footprints,
-} from 'lucide-react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CreditCard, QrCode, ShieldCheck, Lock, Footprints, CheckCircle2, Clock, FlaskConical, FileText } from 'lucide-react';
+import { addDays, computeCheckoutTotal, MAX_LEASE_MONTHS, todayWIB } from '@kobo/shared/domain';
+import { CampusDiscountCard } from '../components/booking/CampusDiscountCard';
 import { useAppStore } from '../store/AppContext';
-import { KtmUploadCard } from '../components/booking/KtmUploadCard';
+import { useSession } from '../lib/session';
+import { useTRPC } from '../lib/trpc';
+import { errorCode } from '../lib/queryErrors';
+import { messageForError } from '../lib/errors';
 import { Button } from '../components/ui/Button';
 import { BackButton } from '../components/ui/BackButton';
 import { Input } from '../components/ui/Input';
+import { Notice } from '../components/ui/Notice';
+import { ErrorState, NotFoundState } from '../components/ui/QueryState';
+import type { BookingCreated, KosDetail } from '../../../backend/src/trpc/router';
+
+type PayMethod = 'bca_va' | 'mandiri_va' | 'qris';
+
+const formatRupiah = (val: number) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+
+const card: React.CSSProperties = {
+  backgroundColor: 'var(--bg-surface)',
+  borderRadius: 'var(--radius-lg)',
+  border: '1px solid var(--border-subtle)',
+  padding: '1.5rem',
+  boxShadow: 'var(--shadow-sm)',
+};
+
+const METHODS: { id: PayMethod; title: string; hint: string; icon: React.ReactNode }[] = [
+  { id: 'bca_va', title: 'BCA Virtual Account', hint: 'Verifikasi instan 24 jam · Bebas biaya admin transfer', icon: <CreditCard size={20} color="var(--primary)" /> },
+  { id: 'mandiri_va', title: 'Mandiri Virtual Account', hint: "Konfirmasi instan via Livin' by Mandiri", icon: <CreditCard size={20} color="var(--primary)" /> },
+  { id: 'qris', title: 'QRIS (Semua E-Wallet & Mobile Banking)', hint: 'GoPay, OVO, Dana, ShopeePay, BCA, Mandiri', icon: <QrCode size={20} color="var(--primary)" /> },
+];
+
+const Row: React.FC<{ label: React.ReactNode; value: React.ReactNode; tone?: 'primary' }> = ({ label, value, tone }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: tone ? 'var(--primary)' : 'var(--text-muted)' }}>
+    <span>{label}</span>
+    <span style={{ fontWeight: 600, color: tone ? 'var(--primary)' : 'var(--text-main)' }}>{value}</span>
+  </div>
+);
 
 export const Checkout: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id = '' } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const trpc = useTRPC();
+  const { data: kos, isPending, error, refetch } = useQuery(trpc.kos.detail.queryOptions({ id }));
 
-  const { kosList, currentUser, createRentalBooking, addToast } = useAppStore();
-
-  const kos = kosList.find((k) => k.id === id) || kosList[0];
+  if (isPending) {
+    return (
+      <div className="app-container" role="status" aria-busy="true" aria-label="Memuat halaman pembayaran" style={{ maxWidth: '960px', paddingTop: '1.5rem', minHeight: '60vh' }}>
+        <div style={{ height: '2.4rem', width: 'min(26rem, 80%)', backgroundColor: 'var(--bg-muted)', borderRadius: 'var(--radius-md)' }} />
+      </div>
+    );
+  }
+  if (error) {
+    if (errorCode(error) === 'NOT_FOUND') {
+      return <NotFoundState title="Kos tidak ditemukan" text="Kos yang ingin Anda pesan tidak ada atau sudah tidak tersedia." linkTo="/search" linkLabel="Cari Kos Lain" />;
+    }
+    return (
+      <div className="app-container" style={{ paddingTop: '2rem' }}>
+        <ErrorState message="Gagal memuat halaman pembayaran. Periksa koneksi Anda lalu coba lagi." onRetry={() => void refetch()} />
+      </div>
+    );
+  }
   const roomId = searchParams.get('room');
-  const durationParam = Number(searchParams.get('duration')) || 1;
+  const room = kos.rooms.find((r) => r.id === roomId);
+  const duration = Math.min(MAX_LEASE_MONTHS, Math.max(1, Math.trunc(Number(searchParams.get('duration'))) || 1));
+  return <CheckoutView key={`${kos.id}:${room?.id}`} kos={kos} room={room ?? null} initialDuration={duration} />;
+};
 
-  const selectedRoom = kos.rooms.find((r) => r.id === roomId) || kos.rooms[0];
+type Kos = KosDetail;
 
-  // Student discount verification state (Benefit 2)
-  const [ktmVerified, setKtmVerified] = useState<boolean>(currentUser.ktmVerified ?? true);
-  const [studentName, setStudentName] = useState(currentUser.name);
-  const [studentPhone, setStudentPhone] = useState(currentUser.phone);
-  const [studentCampus, setStudentCampus] = useState(currentUser.campus || 'Binus University (Syahdan)');
-  const [leaseDuration, setLeaseDuration] = useState<number>(durationParam);
+const CheckoutView: React.FC<{ kos: Kos; room: Kos['rooms'][number] | null; initialDuration: number }> = ({ kos, room, initialDuration }) => {
+  const trpc = useTRPC();
+  const qc = useQueryClient();
+  const { me } = useSession();
+  const { openAuthModal } = useAppStore();
 
-  // Payment Selection
-  const [paymentType, setPaymentType] = useState<'bca_va' | 'mandiri_va' | 'qris'>('bca_va');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const today = todayWIB(new Date());
+  const [startDate, setStartDate] = useState(() => addDays(today, 1));
+  const [duration, setDuration] = useState(initialDuration);
+  const [method, setMethod] = useState<PayMethod>('bca_va');
+  const [booking, setBooking] = useState<BookingCreated | null>(null);
+  const [conflict, setConflict] = useState<string | null>(null);
 
-  const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
+  const create = useMutation(
+    trpc.booking.create.mutationOptions({
+      onSuccess: (res) => {
+        setConflict(null);
+        setBooking(res);
+        void qc.invalidateQueries({ queryKey: trpc.kos.detail.queryKey({ id: kos.id }) });
+        void qc.invalidateQueries({ queryKey: trpc.booking.mine.queryKey() });
+      },
+      onError: (e) => {
+        if (errorCode(e) === 'CONFLICT') {
+          // Someone else took the room: refresh availability so the kos page shows it as taken.
+          void qc.invalidateQueries({ queryKey: trpc.kos.detail.queryKey({ id: kos.id }) });
+        }
+      },
+    }),
+  );
+  const simulate = useMutation(trpc.payment.simulate.mutationOptions());
+  const paymentId = booking?.payment.id ?? '';
+  const status = useQuery({
+    ...trpc.payment.status.queryOptions({ paymentId }),
+    enabled: !!booking,
+    refetchInterval: (q) => (q.state.data?.status === 'PAID' ? false : 2500),
+    staleTime: 0,
+  });
+  const paid = status.data?.status === 'PAID';
 
-  const baseMonthly = selectedRoom.priceMonthly;
-  const discountAmount = ktmVerified ? kos.studentDiscountAmount : 0;
-  const applicationFee = 25000; // Platform insurance & application fee per idea.md
-  const totalFirstMonth = baseMonthly - discountAmount + applicationFee;
+  React.useEffect(() => {
+    if (paid) {
+      void qc.invalidateQueries({ queryKey: trpc.booking.mine.queryKey() });
+      void qc.invalidateQueries({ queryKey: trpc.kos.detail.queryKey({ id: kos.id }) });
+    }
+  }, [paid, qc, trpc, kos.id]);
 
-  const handlePayNow = (e: React.FormEvent) => {
+  const roomTaken = !room || (room.status !== 'vacant' && !booking);
+  // Preview with the same shared function the server uses; the server's own breakdown replaces it after booking.
+  const preview = room
+    ? computeCheckoutTotal({ monthlyRent: room.priceMonthly, applicationFee: kos.applicationFee, discountAmount: kos.studentDiscountAmount, campusEmailVerified: !!me?.campusVerified })
+    : null;
+  const breakdown = booking?.breakdown ?? preview;
+
+  const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsProcessing(true);
-
-    setTimeout(() => {
-      const now = new Date();
-      const nextDue = new Date();
-      nextDue.setMonth(now.getMonth() + 1);
-
-      createRentalBooking({
-        kosId: kos.id,
-        kosName: kos.name,
-        kosImage: kos.images[0],
-        kosAddress: kos.address,
-        roomId: selectedRoom.id,
-        roomNumber: `${selectedRoom.roomNumber} (Lt. ${selectedRoom.floor})`,
-        studentName,
-        studentPhone,
-        studentCampus,
-        ktmVerified,
-        monthlyRent: baseMonthly,
-        applicationFee,
-        studentDiscount: discountAmount,
-        totalPaid: totalFirstMonth,
-        paymentMethod: paymentType,
-        paymentStatus: 'paid',
-        leaseStartDate: now.toISOString().split('T')[0],
-        leaseDurationMonths: leaseDuration,
-        nextDueDate: nextDue.toISOString().split('T')[0],
-        ownerName: kos.owner.name,
-        ownerPhone: kos.owner.phone,
-      });
-
-      setIsProcessing(false);
-      navigate('/my-kos');
-    }, 800);
+    if (!me) {
+      openAuthModal();
+      return;
+    }
+    if (!room) return;
+    setConflict(null);
+    create.mutate(
+      { roomId: room.id, startDate, durationMonths: duration },
+      { onError: (err) => setConflict(messageForError(err)) },
+    );
   };
+
+  const onSimulate = () => {
+    if (!booking) return;
+    simulate.mutate({ paymentId: booking.payment.id }, { onSettled: () => void status.refetch() });
+  };
+
+  if (paid && status.data) {
+    return (
+      <div className="app-container" style={{ maxWidth: '640px', paddingTop: '3rem', paddingBottom: '4rem', textAlign: 'center' }}>
+        <div style={{ ...card, padding: '2.5rem 1.5rem' }} role="status">
+          <CheckCircle2 size={48} color="var(--status-paid)" style={{ margin: '0 auto 1rem' }} />
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Pembayaran Berhasil</h1>
+          <p style={{ color: 'var(--text-muted)', margin: '0.5rem auto 0', maxWidth: '420px' }}>
+            Kamar {room?.roomNumber} di {kos.name} sekarang atas nama Anda. Kuitansi resmi dengan nomor <strong>{status.data.receiptNo}</strong> sudah terbit.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '1.75rem' }}>
+            {status.data.receiptNumber !== null && (
+              <Link to={`/kuitansi/${status.data.receiptNumber}`}>
+                <Button variant="outline" size="md" icon={<FileText size={16} />}>Lihat Kuitansi</Button>
+              </Link>
+            )}
+            <Link to="/my-kos">
+              <Button variant="primary" size="md">Buka Kos Saya</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const label = METHODS.find((m) => m.id === method)!.title;
+  const instruction =
+    booking && (method === 'bca_va' ? booking.payment.instructions.bcaVa : method === 'mandiri_va' ? booking.payment.instructions.mandiriVa : booking.payment.instructions.qris);
 
   return (
     <div className="app-container" style={{ maxWidth: '960px', paddingTop: '1.5rem', paddingBottom: '4rem' }}>
       <div style={{ marginBottom: '2rem' }}>
         <BackButton style={{ marginBottom: '0.5rem' }} />
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-          Formulir Pengajuan Sewa & Pembayaran
-        </h1>
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>Pengajuan Sewa & Pembayaran</h1>
         <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-          Selesaikan data penyewa dan klaim diskon KTM sebelum melakukan transfer.
+          Pilih tanggal masuk dan durasi sewa. Kamar ditahan 24 jam setelah Anda memesan.
         </p>
       </div>
 
-      <form onSubmit={handlePayNow}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr',
-            gap: '2rem',
-            alignItems: 'start',
-          }}
-          className="checkout-split-layout"
-        >
-          {/* Left Form: Tenant Info & KTM & Payment Method */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-            {/* Benefit 2: KTM Upload Card */}
-            <KtmUploadCard
-              studentDiscountAmount={kos.studentDiscountAmount}
-              onVerificationChange={(v) => setKtmVerified(v)}
-              isInitiallyVerified={ktmVerified}
-            />
+      {roomTaken ? (
+        <div style={{ ...card, textAlign: 'center', padding: '2.5rem 1.5rem' }} role="alert">
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Kamar ini sudah tidak tersedia</h2>
+          <p style={{ color: 'var(--text-muted)', margin: '0.4rem auto 1.25rem', maxWidth: '380px' }}>{conflict ?? 'Kamar baru saja dibooking orang lain atau tidak ditemukan.'} Pilih kamar lain di kos ini.</p>
+          <Link to={`/kos/${kos.id}`}>
+            <Button variant="primary" size="md">Pilih Kamar Lain</Button>
+          </Link>
+        </div>
+      ) : (
+        <form onSubmit={submit}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', alignItems: 'start' }} className="checkout-split-layout">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+              <CampusDiscountCard studentDiscountAmount={kos.studentDiscountAmount} compact />
 
-            {/* Tenant Details */}
-            <div
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border-subtle)',
-                padding: '1.5rem',
-                boxShadow: 'var(--shadow-sm)',
-              }}
-            >
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem' }}>
-                Data Diri Penyewa
-              </h3>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                <Input
-                  label="Nama Lengkap Sesuai KTP / KTM"
-                  value={studentName}
-                  onChange={(e) => setStudentName(e.target.value)}
-                  required
-                />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <Input
-                    label="Nomor WhatsApp Aktif"
-                    value={studentPhone}
-                    onChange={(e) => setStudentPhone(e.target.value)}
-                    required
-                  />
-                  <Input
-                    label="Asal Universitas / Kampus"
-                    value={studentCampus}
-                    onChange={(e) => setStudentCampus(e.target.value)}
-                    required
-                  />
+              {!booking ? (
+                <div style={card}>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem' }}>Rencana Sewa</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <Input label="Tanggal Mulai Sewa" type="date" value={startDate} min={today} max={addDays(today, 120)} onChange={(e) => setStartDate(e.target.value)} required />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <label htmlFor="checkout-duration" style={{ fontSize: '0.875rem', fontWeight: 600 }}>Durasi Sewa</label>
+                      <select
+                        id="checkout-duration"
+                        value={duration}
+                        onChange={(e) => setDuration(Number(e.target.value))}
+                        style={{ height: 'var(--control-height)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', padding: '0 0.75rem', backgroundColor: 'var(--bg-surface)', fontSize: '0.95rem' }}
+                      >
+                        {Array.from({ length: MAX_LEASE_MONTHS }, (_, i) => i + 1).map((m) => (
+                          <option key={m} value={m}>{m} bulan</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  {me && (
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.85rem' }}>
+                      Penyewa: <strong>{me.user.name}</strong> ({me.user.email})
+                    </p>
+                  )}
                 </div>
-              </div>
-            </div>
+              ) : null}
 
-            {/* Payment Method Selector */}
-            <div
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border-subtle)',
-                padding: '1.5rem',
-                boxShadow: 'var(--shadow-sm)',
-              }}
-            >
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem' }}>
-                Pilih Metode Pembayaran
-              </h3>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label
-                  className="interactive-tap"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '1rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: `1.5px solid ${paymentType === 'bca_va' ? 'var(--primary)' : 'var(--border-subtle)'}`,
-                    backgroundColor: paymentType === 'bca_va' ? 'var(--primary-light)' : 'var(--bg-surface)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentType === 'bca_va'}
-                      onChange={() => setPaymentType('bca_va')}
-                      style={{ accentColor: 'var(--primary)' }}
-                    />
-                    <div>
-                      <span style={{ fontWeight: 700, fontSize: '0.95rem', display: 'block' }}>
-                        BCA Virtual Account
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Verifikasi instan 24 jam · Bebas biaya admin transfer
-                      </span>
-                    </div>
-                  </div>
-                  <CreditCard size={20} color="var(--primary)" />
-                </label>
-
-                <label
-                  className="interactive-tap"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '1rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: `1.5px solid ${paymentType === 'mandiri_va' ? 'var(--primary)' : 'var(--border-subtle)'}`,
-                    backgroundColor: paymentType === 'mandiri_va' ? 'var(--primary-light)' : 'var(--bg-surface)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentType === 'mandiri_va'}
-                      onChange={() => setPaymentType('mandiri_va')}
-                      style={{ accentColor: 'var(--primary)' }}
-                    />
-                    <div>
-                      <span style={{ fontWeight: 700, fontSize: '0.95rem', display: 'block' }}>
-                        Mandiri Virtual Account
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Konfirmasi instan via Livin' by Mandiri
-                      </span>
-                    </div>
-                  </div>
-                  <CreditCard size={20} color="var(--primary)" />
-                </label>
-
-                <label
-                  className="interactive-tap"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '1rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: `1.5px solid ${paymentType === 'qris' ? 'var(--primary)' : 'var(--border-subtle)'}`,
-                    backgroundColor: paymentType === 'qris' ? 'var(--primary-light)' : 'var(--bg-surface)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={paymentType === 'qris'}
-                      onChange={() => setPaymentType('qris')}
-                      style={{ accentColor: 'var(--primary)' }}
-                    />
-                    <div>
-                      <span style={{ fontWeight: 700, fontSize: '0.95rem', display: 'block' }}>
-                        QRIS (Semua E-Wallet & Mobile Banking)
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        GoPay, OVO, Dana, ShopeePay, BCA, Mandiri
-                      </span>
-                    </div>
-                  </div>
-                  <QrCode size={20} color="var(--primary)" />
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Summary Card (Sticky) */}
-          <div
-            style={{
-              position: 'sticky',
-              top: 'calc(var(--header-height) + 20px)',
-              backgroundColor: 'var(--bg-surface)',
-              borderRadius: 'var(--radius-xl)',
-              border: '1.5px solid var(--border-strong)',
-              boxShadow: 'var(--shadow-md)',
-              padding: '1.75rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.25rem',
-            }}
-          >
-            {/* Kos Summary Info */}
-            <div style={{ display: 'flex', gap: '1rem', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)' }}>
-              <img
-                src={kos.images[0]}
-                alt={kos.name}
-                style={{
-                  width: '75px',
-                  height: '75px',
-                  borderRadius: 'var(--radius-md)',
-                  objectFit: 'cover',
-                }}
-              />
-              <div>
-                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.3 }}>
-                  {kos.name}
-                </h4>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                  Kamar {selectedRoom.roomNumber} ({selectedRoom.roomType})
-                </p>
-                <p style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.2rem' }}>
-                  <Footprints size={12} /> {kos.campusProximity.distanceMeters}m ke {kos.campusProximity.campusName}
-                </p>
-              </div>
-            </div>
-
-            {/* Rincian Biaya Transparan */}
-            <div>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '0.75rem' }}>
-                Rincian Biaya Transparan (Idea.md)
-              </span>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.875rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
-                  <span>Sewa Kamar 1 Bulan</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{formatRupiah(baseMonthly)}</span>
+              <div style={card}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem' }}>{booking ? 'Instruksi Pembayaran' : 'Pilih Metode Pembayaran'}</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }} role="radiogroup" aria-label="Metode pembayaran">
+                  {METHODS.map((m) => (
+                    <label
+                      key={m.id}
+                      className="interactive-tap"
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderRadius: 'var(--radius-md)', cursor: 'pointer',
+                        border: `1.5px solid ${method === m.id ? 'var(--primary)' : 'var(--border-subtle)'}`,
+                        backgroundColor: method === m.id ? 'var(--primary-light)' : 'var(--bg-surface)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <input type="radio" name="payment" checked={method === m.id} onChange={() => setMethod(m.id)} style={{ accentColor: 'var(--primary)' }} />
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: '0.95rem', display: 'block' }}>{m.title}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{m.hint}</span>
+                        </div>
+                      </div>
+                      {m.icon}
+                    </label>
+                  ))}
                 </div>
 
-                {ktmVerified && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--primary)' }}>
-                    <span>Diskon Mahasiswa Indo (KTM)</span>
-                    <span style={{ fontWeight: 700 }}>- {formatRupiah(discountAmount)}</span>
+                {booking && (
+                  <div style={{ marginTop: '1.25rem', padding: '1rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-page)', border: '1px solid var(--border-subtle)' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>{method === 'qris' ? 'Kode QRIS (contoh)' : `Nomor ${label}`}</span>
+                    <span data-testid="payment-instruction" style={{ fontSize: method === 'qris' ? '0.8rem' : '1.4rem', fontWeight: 800, letterSpacing: method === 'qris' ? 0 : '0.05em', wordBreak: 'break-all' }}>{instruction}</span>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.6rem' }}>
+                      Transfer tepat <strong>{formatRupiah(booking.payment.amount)}</strong>. Status diperbarui otomatis setelah pembayaran diterima.
+                    </p>
+                    <p style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--status-due)', marginTop: '0.4rem' }}>
+                      <Clock size={14} /> Kamar ditahan sampai {new Date(booking.expiresAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
                   </div>
                 )}
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <span>Biaya Aplikasi KoBo</span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--primary)', backgroundColor: 'var(--primary-light)', padding: '0.1rem 0.35rem', borderRadius: 'var(--radius-xs)' }}>
-                      Application Fee
-                    </span>
-                  </div>
-                  <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{formatRupiah(applicationFee)}</span>
-                </div>
-
-                <div style={{ height: '1px', backgroundColor: 'var(--border-subtle)', margin: '0.35rem 0' }} />
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: 800 }}>
-                  <span style={{ color: 'var(--text-main)' }}>Total Tagihan</span>
-                  <span style={{ color: 'var(--primary)' }}>{formatRupiah(totalFirstMonth)}</span>
-                </div>
               </div>
             </div>
 
-            {/* Pay Button */}
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              fullWidth
-              isLoading={isProcessing}
-              icon={<Lock size={16} />}
+            <div
+              style={{
+                position: 'sticky', top: 'calc(var(--header-height) + 20px)', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-xl)',
+                border: '1.5px solid var(--border-strong)', boxShadow: 'var(--shadow-md)', padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
+              }}
             >
-              Bayar Sekarang ({formatRupiah(totalFirstMonth)})
-            </Button>
+              <div style={{ display: 'flex', gap: '1rem', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)' }}>
+                {kos.images[0] && <img src={kos.images[0]} alt={kos.name} style={{ width: '75px', height: '75px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }} />}
+                <div>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.3 }}>{kos.name}</h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Kamar {room!.roomNumber} ({room!.type}) · Lt. {room!.floor}</p>
+                  {kos.nearestCampus && kos.nearestCampusMeters !== null && (
+                    <p style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.2rem' }}>
+                      <Footprints size={12} /> {kos.nearestCampusMeters}m ke {kos.nearestCampus.shortName}
+                    </p>
+                  )}
+                </div>
+              </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
-              <ShieldCheck size={14} color="var(--primary)" />
-              <span>Transaksi Terenkripsi SSL 256-Bit & Sah Resmi</span>
+              {breakdown && (
+                <div>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '0.75rem' }}>
+                    Rincian Tagihan Pertama
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.875rem' }}>
+                    <Row label="Sewa Kamar Bulan Pertama" value={formatRupiah(breakdown.rent)} />
+                    {breakdown.discount > 0 && <Row tone="primary" label="Diskon Mahasiswa" value={`- ${formatRupiah(breakdown.discount)}`} />}
+                    <Row label="Biaya Aplikasi KoBo" value={formatRupiah(breakdown.applicationFee)} />
+                    <div style={{ height: '1px', backgroundColor: 'var(--border-subtle)', margin: '0.35rem 0' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.25rem', fontWeight: 800 }}>
+                      <span>Total Tagihan</span>
+                      <span data-testid="checkout-total" style={{ color: 'var(--primary)' }}>{formatRupiah(breakdown.total)}</span>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
+                      Sewa {duration} bulan: {duration > 1 ? `${duration - 1} tagihan berikutnya ${formatRupiah(breakdown.rent)} per bulan.` : 'tanpa tagihan lanjutan.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {conflict && <Notice tone="error">{conflict}</Notice>}
+              {simulate.isError && <Notice tone="error">{messageForError(simulate.error)}</Notice>}
+
+              {!booking ? (
+                <Button type="submit" variant="primary" size="lg" fullWidth isLoading={create.isPending} icon={<Lock size={16} />}>
+                  {me ? `Pesan & Bayar (${breakdown ? formatRupiah(breakdown.total) : ''})` : 'Masuk untuk Memesan'}
+                </Button>
+              ) : (
+                <Button type="button" variant="accent" size="lg" fullWidth isLoading={simulate.isPending} onClick={onSimulate} icon={<FlaskConical size={16} />}>
+                  Simulasikan Pembayaran
+                </Button>
+              )}
+              {booking && <p style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', textAlign: 'center' }}>Demo: tombol ini meniru notifikasi dari bank. Tidak ada uang sungguhan yang dipindahkan.</p>}
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
+                <ShieldCheck size={14} color="var(--primary)" />
+                <span>Harga dihitung server, bukan browser Anda.</span>
+              </div>
             </div>
           </div>
-        </div>
-      </form>
+        </form>
+      )}
 
       <style>{`
         @media (min-width: 1024px) {
-          .checkout-split-layout {
-            grid-template-columns: 58fr 42fr !important;
-          }
+          .checkout-split-layout { grid-template-columns: 58fr 42fr !important; }
         }
       `}</style>
     </div>

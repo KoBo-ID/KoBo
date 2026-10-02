@@ -1,0 +1,219 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to (re)deploy, e.g. v0.1.1. Use a previous tag to roll back.'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: kobo
+          POSTGRES_PASSWORD: kobo
+          POSTGRES_DB: kobo_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U kobo -d kobo_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://kobo:kobo@localhost:5433/kobo_test
+      SHADOW_DATABASE_URL: postgresql://kobo:kobo@localhost:5433/kobo_shadow
+      DATABASE_URL: postgresql://kobo:kobo@localhost:5433/kobo_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # destructive-DDL gate diffs against the base ref
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck (all workspaces)
+        run: npm run typecheck
+
+      - name: Prisma migrate diff (schema vs migrations)
+        run: |
+          PGPASSWORD=kobo psql -h localhost -p 5433 -U kobo -d postgres -c 'CREATE DATABASE kobo_shadow'
+          npm run db:diff -w backend
+
+      - name: Script tests (destructive-DDL gate)
+        run: npm run test:scripts
+
+      - name: Destructive-DDL gate
+        env:
+          BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+        run: node backend/scripts/check-destructive-ddl.mjs
+
+      - name: Unit and integration tests (vitest)
+        run: npm test
+
+      # Real-R2 contract test (presign -> PUT -> HEAD -> delete) against the kobo-test bucket. Secrets are
+      # unavailable to fork PRs, so it runs only on pushes to main and on tags.
+      - name: R2 contract test
+        if: github.event_name == 'push'
+        env:
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_TEST_BUCKET: ${{ secrets.R2_TEST_BUCKET }}
+          R2_TEST_ACCESS_KEY_ID: ${{ secrets.R2_TEST_ACCESS_KEY_ID }}
+          R2_TEST_SECRET_ACCESS_KEY: ${{ secrets.R2_TEST_SECRET_ACCESS_KEY }}
+        run: npx vitest run tests/contract/r2.test.ts
+        working-directory: backend
+
+      # The e2e suite serves frontend/dist from the production server, so build first.
+      - name: Build SPA
+        run: npm run build
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright Chromium
+        run: |
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+
+      # Dedicated kobo_e2e database on the postgres service; e2e/start-server.mjs runs
+      # migrate deploy + resetDb against it, then starts the production server.
+      - name: E2E smoke (Playwright, Chromium)
+        env:
+          E2E_DATABASE_URL: postgresql://kobo:kobo@localhost:5433/kobo_e2e
+        run: |
+          PGPASSWORD=kobo psql -h localhost -p 5433 -U kobo -d postgres -c 'CREATE DATABASE kobo_e2e'
+          npm run e2e
+
+      - name: Bundle gate
+        run: npm run bundle:check
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Docker build (no push)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: ci
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      IMAGE: ghcr.io/kobo-id/kobo
+    steps:
+      - name: Validate tag
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "invalid tag: $TAG"; exit 1; }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Rollback via workflow_dispatch reuses an image that already exists; a new tag builds one.
+      - name: Check whether the image already exists
+        id: exists
+        run: |
+          if docker manifest inspect "$IMAGE:$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.exists.outputs.exists == 'false'
+
+      - name: Build and push image
+        if: steps.exists.outputs.exists == 'false'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE }}:${{ env.TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy over SSH (forced command, tag only)
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
+              "$DEPLOY_USER@$DEPLOY_HOST" "$TAG"
+
+      # Post-deploy smoke against the live site. APP_URL is an Actions variable on the
+      # `production` environment (Settings > Environments > production > Variables),
+      # e.g. https://kobo.example. The suite's retries absorb the container restart.
+      - name: Post-deploy smoke
+        env:
+          BASE_URL: ${{ vars.APP_URL }}
+        run: |
+          [ -n "$BASE_URL" ] || { echo "APP_URL variable is not set on the production environment"; exit 1; }
+          npm ci
+          npx playwright install --with-deps chromium
+          for i in $(seq 1 30); do
+            curl -fsS "$BASE_URL/health" >/dev/null && break
+            [ "$i" = 30 ] && { echo "$BASE_URL/health never became healthy"; exit 1; }
+            sleep 5
+          done
+          npm run e2e:postdeploy

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Heart, MapPin, Footprints, ChevronLeft, ChevronRight, Calendar, GraduationCap } from 'lucide-react';
+import { Star, MapPin, Footprints, ChevronLeft, ChevronRight, Calendar, GraduationCap } from 'lucide-react';
 import { Kos } from '../../types';
 import { GenderBadge, Badge } from '../ui/Badge';
 import { useAppStore } from '../../store/AppContext';
@@ -14,10 +14,9 @@ interface ListingCardProps {
 
 export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, distance }) => {
   const navigate = useNavigate();
-  const { currentUser, toggleWishlist, hoveredKosId, setHoveredKosId } = useAppStore();
+  const { hoveredKosId, setHoveredKosId } = useAppStore();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  const isSaved = currentUser.savedKosIds.includes(kos.id);
   const isHovered = hoveredKosId === kos.id;
 
   const handlePrevImage = (e: React.MouseEvent) => {
@@ -183,33 +182,6 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
             </Badge>
           )}
         </div>
-
-        {/* Wishlist */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleWishlist(kos.id);
-          }}
-          className="interactive-tap"
-          style={{
-            position: 'absolute',
-            top: '0.55rem',
-            right: '0.55rem',
-            width: '28px',
-            height: '28px',
-            borderRadius: '50%',
-            backgroundColor: 'rgba(255, 255, 255, 0.92)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: isSaved ? 'var(--status-overdue)' : 'var(--text-muted)',
-            boxShadow: 'var(--shadow-sm)',
-            zIndex: 2,
-          }}
-          aria-label="Simpan ke favorit"
-        >
-          <Heart size={15} fill={isSaved ? 'var(--status-overdue)' : 'none'} />
-        </button>
 
         {/* Remaining Rooms */}
         {kos.availableRooms <= 3 && (

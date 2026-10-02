@@ -1,20 +1,51 @@
 import React, { useState } from 'react';
 import { STATUS_META } from '../../components/owner/RoomOccupancyBoard';
-import { Plus, Edit, Trash2, Eye, MapPin, CheckCircle2, Footprints } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, MapPin, CheckCircle2, Footprints, Images } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { BoardRoom, OwnerKos } from '../../../../backend/src/trpc/router';
 import { useAppStore } from '../../store/AppContext';
-import { Kos } from '../../types';
+import { useTRPC } from '../../lib/trpc';
+import { messageForError } from '../../lib/errors';
+import { formatRupiah, useOwnerWorkspace } from '../../lib/ownerWorkspace';
 import { KosFormModal } from '../../components/owner/KosFormModal';
+import { KosPhotosModal } from '../../components/owner/KosPhotosModal';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Link } from 'react-router-dom';
 
 export const KosManager: React.FC = () => {
-  const { kosList, deleteKos, addRoomToKos, deleteRoomFromKos } = useAppStore();
+  const { addToast } = useAppStore();
+  const { kosList } = useOwnerWorkspace();
+  const trpc = useTRPC();
+  const qc = useQueryClient();
+  const deleteKosMutation = useMutation(trpc.owner.kos.delete.mutationOptions());
+  const createRoomMutation = useMutation(trpc.owner.room.create.mutationOptions());
+  const updateRoomMutation = useMutation(trpc.owner.room.update.mutationOptions());
+  const deleteRoomMutation = useMutation(trpc.owner.room.delete.mutationOptions());
 
-  const [editingKos, setEditingKos] = useState<Kos | null>(null);
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: trpc.owner.pathKey() });
+    void qc.invalidateQueries({ queryKey: trpc.kos.pathKey() });
+  };
+  const attempt = async (job: () => Promise<unknown>, ok: string) => {
+    try {
+      await job();
+      addToast(ok, 'success');
+      return true;
+    } catch (err) {
+      addToast(messageForError(err), 'error');
+      return false;
+    } finally {
+      refresh();
+    }
+  };
+
+  const [editingKos, setEditingKos] = useState<OwnerKos | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [roomModalKosId, setRoomModalKosId] = useState<string | null>(null);
+  const [editingRoom, setEditingRoom] = useState<BoardRoom | null>(null);
+  const [photosKos, setPhotosKos] = useState<OwnerKos | null>(null);
 
   // New room state
   const [roomNumber, setRoomNumber] = useState('');
@@ -22,31 +53,45 @@ export const KosManager: React.FC = () => {
   const [roomType, setRoomType] = useState('Deluxe AC');
   const [priceMonthly, setPriceMonthly] = useState(1650000);
   const [size, setSize] = useState('3 x 4 m');
+  const [bedType, setBedType] = useState('Single Bed 120x200');
 
-  const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0,
-    }).format(val);
+  const openAddRoom = (kosId: string) => {
+    setEditingRoom(null);
+    setRoomNumber('');
+    setFloor(1);
+    setRoomType('Deluxe AC');
+    setPriceMonthly(1650000);
+    setSize('3 x 4 m');
+    setBedType('Single Bed 120x200');
+    setRoomModalKosId(kosId);
+  };
+  const openEditRoom = (kosId: string, room: BoardRoom) => {
+    setEditingRoom(room);
+    setRoomNumber(room.roomNumber);
+    setFloor(room.floor);
+    setRoomType(room.type);
+    setPriceMonthly(room.priceMonthly);
+    setSize(room.size);
+    setBedType(room.bedType);
+    setRoomModalKosId(kosId);
   };
 
-  const handleCreateRoom = (e: React.FormEvent) => {
+  const handleSaveRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomModalKosId) return;
-
-    addRoomToKos(roomModalKosId, {
-      roomNumber,
-      floor: Number(floor),
-      roomType,
-      size,
-      bedType: 'Single Bed 120x200',
-      priceMonthly: Number(priceMonthly),
-      status: 'vacant',
-    });
-
-    setRoomNumber('');
-    setRoomModalKosId(null);
+    const fields = { roomNumber, floor: Number(floor), type: roomType, size, bedType, priceMonthly: Number(priceMonthly) };
+    const ok = await attempt(
+      () =>
+        editingRoom
+          ? updateRoomMutation.mutateAsync({ kosId: roomModalKosId, roomId: editingRoom.id, ...fields })
+          : createRoomMutation.mutateAsync({ kosId: roomModalKosId, ...fields }),
+      editingRoom ? `Kamar ${roomNumber} berhasil diperbarui.` : `Kamar ${roomNumber} berhasil ditambahkan!`,
+    );
+    if (ok) {
+      setRoomNumber('');
+      setEditingRoom(null);
+      setRoomModalKosId(null);
+    }
   };
 
   return (
@@ -66,6 +111,9 @@ export const KosManager: React.FC = () => {
         </Button>
       </div>
 
+      {kosList.length === 0 && (
+        <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>Belum ada properti. Daftarkan kos pertama Anda dengan tombol di atas.</p>
+      )}
       {/* Kos Properties List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         {kosList.map((kos) => (
@@ -85,16 +133,15 @@ export const KosManager: React.FC = () => {
             {/* Header with image, details, and actions */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.25rem' }}>
               <div style={{ display: 'flex', gap: '1.25rem' }}>
-                <img
-                  src={kos.images[0]}
-                  alt={kos.name}
-                  style={{
-                    width: '110px',
-                    height: '110px',
-                    borderRadius: 'var(--radius-md)',
-                    objectFit: 'cover',
-                  }}
-                />
+                {kos.image ? (
+                  <img
+                    src={kos.image}
+                    alt={kos.name}
+                    style={{ width: '110px', height: '110px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div aria-hidden="true" style={{ width: '110px', height: '110px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-muted)', flexShrink: 0 }} />
+                )}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <span
@@ -108,7 +155,7 @@ export const KosManager: React.FC = () => {
                         textTransform: 'capitalize',
                       }}
                     >
-                      {kos.gender}
+                      {kos.gender.toLowerCase()}
                     </span>
                     <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>
                       ID: {kos.id}
@@ -124,9 +171,11 @@ export const KosManager: React.FC = () => {
                     {kos.address}
                   </p>
 
-                  <p style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.2rem' }}>
-                    <Footprints size={13} /> {kos.campusProximity.distanceMeters}m ke {kos.campusProximity.campusName}
-                  </p>
+                  {kos.nearestCampus && kos.nearestCampus.meters !== null && (
+                    <p style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.2rem' }}>
+                      <Footprints size={13} /> {kos.nearestCampus.meters}m ke {kos.nearestCampus.shortName}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -137,6 +186,10 @@ export const KosManager: React.FC = () => {
                     Lihat Publik
                   </Button>
                 </Link>
+
+                <Button variant="outline" size="sm" onClick={() => setPhotosKos(kos)} icon={<Images size={14} />}>
+                  Foto
+                </Button>
 
                 <Button
                   variant="outline"
@@ -150,20 +203,18 @@ export const KosManager: React.FC = () => {
                   Edit Kos
                 </Button>
 
-                {kosList.length > 1 && (
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => {
-                      if (window.confirm(`Hapus properti "${kos.name}" beserta seluruh kamarnya?`)) {
-                        deleteKos(kos.id);
-                      }
-                    }}
-                    icon={<Trash2 size={14} />}
-                  >
-                    Hapus
-                  </Button>
-                )}
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => {
+                    if (window.confirm(`Hapus properti "${kos.name}" beserta seluruh kamarnya?`)) {
+                      void attempt(() => deleteKosMutation.mutateAsync({ kosId: kos.id }), 'Properti kos telah dihapus.');
+                    }
+                  }}
+                  icon={<Trash2 size={14} />}
+                >
+                  Hapus
+                </Button>
               </div>
             </div>
 
@@ -171,13 +222,13 @@ export const KosManager: React.FC = () => {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                 <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>
-                  Daftar Kamar ({kos.rooms.length} Kamar)
+                  Daftar Kamar ({kos.totalRooms} Kamar)
                 </h4>
 
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => setRoomModalKosId(kos.id)}
+                  onClick={() => openAddRoom(kos.id)}
                   icon={<Plus size={14} />}
                 >
                   Tambah Kamar
@@ -205,7 +256,7 @@ export const KosManager: React.FC = () => {
                       <tr key={room.id}>
                         <td className="kobo-table__strong">{room.roomNumber}</td>
                         <td>Lt. {room.floor}</td>
-                        <td>{room.roomType} ({room.size})</td>
+                        <td>{room.type} ({room.size})</td>
                         <td className="kobo-table__num kobo-table__right">{formatRupiah(room.priceMonthly)}</td>
                         <td>
                           <span
@@ -216,12 +267,20 @@ export const KosManager: React.FC = () => {
                             {STATUS_META[room.status].label}
                           </span>
                         </td>
-                        <td className="kobo-table__muted">{room.tenantName || '—'}</td>
+                        <td className="kobo-table__muted">{room.tenant?.name || '—'}</td>
                         <td>
                           <div className="kobo-table__actions">
                             <button
                               type="button"
-                              onClick={() => deleteRoomFromKos(kos.id, room.id)}
+                              aria-label={`Edit kamar ${room.roomNumber}`}
+                              onClick={() => openEditRoom(kos.id, room)}
+                              style={{ color: 'var(--primary)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void attempt(() => deleteRoomMutation.mutateAsync({ kosId: kos.id, roomId: room.id }), 'Kamar berhasil dihapus.')}
                               style={{ color: 'var(--status-overdue)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
                             >
                               Hapus
@@ -250,15 +309,20 @@ export const KosManager: React.FC = () => {
         />
       )}
 
-      {/* Add Room Modal */}
+      {photosKos && <KosPhotosModal kosId={photosKos.id} kosName={photosKos.name} onClose={() => setPhotosKos(null)} />}
+
+      {/* Add / Edit Room Modal */}
       {roomModalKosId && (
         <Modal
           isOpen={!!roomModalKosId}
-          onClose={() => setRoomModalKosId(null)}
-          title="Tambah Kamar Baru ke Properti"
+          onClose={() => {
+            setRoomModalKosId(null);
+            setEditingRoom(null);
+          }}
+          title={editingRoom ? `Edit Kamar ${editingRoom.roomNumber}` : 'Tambah Kamar Baru ke Properti'}
           maxWidth="sm"
         >
-          <form onSubmit={handleCreateRoom} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <form onSubmit={handleSaveRoom} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <Input
               label="Nomor / Nama Kamar"
               value={roomNumber}
@@ -291,6 +355,13 @@ export const KosManager: React.FC = () => {
               required
             />
             <Input
+              label="Tipe Kasur"
+              value={bedType}
+              onChange={(e) => setBedType(e.target.value)}
+              placeholder="Single Bed 120x200"
+              required
+            />
+            <Input
               label="Harga Sewa Bulanan (Rp)"
               type="number"
               value={priceMonthly}
@@ -299,11 +370,19 @@ export const KosManager: React.FC = () => {
             />
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setRoomModalKosId(null)}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setRoomModalKosId(null);
+                  setEditingRoom(null);
+                }}
+              >
                 Batal
               </Button>
               <Button type="submit" variant="primary" size="sm" icon={<CheckCircle2 size={16} />}>
-                Simpan Kamar
+                {editingRoom ? 'Simpan Perubahan' : 'Simpan Kamar'}
               </Button>
             </div>
           </form>

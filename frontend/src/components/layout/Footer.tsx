@@ -84,7 +84,7 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link to="/profile" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Verifikasi Kartu Mahasiswa (KTM)
+                  Verifikasi Email Kampus
                 </Link>
               </li>
               <li>

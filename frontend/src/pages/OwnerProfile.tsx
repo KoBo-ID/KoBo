@@ -1,18 +1,56 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ShieldCheck, MessageSquare, Phone, Building2, Star, Clock, CheckCircle2 } from 'lucide-react';
-import { useAppStore } from '../store/AppContext';
+import { useParams } from 'react-router-dom';
+import { ShieldCheck, MessageSquare } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { ListingCard } from '../components/kos/ListingCard';
+import { KosCardSkeleton } from '../components/kos/KosCardSkeleton';
+import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
+import { ErrorState, NotFoundState } from '../components/ui/QueryState';
+import { useTRPC } from '../lib/trpc';
+import { isNotFound } from '../lib/queryErrors';
+import { kosCardToKos } from '../utils/kosCard';
+import { formatMonthYear } from '../utils/kosDetail';
 
 export const OwnerProfile: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const { kosList } = useAppStore();
+  const { id = '' } = useParams<{ id: string }>();
+  const trpc = useTRPC();
+  const { data, isPending, error, refetch } = useQuery(trpc.owner.publicProfile.queryOptions({ id }));
+  const ownerKosList = React.useMemo(() => (data?.kos ?? []).map(kosCardToKos), [data]);
 
-  // Find kos by owner id
-  const ownerKosList = kosList.filter((k) => k.owner.id === id);
-  const primaryKos = ownerKosList[0] || kosList[0];
-  const owner = primaryKos.owner;
+  if (isPending) {
+    return (
+      <div
+        className="app-container"
+        role="status"
+        aria-busy="true"
+        aria-label="Memuat profil pemilik"
+        style={{ maxWidth: '1080px', paddingTop: '2.5rem', paddingBottom: '4rem' }}
+      >
+        <div style={{ height: '17rem', backgroundColor: 'var(--bg-muted)', borderRadius: 'var(--radius-xl)', marginBottom: '3rem' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+          {[0, 1, 2].map((i) => (
+            <KosCardSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (error) {
+    return isNotFound(error) ? (
+      <NotFoundState
+        title="Pemilik tidak ditemukan"
+        text="Profil pemilik yang Anda cari tidak ada. Coba cari kos lain."
+        linkTo="/search"
+        linkLabel="Cari Kos"
+      />
+    ) : (
+      <div className="app-container" style={{ paddingTop: '2rem' }}>
+        <ErrorState message="Gagal memuat profil pemilik. Periksa koneksi Anda lalu coba lagi." onRetry={() => void refetch()} />
+      </div>
+    );
+  }
+  const owner = data.owner;
 
   return (
     <div className="app-container" style={{ maxWidth: '1080px', paddingTop: '2.5rem', paddingBottom: '4rem' }}>
@@ -32,17 +70,11 @@ export const OwnerProfile: React.FC = () => {
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem' }}>
           <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-            <img
+            <Avatar
               src={owner.avatar}
-              alt={owner.name}
-              style={{
-                width: '90px',
-                height: '90px',
-                borderRadius: '50%',
-                objectFit: 'cover',
-                border: '3px solid var(--primary-light)',
-                boxShadow: 'var(--shadow-md)',
-              }}
+              name={owner.name}
+              size={90}
+              style={{ border: '3px solid var(--primary-light)', boxShadow: 'var(--shadow-md)' }}
             />
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -74,7 +106,7 @@ export const OwnerProfile: React.FC = () => {
           </div>
 
           <a
-            href={`https://wa.me/${owner.phone.replace(/^0/, '62')}?text=Halo%20${encodeURIComponent(owner.name)},%20saya%20tertarik%20dengan%20properti%20kos%20Anda%20di%20KoBo`}
+            href={`https://wa.me/${(owner.phone ?? '').replace(/^0/, '62')}?text=Halo%20${encodeURIComponent(owner.name)},%20saya%20tertarik%20dengan%20properti%20kos%20Anda%20di%20KoBo`}
             target="_blank"
             rel="noopener noreferrer"
             style={{ textDecoration: 'none' }}
@@ -106,7 +138,7 @@ export const OwnerProfile: React.FC = () => {
               Kecepatan Respon:
             </span>
             <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              {owner.responseRate}
+              {owner.responseRate ?? '-'}
             </span>
           </div>
 
@@ -115,7 +147,7 @@ export const OwnerProfile: React.FC = () => {
               Anggota Sejak:
             </span>
             <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              {owner.memberSince}
+              {formatMonthYear(owner.memberSince)}
             </span>
           </div>
 

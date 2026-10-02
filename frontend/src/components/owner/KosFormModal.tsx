@@ -1,160 +1,96 @@
 import React, { useState } from 'react';
-import { Home, Building2, MapPin, Image, ShieldCheck, CheckCircle2, Plus, Trash2 } from 'lucide-react';
-import { Kos, KosGender, Room } from '../../types';
+import { Building2, CheckCircle2 } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { OwnerKos } from '../../../../backend/src/trpc/router';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
+import { Notice } from '../ui/Notice';
 import { useAppStore } from '../../store/AppContext';
+import { useTRPC } from '../../lib/trpc';
+import { messageForError } from '../../lib/errors';
+import { useOwnerWorkspace } from '../../lib/ownerWorkspace';
 import { CAMPUSES } from '../../data/campuses';
 
 interface KosFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  existingKos?: Kos | null;
+  existingKos?: OwnerKos | null;
 }
 
-export const KosFormModal: React.FC<KosFormModalProps> = ({
-  isOpen,
-  onClose,
-  existingKos,
-}) => {
-  const { addKos, updateKos, currentUser } = useAppStore();
+const toList = (v: string) => v.split(',').map((x) => x.trim()).filter(Boolean);
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+export const KosFormModal: React.FC<KosFormModalProps> = ({ isOpen, onClose, existingKos }) => {
+  const { addToast } = useAppStore();
+  const { selectKos } = useOwnerWorkspace();
+  const trpc = useTRPC();
+  const qc = useQueryClient();
+  const create = useMutation(trpc.owner.kos.create.mutationOptions());
+  const update = useMutation(trpc.owner.kos.update.mutationOptions());
+  const [error, setError] = useState<string | null>(null);
 
-  // Form State
-  const [name, setName] = useState(existingKos?.name || '');
-  const [gender, setGender] = useState<KosGender>(existingKos?.gender || 'campur');
-  const [address, setAddress] = useState(existingKos?.address || '');
-  const [district, setDistrict] = useState(existingKos?.district || 'Kemanggisan');
-  const [city, setCity] = useState(existingKos?.city || 'Jakarta Barat');
-  const [selectedCampus, setSelectedCampus] = useState(existingKos?.campusProximity.campusId || 'binus-syahdan');
-  const [distanceMeters, setDistanceMeters] = useState(existingKos?.campusProximity.distanceMeters || 350);
-  const [walkMinutes, setWalkMinutes] = useState(existingKos?.campusProximity.walkMinutes || 4);
-  const [priceMonthlyStart, setPriceMonthlyStart] = useState(existingKos?.priceMonthlyStart || 1600000);
-  const [studentDiscountAmount, setStudentDiscountAmount] = useState(existingKos?.studentDiscountAmount || 150000);
-  const [studentDiscountLabel, setStudentDiscountLabel] = useState(existingKos?.studentDiscountLabel || 'Diskon Mhs Rp 150rb');
-  const [electricityType, setElectricityType] = useState<'included' | 'token'>(existingKos?.electricityType || 'token');
-  const [imageUrl, setImageUrl] = useState(
-    existingKos?.images[0] ||
-      'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=80'
-  );
+  const [name, setName] = useState(existingKos?.name ?? '');
+  const [gender, setGender] = useState<OwnerKos['gender']>(existingKos?.gender ?? 'CAMPUR');
+  const [address, setAddress] = useState(existingKos?.address ?? '');
+  const [district, setDistrict] = useState(existingKos?.district ?? 'Kemanggisan');
+  const [city, setCity] = useState(existingKos?.city ?? 'Jakarta Barat');
+  const [lat, setLat] = useState(String(existingKos?.lat ?? CAMPUSES[0].coordinates.lat));
+  const [lng, setLng] = useState(String(existingKos?.lng ?? CAMPUSES[0].coordinates.lng));
+  const [electricityType, setElectricityType] = useState<OwnerKos['electricityType']>(existingKos?.electricityType ?? 'TOKEN');
+  const [studentDiscountAmount, setStudentDiscountAmount] = useState(existingKos?.studentDiscountAmount ?? 150000);
+  const [privateAmenities, setPrivateAmenities] = useState((existingKos?.privateAmenities ?? ['AC', 'Kamar Mandi Dalam', 'Kasur']).join(', '));
+  const [sharedAmenities, setSharedAmenities] = useState((existingKos?.sharedAmenities ?? ['Wi-Fi', 'Dapur Bersama', 'Parkir Motor']).join(', '));
+  const [priceMonthly, setPriceMonthly] = useState(1600000);
+  const [roomCount, setRoomCount] = useState(6);
+  const [imageUrl, setImageUrl] = useState('');
 
-  // Initial Rooms
-  const [roomCount, setRoomCount] = useState(existingKos?.rooms.length || 6);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const campusObj = CAMPUSES.find((c) => c.id === selectedCampus) || CAMPUSES[0];
-
-    // Generate room array if adding new
-    const generatedRooms: Room[] = existingKos?.rooms || Array.from({ length: Number(roomCount) }).map((_, i) => ({
-      id: `room-gen-${i + 1}`,
-      kosId: existingKos?.id || 'kos-temp',
-      roomNumber: `${101 + i}`,
-      floor: Math.floor(i / 4) + 1,
-      roomType: 'Deluxe AC Mahasiswa',
-      size: '3 x 4 m',
-      bedType: 'Single Bed 120x200',
-      priceMonthly: Number(priceMonthlyStart),
-      status: i === 0 ? 'paid' : i === 1 ? 'due' : 'vacant',
-      tenantName: i === 0 ? 'Bima Sakti' : undefined,
-      tenantPhone: i === 0 ? '081298765431' : undefined,
-      tenantCampus: i === 0 ? campusObj.name : undefined,
-    }));
-
-    if (existingKos) {
-      updateKos(existingKos.id, {
-        name,
-        gender,
-        address,
-        district,
-        city,
-        campusProximity: {
-          campusId: campusObj.id,
-          campusName: campusObj.shortName,
-          distanceMeters: Number(distanceMeters),
-          walkMinutes: Number(walkMinutes),
-        },
-        priceMonthlyStart: Number(priceMonthlyStart),
-        studentDiscountAmount: Number(studentDiscountAmount),
-        studentDiscountLabel,
-        electricityType,
-      });
-    } else {
-      addKos({
-        name,
-        slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        gender,
-        address,
-        district,
-        city,
-        coordinates: campusObj.coordinates,
-        campusProximity: {
-          campusId: campusObj.id,
-          campusName: campusObj.shortName,
-          distanceMeters: Number(distanceMeters),
-          walkMinutes: Number(walkMinutes),
-        },
-        priceMonthlyStart: Number(priceMonthlyStart),
-        studentDiscountAmount: Number(studentDiscountAmount),
-        studentDiscountLabel,
-        images: [
-          imageUrl,
-          'https://images.unsplash.com/photo-1598928506311-c55ded91a20c?w=800&auto=format&fit=crop&q=80',
-          'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&auto=format&fit=crop&q=80',
-          'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&auto=format&fit=crop&q=80',
-          'https://images.unsplash.com/photo-1554995207-c18c203602cb?w=800&auto=format&fit=crop&q=80',
-        ],
-        privateAmenities: ['AC 1/2 PK', 'Kamar Mandi Dalam', 'Kasur Springbed', 'Meja Belajar'],
-        sharedAmenities: ['Wi-Fi Kencang', 'Dapur Bersama', 'Parkir Motor', 'CCTV 24 Jam'],
-        electricityType,
-        totalRooms: generatedRooms.length,
-        availableRooms: generatedRooms.filter((r) => r.status === 'vacant').length,
-        owner: {
-          id: currentUser.id,
-          name: currentUser.name,
-          phone: currentUser.phone,
-          avatar: currentUser.avatar,
-          responseRate: '100% (balas cepat)',
-          memberSince: 'Hari ini',
-          verified: true,
-          totalProperties: 1,
-        },
-        rules: [
-          {
-            id: 'r-default-1',
-            tier: 1,
-            categoryTitle: 'Akses & Jam Malam',
-            rules: ['Pagar dikunci jam 23.00 WIB, penghuni mendapat kunci mandiri.'],
-            penaltyAmount: 50000,
-          },
-          {
-            id: 'r-default-4',
-            tier: 4,
-            categoryTitle: 'Denda Keterlambatan Sewa',
-            rules: ['Jatuh tempo tanggal 5 setiap bulan. Denda telat Rp 25.000/hari.'],
-            penaltyAmount: 25000,
-          },
-        ],
-        pois: [
-          {
-            id: 'poi-gen-1',
-            category: 'campus',
-            name: `${campusObj.shortName} (Gerbang Utama)`,
-            distanceMeters: Number(distanceMeters),
-            walkMinutes: Number(walkMinutes),
-            description: 'Jalan kaki langsung tanpa hambatan kendaraan.',
-          },
-        ],
-        rooms: generatedRooms,
-      });
-    }
-
-    onClose();
+  const fillFromCampus = (id: string) => {
+    const c = CAMPUSES.find((x) => x.id === id);
+    if (!c) return;
+    setLat(String(c.coordinates.lat));
+    setLng(String(c.coordinates.lng));
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const fields = {
+      name,
+      gender,
+      address,
+      district,
+      city,
+      lat: Number(lat),
+      lng: Number(lng),
+      electricityType,
+      privateAmenities: toList(privateAmenities),
+      sharedAmenities: toList(sharedAmenities),
+      studentDiscountAmount: Number(studentDiscountAmount),
+    };
+    try {
+      if (existingKos) {
+        await update.mutateAsync({ ...fields, kosId: existingKos.id });
+        addToast('Informasi kos berhasil diperbarui.', 'success');
+      } else {
+        const { id } = await create.mutateAsync({
+          ...fields,
+          imageUrl: imageUrl.trim() || undefined,
+          initialRooms: Number(roomCount) > 0 ? { count: Number(roomCount), priceMonthly: Number(priceMonthly) } : undefined,
+        });
+        addToast(`Properti kos "${name}" berhasil didaftarkan!`, 'success');
+        await qc.invalidateQueries({ queryKey: trpc.owner.myKos.queryKey() });
+        selectKos(id);
+      }
+      void qc.invalidateQueries({ queryKey: trpc.owner.pathKey() });
+      void qc.invalidateQueries({ queryKey: trpc.kos.pathKey() });
+      onClose();
+    } catch (err) {
+      setError(messageForError(err));
+    }
+  };
+
+  const pending = create.isPending || update.isPending;
 
   return (
     <Modal
@@ -170,135 +106,88 @@ export const KosFormModal: React.FC<KosFormModalProps> = ({
       maxWidth="lg"
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {/* Step 1: Info Dasar & Lokasi Kampus */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          <Input
-            label="Nama Properti Kos"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Contoh: Kost Wisma Sakura Syahdan"
-            required
-          />
+          <Input label="Nama Properti Kos" value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: Kost Wisma Sakura Syahdan" required />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <Select
               label="Kategori Penghuni"
               value={gender}
-              onChange={(e) => setGender(e.target.value as KosGender)}
+              onChange={(e) => setGender(e.target.value as OwnerKos['gender'])}
               options={[
-                { value: 'campur', label: 'Kost Campur (Putra & Putri)' },
-                { value: 'putri', label: 'Khusus Putri' },
-                { value: 'putra', label: 'Khusus Putra' },
+                { value: 'CAMPUR', label: 'Kost Campur (Putra & Putri)' },
+                { value: 'PUTRI', label: 'Khusus Putri' },
+                { value: 'PUTRA', label: 'Khusus Putra' },
               ]}
             />
             <Select
-              label="Kampus Terdekat"
-              value={selectedCampus}
-              onChange={(e) => setSelectedCampus(e.target.value)}
-              options={CAMPUSES.map((c) => ({ value: c.id, label: c.name }))}
+              label="Isi Koordinat dari Kampus"
+              value=""
+              onChange={(e) => fillFromCampus(e.target.value)}
+              options={[{ value: '', label: 'Pilih kampus terdekat…' }, ...CAMPUSES.map((c) => ({ value: c.id, label: c.name }))]}
             />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-            <Input
-              label="Jarak ke Kampus (Meter)"
-              type="number"
-              value={distanceMeters}
-              onChange={(e) => setDistanceMeters(Number(e.target.value))}
-              required
-            />
-            <Input
-              label="Estimasi Jalan (Menit)"
-              type="number"
-              value={walkMinutes}
-              onChange={(e) => setWalkMinutes(Number(e.target.value))}
-              required
-            />
+            <Input label="Latitude" type="number" step="any" value={lat} onChange={(e) => setLat(e.target.value)} required />
+            <Input label="Longitude" type="number" step="any" value={lng} onChange={(e) => setLng(e.target.value)} helperText="Jarak ke kampus dihitung otomatis" required />
             <Select
               label="Sistem Listrik"
               value={electricityType}
-              onChange={(e) => setElectricityType(e.target.value as any)}
+              onChange={(e) => setElectricityType(e.target.value as OwnerKos['electricityType'])}
               options={[
-                { value: 'token', label: 'Listrik Token Mandiri' },
-                { value: 'included', label: 'Termasuk Biaya Sewa' },
+                { value: 'TOKEN', label: 'Listrik Token Mandiri' },
+                { value: 'INCLUDED', label: 'Termasuk Biaya Sewa' },
               ]}
             />
           </div>
 
-          <Input
-            label="Alamat Lengkap Kos"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Jl. KH. Syahdan No. 28, RT 02/RW 11"
-            required
-          />
+          <Input label="Alamat Lengkap Kos" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Jl. KH. Syahdan No. 28, RT 02/RW 11" required />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <Input
-              label="Kecamatan / Kelurahan"
-              value={district}
-              onChange={(e) => setDistrict(e.target.value)}
-              required
-            />
-            <Input
-              label="Kota / Kabupaten"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              required
-            />
+            <Input label="Kecamatan / Kelurahan" value={district} onChange={(e) => setDistrict(e.target.value)} required />
+            <Input label="Kota / Kabupaten" value={city} onChange={(e) => setCity(e.target.value)} required />
           </div>
         </div>
 
-        {/* Step 2: Harga & Diskon Mahasiswa */}
         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Harga Sewa & Diskon Mahasiswa</h4>
+          <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>Harga Sewa, Diskon & Fasilitas</h4>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            {!existingKos && (
+              <Input label="Harga Sewa per Kamar (Rp/bulan)" type="number" value={priceMonthly} onChange={(e) => setPriceMonthly(Number(e.target.value))} min={0} required />
+            )}
             <Input
-              label="Harga Sewa Mulai (Rp/bulan)"
-              type="number"
-              value={priceMonthlyStart}
-              onChange={(e) => setPriceMonthlyStart(Number(e.target.value))}
-              required
-            />
-            <Input
-              label="Potongan Diskon Mahasiswa (KTM)"
+              label="Potongan Diskon Mahasiswa"
               type="number"
               value={studentDiscountAmount}
               onChange={(e) => setStudentDiscountAmount(Number(e.target.value))}
-              helperText="Menarik mahasiswa kampus dengan diskon khusus"
+              min={0}
+              helperText="Berlaku untuk mahasiswa dengan email kampus terverifikasi"
               required
             />
           </div>
 
           {!existingKos && (
-            <Input
-              label="Jumlah Total Kamar di Properti"
-              type="number"
-              value={roomCount}
-              onChange={(e) => setRoomCount(Number(e.target.value))}
-              min={1}
-              max={50}
-              required
-            />
+            <Input label="Jumlah Kamar Awal" type="number" value={roomCount} onChange={(e) => setRoomCount(Number(e.target.value))} min={0} max={50} helperText="Kamar bisa ditambah atau dihapus kapan saja" required />
           )}
 
-          <Input
-            label="URL Foto Utama Kamar"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="https://images.unsplash.com/..."
-            required
-          />
+          <Input label="Fasilitas Kamar" value={privateAmenities} onChange={(e) => setPrivateAmenities(e.target.value)} helperText="Pisahkan dengan koma" />
+          <Input label="Fasilitas Bersama" value={sharedAmenities} onChange={(e) => setSharedAmenities(e.target.value)} helperText="Pisahkan dengan koma" />
+
+          {!existingKos && (
+            <Input label="URL Foto Utama (opsional)" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://images.unsplash.com/..." />
+          )}
         </div>
 
-        {/* Modal Buttons */}
+        {error && <Notice tone="error">{error}</Notice>}
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
           <Button type="button" variant="ghost" onClick={onClose}>
             Batal
           </Button>
-          <Button type="submit" variant="primary" icon={<CheckCircle2 size={16} />}>
-            {existingKos ? 'Simpan Perubahan Kos' : 'Simpan & Buka Papan Kamar'}
+          <Button type="submit" variant="primary" disabled={pending} icon={<CheckCircle2 size={16} />}>
+            {existingKos ? 'Simpan Perubahan Kos' : 'Simpan Kos Baru'}
           </Button>
         </div>
       </form>

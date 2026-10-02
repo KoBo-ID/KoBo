@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
-import { Calendar, Clock, User, Phone, GraduationCap, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { addDays, todayWIB } from '@kobo/shared/domain';
+import { Calendar, Clock, Phone, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { Kos } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { Notice } from '../ui/Notice';
+import { useSession } from '../../lib/session';
+import { useTRPC } from '../../lib/trpc';
+import { messageForError } from '../../lib/errors';
 import { useAppStore } from '../../store/AppContext';
 
 interface VisitModalProps {
@@ -13,52 +19,51 @@ interface VisitModalProps {
 }
 
 export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) => {
-  const { currentUser, scheduleVisit } = useAppStore();
+  const { addToast, openAuthModal } = useAppStore();
+  const { me } = useSession();
+  const trpc = useTRPC();
+  const qc = useQueryClient();
 
-  // Next 5 days dates generator
-  const getNextDays = () => {
-    const days = [];
-    const today = new Date();
-    for (let i = 1; i <= 5; i++) {
-      const nextDate = new Date();
-      nextDate.setDate(today.getDate() + i);
-      const dayName = nextDate.toLocaleDateString('id-ID', { weekday: 'short' });
-      const dayNum = nextDate.getDate();
-      const monthName = nextDate.toLocaleDateString('id-ID', { month: 'short' });
-      const isoStr = nextDate.toISOString().split('T')[0];
-      days.push({ dayName, dayNum, monthName, isoStr });
-    }
-    return days;
-  };
+  // The next 5 days, as WIB calendar days (the server only accepts dates after today in WIB).
+  const availableDays = useMemo(() => {
+    const today = todayWIB(new Date());
+    return [1, 2, 3, 4, 5].map((i) => {
+      const isoStr = addDays(today, i);
+      const d = new Date(`${isoStr}T00:00:00+07:00`);
+      const fmt = (o: Intl.DateTimeFormatOptions) => d.toLocaleDateString('id-ID', { ...o, timeZone: 'Asia/Jakarta' });
+      return { isoStr, dayName: fmt({ weekday: 'short' }), dayNum: fmt({ day: 'numeric' }), monthName: fmt({ month: 'short' }) };
+    });
+  }, []);
 
-  const availableDays = getNextDays();
-
-  const [selectedDate, setSelectedDate] = useState(availableDays[0]?.isoStr || '');
-  const [timeSlot, setTimeSlot] = useState<'pagi' | 'siang'>('siang');
-  const [studentName, setStudentName] = useState(currentUser.name);
-  const [studentPhone, setStudentPhone] = useState(currentUser.phone);
-  const [studentCampus, setStudentCampus] = useState(currentUser.campus || 'Binus Syahdan');
+  const [selectedDate, setSelectedDate] = useState(availableDays[0].isoStr);
+  const [timeSlot, setTimeSlot] = useState<'PAGI' | 'SIANG'>('SIANG');
+  // undefined = untouched: show the profile value.
+  const [phoneInput, setPhoneInput] = useState<string | undefined>(undefined);
   const [notes, setNotes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const updateProfile = useMutation(trpc.auth.updateProfile.mutationOptions());
+  const create = useMutation(trpc.visit.create.mutationOptions());
+  const isSubmitting = create.isPending || updateProfile.isPending;
+  const phone = phoneInput ?? me?.user.phone ?? '';
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    setTimeout(() => {
-      scheduleVisit({
-        kosId: kos.id,
-        kosName: kos.name,
-        studentName,
-        studentPhone,
-        studentCampus,
-        date: selectedDate,
-        timeSlot,
-        notes,
-      });
-      setIsSubmitting(false);
+    if (!me) return;
+    setError(null);
+    try {
+      // The owner contacts the student on the WhatsApp number saved in their profile.
+      if (phone.trim() !== (me.user.phone ?? '')) {
+        await updateProfile.mutateAsync({ name: me.user.name, phone: phone.trim() || null, campus: me.user.campus });
+        void qc.invalidateQueries({ queryKey: trpc.auth.me.queryKey() });
+      }
+      await create.mutateAsync({ kosId: kos.id, date: selectedDate, timeSlot, notes: notes.trim() || undefined });
+      void qc.invalidateQueries({ queryKey: trpc.visit.mine.queryKey() });
+      addToast(`Jadwal survey ke ${kos.name} berhasil dikonfirmasi!`, 'success');
       onClose();
-    }, 400);
+    } catch (err) {
+      setError(messageForError(err));
+    }
   };
 
   return (
@@ -74,7 +79,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
       subtitle={`Kunjungi fisik kamar di ${kos.name} sebelum memutuskan sewa.`}
       maxWidth="md"
     >
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <form onSubmit={(e) => void handleSubmit(e)} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {/* Zero-Commitment Trust Ribbon */}
         <div
           style={{
@@ -146,7 +151,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <button
               type="button"
-              onClick={() => setTimeSlot('pagi')}
+              onClick={() => setTimeSlot('PAGI')}
               className="interactive-tap"
               style={{
                 display: 'flex',
@@ -154,9 +159,9 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
                 gap: '0.75rem',
                 padding: '0.75rem 1rem',
                 borderRadius: 'var(--radius-md)',
-                border: `1.5px solid ${timeSlot === 'pagi' ? 'var(--primary)' : 'var(--border-strong)'}`,
-                backgroundColor: timeSlot === 'pagi' ? 'var(--primary-light)' : 'var(--bg-surface)',
-                color: timeSlot === 'pagi' ? 'var(--primary)' : 'var(--text-main)',
+                border: `1.5px solid ${timeSlot === 'PAGI' ? 'var(--primary)' : 'var(--border-strong)'}`,
+                backgroundColor: timeSlot === 'PAGI' ? 'var(--primary-light)' : 'var(--bg-surface)',
+                color: timeSlot === 'PAGI' ? 'var(--primary)' : 'var(--text-main)',
                 textAlign: 'left',
               }}
             >
@@ -169,7 +174,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
 
             <button
               type="button"
-              onClick={() => setTimeSlot('siang')}
+              onClick={() => setTimeSlot('SIANG')}
               className="interactive-tap"
               style={{
                 display: 'flex',
@@ -177,9 +182,9 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
                 gap: '0.75rem',
                 padding: '0.75rem 1rem',
                 borderRadius: 'var(--radius-md)',
-                border: `1.5px solid ${timeSlot === 'siang' ? 'var(--primary)' : 'var(--border-strong)'}`,
-                backgroundColor: timeSlot === 'siang' ? 'var(--primary-light)' : 'var(--bg-surface)',
-                color: timeSlot === 'siang' ? 'var(--primary)' : 'var(--text-main)',
+                border: `1.5px solid ${timeSlot === 'SIANG' ? 'var(--primary)' : 'var(--border-strong)'}`,
+                backgroundColor: timeSlot === 'SIANG' ? 'var(--primary-light)' : 'var(--bg-surface)',
+                color: timeSlot === 'SIANG' ? 'var(--primary)' : 'var(--text-main)',
                 textAlign: 'left',
               }}
             >
@@ -192,31 +197,20 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
           </div>
         </div>
 
-        {/* 3. Data Kontak Mahasiswa */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-          <Input
-            label="Nama Lengkap"
-            value={studentName}
-            onChange={(e) => setStudentName(e.target.value)}
-            iconLeft={<User size={16} />}
-            required
-          />
+        {/* 3. Kontak */}
+        {me ? (
           <Input
             label="Nomor WhatsApp"
-            value={studentPhone}
-            onChange={(e) => setStudentPhone(e.target.value)}
+            value={phone}
+            onChange={(e) => setPhoneInput(e.target.value)}
             iconLeft={<Phone size={16} />}
+            placeholder="0812xxxxxxxx"
+            helperText={`Pemilik menghubungi Anda atas nama ${me.user.name}.`}
             required
           />
-        </div>
-
-        <Input
-          label="Asal Kampus / Universitas"
-          value={studentCampus}
-          onChange={(e) => setStudentCampus(e.target.value)}
-          iconLeft={<GraduationCap size={16} />}
-          required
-        />
+        ) : (
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Masuk dulu agar pemilik tahu siapa yang akan berkunjung.</p>
+        )}
 
         <div>
           <label style={{ fontSize: '0.875rem', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>
@@ -239,14 +233,22 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
           />
         </div>
 
+        {error && <Notice tone="error">{error}</Notice>}
+
         {/* Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
           <Button type="button" variant="ghost" onClick={onClose}>
             Batal
           </Button>
-          <Button type="submit" variant="primary" isLoading={isSubmitting} icon={<CheckCircle2 size={16} />}>
-            Konfirmasi Jadwal Survey Gratis
-          </Button>
+          {me ? (
+            <Button type="submit" variant="primary" isLoading={isSubmitting} icon={<CheckCircle2 size={16} />}>
+              Konfirmasi Jadwal Survey Gratis
+            </Button>
+          ) : (
+            <Button type="button" variant="primary" onClick={() => { onClose(); openAuthModal(); }}>
+              Masuk
+            </Button>
+          )}
         </div>
       </form>
     </Modal>

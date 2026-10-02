@@ -1,30 +1,70 @@
 import React, { useState } from 'react';
-import { User, GraduationCap, Phone, Mail, ShieldCheck, Heart, LogOut, CheckCircle2, Building2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ShieldCheck, Building2 } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/AppContext';
-import { ListingCard } from '../components/kos/ListingCard';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Notice } from '../components/ui/Notice';
+import { CampusDiscountCard } from '../components/booking/CampusDiscountCard';
+import { useSession } from '../lib/session';
+import { useBecomeOwner } from '../lib/owner';
+import { useTRPC } from '../lib/trpc';
+import { messageForError } from '../lib/errors';
+
+/** Headline student discount shown on the verification card (the per-kos amount applies at checkout). */
+const DISCOUNT_UP_TO = 150000;
 
 export const Profile: React.FC = () => {
-  const { currentUser, updateUserProfile, kosList, setActivePersona, addToast } = useAppStore();
+  const { addToast, openAuthModal } = useAppStore();
+  const { me, isLoading } = useSession();
+  const { becomeOwner, isPending, error: ownerError } = useBecomeOwner();
+  const trpc = useTRPC();
+  const qc = useQueryClient();
+  const save = useMutation(trpc.auth.updateProfile.mutationOptions());
 
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(currentUser.name);
-  const [email, setEmail] = useState(currentUser.email);
-  const [phone, setPhone] = useState(currentUser.phone);
-  const [campus, setCampus] = useState(currentUser.campus || 'Binus University (Syahdan)');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [campus, setCampus] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const savedKosList = kosList.filter((k) => currentUser.savedKosIds.includes(k.id));
+  if (!me) {
+    return (
+      <div className="app-container" style={{ maxWidth: '960px', paddingTop: '3rem', paddingBottom: '4rem', textAlign: 'center' }}>
+        {isLoading ? (
+          <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat profil…</p>
+        ) : (
+          <>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Masuk untuk Melihat Profil</h1>
+            <p style={{ color: 'var(--text-muted)', margin: '0.5rem 0 1.25rem' }}>Profil dan verifikasi email kampus tersimpan di akun Anda.</p>
+            <Button variant="primary" onClick={openAuthModal}>Masuk</Button>
+          </>
+        )}
+      </div>
+    );
+  }
+  const user = me.user;
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const startEdit = () => {
+    setName(user.name);
+    setPhone(user.phone ?? '');
+    setCampus(user.campus ?? '');
+    setError(null);
+    setIsEditing(true);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateUserProfile({
-      name,
-      email,
-      phone,
-      campus,
-    });
-    setIsEditing(false);
+    setError(null);
+    try {
+      await save.mutateAsync({ name, phone: phone.trim() || null, campus: campus.trim() || null });
+      await qc.invalidateQueries({ queryKey: trpc.auth.me.queryKey() });
+      addToast('Profil berhasil diperbarui.', 'success');
+      setIsEditing(false);
+    } catch (err) {
+      setError(messageForError(err));
+    }
   };
 
   return (
@@ -34,7 +74,7 @@ export const Profile: React.FC = () => {
           Profil Akun & Verifikasi Kampus
         </h1>
         <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-          Kelola informasi identitas dan status Kartu Tanda Mahasiswa (KTM) untuk klaim diskon sewa.
+          Kelola informasi identitas dan verifikasi email kampus (.ac.id) untuk klaim diskon sewa.
         </p>
       </div>
 
@@ -47,6 +87,7 @@ export const Profile: React.FC = () => {
         }}
         className="profile-split-layout"
       >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         {/* User Card */}
         <div
           style={{
@@ -63,8 +104,8 @@ export const Profile: React.FC = () => {
           {/* Avatar & Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
             <img
-              src={currentUser.avatar}
-              alt={currentUser.name}
+              src={user.image ?? ''}
+              alt={user.name}
               style={{
                 width: '72px',
                 height: '72px',
@@ -75,13 +116,13 @@ export const Profile: React.FC = () => {
             />
             <div>
               <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                {currentUser.name}
+                {user.name}
               </h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                {currentUser.email}
+                {user.email}
               </p>
 
-              {currentUser.ktmVerified && (
+              {me?.campusVerified && (
                 <div
                   style={{
                     display: 'inline-flex',
@@ -97,7 +138,7 @@ export const Profile: React.FC = () => {
                   }}
                 >
                   <ShieldCheck size={14} />
-                  <span>KTM Mahasiswa Terverifikasi</span>
+                  <span>Email Kampus Terverifikasi</span>
                 </div>
               )}
             </div>
@@ -105,7 +146,7 @@ export const Profile: React.FC = () => {
 
           {/* Profile Form */}
           {isEditing ? (
-            <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <form onSubmit={(e) => void handleSaveProfile(e)} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <Input
                 label="Nama Lengkap"
                 value={name}
@@ -113,29 +154,21 @@ export const Profile: React.FC = () => {
                 required
               />
               <Input
-                label="Alamat Email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-              <Input
                 label="Nomor WhatsApp"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                required
               />
               <Input
                 label="Asal Kampus / Universitas"
                 value={campus}
                 onChange={(e) => setCampus(e.target.value)}
-                required
               />
+              {error && <Notice tone="error">{error}</Notice>}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
                   Batal
                 </Button>
-                <Button type="submit" variant="primary" size="sm">
+                <Button type="submit" variant="primary" size="sm" isLoading={save.isPending}>
                   Simpan Perubahan
                 </Button>
               </div>
@@ -144,83 +177,67 @@ export const Profile: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: '0.9rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.65rem', borderBottom: '1px solid var(--border-subtle)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Asal Kampus:</span>
-                <span style={{ fontWeight: 600 }}>{currentUser.campus}</span>
+                <span style={{ fontWeight: 600 }}>{user.campus ?? '-'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.65rem', borderBottom: '1px solid var(--border-subtle)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Nomor WhatsApp:</span>
-                <span style={{ fontWeight: 600 }}>{currentUser.phone}</span>
+                <span style={{ fontWeight: 600 }}>{user.phone ?? '-'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.65rem', borderBottom: '1px solid var(--border-subtle)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Peran Akun:</span>
                 <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>
-                  {currentUser.role === 'student' ? 'Pencari Kos / Mahasiswa' : 'Pemilik Kos'}
+                  {me.isOwner ? 'Pemilik Kos' : 'Pencari Kos / Mahasiswa'}
                 </span>
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                <Button variant="outline" size="sm" onClick={startEdit}>
                   Ubah Profil
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setActivePersona(currentUser.role === 'student' ? 'owner' : 'student');
-                  }}
-                  icon={<Building2 size={15} />}
-                >
-                  Beralih ke {currentUser.role === 'student' ? 'Mode Pemilik Kos' : 'Mode Pencari Kos'}
                 </Button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Favorite Kos Wishlist Section */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <Heart size={20} color="var(--status-overdue)" />
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>
-              Kos Favorit Saya ({savedKosList.length})
-            </h3>
-          </div>
+        <CampusDiscountCard studentDiscountAmount={DISCOUNT_UP_TO} />
 
+        {me && !me.user.isDemo && (
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-              gap: '1.25rem',
+              backgroundColor: 'var(--bg-surface)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-subtle)',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
             }}
           >
-            {savedKosList.map((kos) => (
-              <ListingCard key={kos.id} kos={kos} />
-            ))}
-          </div>
-
-          {savedKosList.length === 0 && (
-            <div
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--border-subtle)',
-                padding: '3rem 1rem',
-                textAlign: 'center',
-                color: 'var(--text-muted)',
-              }}
-            >
-              Belum ada kos yang Anda simpan ke favorit.
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Building2 size={18} color="var(--primary)" />
+              <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Punya kos?</h4>
             </div>
-          )}
+            {me.isOwner ? (
+              <>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Akun Anda sudah terdaftar sebagai pemilik.</p>
+                <Link to="/owner/dashboard">
+                  <Button variant="outline" size="sm">Buka Dashboard Pemilik</Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Kelola kamar, tagihan, dan kuitansi dari dashboard pemilik. Gratis.</p>
+                {ownerError && <Notice tone="error">{ownerError}</Notice>}
+                <Button variant="primary" size="sm" isLoading={isPending} disabled={isPending} onClick={() => void becomeOwner()}>
+                  Daftarkan diri sebagai pemilik
+                </Button>
+              </>
+            )}
+          </div>
+        )}
         </div>
-      </div>
 
-      <style>{`
-        @media (min-width: 768px) {
-          .profile-split-layout {
-            grid-template-columns: 380px 1fr !important;
-          }
-        }
-      `}</style>
+      </div>
     </div>
   );
 };

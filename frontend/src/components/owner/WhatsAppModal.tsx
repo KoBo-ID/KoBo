@@ -1,36 +1,32 @@
 import React, { useState } from 'react';
-import { MessageSquare, Copy, ExternalLink, CheckCircle2, ShieldCheck, Heart } from 'lucide-react';
-import { Room, Kos } from '../../types';
+import { MessageSquare, Copy, ExternalLink, Heart } from 'lucide-react';
+import type { BoardRoom } from '../../../../backend/src/trpc/router';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { useAppStore } from '../../store/AppContext';
+import { useSession } from '../../lib/session';
+import { formatDueDate, formatRupiah } from '../../lib/ownerWorkspace';
 
 interface WhatsAppModalProps {
   isOpen: boolean;
   onClose: () => void;
-  room: Room | null;
-  kos: Kos | null;
+  room: BoardRoom | null;
+  kosName: string;
 }
 
 export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
   isOpen,
   onClose,
   room,
-  kos,
+  kosName,
 }) => {
   const { addToast } = useAppStore();
+  const { me } = useSession();
+  const ownerName = me?.user.name ?? 'pengelola';
   const [copied, setCopied] = useState(false);
   const [tone, setTone] = useState<'santun' | 'resmi'>('santun');
 
-  if (!room || !kos) return null;
-
-  const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
+  if (!room) return null;
 
   const cleanPhone = (phone: string = '') => {
     let p = phone.replace(/[^0-9]/g, '');
@@ -41,37 +37,40 @@ export const WhatsAppModal: React.FC<WhatsAppModalProps> = ({
   };
 
   const getMessageTemplate = () => {
-    const tenantFirstName = room.tenantName ? room.tenantName.split(' ')[0] : 'Kak';
+    const tenantName = room.tenant?.name ?? '';
+    const tenantFirstName = tenantName ? tenantName.split(' ')[0] : 'Kak';
+    const amount = formatRupiah(room.invoice?.amount ?? room.priceMonthly);
+    const due = formatDueDate(room.invoice?.dueDate);
+    const late = room.daysOverdue > 0 ? ` (terlambat ${room.daysOverdue} hari)` : '';
+    const link = `${window.location.origin}/my-kos`;
 
     if (tone === 'santun') {
-      return `Halo Kak ${tenantFirstName}, salam hangat dari ${kos.owner.name} (${kos.name}) yaa.
+      return `Halo Kak ${tenantFirstName}, salam hangat dari ${ownerName} (${kosName}) yaa.
 
-Semoga perkuliahan dan aktivitasnya di ${room.tenantCampus || 'kampus'} berjalan lancar selalu.
+Semoga perkuliahan dan aktivitasnya di ${room.tenant?.campus || 'kampus'} berjalan lancar selalu.
 
-Sekadar mengingatkan santun ya Kak, untuk tagihan sewa kamar *Nomor ${room.roomNumber}* periode bulan ini sebesar *${formatRupiah(room.priceMonthly)}* telah jatuh tempo pada tanggal ${room.dueDate || '5'}.
+Sekadar mengingatkan santun ya Kak, tagihan sewa kamar *Nomor ${room.roomNumber}* sebesar *${amount}* jatuh tempo pada tanggal ${due}${late}.
 
-Pembayaran dapat ditransfer ke:
-*BCA: 89108 081234567890*
-a.n. ${kos.owner.name}
+Rincian tagihan dan kuitansi Kakak bisa dilihat di ${link}
 
-Apabila sudah melakukan transfer atau ada kendala tanggal kiriman beasiswa/uang saku, silakan kabari kami ya Kak. Kuitansi resmi digital akan langsung diterbitkan begitu pembayaran terverifikasi.
+Kalau sudah membayar atau ada kendala tanggal kiriman uang saku, kabari kami ya Kak. Kuitansi digital terbit begitu pembayaran kami catat.
 
 Terima kasih banyak atas kerjasamanya Kak ${tenantFirstName}!`;
     }
 
-    return `Yth. Sdr/i ${room.tenantName},
+    return `Yth. Sdr/i ${tenantName || 'Penghuni'},
 
-Kami dari pengelola ${kos.name} memberitahukan bahwa tagihan sewa Kamar No. ${room.roomNumber} sebesar ${formatRupiah(room.priceMonthly)} saat ini telah jatuh tempo per tanggal ${room.dueDate || '5'}.
+Kami dari pengelola ${kosName} memberitahukan bahwa tagihan sewa Kamar No. ${room.roomNumber} sebesar ${amount} jatuh tempo pada tanggal ${due}${late}.
 
-Mohon untuk segera menyelesaikan pembayaran ke rekening:
-Bank BCA: 89108 081234567890 (a.n. ${kos.owner.name})
+Rincian tagihan dan kuitansi tersedia di ${link}
 
-Mohon konfirmasi bukti transfer setelah melakukan transaksi. Terima kasih atas perhatian dan kerjasamanya.`;
+Mohon kabari kami setelah pembayaran dilakukan. Terima kasih atas perhatian dan kerjasamanya.`;
   };
 
   const messageText = getMessageTemplate();
-  const targetWhatsAppNumber = cleanPhone(room.tenantPhone || '081234567890');
-  const waLink = `https://wa.me/${targetWhatsAppNumber}?text=${encodeURIComponent(messageText)}`;
+  const phone = cleanPhone(room.tenant?.phone ?? '');
+  // Without a recorded number wa.me still opens WhatsApp and lets the owner pick the contact.
+  const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(messageText)}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(messageText);
@@ -90,7 +89,7 @@ Mohon konfirmasi bukti transfer setelah melakukan transaksi. Terima kasih atas p
           <span>Pengingat WhatsApp Santun</span>
         </div>
       }
-      subtitle={`Kirim pengingat sewa tanpa rasa canggung ke ${room.tenantName} (Kamar ${room.roomNumber})`}
+      subtitle={`Kirim pengingat sewa tanpa rasa canggung ke ${room.tenant?.name ?? 'penghuni'} (Kamar ${room.roomNumber})`}
       maxWidth="md"
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>

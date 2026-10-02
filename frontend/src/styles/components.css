@@ -374,7 +374,8 @@
   padding: 0.3rem;
 }
 
-.kobo-menu button {
+.kobo-menu button,
+.kobo-menu__link {
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -386,13 +387,20 @@
   font-size: 0.82rem;
   font-weight: 600;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
   transition: background-color var(--duration-fast) var(--ease-out-spring),
               color var(--duration-fast) var(--ease-out-spring);
 }
 
-.kobo-menu button:hover {
+.kobo-menu button:hover,
+.kobo-menu__link:hover {
   background-color: var(--bg-muted);
+}
+
+.kobo-menu button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .kobo-menu button[aria-checked='true'] {
@@ -763,5 +771,26 @@
 @media (min-width: 1024px) {
   .kobo-featured-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Kuitansi page: "Unduh PDF" is window.print(), so only the receipt may reach the paper. */
+@media print {
+  header,
+  footer,
+  .no-print,
+  .mobile-only-dock {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  .kuitansi-page {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  .kuitansi-paper {
+    box-shadow: none !important;
+    break-inside: avoid;
   }
 }
