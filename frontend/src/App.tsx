@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { lazyWithReload } from './lib/lazyWithReload';
 import { TRPCProvider, queryClient, trpcClient } from './lib/trpc';
@@ -92,6 +92,18 @@ const RouteFallback: React.FC = () => (
   </div>
 );
 
+/* Links and form submits push a new history entry: start that page at the top. Back/forward (POP) keeps the
+   browser's own scroll position, and a #hash link is left alone so in-page anchors still land on their section. */
+const ScrollToTop: React.FC = () => {
+  const { pathname, search, hash } = useLocation();
+  const navigationType = useNavigationType();
+  React.useLayoutEffect(() => {
+    if (navigationType === 'POP' || hash) return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname, search, hash, navigationType]);
+  return null;
+};
+
 const AuthModalHost: React.FC = () => {
   const { authModalOpen, closeAuthModal } = useAppStore();
   if (!authModalOpen) return null;
@@ -108,6 +120,7 @@ export function App() {
     <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
     <AppProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Tenant / Student Portal Route Tree */}

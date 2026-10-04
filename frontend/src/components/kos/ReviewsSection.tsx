@@ -109,8 +109,8 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '1rem',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: '0.75rem 1rem',
           paddingBottom: '1.5rem',
           borderBottom: '1px solid var(--border-subtle)',
           marginBottom: '1.5rem',
@@ -120,11 +120,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           const value = subRatings[key];
           return (
             <div key={key}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.35rem' }}>
-                <span>{label}</span>
-                <span style={{ fontWeight: 700 }}>{value === null ? '–' : value.toFixed(1)} / 5</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.75rem', lineHeight: 1.3, marginBottom: '0.3rem' }}>
+                <span style={{ minWidth: 0 }}>{label}</span>
+                <span style={{ fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>{value === null ? '–' : value.toFixed(1)} / 5</span>
               </div>
-              <div style={{ height: '6px', backgroundColor: 'var(--bg-muted)', borderRadius: '3px', overflow: 'hidden' }}>
+              <div style={{ height: '5px', backgroundColor: 'var(--bg-muted)', borderRadius: '3px', overflow: 'hidden' }}>
                 <div style={{ width: `${((value ?? 0) / 5) * 100}%`, height: '100%', backgroundColor: 'var(--primary)', borderRadius: '3px' }} />
               </div>
             </div>

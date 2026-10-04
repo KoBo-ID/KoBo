@@ -17,6 +17,9 @@ Today a full kos is a dead end: a student who wants it can only refresh the page
 - At most `MAX_LIVE_ENTRIES = 5` live entries per user across all kos (`BAD_REQUEST`).
 - The owner of the kos cannot join their own kos's queue (`FORBIDDEN`).
 - Having an ACTIVE tenancy elsewhere does not block joining.
+- **Revised 2026-10-04:** a user with a live tenancy (ACTIVE, or an unexpired PENDING hold) in this kos cannot join its queue (`BAD_REQUEST` "Kamu sudah menyewa kamar di kos ini."). `waitlist.status` returns `rentingHere` so the UI hides the join button.
+- **Revised 2026-10-04:** public reads (`waitlist.status`, `kos.detail` room flags) use `roomClaims()`, a read-only projection of what the next advance would do. A room a waiter would get counts as taken, so "full" and the room list never show a room that booking would refuse. Room create/update already advance the queue inline.
+- **Revised 2026-10-04:** the background advance runs every 15 s (was 60 s), so a freed room is offered sooner. Queue-first is enforced at booking time: booking advances the queue before it checks the room, so a free room with a matching waiter is always offered to that waiter first.
 
 ### Queue number (computed on read, ADR 0005)
 

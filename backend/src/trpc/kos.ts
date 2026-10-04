@@ -4,7 +4,7 @@ import { PRICE_MAX, SEARCH_LIMIT, SEARCH_RADIUS_METERS } from '@kobo/shared/sear
 import type { RoomStatus } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
 import { Prisma } from '../generated/prisma/client.ts'
-import { liveOffer } from '../waitlist.ts'
+import { liveOffer, roomClaims } from '../waitlist.ts'
 import { haversineSql, queryCards } from './kosQueries.ts'
 import type { KosCard } from './kosQueries.ts'
 import { publicProcedure, router } from './trpc.ts'
@@ -160,6 +160,7 @@ export const kosRouter = router({
     ])
 
     const ownerKosCount = await prisma.kos.count({ where: { ownerId: kos.ownerId } })
+    const claims = await roomClaims(prisma, card.id, now)
 
     const roomViews: RoomView[] = rooms
       .map((r) => {
@@ -184,7 +185,8 @@ export const kosRouter = router({
             oldestUnpaidInvoice: unpaid ? { dueDate: dateOnly(unpaid.dueDate) } : null,
             now,
           }),
-          reservedForWaitlist: !!offer && offer.userId !== session?.user.id,
+          // Held for someone else: a live offer, or the queue's next match for it (booking would offer it to them first).
+          reservedForWaitlist: !!claims.get(r.id) && claims.get(r.id) !== session?.user.id,
           offeredToMe: !!offer && offer.userId === session?.user.id,
         }
       })

@@ -307,7 +307,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               </button>
             )}
 
-            <Button type="submit" variant="primary" fullWidth icon={<CheckCircle2 size={16} />} isLoading={busy === 'form'} disabled={busy !== null}>
+            <Button type="submit" variant="primary" fullWidth icon={isRegister ? <CheckCircle2 size={16} /> : undefined} isLoading={busy === 'form'} disabled={busy !== null}>
               {isRegister ? 'Daftar Sekarang' : 'Masuk ke Akun'}
             </Button>
           </form>

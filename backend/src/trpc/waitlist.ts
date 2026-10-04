@@ -4,7 +4,7 @@ import type { WaitlistStatus } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
 import type { Prisma } from '../generated/prisma/client.ts'
 import type { Storage } from '../storage.ts'
-import { advanceWaitlist, liveOffer } from '../waitlist.ts'
+import { advanceWaitlist, liveOffer, roomClaims } from '../waitlist.ts'
 import { authedProcedure, ownerProcedure, publicProcedure, router } from './trpc.ts'
 
 type Tx = Prisma.TransactionClient
@@ -34,6 +34,8 @@ export interface WaitlistStatusResult {
   full: boolean
   /** Each distinct room type with how many WAITING entries compete for it. */
   types: { roomType: string | null; waiting: number }[]
+  /** Signed in and already renting (live or paid tenancy) in this kos: a second room here is not queued. */
+  rentingHere: boolean
   mine: MyWaitlistEntry | null
 }
 
@@ -51,6 +53,7 @@ const LIVE = ['WAITING', 'OFFERED'] as const
 const HISTORY_LIMIT = 10
 
 const ALREADY_QUEUED = 'Kamu sudah ada di daftar tunggu kos ini.'
+const ALREADY_RENTING = 'Kamu sudah menyewa kamar di kos ini.'
 const NOT_OWN = 'Anda hanya dapat mengubah antrean Anda sendiri.'
 const NOT_LIVE = 'Antrean ini sudah selesai.'
 
@@ -70,6 +73,10 @@ export async function bookableRooms(db: Tx, kosId: string, now: Date): Promise<{
     select: { id: true, type: true },
   })
 }
+
+/** Live (ACTIVE, or unexpired PENDING hold) tenancies this user has in the kos. */
+const rentingInKos = (db: Tx, userId: string, kosId: string, now: Date) =>
+  db.tenancy.count({ where: { userId, room: { kosId }, OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gte: now } }] } })
 
 const entryInclude = {
   kos: { select: { id: true, slug: true, name: true, images: { orderBy: { order: 'asc' }, take: 1, select: { url: true, key: true } } } },
@@ -104,22 +111,26 @@ export const waitlistRouter = router({
   /** Is this kos full, how long is the queue per type, and (signed in) where am I. Public. */
   status: publicProcedure.input(kosIdOnly).query(async ({ ctx, input }): Promise<WaitlistStatusResult> => {
     const now = new Date()
-    const [rooms, bookable, waiting, session] = await Promise.all([
+    const [rooms, bookable, claims, waiting, session] = await Promise.all([
       ctx.prisma.room.findMany({ where: { kosId: input.kosId }, select: { type: true } }),
       bookableRooms(ctx.prisma, input.kosId, now),
+      roomClaims(ctx.prisma, input.kosId, now),
       ctx.prisma.waitlistEntry.findMany({ where: { kosId: input.kosId, status: 'WAITING' }, select: { roomType: true } }),
       ctx.getSession(),
     ])
+    const open = bookable.filter((r) => !claims.has(r.id))
     const types = [...new Set(rooms.map((r) => r.type))].sort().map((roomType) => ({ roomType, waiting: waiting.filter((w) => competes(w.roomType, roomType)).length }))
     let mine: MyWaitlistEntry | null = null
+    let rentingHere = false
     if (session) {
       const row = await ctx.prisma.waitlistEntry.findFirst({ where: { kosId: input.kosId, userId: session.user.id, status: { in: [...LIVE] } }, include: entryInclude })
       if (row) {
         const [entry] = await toMyEntries(ctx.prisma, ctx.storage, [row], now)
         if (entry.status === 'WAITING' || entry.status === 'OFFERED') mine = entry
       }
+      rentingHere = (await rentingInKos(ctx.prisma, session.user.id, input.kosId, now)) > 0
     }
-    return { full: bookable.length === 0, types, mine }
+    return { full: open.length === 0, types, rentingHere, mine }
   }),
 
   /** Join a full kos's queue. Advances the kos first, so a lapsed hold or offer is settled before "is it full?" is decided. */
@@ -131,6 +142,8 @@ export const waitlistRouter = router({
     try {
       return await ctx.prisma.$transaction(async (tx) => {
         await advanceWaitlist(tx, kos.id, now)
+        // Paying first never buys a queue place: a student who rents here already has their room.
+        if ((await rentingInKos(tx, ctx.user.id, kos.id, now)) > 0) throw new TRPCError({ code: 'BAD_REQUEST', message: ALREADY_RENTING })
         const mine = await tx.waitlistEntry.findMany({ where: { userId: ctx.user.id, status: { in: [...LIVE] } }, select: { kosId: true } })
         if (mine.some((m) => m.kosId === kos.id)) throw new TRPCError({ code: 'CONFLICT', message: ALREADY_QUEUED })
         if (mine.length >= MAX_LIVE_ENTRIES) throw new TRPCError({ code: 'BAD_REQUEST', message: `Kamu hanya bisa mengantre di ${MAX_LIVE_ENTRIES} kos sekaligus.` })

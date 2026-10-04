@@ -87,6 +87,19 @@ export const JoinCard: React.FC<JoinCardProps> = ({ kosId, status, initialType, 
     ...status.types.map((t) => ({ value: t.roomType ?? ANY, label: t.waiting > 0 ? `${t.roomType} · ${t.waiting} mengantre` : `${t.roomType}` })),
   ];
 
+  if (status.rentingHere) {
+    return (
+      <div data-testid="waitlist-join" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Kamu sudah menyewa kamar di kos ini, jadi tidak perlu ikut daftar tunggu.</div>
+        {onBack && (
+          <Button variant="ghost" size="sm" fullWidth onClick={onBack}>
+            Lihat kamar yang tersedia
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div data-testid="waitlist-join" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>

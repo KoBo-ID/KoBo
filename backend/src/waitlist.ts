@@ -1,4 +1,4 @@
-import { matchOffers, OFFER_HOURS } from '@kobo/shared/domain'
+import { compareQueue, matchOffers, OFFER_HOURS } from '@kobo/shared/domain'
 import type { PrismaClient } from './db/client.ts'
 import type { Prisma } from './generated/prisma/client.ts'
 import { enqueueEmail } from './outbox.ts'
@@ -13,6 +13,36 @@ type Tx = Prisma.TransactionClient
 
 /** A live offer: OFFERED and not past its deadline. */
 export const liveOffer = (now: Date): Prisma.WaitlistEntryWhereInput => ({ status: 'OFFERED', offerExpiresAt: { gte: now } })
+
+/**
+ * Read-only: which user each room is held for right now. A live offer, or the first waiter that advanceWaitlist()
+ * would offer it to on its next run. Public reads use this so "full" and the room list agree with what booking
+ * will do, without writing on a GET.
+ */
+export async function roomClaims(db: Tx, kosId: string, now: Date): Promise<Map<string, string>> {
+  const offers = await db.waitlistEntry.findMany({ where: { kosId, ...liveOffer(now) }, select: { userId: true, offeredRoomId: true } })
+  const claims = new Map<string, string>()
+  for (const o of offers) if (o.offeredRoomId) claims.set(o.offeredRoomId, o.userId)
+
+  const waiting = await db.waitlistEntry.findMany({
+    where: { kosId, status: 'WAITING' },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: { id: true, userId: true, roomType: true, createdAt: true },
+  })
+  if (waiting.length === 0) return claims
+  const rooms = await db.room.findMany({
+    where: {
+      kosId,
+      id: { notIn: [...claims.keys()] },
+      tenancies: { none: { OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gte: now } }] } },
+    },
+    orderBy: { roomNumber: 'asc' },
+    select: { id: true, type: true },
+  })
+  const userOf = new Map(waiting.map((w) => [w.id, w.userId]))
+  for (const o of matchOffers([...waiting].sort(compareQueue), rooms)) claims.set(o.roomId, userOf.get(o.entryId)!)
+  return claims
+}
 
 /**
  * Lapse stale offers, then offer every free room to the first matching WAITING entry. Locks the kos row first so
@@ -69,7 +99,7 @@ export async function advanceAllWaitlists(prisma: PrismaClient, now: Date = new 
 }
 
 /** Start the periodic advance. Ticks never overlap within this process. Returns a stop function. */
-export function startWaitlistWorker(prisma: PrismaClient, intervalMs = 60_000): () => void {
+export function startWaitlistWorker(prisma: PrismaClient, intervalMs = 15_000): () => void {
   let running = false
   const tick = async () => {
     if (running) return

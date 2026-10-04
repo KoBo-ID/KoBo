@@ -133,7 +133,8 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [] }: Aut
     },
 
     advanced: {
-      ipAddress: { ipAddressHeaders: ['cf-connecting-ip'] },
+      // Production trusts only Cloudflare's header. X-Forwarded-For is client-controlled, so it is accepted in dev only.
+      ipAddress: { ipAddressHeaders: process.env.NODE_ENV === 'production' ? ['cf-connecting-ip'] : ['cf-connecting-ip', 'x-forwarded-for'] },
     },
 
     rateLimit: {
