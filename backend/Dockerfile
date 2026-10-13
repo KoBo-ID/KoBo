@@ -19,6 +19,7 @@ COPY backend/prisma backend/prisma
 COPY backend/prisma.config.ts backend/
 RUN npm ci
 COPY packages/shared packages/shared
+COPY backend/src backend/src
 COPY frontend frontend
 RUN npm run build -w frontend
 
