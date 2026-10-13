@@ -2,6 +2,7 @@ import { initTRPC, TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import type { Auth } from '../auth.ts'
 import type { PrismaClient } from '../db/client.ts'
+import type { PaymentService } from '../payment/service.ts'
 import type { Storage } from '../storage.ts'
 
 export type Session = NonNullable<Awaited<ReturnType<Auth['api']['getSession']>>>
@@ -10,6 +11,7 @@ export interface Context {
   prisma: PrismaClient
   auth: Auth
   storage: Storage
+  paymentService: PaymentService
   /** Request headers (for forwarding to better-auth). */
   headers: Headers
   /** Response headers the tRPC adapter will send (Set-Cookie from auth-changing procedures). */
@@ -44,7 +46,8 @@ export const createCallerFactory = t.createCallerFactory
 export const authedProcedure = t.procedure.use(async ({ ctx, next }) => {
   const session = await ctx.getSession()
   if (!session) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Silakan masuk terlebih dahulu.' })
-  return next({ ctx: { ...ctx, user: session.user } })
+  const user = session.user as typeof session.user & { isDemo?: boolean }
+  return next({ ctx: { ...ctx, user, paymentProvider: ctx.paymentService.providerFor({ isDemo: user.isDemo === true }) } })
 })
 
 /**

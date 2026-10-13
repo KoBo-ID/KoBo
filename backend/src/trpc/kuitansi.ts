@@ -11,7 +11,7 @@ export interface KuitansiView {
   /** ISO timestamp. */
   paidAt: string
   amount: number
-  method: 'MOCK' | 'MANUAL'
+  method: 'MOCK' | 'MANUAL' | 'XENDIT'
   payer: { name: string; campus: string | null }
   kos: { id: string; name: string; address: string }
   room: { roomNumber: string; floor: number; type: string }

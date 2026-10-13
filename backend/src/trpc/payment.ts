@@ -6,7 +6,7 @@ import { handlePaymentWebhook, hmacHex, settleInvoice } from '../payments.ts'
 import { authedProcedure, ownerProcedure, router } from './trpc.ts'
 
 export interface PaymentStatusResult {
-  status: 'PENDING' | 'PAID' | 'FAILED'
+  status: 'CREATING' | 'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED' | 'REFUND_PENDING' | 'REFUNDED' | 'REFUND_FAILED'
   tenancyStatus: 'PENDING' | 'ACTIVE' | 'ENDED'
   /** Raw Payment.receiptNo for /kuitansi/:receiptNo; null until paid. */
   receiptNumber: number | null

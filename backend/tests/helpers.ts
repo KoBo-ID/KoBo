@@ -2,6 +2,8 @@ import '../src/env.ts'
 import { createApp } from '../src/app.ts'
 import { createAuth } from '../src/auth.ts'
 import { createPrisma } from '../src/db/client.ts'
+import { MockPaymentProvider } from '../src/payment/mock.ts'
+import { PaymentService } from '../src/payment/service.ts'
 import { createFakeStorage } from '../src/storage.ts'
 import { createCallerFactory } from '../src/trpc/trpc.ts'
 import type { Context } from '../src/trpc/trpc.ts'
@@ -12,21 +14,27 @@ export const baseURL = process.env.BETTER_AUTH_URL ?? 'http://localhost:3000'
 export const secret = process.env.BETTER_AUTH_SECRET ?? ''
 export const auth = createAuth({ prisma, baseURL, secret })
 export const storage = createFakeStorage()
-export const app = createApp({ prisma, auth, storage })
+export const paymentService = new PaymentService({ defaultProvider: new MockPaymentProvider() })
+export const app = createApp({ prisma, auth, storage, paymentService })
 
 const makeCaller = createCallerFactory(appRouter)
 
-function contextFor(userId: string | null): Context {
-  const session = userId ? ({ user: { id: userId }, session: { userId } } as never) : null
-  return { prisma, auth, storage, headers: new Headers(), resHeaders: new Headers(), getSession: async () => session }
+interface CallerOptions {
+  isDemo?: boolean
+  paymentService?: PaymentService
+}
+
+function contextFor(userId: string | null, options: CallerOptions = {}): Context {
+  const session = userId ? ({ user: { id: userId, isDemo: options.isDemo ?? false }, session: { userId } } as never) : null
+  return { prisma, auth, storage, paymentService: options.paymentService ?? paymentService, headers: new Headers(), resHeaders: new Headers(), getSession: async () => session }
 }
 
 /** tRPC caller with no session. */
 export const caller = makeCaller(contextFor(null))
 
 /** tRPC caller authenticated as the given user id (the session lookup is stubbed, no cookies involved). */
-export function callerFor(userId: string) {
-  return makeCaller(contextFor(userId))
+export function callerFor(userId: string, options: CallerOptions = {}) {
+  return makeCaller(contextFor(userId, options))
 }
 
 // better-auth's limiter is process-global and keyed by (ip, path), so every test client gets a fresh IP.

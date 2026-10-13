@@ -15,6 +15,8 @@ const env = {
   BETTER_AUTH_URL: `http://localhost:${process.env.E2E_PORT ?? '3100'}`,
   ALLOW_INSECURE_AUTH_URL: '1', // e2e only: production mode normally refuses a non-https / localhost BETTER_AUTH_URL
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? 'e2e-secret-e2e-secret-e2e-secret-0123456789',
+  PAYMENT_PROVIDER: 'mock',
+  ALLOW_MOCK_PAYMENTS: '1', // e2e only: production mode normally refuses the mock provider
   PAYMENT_WEBHOOK_SECRET: process.env.PAYMENT_WEBHOOK_SECRET ?? 'e2e-webhook-secret-0123456789',
   DATABASE_URL: process.env.E2E_DATABASE_URL ?? 'postgresql://kobo:kobo@localhost:5433/kobo_e2e',
   // Never hit the real email service from e2e: backend/.env may hold a Resend key, and loadEnvFile

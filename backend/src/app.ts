@@ -7,6 +7,8 @@ import type { Auth } from './auth.ts'
 import type { PrismaClient } from './db/client.ts'
 import { authEnv, paymentWebhookSecret } from './env.ts'
 import { handlePaymentWebhook } from './payments.ts'
+import { paymentServiceFromEnv } from './payment/service.ts'
+import type { PaymentService } from './payment/service.ts'
 import { DEV_UPLOAD_PREFIX, storageFromEnv } from './storage.ts'
 import type { FakeStorage, Storage } from './storage.ts'
 import { appRouter } from './trpc/router.ts'
@@ -20,6 +22,8 @@ export interface AppOptions {
   auth?: Auth
   /** Defaults to storageFromEnv(): R2 when configured, else the in-memory fake. */
   storage?: Storage
+  /** Defaults to the provider selected by PAYMENT_PROVIDER. Tests inject a network-free service explicitly. */
+  paymentService?: PaymentService
 }
 
 const IMMUTABLE = 'public, max-age=31536000, immutable'
@@ -54,7 +58,7 @@ async function readIfFile(root: string, urlPath: string): Promise<Uint8Array<Arr
   }
 }
 
-export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...authEnv() }), storage = storageFromEnv() }: AppOptions) {
+export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...authEnv() }), storage = storageFromEnv(), paymentService = paymentServiceFromEnv() }: AppOptions) {
   const app = new Hono()
 
   app.get('/health', async (c) => {
@@ -96,6 +100,7 @@ export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...auth
           prisma,
           auth,
           storage,
+          paymentService,
           headers: req.headers,
           resHeaders,
           getSession: () => (session ??= auth.api.getSession({ headers: req.headers })),

@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetDb } from '../../src/db/seed.ts'
 import { authedProcedure, createCallerFactory, ownerProcedure, publicProcedure, router } from '../../src/trpc/trpc.ts'
-import { auth, caller, callerFor, prisma } from '../helpers.ts'
+import { auth, caller, callerFor, paymentService, prisma } from '../helpers.ts'
 
 beforeEach(() => resetDb(prisma))
 
@@ -21,6 +21,7 @@ const probeFor = (userId: string | null) =>
     prisma,
     auth,
     storage: createFakeStorage(),
+    paymentService,
     headers: new Headers(),
     resHeaders: new Headers(),
     getSession: async () => (userId ? ({ user: { id: userId } } as never) : null),
