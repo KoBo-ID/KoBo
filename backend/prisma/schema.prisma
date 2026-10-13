@@ -35,6 +35,7 @@ model User {
   visits             Visit[]
   waitlistEntries    WaitlistEntry[]
   rentalApplications RentalApplication[]
+  recordedPayments   Payment[]           @relation("PaymentRecordedBy")
 }
 
 model Session {
@@ -123,11 +124,50 @@ enum InvoiceStatus {
 enum PaymentProvider {
   MOCK
   MANUAL
+  XENDIT
 }
 
 enum PaymentStatus {
+  CREATING
   PENDING
   PAID
+  FAILED
+  EXPIRED
+  REFUND_PENDING
+  REFUNDED
+  REFUND_FAILED
+}
+
+enum GatewayFeeBearer {
+  PLATFORM
+  OWNER
+  TENANT
+}
+
+enum ManualPaymentMethod {
+  CASH
+  BANK_TRANSFER
+}
+
+enum XenditOnboardingStatus {
+  NOT_STARTED
+  PENDING
+  VERIFIED
+  RESTRICTED
+}
+
+enum PaymentWebhookResult {
+  RECEIVED
+  APPLIED
+  IGNORED
+  REJECTED
+  FAILED
+}
+
+enum PaymentRefundStatus {
+  PENDING
+  SUBMITTED
+  SUCCEEDED
   FAILED
 }
 
@@ -171,13 +211,16 @@ model Campus {
 }
 
 model OwnerProfile {
-  id           String   @id @default(cuid(2))
-  userId       String   @unique
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bio          String?
-  verified     Boolean  @default(false)
-  responseRate String?
-  memberSince  DateTime @default(now()) @db.Timestamptz(3)
+  id                     String                 @id @default(cuid(2))
+  userId                 String                 @unique
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                    String?
+  verified               Boolean                @default(false)
+  responseRate           String?
+  memberSince            DateTime               @default(now()) @db.Timestamptz(3)
+  xenditSubaccountId     String?                @unique
+  xenditOnboardingStatus XenditOnboardingStatus @default(NOT_STARTED)
+  xenditVerifiedAt       DateTime?              @db.Timestamptz(3)
 
   kos Kos[]
 }
@@ -281,13 +324,19 @@ model RentalApplication {
 }
 
 model Invoice {
-  id          String        @id @default(cuid(2))
-  tenancyId   String
-  tenancy     Tenancy       @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
-  periodStart DateTime      @db.Date
-  dueDate     DateTime      @db.Date
-  amount      Int
-  status      InvoiceStatus @default(UNPAID)
+  id                    String           @id @default(cuid(2))
+  tenancyId             String
+  tenancy               Tenancy          @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  periodStart           DateTime         @db.Date
+  dueDate               DateTime         @db.Date
+  amount                Int
+  // TODO(Task 4): remove these compatibility defaults after every invoice writer persists an explicit allocation snapshot.
+  rentAmount            Int              @default(0)
+  discountAmount        Int              @default(0)
+  applicationFeeAmount  Int              @default(0)
+  ownerReceivableAmount Int              @default(0)
+  gatewayFeeBearer      GatewayFeeBearer @default(PLATFORM)
+  status                InvoiceStatus    @default(UNPAID)
 
   payments Payment[]
 
@@ -295,18 +344,79 @@ model Invoice {
 }
 
 model Payment {
-  id         String          @id @default(cuid(2))
-  invoiceId  String
-  invoice    Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  provider   PaymentProvider
-  externalId String?         @unique
-  receiptNo  Int             @unique @default(autoincrement())
-  amount     Int
-  status     PaymentStatus   @default(PENDING)
-  paidAt     DateTime?       @db.Timestamptz(3)
-  createdAt  DateTime        @default(now()) @db.Timestamptz(3)
+  id                       String               @id @default(cuid(2))
+  invoiceId                String
+  invoice                  Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  provider                 PaymentProvider
+  externalId               String?              @unique
+  providerBusinessId       String?
+  providerSessionId        String?              @unique
+  providerPaymentRequestId String?              @unique
+  providerPaymentId        String?              @unique
+  providerSplitRuleId      String?
+  checkoutUrl              String?
+  expiresAt                DateTime?            @db.Timestamptz(3)
+  channel                  String?
+  failureCode              String?
+  manualMethod             ManualPaymentMethod?
+  manualReference          String?
+  manualNote               String?
+  recordedById             String?
+  recordedBy               User?                @relation("PaymentRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  receiptNo                Int                  @unique @default(autoincrement())
+  amount                   Int
+  status                   PaymentStatus        @default(PENDING)
+  paidAt                   DateTime?            @db.Timestamptz(3)
+  refundedAt               DateTime?            @db.Timestamptz(3)
+  createdAt                DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime             @updatedAt @db.Timestamptz(3)
+
+  webhookEvents PaymentWebhookEvent[]
+  refund        PaymentRefund?
 
   @@index([invoiceId])
+  @@index([recordedById])
+}
+
+model PaymentWebhookEvent {
+  id                 String               @id @default(cuid(2))
+  provider           PaymentProvider
+  fingerprint        String               @unique
+  eventType          String
+  externalResourceId String
+  paymentId          String?
+  payment            Payment?             @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  result             PaymentWebhookResult @default(RECEIVED)
+  reason             String?
+  metadata           Json?
+  processedAt        DateTime?            @db.Timestamptz(3)
+  createdAt          DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime             @updatedAt @db.Timestamptz(3)
+
+  @@index([provider, externalResourceId])
+  @@index([paymentId])
+  @@index([result, createdAt])
+}
+
+model PaymentRefund {
+  id               String              @id @default(cuid(2))
+  paymentId        String              @unique
+  payment          Payment             @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  referenceId      String              @unique
+  amount           Int
+  reason           String
+  providerRefundId String?             @unique
+  status           PaymentRefundStatus @default(PENDING)
+  attempts         Int                 @default(0)
+  nextAttemptAt    DateTime            @default(now()) @db.Timestamptz(3)
+  lastError        String?
+  submittedAt      DateTime?           @db.Timestamptz(3)
+  succeededAt      DateTime?           @db.Timestamptz(3)
+  failedAt         DateTime?           @db.Timestamptz(3)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
+
+  @@index([status, nextAttemptAt])
 }
 
 model Review {
