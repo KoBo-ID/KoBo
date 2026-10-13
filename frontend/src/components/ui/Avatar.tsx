@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface AvatarProps {
   src?: string | null;
@@ -7,10 +7,13 @@ interface AvatarProps {
   style?: React.CSSProperties;
 }
 
-/** Photo when there is one, otherwise the first letter of the name on the brand tint. */
+/** Photo when there is one (and it loads), otherwise the first letter of the name on the brand tint. */
 export const Avatar: React.FC<AvatarProps> = ({ src, name, size, style }) => {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const base: React.CSSProperties = { width: `${size}px`, height: `${size}px`, borderRadius: '50%', flexShrink: 0, ...style };
-  if (src) return <img src={src} alt={name} style={{ ...base, objectFit: 'cover' }} />;
+  if (src && failedSrc !== src) {
+    return <img src={src} alt={name} onError={() => setFailedSrc(src)} style={{ ...base, objectFit: 'cover' }} />;
+  }
   return (
     <div
       role="img"

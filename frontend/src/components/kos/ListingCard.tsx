@@ -5,6 +5,7 @@ import { Kos } from '../../types';
 import { GenderBadge, Badge } from '../ui/Badge';
 import { useAppStore } from '../../store/AppContext';
 import { formatDistance } from '../../utils/geo';
+import { SafeImage } from '../ui/SafeImage';
 
 interface ListingCardProps {
   kos: Kos;
@@ -72,7 +73,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
           overflow: 'hidden',
         }}
       >
-        <img
+        <SafeImage
           src={kos.images[activeImageIndex]}
           alt={kos.name}
           style={{

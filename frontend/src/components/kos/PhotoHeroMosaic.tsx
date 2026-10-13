@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Grid, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SafeImage } from '../ui/SafeImage';
 
 interface PhotoHeroMosaicProps {
   images: string[];
@@ -51,7 +52,7 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
               overflow: 'hidden',
             }}
           >
-            <img
+            <SafeImage
               src={displayImages[0]}
               alt={`${kosName} 1`}
               style={{
@@ -79,7 +80,7 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
                 overflow: 'hidden',
               }}
             >
-              <img
+              <SafeImage
                 src={img}
                 alt={`${kosName} ${actualIndex + 1}`}
                 style={{
@@ -198,9 +199,11 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
               <ChevronLeft size={24} />
             </button>
 
-            <img
+            <SafeImage
               src={images[activePhotoIdx]}
               alt={`${kosName} Fullview`}
+              placeholderStyle={{ width: 'min(85vw, 960px)', height: '60vh', backgroundColor: 'rgba(255, 255, 255, 0.08)' }}
+              iconSize={40}
               style={{
                 maxHeight: '75vh',
                 maxWidth: '85vw',
@@ -242,10 +245,11 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
             onClick={(e) => e.stopPropagation()}
           >
             {images.map((img, i) => (
-              <img
+              <SafeImage
                 key={i}
                 src={img}
                 alt={`Thumb ${i}`}
+                iconSize={16}
                 onClick={() => setActivePhotoIdx(i)}
                 style={{
                   width: '60px',

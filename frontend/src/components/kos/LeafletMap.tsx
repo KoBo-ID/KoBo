@@ -9,6 +9,7 @@ import { MapPin, Star } from 'lucide-react';
 import { Campus, Kos, LocationPin } from '../../types';
 import { CAMPUSES } from '../../data/campuses';
 import { formatDistance, haversineMeters } from '../../utils/geo';
+import { SafeImage } from '../ui/SafeImage';
 
 interface LeafletMapProps {
   kosList: Kos[];
@@ -269,7 +270,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
             >
               <Popup>
                 <div style={{ width: '220px', fontFamily: 'var(--font-sans)', padding: '0.2rem' }}>
-                  <img
+                  <SafeImage
                     src={kos.images[0]}
                     alt={kos.name}
                     style={{

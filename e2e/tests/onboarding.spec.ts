@@ -1,5 +1,5 @@
 import { test, expect, loginAs } from './fixtures'
-import { outboxLink, ownIp, signUpVerified } from './accounts'
+import { outboxCount, outboxLink, ownIp, signUpVerified } from './accounts'
 
 test('unknown URL shows the Indonesian 404 with a link home', async ({ page }) => {
   await page.goto('/halaman-yang-tidak-ada')
@@ -23,6 +23,31 @@ test('sign-up shows the "cek email" state and the emailed link confirms verifica
   await expect(dialog.getByRole('button', { name: 'Kirim ulang email verifikasi' })).toBeVisible()
 
   await page.goto(await outboxLink(email, 'verify-email'))
+  await expect(page).toHaveURL(/\/verifikasi-email/)
+  await expect(page.getByRole('heading', { name: 'Email berhasil diverifikasi' })).toBeVisible()
+})
+
+test('"Kirim ulang email verifikasi" queues a fresh link that verifies the account', async ({ page }) => {
+  await ownIp(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Masuk', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Daftar baru' }).click()
+  const email = `ulang-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`
+  await dialog.getByLabel('Nama Lengkap').fill('Calon Penyewa')
+  await dialog.getByLabel('Email').fill(email)
+  await dialog.getByLabel('Kata Sandi').fill('Sandi-rahasia-123')
+  await dialog.getByRole('button', { name: 'Daftar Sekarang' }).click()
+  await expect(dialog.getByText('Cek email Anda').first()).toBeVisible()
+  const firstLink = await outboxLink(email, 'verify-email')
+
+  await dialog.getByRole('button', { name: 'Kirim ulang email verifikasi' }).click()
+  await expect(dialog.getByText('Tautan verifikasi dikirim ulang.', { exact: false })).toBeVisible()
+  await expect.poll(() => outboxCount(email, 'verify-email')).toBe(2)
+  const latest = await outboxLink(email, 'verify-email')
+  expect(latest).not.toBe(firstLink)
+
+  await page.goto(latest)
   await expect(page).toHaveURL(/\/verifikasi-email/)
   await expect(page.getByRole('heading', { name: 'Email berhasil diverifikasi' })).toBeVisible()
 })

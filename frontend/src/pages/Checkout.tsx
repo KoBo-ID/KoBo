@@ -14,6 +14,7 @@ import { BackButton } from '../components/ui/BackButton';
 import { Input } from '../components/ui/Input';
 import { Notice } from '../components/ui/Notice';
 import { ErrorState, NotFoundState } from '../components/ui/QueryState';
+import { SafeImage } from '../components/ui/SafeImage';
 import type { KosDetail } from '../../../backend/src/trpc/router';
 
 const formatRupiah = (value: number) =>
@@ -146,7 +147,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
 
             <aside style={{ position: 'sticky', top: 'calc(var(--header-height) + 20px)', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-xl)', border: '1.5px solid var(--border-strong)', boxShadow: 'var(--shadow-md)', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
               <div style={{ display: 'flex', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
-                {kos.images[0] && <img src={kos.images[0]} alt="" style={{ width: '72px', height: '72px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }} />}
+                {kos.images[0] && <SafeImage src={kos.images[0]} alt="" iconSize={20} style={{ width: '72px', height: '72px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }} />}
                 <div>
                   <h2 style={{ fontSize: '1rem', fontWeight: 700, lineHeight: 1.3 }}>{kos.name}</h2>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Kamar {room.roomNumber} ({room.type}) · Lt. {room.floor}</p>

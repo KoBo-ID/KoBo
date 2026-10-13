@@ -22,6 +22,19 @@ export async function outboxLink(to: string, template: string): Promise<string> 
   throw new Error(`no ${template} email queued for ${to}`)
 }
 
+/** Number of queued emails of one template for a recipient, read straight from the e2e database. */
+export async function outboxCount(to: string, template: string): Promise<number> {
+  const { default: pg } = await import('pg')
+  const client = new pg.Client({ connectionString: process.env.E2E_DATABASE_URL ?? 'postgresql://kobo:kobo@localhost:5433/kobo_e2e' })
+  await client.connect()
+  try {
+    const r = await client.query('SELECT count(*)::int AS n FROM "EmailOutbox" WHERE "to" = $1 AND template = $2', [to, template])
+    return r.rows[0].n as number
+  } finally {
+    await client.end()
+  }
+}
+
 /** Register a real (non-demo) student through the API and verify the email via the outbox link. The page ends up signed in. */
 export async function signUpVerified(page: Page, label: string) {
   const baseURL = test.info().project.use.baseURL as string

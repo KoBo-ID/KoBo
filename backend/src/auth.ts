@@ -14,8 +14,10 @@ import { enqueueEmail } from './outbox.ts'
  *  - Prisma adapter against the existing User/Session/Account/Verification models.
  *  - Email + password with mandatory verification. Mails are queued in EmailOutbox, never sent inline.
  *  - Built-in rate limiter, memory storage (one container). It is on in every environment, including tests.
- *  - The client address is read ONLY from cf-connecting-ip; X-Forwarded-For is client-controlled and would let
- *    anyone reset their own limit. Safe because the origin is reachable only through the Cloudflare tunnel.
+ *  - The client address header is deployment-specific (AUTH_IP_HEADERS, via authEnv()). The production default is
+ *    cf-connecting-ip only, for the Cloudflare-tunnel deployment where the origin is unreachable otherwise. Behind
+ *    Vercel -> Railway there is no Cloudflare, so set AUTH_IP_HEADERS=x-forwarded-for (Vercel overwrites it with the
+ *    real client IP); without a resolvable IP every client shares one rate-limit bucket per path.
  *  - One KoBo plugin: demo login and campus-email verification, so both sit behind the same limiter.
  */
 
@@ -26,7 +28,12 @@ export interface AuthOptions {
   secret: string
   /** Extra origins allowed to call the API with cookies (the Vite dev server). */
   trustedOrigins?: string[]
+  /** Headers the client IP is read from, in order. Defaults to defaultIpHeaders() for the current NODE_ENV. */
+  ipAddressHeaders?: string[]
 }
+
+/** Production trusts only Cloudflare's header. X-Forwarded-For is client-controlled unless a proxy overwrites it, so by default it is accepted in dev only. */
+const defaultIpHeaders = () => (process.env.NODE_ENV === 'production' ? ['cf-connecting-ip'] : ['cf-connecting-ip', 'x-forwarded-for'])
 
 /** Paths a demo account may never use. Session-based; checked against the caller's user. */
 const DEMO_BLOCKED_PATHS = new Set(['/change-password', '/set-password', '/change-email', '/delete-user', '/campus-email/request'])
@@ -98,7 +105,7 @@ function koboPlugin(prisma: PrismaClient, secret: string): BetterAuthPlugin {
   }
 }
 
-export function createAuth({ prisma, baseURL, secret, trustedOrigins = [] }: AuthOptions) {
+export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAddressHeaders = defaultIpHeaders() }: AuthOptions) {
   return betterAuth({
     baseURL,
     secret,
@@ -133,8 +140,7 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [] }: Aut
     },
 
     advanced: {
-      // Production trusts only Cloudflare's header. X-Forwarded-For is client-controlled, so it is accepted in dev only.
-      ipAddress: { ipAddressHeaders: process.env.NODE_ENV === 'production' ? ['cf-connecting-ip'] : ['cf-connecting-ip', 'x-forwarded-for'] },
+      ipAddress: { ipAddressHeaders },
     },
 
     rateLimit: {

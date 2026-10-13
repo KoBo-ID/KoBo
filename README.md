@@ -177,12 +177,12 @@ One process serves both the API and the built app, exactly as in production:
 ```bash
 npm run build
 # PowerShell:
-$env:NODE_ENV="production"; $env:ALLOW_FAKE_STORAGE="1"; npm run start -w backend
+$env:NODE_ENV="production"; $env:ALLOW_FAKE_STORAGE="1"; $env:ALLOW_INSECURE_AUTH_URL="1"; npm run start -w backend
 # bash:
-NODE_ENV=production ALLOW_FAKE_STORAGE=1 npm run start -w backend
+NODE_ENV=production ALLOW_FAKE_STORAGE=1 ALLOW_INSECURE_AUTH_URL=1 npm run start -w backend
 ```
 
-Open **http://localhost:3000**. `ALLOW_FAKE_STORAGE=1` is needed because production mode refuses to start without R2 credentials; it uses the in-memory fake instead. Do not set it on a real server.
+Open **http://localhost:3000**. `ALLOW_FAKE_STORAGE=1` is needed because production mode refuses to start without R2 credentials; it uses the in-memory fake instead. `ALLOW_INSECURE_AUTH_URL=1` lets production mode accept the `http://localhost` `BETTER_AUTH_URL`. Do not set either on a real server.
 
 ## Configuration
 
@@ -194,7 +194,10 @@ All variables live in `backend/.env` (development) or `/opt/kobo/backend/.env` (
 | `TEST_DATABASE_URL` | for tests | database wiped by `npm test` |
 | `SHADOW_DATABASE_URL` | for `db:diff` / `db:migrate` | scratch database Prisma uses to compare migrations |
 | `PORT` | no (3000) | API port |
-| `BETTER_AUTH_URL` | yes | public origin (`https://...` in production). Secure cookies and email link targets follow it |
+| `BETTER_AUTH_URL` | yes | public origin the browser uses (`https://...` in production; behind Vercel, the Vercel domain). Secure cookies and email link targets follow it. Production refuses http/localhost |
+| `TRUSTED_ORIGINS` | no | comma-separated extra origins allowed to sign in (e.g. Vercel previews) |
+| `AUTH_IP_HEADERS` | no | comma-separated client-IP headers for auth rate limiting (production default `cf-connecting-ip`; Vercel -> Railway: `x-forwarded-for`) |
+| `EMAIL_REPLY_TO` | no | Reply-To for outgoing email |
 | `BETTER_AUTH_SECRET` | yes | signing secret, `openssl rand -base64 32` |
 | `PAYMENT_WEBHOOK_SECRET` | yes | HMAC key for `POST /api/webhooks/payment`; the in-app simulator signs with it too. The server refuses to start without it |
 | `RESEND_API_KEY`, `EMAIL_FROM` | production | transactional email. If the key is unset, emails are logged to the console |
@@ -202,6 +205,7 @@ All variables live in `backend/.env` (development) or `/opt/kobo/backend/.env` (
 | `E2E_DATABASE_URL`, `E2E_PORT` | no | override the e2e database and port (defaults `localhost:5433/kobo_e2e`, `3100`) |
 | `BASE_URL` | no | run e2e against a live site (`npm run e2e:postdeploy`) |
 | `ALLOW_FAKE_STORAGE=1` | e2e only | opts the production-mode e2e server into the fake storage. Never set in production |
+| `ALLOW_INSECURE_AUTH_URL=1` | e2e only | lets the production-mode e2e server use `http://localhost` as `BETTER_AUTH_URL`. Never set in production |
 
 Production-only variables (`POSTGRES_*`, `TUNNEL_TOKEN`, `R2_BACKUP_*`, `HEALTHCHECKS_URL`, ...) are listed in [`backend/deploy/RUNBOOK.md`](backend/deploy/RUNBOOK.md).
 

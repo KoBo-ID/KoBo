@@ -13,6 +13,7 @@ import { WaitlistPanel } from '../../components/owner/WaitlistPanel';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
+import { SafeImage } from '../../components/ui/SafeImage';
 import { Link } from 'react-router-dom';
 
 export const KosManager: React.FC = () => {
@@ -135,7 +136,7 @@ export const KosManager: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.25rem' }}>
               <div style={{ display: 'flex', gap: '1.25rem' }}>
                 {kos.image ? (
-                  <img
+                  <SafeImage
                     src={kos.image}
                     alt={kos.name}
                     style={{ width: '110px', height: '110px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }}

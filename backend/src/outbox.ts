@@ -87,7 +87,12 @@ export async function drainOutbox(prisma: PrismaClient, transport: EmailTranspor
     } catch (err) {
       result.failed++
       const giveUp = row.attempts >= MAX_ATTEMPTS
-      console.error(`[outbox] ${row.id}: send failed (attempt ${row.attempts}/${MAX_ATTEMPTS})${giveUp ? ', giving up' : ''}:`, err instanceof Error ? err.message : err)
+      // Recipient domain only (no full address in logs); the error carries Resend's status and body.
+      const domain = row.to.split('@')[1] ?? '?'
+      console.error(
+        `[outbox] ${row.id}: ${row.template} to *@${domain} failed (attempt ${row.attempts}/${MAX_ATTEMPTS})${giveUp ? ', giving up: status FAILED' : ''}:`,
+        err instanceof Error ? err.message : err,
+      )
       await prisma.emailOutbox.update({
         where: { id: row.id },
         data: giveUp ? { status: 'FAILED' } : { nextAttemptAt: new Date(Date.now() + backoffSeconds(row.attempts) * 1000) },
@@ -98,18 +103,37 @@ export async function drainOutbox(prisma: PrismaClient, transport: EmailTranspor
 }
 
 /** Production transport: Resend's HTTP API. */
-export function resendTransport(opts: { apiKey: string; from: string; fetch?: typeof fetch }): EmailTransport {
+export function resendTransport(opts: { apiKey: string; from: string; replyTo?: string; fetch?: typeof fetch }): EmailTransport {
   const doFetch = opts.fetch ?? fetch
   return {
     async send(message) {
       const res = await doFetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${opts.apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: opts.from, to: [message.to], subject: message.subject, html: message.html, text: message.text }),
+        body: JSON.stringify({
+          from: opts.from,
+          to: [message.to],
+          subject: message.subject,
+          html: message.html,
+          text: message.text,
+          ...(opts.replyTo ? { reply_to: opts.replyTo } : {}),
+        }),
         signal: AbortSignal.timeout(15_000),
       })
-      if (!res.ok) throw new Error(`Resend responded ${res.status}: ${(await res.text()).slice(0, 300)}`)
+      if (!res.ok) throw new ResendError(res.status, (await res.text()).slice(0, 500))
     },
+  }
+}
+
+/** A non-2xx answer from Resend. The body is Resend's JSON error (name + message), never our key. */
+export class ResendError extends Error {
+  readonly status: number
+  readonly body: string
+  constructor(status: number, body: string) {
+    super(`Resend responded ${status}: ${body}`)
+    this.name = 'ResendError'
+    this.status = status
+    this.body = body
   }
 }
 
@@ -122,10 +146,22 @@ export function consoleTransport(log: (line: string) => void = console.log): Ema
   }
 }
 
-export function transportFromEnv(env: NodeJS.ProcessEnv = process.env): EmailTransport {
-  if (!env.RESEND_API_KEY) return consoleTransport()
+/** onboarding@resend.dev and friends: Resend's shared test sender. */
+export const isResendTestSender = (from: string) => /@resend\.dev>?\s*$/i.test(from.trim())
+
+export function transportFromEnv(env: NodeJS.ProcessEnv = process.env, warn: (line: string) => void = console.warn): EmailTransport {
+  if (!env.RESEND_API_KEY) {
+    if (env.NODE_ENV === 'production') warn('[email] RESEND_API_KEY is not set: emails are only printed to the log, nobody receives them.')
+    return consoleTransport()
+  }
   if (!env.EMAIL_FROM) throw new Error('EMAIL_FROM is required when RESEND_API_KEY is set')
-  return resendTransport({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM })
+  if (env.NODE_ENV === 'production' && isResendTestSender(env.EMAIL_FROM)) {
+    warn(
+      `[email] EMAIL_FROM="${env.EMAIL_FROM}" is Resend's shared test sender. It delivers only to the Resend account owner ` +
+        '(everyone else gets 403 and the outbox row ends FAILED) and lands in spam. Verify your own domain in Resend and use an address on it.',
+    )
+  }
+  return resendTransport({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM, replyTo: env.EMAIL_REPLY_TO?.trim() || undefined })
 }
 
 /** Start the periodic drain. Ticks never overlap within this process. Returns a stop function. */

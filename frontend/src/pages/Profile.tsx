@@ -6,6 +6,7 @@ import { useAppStore } from '../store/AppContext';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Notice } from '../components/ui/Notice';
+import { Avatar } from '../components/ui/Avatar';
 import { CampusDiscountCard } from '../components/booking/CampusDiscountCard';
 import { useSession } from '../lib/session';
 import { useBecomeOwner } from '../lib/owner';
@@ -103,17 +104,7 @@ export const Profile: React.FC = () => {
         >
           {/* Avatar & Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-            <img
-              src={user.image ?? ''}
-              alt={user.name}
-              style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: '50%',
-                objectFit: 'cover',
-                border: '3px solid var(--primary-light)',
-              }}
-            />
+            <Avatar src={user.image} name={user.name} size={72} style={{ border: '3px solid var(--primary-light)' }} />
             <div>
               <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-main)' }}>
                 {user.name}

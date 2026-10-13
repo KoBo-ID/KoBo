@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Hourglass } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { SafeImage } from '../ui/SafeImage';
 import { OfferBanner } from '../kos/detail/WaitlistBox';
 import { useMyWaitlist, roomTypeLabel, useWaitlistActions, WAITLIST_STATUS_LABEL } from '../../lib/waitlist';
 
@@ -30,7 +31,7 @@ export const WaitlistSection: React.FC = () => {
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
-              {e.kos.image && <img src={e.kos.image} alt={e.kos.name} style={{ width: 56, height: 56, borderRadius: 'var(--radius-md)', objectFit: 'cover', flexShrink: 0 }} />}
+              {e.kos.image && <SafeImage iconSize={20} src={e.kos.image} alt={e.kos.name} style={{ width: 56, height: 56, borderRadius: 'var(--radius-md)', objectFit: 'cover', flexShrink: 0 }} />}
               <div>
                 <Link to={`/kos/${e.kos.id}`} style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>
                   {e.kos.name}

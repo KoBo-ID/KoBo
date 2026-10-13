@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { createAuth } from '../../src/auth.ts'
 import { resetDb } from '../../src/db/seed.ts'
-import { baseURL, cookieFrom, demoCookie, lastEmail, me, nextIp, pathOf, prisma, registerAndSignIn, request } from '../helpers.ts'
+import { baseURL, cookieFrom, demoCookie, lastEmail, me, nextIp, pathOf, prisma, registerAndSignIn, request, secret } from '../helpers.ts'
 
 beforeEach(() => resetDb(prisma))
 
@@ -45,6 +46,59 @@ describe('email + password sign-up', () => {
   })
 })
 
+describe('resending the verification email', () => {
+  it('queues a NEW verify-email row whose link verifies the account', async () => {
+    await request('/api/auth/sign-up/email', { body: { name: 'Sari', email: 'sari@example.com', password: PASSWORD } })
+    const first = await lastEmail('verify-email', 'sari@example.com')
+
+    const res = await request('/api/auth/send-verification-email', { body: { email: 'sari@example.com', callbackURL: '/verifikasi-email' } })
+    expect(res.status).toBe(200)
+    expect(await prisma.emailOutbox.count({ where: { template: 'verify-email', to: 'sari@example.com' } })).toBe(2)
+    const second = await lastEmail('verify-email', 'sari@example.com')
+    expect(second?.id).not.toBe(first?.id)
+    expect(second?.status).toBe('PENDING')
+
+    const click = await request(pathOf(second!.payload.url))
+    expect(click.status).toBe(302)
+    expect(new URL(click.headers.get('location')!, baseURL).pathname).toBe('/verifikasi-email')
+    expect((await prisma.user.findUniqueOrThrow({ where: { email: 'sari@example.com' } })).emailVerified).toBe(true)
+  })
+})
+
+describe('emailed links', () => {
+  // A link built on the wrong origin (e.g. localhost on Railway) "goes nowhere"; every auth mail must use baseURL.
+  const startsAtBase = (url: string | undefined) => {
+    expect(url?.startsWith(`${baseURL}/`), url).toBe(true)
+  }
+
+  it('verify-email, reset-password and campus-email links all start with the configured baseURL', async () => {
+    const cookie = await registerAndSignIn('sari@example.com')
+    startsAtBase((await lastEmail('verify-email', 'sari@example.com'))?.payload.url)
+
+    await request('/api/auth/request-password-reset', { body: { email: 'sari@example.com', redirectTo: '/reset-password' } })
+    startsAtBase((await lastEmail('reset-password', 'sari@example.com'))?.payload.url)
+
+    const campus = await request('/api/auth/campus-email/request', { cookie, body: { email: 'sari@student.binus.ac.id' } })
+    expect(campus.status).toBe(200)
+    startsAtBase((await lastEmail('campus-email', 'sari@student.binus.ac.id'))?.payload.url)
+  })
+
+  it('a custom baseURL (the Vercel origin) is what the links use', async () => {
+    const vercel = 'https://kobo-test.vercel.app'
+    const vercelAuth = createAuth({ prisma, baseURL: vercel, secret })
+    const res = await vercelAuth.handler(
+      new Request(`${vercel}/api/auth/sign-up/email`, {
+        method: 'POST',
+        headers: { origin: vercel, 'content-type': 'application/json', 'cf-connecting-ip': nextIp() },
+        body: JSON.stringify({ name: 'Budi', email: 'budi@example.com', password: PASSWORD, callbackURL: '/verifikasi-email' }),
+      }),
+    )
+    expect(res.status).toBe(200)
+    const url = (await lastEmail('verify-email', 'budi@example.com'))?.payload.url
+    expect(url?.startsWith(`${vercel}/api/auth/verify-email?token=`), url).toBe(true)
+  })
+})
+
 describe('auth.me', () => {
   it('is null without a session', async () => {
     expect(await me()).toBeNull()
@@ -73,6 +127,42 @@ describe('rate limiting', () => {
     for (let i = 0; i < 4; i++) await attempt(ip)
     expect((await attempt(ip)).status).toBe(429)
     expect((await attempt(nextIp())).status).not.toBe(429)
+  })
+
+  it('reads the client address from the configured ipAddressHeaders (AUTH_IP_HEADERS, Vercel -> Railway)', async () => {
+    const xffAuth = createAuth({ prisma, baseURL, secret, ipAddressHeaders: ['x-forwarded-for'] })
+    const send = (xff: string) =>
+      xffAuth.handler(
+        new Request(`${baseURL}/api/auth/sign-in/email`, {
+          method: 'POST',
+          headers: { origin: baseURL, 'content-type': 'application/json', 'cf-connecting-ip': '198.51.100.250', 'x-forwarded-for': xff },
+          body: JSON.stringify({ email: 'nobody@example.com', password: 'salah-salah-1' }),
+        }),
+      )
+    for (let i = 0; i < 3; i++) await send('198.51.100.1')
+    expect((await send('198.51.100.1')).status).toBe(429)
+    // Same cf-connecting-ip, different X-Forwarded-For: a separate bucket, because only XFF is configured.
+    expect((await send('198.51.100.2')).status).not.toBe(429)
+  })
+
+  it('with x-forwarded-for configured, each client gets its own /send-verification-email bucket', async () => {
+    const xffAuth = createAuth({ prisma, baseURL, secret, ipAddressHeaders: ['x-forwarded-for'] })
+    const resend = (xff: string) =>
+      xffAuth.handler(
+        new Request(`${baseURL}/api/auth/send-verification-email`, {
+          method: 'POST',
+          // No cf-connecting-ip at all, as behind Vercel -> Railway.
+          headers: { origin: baseURL, 'content-type': 'application/json', 'x-forwarded-for': xff },
+          body: JSON.stringify({ email: 'nobody@example.com' }),
+        }),
+      )
+    const a = '198.51.100.21'
+    const b = '198.51.100.22'
+    for (let i = 0; i < 3; i++) expect((await resend(a)).status).not.toBe(429)
+    expect((await resend(a)).status).toBe(429)
+    // A different client is unaffected by a's exhausted bucket.
+    for (let i = 0; i < 3; i++) expect((await resend(b)).status).not.toBe(429)
+    expect((await resend(b)).status).toBe(429)
   })
 
   it('caps password-reset and verification emails at 3 per minute', async () => {

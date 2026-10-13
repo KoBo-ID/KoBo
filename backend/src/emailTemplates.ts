@@ -82,7 +82,10 @@ export function renderEmail(template: string, payload: unknown): RenderedEmail |
   if (!copy || !p || typeof p.url !== 'string') return null
   const name = typeof p.name === 'string' && p.name.trim() ? p.name.trim() : 'Pengguna KoBo'
   const text = `Halo ${name},\n\n${copy.intro}\n\n${copy.action}: ${p.url}\n\n${copy.outro}\n\nTim KoBo`
-  const html = `<!doctype html><html lang="id"><body style="margin:0;background:#f6f8f8;font-family:Arial,Helvetica,sans-serif;color:#1b2a2a">
+  // A full document with <title> and a hidden preheader (the inbox preview line) reads less like bulk mail to filters.
+  const html = `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(copy.subject)}</title></head>
+<body style="margin:0;background:#f6f8f8;font-family:Arial,Helvetica,sans-serif;color:#1b2a2a">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(copy.intro)}</div>
 <div style="max-width:480px;margin:0 auto;padding:32px 20px">
 <p style="font-size:22px;font-weight:800;margin:0 0 24px">Ko<span style="color:#0f9d92">Bo</span></p>
 <div style="background:#ffffff;border-radius:12px;padding:28px;border:1px solid #e3eaea">
@@ -91,6 +94,7 @@ export function renderEmail(template: string, payload: unknown): RenderedEmail |
 <p style="margin:0 0 24px"><a href="${esc(p.url)}" style="display:inline-block;background:#0f9d92;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:8px">${esc(copy.action)}</a></p>
 <p style="margin:0 0 8px;font-size:13px;color:#5b6b6b;line-height:1.5">Atau salin tautan ini ke peramban Anda:<br><span style="word-break:break-all">${esc(p.url)}</span></p>
 <p style="margin:16px 0 0;font-size:13px;color:#5b6b6b;line-height:1.5">${esc(copy.outro)}</p>
+<p style="margin:16px 0 0">Tim KoBo</p>
 </div></div></body></html>`
   return { subject: copy.subject, html, text }
 }

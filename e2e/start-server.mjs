@@ -13,9 +13,13 @@ const env = {
   PORT: process.env.E2E_PORT ?? '3100',
   // Auth: the origin check compares requests against this, so it must be the URL the browser uses.
   BETTER_AUTH_URL: `http://localhost:${process.env.E2E_PORT ?? '3100'}`,
+  ALLOW_INSECURE_AUTH_URL: '1', // e2e only: production mode normally refuses a non-https / localhost BETTER_AUTH_URL
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? 'e2e-secret-e2e-secret-e2e-secret-0123456789',
   PAYMENT_WEBHOOK_SECRET: process.env.PAYMENT_WEBHOOK_SECRET ?? 'e2e-webhook-secret-0123456789',
   DATABASE_URL: process.env.E2E_DATABASE_URL ?? 'postgresql://kobo:kobo@localhost:5433/kobo_e2e',
+  // Never hit the real email service from e2e: backend/.env may hold a Resend key, and loadEnvFile
+  // does not override keys that already exist, so an empty value forces the console transport.
+  RESEND_API_KEY: '',
 }
 const tsxCli = fileURLToPath(new URL('../node_modules/tsx/dist/cli.mjs', import.meta.url))
 const prismaCli = fileURLToPath(new URL('../node_modules/prisma/build/index.js', import.meta.url))

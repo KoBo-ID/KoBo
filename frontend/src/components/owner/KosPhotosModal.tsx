@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Notice } from '../ui/Notice';
+import { SafeImage } from '../ui/SafeImage';
 import { useAppStore } from '../../store/AppContext';
 import { useTRPC } from '../../lib/trpc';
 import { messageForError } from '../../lib/errors';
@@ -133,7 +134,7 @@ export const KosPhotosModal: React.FC<KosPhotosModalProps> = ({ kosId, kosName, 
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '0.85rem' }}>
           {list.map((img, i) => (
             <li key={img.id} data-testid="kos-photo" style={{ border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', overflow: 'hidden', backgroundColor: 'var(--bg-surface)' }}>
-              <img src={img.url} alt={`Foto ${i + 1} ${kosName}`} loading="lazy" style={{ width: '100%', height: '110px', objectFit: 'cover', display: 'block' }} />
+              <SafeImage src={img.url} alt={`Foto ${i + 1} ${kosName}`} loading="lazy" style={{ width: '100%', height: '110px', objectFit: 'cover', display: 'block' }} />
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.5rem', gap: '0.25rem' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: i === 0 ? 'var(--primary)' : 'var(--text-muted)' }}>{i === 0 ? 'Utama' : `#${i + 1}`}</span>
                 <span style={{ display: 'flex', gap: '0.15rem' }}>

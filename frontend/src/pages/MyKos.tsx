@@ -9,6 +9,7 @@ import { useAppStore } from '../store/AppContext';
 import { Button } from '../components/ui/Button';
 import { Notice } from '../components/ui/Notice';
 import { ErrorState } from '../components/ui/QueryState';
+import { SafeImage } from '../components/ui/SafeImage';
 import { useSession } from '../lib/session';
 import { useTRPC } from '../lib/trpc';
 import { messageForError } from '../lib/errors';
@@ -146,7 +147,7 @@ export const MyKos: React.FC = () => {
                 return (
                   <div key={application.id} data-testid="application-card" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                     <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
-                      {application.kos.image ? <img src={application.kos.image} alt="" style={{ width: '52px', height: '52px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }} /> : <ClipboardList size={24} color="var(--text-subtle)" />}
+                      {application.kos.image ? <SafeImage src={application.kos.image} alt="" iconSize={20} style={{ width: '52px', height: '52px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }} /> : <ClipboardList size={24} color="var(--text-subtle)" />}
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <strong>{application.kos.name}</strong>
@@ -178,7 +179,7 @@ export const MyKos: React.FC = () => {
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', gap: '1.25rem' }}>
-                    {t.kos.image && <img src={t.kos.image} alt={t.kos.name} style={{ width: '90px', height: '90px', borderRadius: 'var(--radius-md)', objectFit: 'cover', flexShrink: 0 }} />}
+                    {t.kos.image && <SafeImage src={t.kos.image} alt={t.kos.name} style={{ width: '90px', height: '90px', borderRadius: 'var(--radius-md)', objectFit: 'cover', flexShrink: 0 }} />}
                     <div>
                       <span style={{ backgroundColor: badge.bg, color: badge.color, fontSize: '0.75rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: 'var(--radius-xs)' }}>
                         {badge.label}

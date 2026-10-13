@@ -125,3 +125,51 @@ CI runs `backend/tests/contract/r2.test.ts` (presign, PUT, HEAD, delete against 
 | `R2_TEST_SECRET_ACCESS_KEY` | token secret |
 
 The test deletes its own object; add a lifecycle rule on `kobo-test` (delete after 1 day) as a safety net.
+
+## 11. Vercel + Railway
+
+The SPA is on Vercel; `vercel.json` rewrites `/api/*` to the Railway service, so the browser only ever talks to the Vercel origin. That origin, not the Railway URL, is `BETTER_AUTH_URL`: email links are built from it, and sign-in/up POSTs whose `Origin` is not it (or in `TRUSTED_ORIGINS`) get `403 INVALID_ORIGIN`. In production the server refuses to start with an `http://` or localhost value.
+
+Railway service variables (in addition to `DATABASE_URL`, `BETTER_AUTH_SECRET`, `PAYMENT_WEBHOOK_SECRET`, `R2_*`):
+
+| Variable | Value |
+|---|---|
+| `BETTER_AUTH_URL` | `https://<vercel-domain>` (the production domain or its custom domain; no trailing slash, no `/api`) |
+| `AUTH_IP_HEADERS` | `x-forwarded-for` (no Cloudflare in front, so the default `cf-connecting-ip` never resolves and all clients share one rate-limit bucket, e.g. 3 verification resends per minute for everyone) |
+| `TRUSTED_ORIGINS` | optional, comma-separated, e.g. `https://kobo-git-main-<team>.vercel.app`; only needed to sign in on preview domains |
+| `RESEND_API_KEY` | Resend API key (sending access is enough) |
+| `EMAIL_FROM` | `KoBo <no-reply@<verified domain>>`. Never `onboarding@resend.dev`: Resend delivers it only to the account owner (others fail with 403 and the outbox row ends `FAILED`) and it lands in spam |
+| `EMAIL_REPLY_TO` | optional, a mailbox someone reads |
+
+Client IP check: better-auth accepts the header only when it holds exactly one address. If Railway logs show `Rate limiting could not determine a client IP`, the header arrived as a chain (Railway appended a hop); try `AUTH_IP_HEADERS=x-real-ip` or `x-vercel-forwarded-for` and redeploy. The Railway URL itself is public, so a client hitting it directly can still pick its own IP; the limiter is anti-abuse, not a security boundary.
+
+Resend domain (Resend -> Domains -> Add domain; a subdomain such as `mail.<domain>` keeps the root's reputation separate). Add exactly the records the dashboard shows at your DNS host, then press Verify:
+
+1. SPF: `TXT` on the bounce subdomain (`send.<domain>`), `v=spf1 include:amazonses.com ~all`.
+2. MX on the same bounce subdomain, pointing at the `feedback-smtp.<region>.amazonses.com` host shown.
+3. DKIM: `TXT` `resend._domainkey.<domain>` with the long `p=...` key.
+4. DMARC: `TXT` `_dmarc.<domain>` = `v=DMARC1; p=none;` (tighten to `quarantine` once reports look clean).
+5. Domain settings: turn **off** click tracking and open tracking. Rewritten tracking links and pixels hurt deliverability, and click tracking wraps the verify link.
+
+Smoke test (sends one real email; never in CI). With the Railway values in your shell or `backend/.env`:
+
+```bash
+npm run email:smoke -w backend -- you@example.com
+```
+
+It lists the account's domains and their status (a sending-only key cannot, and it says so), warns if `EMAIL_FROM`'s domain is not verified or is `resend.dev`, sends the real `verify-email` template with a sample link on `BETTER_AUTH_URL`, and prints Resend's email id or the error status and body. Check the message headers in the inbox for `spf=pass`, `dkim=pass`, `dmarc=pass`. On Railway, failed sends log `[outbox] <id>: verify-email to *@<domain> failed (attempt n/5): Resend responded <status>: <body>`, and startup warns about a `resend.dev` sender.
+
+Requeue failed email (`EmailOutbox`, enum `OutboxStatus` = `PENDING | SENT | FAILED`). Links are baked into `payload.url` at enqueue time, so first fix the origin of rows queued under a wrong `BETTER_AUTH_URL`, and do not requeue `verify-email` / `reset-password` rows: their tokens expire after an hour, so ask the user to press resend instead (`campus-email` links last 24 h, `waitlist-offer` until the offer deadline).
+
+```sql
+-- inspect
+SELECT template, status, attempts, count(*) FROM "EmailOutbox" GROUP BY 1, 2, 3 ORDER BY 1, 2;
+-- rewrite a wrong origin (e.g. localhost) in links that do not expire
+UPDATE "EmailOutbox"
+SET payload = jsonb_set(payload, '{url}', to_jsonb(replace(payload->>'url', 'http://localhost:5173', 'https://<vercel-domain>')))
+WHERE status = 'FAILED' AND template NOT IN ('verify-email', 'reset-password') AND payload->>'url' LIKE 'http://localhost%';
+-- requeue; the worker picks them up within 15 s
+UPDATE "EmailOutbox"
+SET status = 'PENDING', attempts = 0, "nextAttemptAt" = now()
+WHERE status = 'FAILED' AND template NOT IN ('verify-email', 'reset-password');
+```
