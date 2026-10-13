@@ -1,9 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Building2,
-  ShieldCheck,
-  CheckCircle2,
   ArrowRight,
   LayoutDashboard,
   Users,
@@ -40,7 +37,7 @@ export const OwnerLogin: React.FC = () => {
     <div
       style={{
         minHeight: '100vh',
-        background: 'radial-gradient(110% 120% at 50% 0%, hsla(176, 55%, 94%, 0.9) 0%, var(--bg-page) 65%)',
+        backgroundColor: 'var(--bg-page)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -50,22 +47,6 @@ export const OwnerLogin: React.FC = () => {
       <div style={{ width: '100%', maxWidth: '480px' }}>
         {/* Brand Header */}
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '56px',
-              height: '56px',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'var(--primary)',
-              color: 'white',
-              boxShadow: '0 8px 24px -4px var(--primary-glow)',
-              marginBottom: '1rem',
-            }}
-          >
-            <Building2 size={28} />
-          </div>
           <div style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.025em', marginBottom: '0.25rem' }}>
             Ko<span style={{ color: 'var(--primary)' }}>Bo</span> <span style={{ color: 'var(--primary)' }}>Mitra</span>
           </div>
@@ -78,32 +59,12 @@ export const OwnerLogin: React.FC = () => {
         <div
           style={{
             backgroundColor: 'var(--bg-surface)',
-            borderRadius: 'var(--radius-xl)',
+            borderRadius: 'var(--radius-card)',
             border: '1px solid var(--border-subtle)',
-            boxShadow: 'var(--shadow-xl)',
+            boxShadow: 'var(--shadow-sm)',
             padding: '2.5rem',
           }}
         >
-          {/* Restricted Access Badge */}
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              backgroundColor: 'var(--primary-light)',
-              color: 'var(--primary)',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              padding: '0.3rem 0.75rem',
-              borderRadius: 'var(--radius-badge)',
-              border: '1px solid hsla(176, 75%, 28%, 0.15)',
-              marginBottom: '1.25rem',
-            }}
-          >
-            <ShieldCheck size={14} />
-            <span>Gratis untuk Pemilik Properti Kos</span>
-          </div>
-
           <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.025em', marginBottom: '0.5rem' }}>
             Masuk ke Portal Pemilik Kos
           </h1>
@@ -118,10 +79,6 @@ export const OwnerLogin: React.FC = () => {
               flexDirection: 'column',
               gap: '0.6rem',
               marginBottom: '2rem',
-              padding: '1.25rem',
-              backgroundColor: 'var(--primary-subtle)',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--primary-light)',
             }}
           >
             {features.map((f, i) => (
@@ -130,7 +87,6 @@ export const OwnerLogin: React.FC = () => {
                 <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>
                   {f.text}
                 </span>
-                <CheckCircle2 size={14} color="var(--primary)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
               </div>
             ))}
           </div>

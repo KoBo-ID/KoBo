@@ -12,7 +12,7 @@ test('demo owner button signs in and lands on the owner dashboard @postdeploy', 
   await dialog.getByRole('button', { name: 'Masuk sebagai Demo Pemilik' }).click()
   await expect(page).toHaveURL(/\/owner\/dashboard$/)
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.getByText('Mitra Pemilik Aktif')).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Papan okupansi' })).toBeVisible()
 })
 
 test('demo student signs in, sees their account in the navbar, and can sign out', async ({ page }) => {

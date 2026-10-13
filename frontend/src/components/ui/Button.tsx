@@ -32,7 +32,8 @@ export const Button: React.FC<ButtonProps> = ({
     fontWeight: 600,
     fontFamily: 'var(--font-sans)',
     borderRadius: 'var(--radius-md)',
-    transition: 'all var(--duration-fast) var(--ease-out-spring)',
+    transition:
+      'background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out, box-shadow 160ms ease-out, transform 160ms ease-out',
     cursor: disabled || isLoading ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.6 : 1,
     border: '1px solid transparent',
@@ -100,7 +101,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
-      className={`interactive-tap ${className}`}
+      className={`interactive-tap kobo-btn ${className}`}
       disabled={disabled || isLoading}
       style={{
         ...baseStyle,

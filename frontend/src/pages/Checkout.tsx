@@ -145,7 +145,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
               </section>
             </div>
 
-            <aside style={{ position: 'sticky', top: 'calc(var(--header-height) + 20px)', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-xl)', border: '1.5px solid var(--border-strong)', boxShadow: 'var(--shadow-md)', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+            <aside style={{ position: 'sticky', top: 'calc(var(--header-height) + 20px)', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-card)', border: '1.5px solid var(--border-strong)', boxShadow: 'var(--shadow-md)', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
               <div style={{ display: 'flex', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
                 {kos.images[0] && <SafeImage src={kos.images[0]} alt="" iconSize={20} style={{ width: '72px', height: '72px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }} />}
                 <div>

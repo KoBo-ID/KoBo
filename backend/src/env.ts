@@ -104,7 +104,7 @@ export function paymentEnv(env: NodeJS.ProcessEnv = process.env): PaymentConfig 
   const provider = oneOf('PAYMENT_PROVIDER', env.PAYMENT_PROVIDER, ['mock', 'xendit'] as const, 'mock')
   const mode = oneOf('XENDIT_MODE', env.XENDIT_MODE, ['test', 'live'] as const, 'test')
   const customApiBaseUrl = env.XENDIT_API_BASE_URL?.trim()
-  if (customApiBaseUrl && env.NODE_ENV === 'production') throw new Error('XENDIT_API_BASE_URL may not be overridden in production')
+  if (customApiBaseUrl && env.NODE_ENV !== 'test') throw new Error('XENDIT_API_BASE_URL may only be overridden when NODE_ENV=test')
 
   const apiBaseUrl = (customApiBaseUrl || 'https://api.xendit.co').replace(/\/+$/, '')
   let parsedApiBaseUrl: URL
@@ -114,6 +114,7 @@ export function paymentEnv(env: NodeJS.ProcessEnv = process.env): PaymentConfig 
     throw new Error('XENDIT_API_BASE_URL must be an absolute http(s) URL')
   }
   if (!['http:', 'https:'].includes(parsedApiBaseUrl.protocol)) throw new Error('XENDIT_API_BASE_URL must be an absolute http(s) URL')
+  if (customApiBaseUrl && !LOCAL_HOSTS.has(parsedApiBaseUrl.hostname)) throw new Error('XENDIT_API_BASE_URL override must use a loopback host')
   if (mode === 'live' && env.ENABLE_XENDIT_LIVE !== '1') throw new Error('XENDIT_MODE=live requires ENABLE_XENDIT_LIVE=1')
   if (provider === 'mock' && env.NODE_ENV === 'production' && env.ALLOW_MOCK_PAYMENTS !== '1') {
     throw new Error('PAYMENT_PROVIDER=mock in production requires ALLOW_MOCK_PAYMENTS=1 (test/e2e only)')

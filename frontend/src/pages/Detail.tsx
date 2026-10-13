@@ -165,7 +165,7 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.4rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 700, color: 'var(--text-main)' }}>
                 <Star size={16} fill="var(--accent)" color="var(--accent)" />
-                <span>{detail.rating ?? '–'}</span>
+                <span>{detail.rating ?? '-'}</span>
                 <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({kos.reviewCount} ulasan)</span>
               </div>
               <span>·</span>

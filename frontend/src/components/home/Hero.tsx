@@ -1,4 +1,4 @@
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Building2, MapPin, LocateFixed, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -7,23 +7,12 @@ import { PRESET_LOCATIONS } from '../../data/locations';
 import { Button } from '../ui/Button';
 import { HeroScene } from './HeroScene';
 
-const DESKTOP_QUERY = '(min-width: 1024px)';
-function subscribeDesktop(cb: () => void) {
-  const mq = window.matchMedia(DESKTOP_QUERY);
-  mq.addEventListener('change', cb);
-  return () => mq.removeEventListener('change', cb);
-}
-const getDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
-const getDesktopServer = () => false;
-
 export const Hero: React.FC = () => {
   const navigate = useNavigate();
   const trpc = useTRPC();
   // Same query (and cache entry) as FeaturedKos: one request feeds both.
   const { data } = useQuery(trpc.kos.list.queryOptions());
   const kosList = data ?? [];
-  // Copy is left-aligned beside the canvas on desktop, centred when stacked.
-  const isDesktop = useSyncExternalStore(subscribeDesktop, getDesktop, getDesktopServer);
 
   const [searchInput, setSearchInput] = useState('');
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
@@ -102,53 +91,18 @@ export const Hero: React.FC = () => {
       >
         <div className="app-container">
           <div className="kobo-hero">
-            <div style={{ textAlign: isDesktop ? 'left' : 'center', minWidth: 0 }}>
-              {/* Tagline */}
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.1em',
-                  color: 'var(--primary)',
-                  marginBottom: '1rem',
-                }}
-              >
-                Kos Booking with KoBo
-              </span>
-    
-    
-              <h1
-                style={{
-                  fontSize: '2.6rem',
-                  fontWeight: 800,
-                  color: 'var(--text-main)',
-                  letterSpacing: '-0.03em',
-                  lineHeight: 1.15,
-                  marginBottom: '0.9rem',
-                }}
-              >
-                Cari Kos Terverifikasi,{' '}
-                <span style={{ color: 'var(--primary)' }}>Survey Dulu</span>, Baru Sewa.
+            <div className="kobo-hero__copy">
+              <h1 className="kobo-hero__title hero-enter">
+                <span style={{ color: 'var(--primary)' }}>Survey dulu</span>, baru ajukan sewa.
               </h1>
-    
-              <p
-                style={{
-                  fontSize: '1.02rem',
-                  color: 'var(--text-muted)',
-                  lineHeight: 1.6,
-                  marginBottom: '2.25rem',
-                  maxWidth: '560px',
-                  marginLeft: isDesktop ? 0 : 'auto',
-                  marginRight: isDesktop ? 0 : 'auto',
-                }}
-              >
-                Tentukan titik lokasimu, lihat kos dan kampus terdekat di peta, lalu sewa dengan aturan yang tertulis jelas. Untuk mahasiswa maupun pekerja.
+
+              <p className="kobo-hero__sub hero-enter">
+                Lihat kos dan kampus terdekat di peta, baca aturan tertulisnya, lalu ajukan sewa untuk disetujui pemilik.
               </p>
-    
+
               {/* ── Location Search Bar ── */}
               <div
-                style={{ position: 'relative', maxWidth: '660px', margin: isDesktop ? 0 : '0 auto' }}
+                className="kobo-hero__search hero-enter"
                 onBlur={(e) => {
                   if (!e.currentTarget.contains(e.relatedTarget as Node)) setSuggestionsOpen(false);
                 }}
@@ -214,7 +168,7 @@ export const Hero: React.FC = () => {
                 {/* Autocomplete Dropdown */}
                 {suggestionsOpen && (matchedLocations.length > 0 || matchedKos.length > 0) && (
                   <div
-                    className="animate-slide-up"
+                    className="animate-pop-in"
                     style={{
                       position: 'absolute',
                       top: 'calc(100% + 8px)',
@@ -289,10 +243,6 @@ export const Hero: React.FC = () => {
             <HeroScene />
           </div>
         </div>
-
-        {/* Scoped focus-within glow (Issue 5) */}
-        <style>{`
-        `}</style>
       </section>
   );
 };

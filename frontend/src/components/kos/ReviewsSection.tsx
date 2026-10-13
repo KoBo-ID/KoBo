@@ -83,7 +83,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           <div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
               <span style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                {ratingOverall ?? '–'}
+                {ratingOverall ?? '-'}
               </span>
               <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>/ 5.0</span>
             </div>
@@ -122,7 +122,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
             <div key={key}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.75rem', lineHeight: 1.3, marginBottom: '0.3rem' }}>
                 <span style={{ minWidth: 0 }}>{label}</span>
-                <span style={{ fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>{value === null ? '–' : value.toFixed(1)} / 5</span>
+                <span style={{ fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>{value === null ? '-' : value.toFixed(1)} / 5</span>
               </div>
               <div style={{ height: '5px', backgroundColor: 'var(--bg-muted)', borderRadius: '3px', overflow: 'hidden' }}>
                 <div style={{ width: `${((value ?? 0) / 5) * 100}%`, height: '100%', backgroundColor: 'var(--primary)', borderRadius: '3px' }} />
@@ -217,7 +217,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                   padding: '0.85rem 1rem',
                   backgroundColor: 'var(--bg-surface)',
                   borderRadius: 'var(--radius-sm)',
-                  borderLeft: '3px solid var(--primary)',
+                  border: '1px solid var(--border-subtle)',
                   display: 'flex',
                   gap: '0.65rem',
                 }}

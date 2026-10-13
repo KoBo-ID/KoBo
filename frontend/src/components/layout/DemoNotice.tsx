@@ -28,7 +28,7 @@ export const DemoNotice: React.FC = () => {
       data-testid="demo-notice"
       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '0.75rem', padding: '0.4rem 1rem', fontSize: '0.8rem', backgroundColor: 'var(--bg-muted)', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)' }}
     >
-      <span>Akun demo — data direset setiap malam</span>
+      <span>Akun demo: data direset setiap malam</span>
       <button
         type="button"
         onClick={() => reset.mutate()}

@@ -27,7 +27,7 @@ export const OwnerProfile: React.FC = () => {
         aria-label="Memuat profil pemilik"
         style={{ maxWidth: '1080px', paddingTop: '2.5rem', paddingBottom: '4rem' }}
       >
-        <div style={{ height: '17rem', backgroundColor: 'var(--bg-muted)', borderRadius: 'var(--radius-xl)', marginBottom: '3rem' }} />
+        <div style={{ height: '17rem', backgroundColor: 'var(--bg-muted)', borderRadius: 'var(--radius-card)', marginBottom: '3rem' }} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
           {[0, 1, 2].map((i) => (
             <KosCardSkeleton key={i} />
@@ -58,7 +58,7 @@ export const OwnerProfile: React.FC = () => {
       <div
         style={{
           backgroundColor: 'var(--bg-surface)',
-          borderRadius: 'var(--radius-xl)',
+          borderRadius: 'var(--radius-card)',
           border: '1.5px solid var(--border-subtle)',
           boxShadow: 'var(--shadow-sm)',
           padding: '2.5rem',

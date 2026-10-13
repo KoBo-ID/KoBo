@@ -9,7 +9,6 @@ export interface CreateCheckoutInput {
   expiresAt: Date
   successReturnUrl: string
   failureReturnUrl: string
-  customerReference: string
   providerBusinessId?: string
   splitRuleId?: string
 }
@@ -47,7 +46,7 @@ export interface CreateRefundInput {
   providerBusinessId?: string
   amount: number
   currency: PaymentCurrency
-  reason: string
+  reason: 'FRAUDULENT' | 'DUPLICATE' | 'REQUESTED_BY_CUSTOMER' | 'CANCELLATION' | 'OTHERS'
 }
 
 export interface RefundSnapshot {

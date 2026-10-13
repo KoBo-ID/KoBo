@@ -1,0 +1,36 @@
+/* Owner workspace (product UI). Shared by OwnerLayout and the owner pages.
+   Fixed rem scale, restrained colour, 150-250ms state motion only. */
+
+.owner-page {
+  max-width: 1180px;
+  padding-top: 1.75rem;
+  padding-bottom: 4rem;
+}
+
+.owner-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.owner-page-header__text { min-width: 0; }
+.owner-page-header h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--text-main);
+}
+.owner-page-header p {
+  margin-top: 0.2rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+.owner-page-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}

@@ -122,7 +122,7 @@ describe('owner.kos.create / update / delete', () => {
 
   it('leaves the nearest campus empty when none is close', async () => {
     const { a } = await twoOwners()
-    const k = await callerFor(a.userId).owner.kos.create(kosInput({ lat: -7.25, lng: 112.75 }))
+    const k = await callerFor(a.userId).owner.kos.create(kosInput({ lat: -5.0, lng: 110.0 }))
     const row = await prisma.kos.findUniqueOrThrow({ where: { id: k.id } })
     expect(row.nearestCampusId).toBeNull()
     expect(row.nearestCampusMeters).toBeNull()

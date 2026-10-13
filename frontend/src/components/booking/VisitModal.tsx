@@ -128,7 +128,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
                     transition: 'all var(--duration-fast) var(--ease-out-spring)',
                   }}
                 >
-                  <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', opacity: isSelected ? 0.9 : 0.6 }}>
+                  <span style={{ fontSize: '0.72rem', opacity: isSelected ? 0.9 : 0.6 }}>
                     {day.dayName}
                   </span>
                   <span style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0.1rem 0' }}>

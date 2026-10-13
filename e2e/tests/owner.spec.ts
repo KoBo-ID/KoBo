@@ -65,7 +65,7 @@ test('a kos created in the owner workspace appears in Kelola Properti', async ({
   await loginAs(page, 'owner')
   await page.goto('/owner/kos')
   const name = `Kost Uji E2E ${Date.now()}`
-  await page.getByRole('button', { name: 'Tambah Kos Baru' }).click()
+  await page.getByRole('button', { name: 'Tambah kos' }).first().click()
   await page.getByLabel('Nama Properti Kos').fill(name)
   await page.getByLabel('Alamat Lengkap Kos').fill('Jl. Uji Coba No. 1')
   await page.getByRole('button', { name: 'Simpan Kos Baru' }).click()

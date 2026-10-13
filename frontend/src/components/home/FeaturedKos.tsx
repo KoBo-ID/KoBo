@@ -18,18 +18,18 @@ export const FeaturedKos: React.FC<FeaturedKosProps> = ({ onOpenSurvey }) => {
   const { data, isPending, isError, refetch } = useQuery(trpc.kos.list.queryOptions());
   const kosList = React.useMemo(() => (data ?? []).map(kosCardToKos), [data]);
   // One full row of 4 on desktop; a 5th card would sit orphaned on row two.
-  const featuredKos = kosList.slice(0, 4);
+  // One kos per city first, so the row shows KoBo's spread rather than four
+  // listings from the same neighbourhood; falls back to list order when there
+  // are fewer than four cities.
+  const featuredKos = React.useMemo(() => {
+    const seen = new Set<string>();
+    const spread = kosList.filter((k) => !seen.has(k.city) && seen.add(k.city));
+    return [...spread, ...kosList.filter((k) => !spread.includes(k))].slice(0, 4);
+  }, [kosList]);
   return (
         <section className="app-container">
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '2rem' }}>
-            <div>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Pilihan Terverifikasi
-              </span>
-              <h2 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em', marginTop: '0.2rem' }}>
-                Rekomendasi Kos Terpopuler
-              </h2>
-            </div>
+          <div className="featured-head">
+            <h2 className="featured-head__title">Kos yang baru bisa kamu survey</h2>
             <Link to="/search">
               <Button variant="outline" size="sm" icon={<ArrowRight size={16} />} iconPosition="right">
                 {data ? `Lihat Semua (${kosList.length})` : 'Lihat Semua'}
@@ -51,7 +51,7 @@ export const FeaturedKos: React.FC<FeaturedKosProps> = ({ onOpenSurvey }) => {
                 color: 'var(--text-muted)',
               }}
             >
-              <span>Gagal memuat rekomendasi kos. Periksa koneksi Anda lalu coba lagi.</span>
+              <span>Gagal memuat daftar kos. Periksa koneksi Anda lalu coba lagi.</span>
               <Button variant="outline" size="sm" onClick={() => void refetch()}>
                 Coba Lagi
               </Button>

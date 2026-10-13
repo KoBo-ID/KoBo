@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Star, MessageSquare, CornerDownRight, Send, ShieldCheck } from 'lucide-react';
+import '../../styles/owner-reviews.css';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Star, ShieldCheck, Send } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { OwnerReview } from '../../../../backend/src/trpc/router';
 import { useAppStore } from '../../store/AppContext';
@@ -9,14 +10,132 @@ import { useOwnerWorkspace } from '../../lib/ownerWorkspace';
 import { formatLongDate } from '../../utils/kosDetail';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/QueryState';
+import { OwnerPageHeader } from '../../components/owner/OwnerPageHeader';
 
 const SUB_LABELS: { key: keyof OwnerReview['subRatings']; label: string }[] = [
   { key: 'cleanliness', label: 'Kebersihan' },
   { key: 'wifi', label: 'Wi-Fi' },
-  { key: 'owner', label: 'Respon Pemilik' },
+  { key: 'owner', label: 'Respon pemilik' },
   { key: 'quietness', label: 'Ketenangan' },
 ];
+
+type Filter = 'all' | 'unanswered' | 1 | 2 | 3 | 4 | 5;
+const PAGE = 10;
+const CLAMP_CHARS = 220;
+
+const fmt = (n: number) => n.toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+const emptyText = (f: Filter): string => {
+  if (f === 'unanswered') return 'Semua ulasan sudah dibalas.';
+  if (f === 'all') return 'Belum ada ulasan.';
+  return `Belum ada ulasan bintang ${f}.`;
+};
+
+const ReviewRow: React.FC<{
+  rev: OwnerReview;
+  editing: boolean;
+  replyText: string;
+  setReplyText: (v: string) => void;
+  onStart: () => void;
+  onCancel: () => void;
+  onSend: () => void;
+  sending: boolean;
+}> = ({ rev, editing, replyText, setReplyText, onStart, onCancel, onSend, sending }) => {
+  const [expanded, setExpanded] = useState(false);
+  const long = rev.comment.length > CLAMP_CHARS;
+  const subs = SUB_LABELS.filter(({ key }) => rev.subRatings[key] !== null);
+  const fieldId = `reply-${rev.id}`;
+
+  return (
+    <li className="rv-row" data-testid="owner-review">
+      <Avatar src={rev.authorAvatar} name={rev.authorName} size={40} />
+      <div className="rv-main">
+        <div className="rv-head">
+          <div className="rv-who">
+            <span className="rv-name">{rev.authorName}</span>
+            {rev.verified && (
+              <span className="rv-verified" title="Mahasiswa terverifikasi">
+                <ShieldCheck size={13} aria-hidden="true" />
+                <span>Mahasiswa terverifikasi</span>
+              </span>
+            )}
+            <span className="rv-meta">
+              {rev.authorCampus ?? 'Penyewa KoBo'}, {formatLongDate(rev.createdAt)}
+            </span>
+          </div>
+          <span className="rv-stars" aria-label={`Rating ${rev.rating} dari 5`}>
+            <Star size={14} fill="currentColor" aria-hidden="true" />
+            {rev.rating}
+          </span>
+        </div>
+
+        <p className={`rv-quote${long && !expanded ? ' is-clamped' : ''}`}>{rev.comment}</p>
+        {long && (
+          <button type="button" className="rv-link" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
+            {expanded ? 'Tampilkan lebih sedikit' : 'Selengkapnya'}
+          </button>
+        )}
+
+        {subs.length > 0 && (
+          <p className="rv-subs">
+            {subs.map(({ key, label }) => (
+              <span key={key}>
+                {label} <span className="rv-num">{rev.subRatings[key]}</span>
+              </span>
+            ))}
+          </p>
+        )}
+
+        {rev.ownerReply && !editing && (
+          <div className="rv-reply">
+            <p className="rv-reply__label">
+              Tanggapan Anda{rev.ownerReply.at ? <span className="rv-meta">, {formatLongDate(rev.ownerReply.at)}</span> : null}
+            </p>
+            <p className="rv-reply__text">{rev.ownerReply.text}</p>
+          </div>
+        )}
+
+        {editing && (
+          <div
+            className="rv-form"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') onCancel();
+            }}
+          >
+            <label htmlFor={fieldId}>Tanggapan Anda</label>
+            <textarea
+              id={fieldId}
+              rows={3}
+              autoFocus
+              value={replyText}
+              maxLength={1000}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Tulis tanggapan yang santun untuk ulasan ini"
+            />
+            <div className="rv-form__actions">
+              <Button variant="ghost" size="sm" onClick={onCancel}>
+                Batal
+              </Button>
+              <Button variant="primary" size="sm" isLoading={sending} disabled={!replyText.trim()} onClick={onSend} icon={<Send size={14} />}>
+                Kirim
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!editing && (
+        <div className="rv-action">
+          <Button variant="outline" size="sm" onClick={onStart}>
+            {rev.ownerReply ? 'Ubah tanggapan' : 'Balas'}
+          </Button>
+        </div>
+      )}
+    </li>
+  );
+};
 
 export const ReviewsManager: React.FC = () => {
   const { addToast } = useAppStore();
@@ -27,11 +146,33 @@ export const ReviewsManager: React.FC = () => {
   const reviews = useQuery({ ...trpc.owner.reviews.queryOptions({ kosId }), enabled: !!selectedKos });
   const reply = useMutation(trpc.review.reply.mutationOptions());
 
-  const [filterRating, setFilterRating] = useState<number | 'all'>('all');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [visible, setVisible] = useState(PAGE);
   const [activeReplyId, setActiveReplyId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
 
-  const filtered = (reviews.data ?? []).filter((r) => filterRating === 'all' || r.rating === filterRating);
+  useEffect(() => setVisible(PAGE), [filter]);
+
+  const all = useMemo(() => reviews.data ?? [], [reviews.data]);
+  const stats = useMemo(() => {
+    const counts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let sum = 0;
+    let unanswered = 0;
+    for (const r of all) {
+      counts[r.rating] = (counts[r.rating] ?? 0) + 1;
+      sum += r.rating;
+      if (!r.ownerReply) unanswered++;
+    }
+    const subs = SUB_LABELS.map(({ key, label }) => {
+      const vals = all.map((r) => r.subRatings[key]).filter((v): v is number => v !== null);
+      return { label, avg: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null };
+    });
+    return { counts, unanswered, avg: all.length ? sum / all.length : 0, subs };
+  }, [all]);
+
+  const filtered = all.filter((r) => (filter === 'all' ? true : filter === 'unanswered' ? !r.ownerReply : r.rating === filter));
+  const shown = filtered.slice(0, visible);
+  const maxCount = Math.max(1, ...Object.values(stats.counts));
 
   const sendReply = async (reviewId: string) => {
     if (!replyText.trim() || !selectedKos) return;
@@ -47,137 +188,119 @@ export const ReviewsManager: React.FC = () => {
     }
   };
 
+  const filterItems: { id: Filter; label: string; count: number }[] = [
+    { id: 'all', label: 'Semua', count: all.length },
+    { id: 'unanswered', label: 'Belum dibalas', count: stats.unanswered },
+    ...([5, 4, 3, 2, 1] as const).map((n) => ({ id: n as Filter, label: String(n), count: stats.counts[n] })),
+  ];
+
   return (
-    <div className="app-container" style={{ maxWidth: '960px', paddingTop: '2.5rem', paddingBottom: '4rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="kobo-segmented" role="group" aria-label="Filter rating ulasan">
-          {(
-            [
-              { id: 'all', label: 'Semua Ulasan' },
-              { id: 5, label: 'Bintang 5' },
-              { id: 4, label: 'Bintang 4' },
-              { id: 3, label: 'Bintang 3' },
-              { id: 2, label: 'Bintang 2' },
-              { id: 1, label: 'Bintang 1' },
-            ] as const
-          ).map((item) => (
-            <button key={item.id} type="button" aria-pressed={filterRating === item.id} onClick={() => setFilterRating(item.id)}>
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="app-container owner-page rv-page">
+      <OwnerPageHeader title="Ulasan" subtitle={selectedKos?.name} />
 
-      {!selectedKos && <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>Belum ada properti. Daftarkan kos pertama Anda di menu Kelola Kos.</p>}
-      {selectedKos && reviews.isPending && <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat ulasan…</p>}
+      {!selectedKos && <p className="rv-empty">Belum ada properti. Daftarkan kos pertama Anda di menu Kelola Kos.</p>}
+
       {selectedKos && reviews.isError && <ErrorState message="Gagal memuat ulasan." onRetry={() => void reviews.refetch()} minHeight="10rem" />}
-      {reviews.isSuccess && filtered.length === 0 && (
-        <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
-          {reviews.data.length === 0 ? `Belum ada ulasan untuk ${selectedKos?.name}.` : 'Tidak ada ulasan dengan rating ini.'}
-        </p>
-      )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {filtered.map((rev) => (
-          <div
-            key={rev.id}
-            data-testid="owner-review"
-            style={{ backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)', padding: '1.5rem', boxShadow: 'var(--shadow-sm)' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <Avatar src={rev.authorAvatar} name={rev.authorName} size={42} />
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>{rev.authorName}</h4>
-                    {rev.verified && (
-                      <span style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
-                        <ShieldCheck size={12} /> Mahasiswa Terverifikasi
-                      </span>
-                    )}
-                  </div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {rev.authorCampus ?? 'Penyewa KoBo'} · {formatLongDate(rev.createdAt)}
-                  </span>
+      {selectedKos && reviews.isPending && (
+        <div role="status" aria-label="Memuat ulasan">
+          <div className="rv-surface">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="rv-row rv-row--skeleton">
+                <Skeleton width={40} height={40} borderRadius="50%" />
+                <div className="rv-main">
+                  <Skeleton width="40%" height="0.9rem" />
+                  <Skeleton height="0.9rem" style={{ marginTop: '0.6rem' }} />
+                  <Skeleton width="70%" height="0.9rem" style={{ marginTop: '0.4rem' }} />
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', backgroundColor: 'var(--accent-light)', color: 'var(--accent)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', fontWeight: 800 }}>
-                <Star size={14} fill="var(--accent)" />
-                <span>{rev.rating}</span>
-              </div>
+      {reviews.isSuccess && all.length === 0 && <p className="rv-empty">Belum ada ulasan untuk {selectedKos?.name}.</p>}
+
+      {reviews.isSuccess && all.length > 0 && (
+        <>
+          <section className="rv-summary" aria-label="Ringkasan ulasan">
+            <div className="rv-avg">
+              <p className="rv-avg__value">
+                <span className="rv-num">{fmt(stats.avg)}</span>
+                <Star size={22} fill="currentColor" aria-hidden="true" />
+              </p>
+              <p className="rv-avg__caption">dari {all.length} ulasan</p>
             </div>
 
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.6, marginBottom: '1rem' }}>"{rev.comment}"</p>
-
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-              {SUB_LABELS.filter(({ key }) => rev.subRatings[key] !== null).map(({ key, label }) => (
-                <span key={key} style={{ fontSize: '0.72rem', backgroundColor: 'var(--bg-muted)', padding: '0.2rem 0.5rem', borderRadius: 'var(--radius-xs)' }}>
-                  {label}: {rev.subRatings[key]}/5
-                </span>
+            <ol className="rv-dist" aria-label="Sebaran rating">
+              {[5, 4, 3, 2, 1].map((n) => (
+                <li key={n}>
+                  <span className="rv-dist__label rv-num">{n}</span>
+                  <span className="rv-dist__bar" style={{ width: `${(stats.counts[n] / maxCount) * 100}%`, minWidth: stats.counts[n] ? 3 : 0 }} aria-hidden="true" />
+                  <span className="rv-dist__count rv-num">{stats.counts[n]}</span>
+                </li>
               ))}
-            </div>
+            </ol>
 
-            {rev.ownerReply && activeReplyId !== rev.id && (
-              <div style={{ padding: '1rem', backgroundColor: 'var(--bg-page)', borderRadius: 'var(--radius-md)', borderLeft: '3px solid var(--primary)', display: 'flex', gap: '0.75rem' }}>
-                <CornerDownRight size={18} color="var(--primary)" style={{ flexShrink: 0, marginTop: '0.1rem' }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                    <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--primary)' }}>Tanggapan Resmi Pemilik Kos</span>
-                    {rev.ownerReply.at && <span style={{ fontSize: '0.7rem', color: 'var(--text-subtle)' }}>· {formatLongDate(rev.ownerReply.at)}</span>}
+            <div className="rv-side">
+              <button type="button" className="rv-unanswered" onClick={() => setFilter('unanswered')}>
+                <span className="rv-num rv-unanswered__n">{stats.unanswered}</span>
+                <span>belum dibalas</span>
+              </button>
+              <dl className="rv-subavg">
+                {stats.subs.map((s) => (
+                  <div key={s.label}>
+                    <dt>{s.label}</dt>
+                    <dd className="rv-num">{s.avg === null ? '-' : fmt(s.avg)}</dd>
                   </div>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: 1.5 }}>{rev.ownerReply.text}</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
+                ))}
+              </dl>
+            </div>
+          </section>
+
+          <div className="rv-filters" role="group" aria-label="Filter ulasan">
+            {filterItems.map((item) => (
+              <button key={String(item.id)} type="button" aria-pressed={filter === item.id} onClick={() => setFilter(item.id)}>
+                {typeof item.id === 'number' && <Star size={12} fill="currentColor" aria-hidden="true" />}
+                {item.label}
+                <span className="rv-num rv-filters__count">{item.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {filtered.length === 0 ? (
+            <p className="rv-empty">{emptyText(filter)}</p>
+          ) : (
+            <>
+              <ul className="rv-surface">
+                {shown.map((rev) => (
+                  <ReviewRow
+                    key={rev.id}
+                    rev={rev}
+                    editing={activeReplyId === rev.id}
+                    replyText={replyText}
+                    setReplyText={setReplyText}
+                    onStart={() => {
                       setActiveReplyId(rev.id);
                       setReplyText(rev.ownerReply?.text ?? '');
                     }}
-                  >
-                    Ubah Tanggapan
+                    onCancel={() => setActiveReplyId(null)}
+                    onSend={() => void sendReply(rev.id)}
+                    sending={reply.isPending}
+                  />
+                ))}
+              </ul>
+              {filtered.length > shown.length && (
+                <div className="rv-more">
+                  <Button variant="outline" onClick={() => setVisible((v) => v + PAGE)}>
+                    Tampilkan {Math.min(PAGE, filtered.length - shown.length)} lagi
                   </Button>
                 </div>
-              </div>
-            )}
-
-            {(!rev.ownerReply || activeReplyId === rev.id) &&
-              (activeReplyId === rev.id ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.75rem' }}>
-                  <textarea
-                    rows={2}
-                    aria-label="Tanggapan pemilik"
-                    value={replyText}
-                    maxLength={1000}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Tulis tanggapan santun dan ramah untuk ulasan mahasiswa ini..."
-                    style={{ width: '100%', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-strong)', fontFamily: 'var(--font-sans)', fontSize: '0.85rem' }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveReplyId(null)}>
-                      Batal
-                    </Button>
-                    <Button variant="primary" size="sm" isLoading={reply.isPending} onClick={() => void sendReply(rev.id)} icon={<Send size={14} />}>
-                      Kirim Tanggapan Pemilik
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setActiveReplyId(rev.id);
-                    setReplyText('');
-                  }}
-                  icon={<MessageSquare size={14} />}
-                >
-                  Beri Tanggapan Pemilik
-                </Button>
-              ))}
-          </div>
-        ))}
-      </div>
+              )}
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 };

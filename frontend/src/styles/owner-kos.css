@@ -1,0 +1,295 @@
+/* Kelola properti (pages/owner/KosManager.tsx) and the waitlist panel */
+
+.owner-kos {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.owner-kos__card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  padding: 1.5rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.owner-kos__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.owner-kos__identity {
+  display: flex;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.owner-kos__photo {
+  width: 104px;
+  height: 104px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  background-color: var(--bg-muted);
+}
+
+.owner-kos__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.owner-kos__badge {
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-badge);
+  background-color: var(--primary-light);
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.owner-kos__name {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.owner-kos__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.owner-kos__line svg {
+  flex-shrink: 0;
+  margin-top: 0.18rem;
+}
+
+.owner-kos__line--accent {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.owner-kos__actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+/* 40px controls */
+.owner-kos__actions .kobo-btn {
+  min-height: 40px;
+}
+
+.owner-kos__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-btn);
+  background-color: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.owner-kos__icon-btn:hover,
+.owner-kos__icon-btn[aria-expanded='true'] {
+  background-color: var(--bg-muted);
+}
+
+.owner-kos__icon-btn--quiet {
+  width: 36px;
+  height: 36px;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+
+.owner-kos__icon-btn--quiet:hover,
+.owner-kos__icon-btn--quiet[aria-expanded='true'] {
+  color: var(--text-main);
+}
+
+@media (pointer: coarse), (max-width: 640px) {
+  .owner-kos__icon-btn--quiet {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+.owner-kos .kobo-menu button.is-danger,
+.owner-kos .kobo-menu .is-danger {
+  color: var(--status-overdue);
+}
+
+.owner-kos__confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--status-overdue-border);
+  border-radius: var(--radius-md);
+  background-color: var(--status-overdue-bg);
+  color: var(--text-main);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.owner-kos__confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.owner-kos__confirm-actions .kobo-btn {
+  min-height: 40px;
+}
+
+/* Section heading shared by "Daftar kamar" and "Daftar tunggu" */
+.owner-kos__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.owner-kos__section-title {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.owner-kos__section-title span {
+  margin-left: 0.4rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.owner-kos__section-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.owner-kos .kobo-table tbody td {
+  height: 52px;
+}
+
+.owner-kos .kobo-table td.owner-kos__actioncell {
+  width: 1%;
+  padding-right: 0.5rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.owner-kos .kobo-table td.owner-kos__confirmcell {
+  padding: 0.5rem 1rem;
+  background-color: var(--status-overdue-bg);
+}
+
+.owner-kos .kobo-table td.owner-kos__confirmcell .owner-kos__confirm {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.owner-kos__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.owner-kos__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  max-width: 560px;
+  padding: 2rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.owner-kos__empty h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.owner-kos__empty p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.owner-kos__empty ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+  .owner-kos__card {
+    padding: 1.1rem;
+  }
+
+  .owner-kos__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .owner-kos__identity {
+    gap: 0.9rem;
+  }
+
+  .owner-kos__photo {
+    width: 80px;
+    height: 80px;
+  }
+
+  .owner-kos__actions .kobo-btn {
+    flex: 1;
+  }
+
+  .owner-kos__section-head {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Keep rows one line tall; the table scrolls inside its own wrapper */
+  .owner-kos .kobo-table td,
+  .owner-kos .kobo-table th {
+    white-space: nowrap;
+  }
+
+  .owner-kos .kobo-table td.owner-kos__confirmcell {
+    white-space: normal;
+  }
+}

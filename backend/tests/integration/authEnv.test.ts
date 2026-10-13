@@ -138,8 +138,10 @@ describe('paymentEnv', () => {
     })
   })
 
-  it('allows a custom API base URL only outside production', () => {
+  it('allows a custom API base URL only on a test loopback host', () => {
     expect(paymentEnv({ NODE_ENV: 'test', XENDIT_API_BASE_URL: 'http://127.0.0.1:9999/' }).xendit.apiBaseUrl).toBe('http://127.0.0.1:9999')
+    expect(() => paymentEnv({ NODE_ENV: 'development', XENDIT_API_BASE_URL: 'http://127.0.0.1:9999/' })).toThrow(/NODE_ENV=test/)
+    expect(() => paymentEnv({ NODE_ENV: 'test', XENDIT_API_BASE_URL: 'https://proxy.example.com' })).toThrow(/loopback/)
     expect(() => paymentEnv({ NODE_ENV: 'production', PAYMENT_PROVIDER: 'mock', ALLOW_MOCK_PAYMENTS: '1', XENDIT_API_BASE_URL: 'https://proxy.example.com' })).toThrow(
       /XENDIT_API_BASE_URL/,
     )

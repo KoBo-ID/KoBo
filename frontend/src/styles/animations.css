@@ -3,6 +3,7 @@
   --ease-out-spring: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-spring: cubic-bezier(0.7, 0, 0.84, 0);
   --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
 
   --duration-fast: 150ms;
   --duration-normal: 220ms;
@@ -38,6 +39,39 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes enterUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes revealUp {
+  from {
+    opacity: 0.001;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -81,6 +115,38 @@
   );
   background-size: 200% 100%;
   animation: shimmer 1.6s infinite ease-in-out;
+}
+
+.animate-pop-in {
+  transform-origin: top center;
+  animation: popIn 180ms var(--ease-out-strong) both;
+}
+
+/* Hero page-load sequence: copy, subtext, search, ~60ms apart. Only runs
+   when motion is allowed; otherwise everything is simply visible. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-enter {
+    animation: enterUp 400ms var(--ease-out-strong) both;
+  }
+  .hero-enter:nth-child(2) { animation-delay: 60ms; }
+  .hero-enter:nth-child(3) { animation-delay: 120ms; }
+}
+
+/* Scroll reveal utility. Visible by default; animates only where
+   scroll-driven animations and motion are both available. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal-on-scroll {
+      animation: revealUp linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 30%;
+    }
+  }
+}
+
+/* Button press feedback */
+.kobo-btn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 /* Tactile feedback for clickable elements */

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { STATUS_META } from '../../components/owner/RoomOccupancyBoard';
-import { Plus, Edit, Trash2, Eye, MapPin, CheckCircle2, Footprints, Images } from 'lucide-react';
+import '../../styles/owner-kos.css';
+import { Plus, Edit, Trash2, Eye, MapPin, CheckCircle2, Footprints, Images, MoreHorizontal } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { BoardRoom, OwnerKos } from '../../../../backend/src/trpc/router';
 import { useAppStore } from '../../store/AppContext';
@@ -11,6 +12,8 @@ import { KosFormModal } from '../../components/owner/KosFormModal';
 import { KosPhotosModal } from '../../components/owner/KosPhotosModal';
 import { WaitlistPanel } from '../../components/owner/WaitlistPanel';
 import { Button } from '../../components/ui/Button';
+import { Popover } from '../../components/ui/Popover';
+import { OwnerPageHeader } from '../../components/owner/OwnerPageHeader';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { SafeImage } from '../../components/ui/SafeImage';
@@ -18,7 +21,7 @@ import { Link } from 'react-router-dom';
 
 export const KosManager: React.FC = () => {
   const { addToast } = useAppStore();
-  const { kosList } = useOwnerWorkspace();
+  const { selectedKos } = useOwnerWorkspace();
   const trpc = useTRPC();
   const qc = useQueryClient();
   const deleteKosMutation = useMutation(trpc.owner.kos.delete.mutationOptions());
@@ -48,6 +51,8 @@ export const KosManager: React.FC = () => {
   const [roomModalKosId, setRoomModalKosId] = useState<string | null>(null);
   const [editingRoom, setEditingRoom] = useState<BoardRoom | null>(null);
   const [photosKos, setPhotosKos] = useState<OwnerKos | null>(null);
+  const [confirmKosDelete, setConfirmKosDelete] = useState(false);
+  const [confirmRoomId, setConfirmRoomId] = useState<string | null>(null);
 
   // New room state
   const [roomNumber, setRoomNumber] = useState('');
@@ -96,210 +101,273 @@ export const KosManager: React.FC = () => {
     }
   };
 
+  const openCreate = () => {
+    setEditingKos(null);
+    setIsFormOpen(true);
+  };
+  const kos = selectedKos;
+
   return (
-    <div className="app-container" style={{ maxWidth: '1080px', paddingTop: '2.5rem', paddingBottom: '4rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+    <div className="app-container owner-page owner-kos">
+      <OwnerPageHeader
+        title="Kelola properti"
+        subtitle={kos?.name}
+        actions={
+          <Button variant="primary" size="md" onClick={openCreate} icon={<Plus size={16} />} style={{ minHeight: 40 }}>
+            Tambah kos
+          </Button>
+        }
+      />
 
-        <Button
-          variant="primary"
-          size="md"
-          onClick={() => {
-            setEditingKos(null);
-            setIsFormOpen(true);
-          }}
-          icon={<Plus size={16} />}
-        >
-          Tambah Kos Baru
-        </Button>
-      </div>
-
-      {kosList.length === 0 && (
-        <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>Belum ada properti. Daftarkan kos pertama Anda dengan tombol di atas.</p>
+      {!kos && (
+        <section className="owner-kos__empty">
+          <h2>Daftarkan kos pertama Anda</h2>
+          <p>Properti yang terdaftar muncul di pencarian KoBo dan di papan okupansi Anda. Siapkan hal berikut:</p>
+          <ul>
+            <li>Nama, alamat, dan jenis kos (putra, putri, atau campur)</li>
+            <li>Foto kos dan fasilitas utama</li>
+            <li>Daftar kamar dengan tipe, ukuran, dan harga sewa bulanan</li>
+          </ul>
+          <Button variant="primary" size="md" onClick={openCreate} icon={<Plus size={16} />} style={{ minHeight: 40 }}>
+            Tambah kos
+          </Button>
+        </section>
       )}
-      {/* Kos Properties List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-        {kosList.map((kos) => (
-          <div
-            key={kos.id}
-            style={{
-              backgroundColor: 'var(--bg-surface)',
-              borderRadius: 'var(--radius-lg)',
-              border: '1.5px solid var(--border-subtle)',
-              boxShadow: 'var(--shadow-sm)',
-              padding: '1.75rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.5rem',
-            }}
-          >
-            {/* Header with image, details, and actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.25rem' }}>
-              <div style={{ display: 'flex', gap: '1.25rem' }}>
-                {kos.image ? (
-                  <SafeImage
-                    src={kos.image}
-                    alt={kos.name}
-                    style={{ width: '110px', height: '110px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <div aria-hidden="true" style={{ width: '110px', height: '110px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-muted)', flexShrink: 0 }} />
+
+      {kos && (
+        <div className="owner-kos__card">
+          <div className="owner-kos__head">
+            <div className="owner-kos__identity">
+              {kos.image ? (
+                <SafeImage src={kos.image} alt={kos.name} className="owner-kos__photo" />
+              ) : (
+                <div aria-hidden="true" className="owner-kos__photo" />
+              )}
+              <div className="owner-kos__meta">
+                <span className="owner-kos__badge">{kos.gender.toLowerCase()}</span>
+                <h2 className="owner-kos__name">{kos.name}</h2>
+                <p className="owner-kos__line">
+                  <MapPin size={14} />
+                  <span>{kos.address}</span>
+                </p>
+                {kos.nearestCampus && kos.nearestCampus.meters !== null && (
+                  <p className="owner-kos__line owner-kos__line--accent">
+                    <Footprints size={14} />
+                    <span>
+                      {kos.nearestCampus.meters} m ke {kos.nearestCampus.shortName}
+                    </span>
+                  </p>
                 )}
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span
-                      style={{
-                        backgroundColor: 'var(--primary-light)',
-                        color: 'var(--primary)',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        padding: '0.15rem 0.55rem',
-                        borderRadius: 'var(--radius-badge)',
-                        textTransform: 'capitalize',
+              </div>
+            </div>
+
+            <div className="owner-kos__actions">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setEditingKos(kos);
+                  setIsFormOpen(true);
+                }}
+                icon={<Edit size={14} />}
+              >
+                Edit kos
+              </Button>
+              <Popover
+                role="menu"
+                label="Aksi kos"
+                panelClassName="kobo-menu"
+                trigger={(p) => (
+                  <button {...p} type="button" className="owner-kos__icon-btn" aria-label="Aksi lainnya">
+                    <MoreHorizontal size={18} />
+                  </button>
+                )}
+              >
+                {({ close }) => (
+                  <>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        close();
+                        setPhotosKos(kos);
                       }}
                     >
-                      {kos.gender.toLowerCase()}
-                    </span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>
-                      ID: {kos.id}
-                    </span>
-                  </div>
+                      <Images size={15} /> Kelola foto
+                    </button>
+                    <Link to={`/kos/${kos.id}`} role="menuitem" className="kobo-menu__link" onClick={close}>
+                      <Eye size={15} /> Lihat halaman publik
+                    </Link>
+                    <div className="kobo-menu__sep" role="separator" />
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="is-danger"
+                      onClick={() => {
+                        close();
+                        setConfirmKosDelete(true);
+                      }}
+                    >
+                      <Trash2 size={15} /> Hapus kos
+                    </button>
+                  </>
+                )}
+              </Popover>
+            </div>
+          </div>
 
-                  <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.35rem' }}>
-                    {kos.name}
-                  </h3>
-
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                    <MapPin size={14} style={{ display: 'inline', marginRight: '0.25rem' }} />
-                    {kos.address}
-                  </p>
-
-                  {kos.nearestCampus && kos.nearestCampus.meters !== null && (
-                    <p style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.2rem' }}>
-                      <Footprints size={13} /> {kos.nearestCampus.meters}m ke {kos.nearestCampus.shortName}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <Link to={`/kos/${kos.id}`}>
-                  <Button variant="outline" size="sm" icon={<Eye size={14} />}>
-                    Lihat Publik
-                  </Button>
-                </Link>
-
-                <Button variant="outline" size="sm" onClick={() => setPhotosKos(kos)} icon={<Images size={14} />}>
-                  Foto
+          {confirmKosDelete && (
+            <div className="owner-kos__confirm" role="alert">
+              <span>Hapus {kos.name} beserta seluruh kamarnya? Tindakan ini tidak bisa dibatalkan.</span>
+              <div className="owner-kos__confirm-actions">
+                <Button variant="outline" size="sm" onClick={() => setConfirmKosDelete(false)}>
+                  Batal
                 </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setEditingKos(kos);
-                    setIsFormOpen(true);
-                  }}
-                  icon={<Edit size={14} />}
-                >
-                  Edit Kos
-                </Button>
-
                 <Button
                   variant="danger"
                   size="sm"
+                  isLoading={deleteKosMutation.isPending}
                   onClick={() => {
-                    if (window.confirm(`Hapus properti "${kos.name}" beserta seluruh kamarnya?`)) {
-                      void attempt(() => deleteKosMutation.mutateAsync({ kosId: kos.id }), 'Properti kos telah dihapus.');
-                    }
+                    void attempt(() => deleteKosMutation.mutateAsync({ kosId: kos.id }), 'Properti kos telah dihapus.').then(() =>
+                      setConfirmKosDelete(false),
+                    );
                   }}
-                  icon={<Trash2 size={14} />}
                 >
                   Hapus
                 </Button>
               </div>
             </div>
+          )}
 
-            {/* Room Inventory Sub-Table */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>
-                  Daftar Kamar ({kos.totalRooms} Kamar)
-                </h4>
+          {/* Room details */}
+          <section>
+            <div className="owner-kos__section-head">
+              <h3 className="owner-kos__section-title">
+                Daftar kamar <span>{kos.totalRooms} kamar</span>
+              </h3>
+              <Button variant="secondary" size="sm" onClick={() => openAddRoom(kos.id)} icon={<Plus size={14} />} style={{ minHeight: 40 }}>
+                Tambah kamar
+              </Button>
+            </div>
 
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => openAddRoom(kos.id)}
-                  icon={<Plus size={14} />}
-                >
-                  Tambah Kamar
-                </Button>
-              </div>
-
+            {kos.rooms.length === 0 ? (
+              <p className="owner-kos__section-hint">Belum ada kamar. Tambahkan kamar pertama agar kos ini bisa dipesan.</p>
+            ) : (
               <div className="kobo-table-wrap">
                 <table className="kobo-table">
-                  <caption style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', padding: 0 }}>
-                    Daftar kamar {kos.name}
-                  </caption>
+                  <caption className="owner-kos__sr">Daftar kamar {kos.name}</caption>
                   <thead>
                     <tr>
-                      <th scope="col">No. Kamar</th>
+                      <th scope="col">Kamar</th>
                       <th scope="col">Lantai</th>
-                      <th scope="col">Tipe &amp; Dimensi</th>
-                      <th scope="col" className="kobo-table__right">Harga Sewa</th>
+                      <th scope="col">Tipe &amp; ukuran</th>
+                      <th scope="col" className="kobo-table__right">Harga sewa</th>
                       <th scope="col">Status</th>
                       <th scope="col">Penghuni</th>
-                      <th scope="col" className="kobo-table__right">Aksi</th>
+                      <th scope="col"><span className="owner-kos__sr">Aksi</span></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {kos.rooms.map((room) => (
-                      <tr key={room.id}>
-                        <td className="kobo-table__strong">{room.roomNumber}</td>
-                        <td>Lt. {room.floor}</td>
-                        <td>{room.type} ({room.size})</td>
-                        <td className="kobo-table__num kobo-table__right">{formatRupiah(room.priceMonthly)}</td>
-                        <td>
-                          <span
-                            className={room.status === 'vacant' ? 'kobo-status kobo-status--hollow' : 'kobo-status'}
-                            style={{ ['--dot' as string]: STATUS_META[room.status].dot }}
-                          >
-                            <span className="kobo-status__dot" aria-hidden="true" />
-                            {STATUS_META[room.status].label}
-                          </span>
-                        </td>
-                        <td className="kobo-table__muted">{room.tenant?.name || '—'}</td>
-                        <td>
-                          <div className="kobo-table__actions">
-                            <button
-                              type="button"
-                              aria-label={`Edit kamar ${room.roomNumber}`}
-                              onClick={() => openEditRoom(kos.id, room)}
-                              style={{ color: 'var(--primary)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                    {kos.rooms.map((room) =>
+                      confirmRoomId === room.id ? (
+                        <tr key={room.id}>
+                          <td colSpan={7} className="owner-kos__confirmcell">
+                            <div className="owner-kos__confirm" role="alert">
+                              <span>Hapus Kamar {room.roomNumber}?</span>
+                              <div className="owner-kos__confirm-actions">
+                                <Button variant="outline" size="sm" onClick={() => setConfirmRoomId(null)}>
+                                  Batal
+                                </Button>
+                                <Button
+                                  variant="danger"
+                                  size="sm"
+                                  isLoading={deleteRoomMutation.isPending}
+                                  onClick={() => {
+                                    void attempt(
+                                      () => deleteRoomMutation.mutateAsync({ kosId: kos.id, roomId: room.id }),
+                                      'Kamar berhasil dihapus.',
+                                    ).then(() => setConfirmRoomId(null));
+                                  }}
+                                >
+                                  Hapus
+                                </Button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr key={room.id}>
+                          <td className="kobo-table__strong">{room.roomNumber}</td>
+                          <td>Lt. {room.floor}</td>
+                          <td>
+                            {room.type} <span className="kobo-table__muted">({room.size})</span>
+                          </td>
+                          <td className="kobo-table__num kobo-table__right">{formatRupiah(room.priceMonthly)}</td>
+                          <td>
+                            <span
+                              className={room.status === 'vacant' ? 'kobo-status kobo-status--hollow' : 'kobo-status'}
+                              style={{ ['--dot' as string]: STATUS_META[room.status].dot }}
                             >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void attempt(() => deleteRoomMutation.mutateAsync({ kosId: kos.id, roomId: room.id }), 'Kamar berhasil dihapus.')}
-                              style={{ color: 'var(--status-overdue)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                              <span className="kobo-status__dot" aria-hidden="true" />
+                              {STATUS_META[room.status].label}
+                            </span>
+                          </td>
+                          <td className="kobo-table__muted">{room.tenant?.name || '-'}</td>
+                          <td className="owner-kos__actioncell">
+                            <Popover
+                              role="menu"
+                              label={`Aksi Kamar ${room.roomNumber}`}
+                              panelClassName="kobo-menu"
+                              trigger={(p) => (
+                                <button
+                                  {...p}
+                                  type="button"
+                                  className="owner-kos__icon-btn owner-kos__icon-btn--quiet"
+                                  aria-label={`Aksi Kamar ${room.roomNumber}`}
+                                >
+                                  <MoreHorizontal size={18} />
+                                </button>
+                              )}
                             >
-                              Hapus
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              {({ close }) => (
+                                <>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => {
+                                      close();
+                                      openEditRoom(kos.id, room);
+                                    }}
+                                  >
+                                    <Edit size={15} /> Edit kamar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    className="is-danger"
+                                    onClick={() => {
+                                      close();
+                                      setConfirmRoomId(room.id);
+                                    }}
+                                  >
+                                    <Trash2 size={15} /> Hapus kamar
+                                  </button>
+                                </>
+                              )}
+                            </Popover>
+                          </td>
+                        </tr>
+                      ),
+                    )}
                   </tbody>
                 </table>
               </div>
-            </div>
+            )}
+          </section>
 
-            <WaitlistPanel kosId={kos.id} kosName={kos.name} />
-          </div>
-        ))}
-      </div>
+          <WaitlistPanel kosId={kos.id} kosName={kos.name} />
+        </div>
+      )}
 
       {/* Kos Form Modal (Add / Edit) */}
       {isFormOpen && (

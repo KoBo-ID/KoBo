@@ -90,10 +90,10 @@ test('a paying tenant reviews their kos, it appears on Detail, and the owner rep
   await ownerPage.goto(`/owner/reviews?kos=${kos!.id}`)
   const card = ownerPage.getByTestId('owner-review').filter({ hasText: comment })
   await expect(card).toBeVisible()
-  await card.getByRole('button', { name: 'Beri Tanggapan Pemilik' }).click()
+  await card.getByRole('button', { name: 'Balas' }).click()
   const reply = `Terima kasih sudah menginap (${Date.now()})`
-  await card.getByLabel('Tanggapan pemilik').fill(reply)
-  await card.getByRole('button', { name: 'Kirim Tanggapan Pemilik' }).click()
+  await card.getByLabel('Tanggapan Anda').fill(reply)
+  await card.getByRole('button', { name: 'Kirim' }).click()
   await expect(card.getByText(reply)).toBeVisible()
 
   // ...and the tenant sees the reply on Detail.
@@ -105,7 +105,8 @@ test('a paying tenant reviews their kos, it appears on Detail, and the owner rep
 test('an owner uploads a photo: it is resized in the browser, stored, and shows up in the kos photos', async ({ page }) => {
   await loginAs(page, 'owner')
   await page.goto('/owner/kos')
-  await page.getByRole('button', { name: 'Foto', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Aksi lainnya' }).first().click()
+  await page.getByRole('menuitem', { name: 'Kelola foto' }).click()
 
   const photos = page.getByTestId('kos-photo')
   await expect(page.getByText('Foto Kos', { exact: true })).toBeVisible()
@@ -133,11 +134,13 @@ test('an owner uploads a photo: it is resized in the browser, stored, and shows 
 test('an owner edits a room from Kelola Properti', async ({ page }) => {
   await loginAs(page, 'owner')
   await page.goto('/owner/kos')
-  const first = page.getByRole('button', { name: /^Edit kamar / }).first()
+  // Room actions live in each row's overflow menu ("Aksi Kamar N").
+  const first = page.getByRole('button', { name: /^Aksi Kamar / }).first()
   await expect(first).toBeVisible()
   const label = (await first.getAttribute('aria-label'))!
-  const roomNumber = label.replace('Edit kamar ', '')
+  const roomNumber = label.replace('Aksi Kamar ', '')
   await first.click()
+  await page.getByRole('menuitem', { name: 'Edit kamar' }).click()
   const type = `Tipe Uji ${Date.now()}`
   await page.getByLabel('Tipe Kamar').fill(type)
   await page.getByRole('button', { name: 'Simpan Perubahan' }).click()

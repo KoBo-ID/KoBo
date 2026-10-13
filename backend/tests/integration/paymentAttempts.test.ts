@@ -28,7 +28,6 @@ describe('payment provider dependency injection', () => {
       expiresAt: new Date('2026-10-13T12:00:00.000Z'),
       successReturnUrl: 'https://kobo.test/my-kos',
       failureReturnUrl: 'https://kobo.test/my-kos',
-      customerReference: 'tenant-123',
     }
 
     expect(await provider.createCheckout(input)).toEqual(await provider.createCheckout(input))

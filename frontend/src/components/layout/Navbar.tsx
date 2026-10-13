@@ -58,7 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
   const chipFill = solid ? 'transparent' : 'rgba(255, 255, 255, 0.3)';
   const chipBorder = solid ? 'transparent' : 'rgba(255, 255, 255, 0.6)';
   const fade =
-    'background-color var(--duration-normal) ease, border-color var(--duration-normal) ease, backdrop-filter var(--duration-normal) ease';
+    'background-color var(--duration-normal) ease, border-color var(--duration-normal) ease';
 
   const handleLogout = async () => {
     setProfileDropdownOpen(false);
@@ -115,7 +115,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
             borderRadius: '12px',
             backgroundColor: chipFill,
             border: `1px solid ${chipBorder}`,
-            backdropFilter: solid ? 'none' : 'blur(6px)',
             transition: fade,
           }}
         >
@@ -156,7 +155,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
               borderRadius: '10px',
               backgroundColor: chipFill,
               border: `1px solid ${chipBorder}`,
-              backdropFilter: solid ? 'none' : 'blur(6px)',
               transition: fade,
               position: 'relative',
             }}
@@ -201,7 +199,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                 borderRadius: '10px',
                 backgroundColor: chipFill,
                 border: `1px solid ${chipBorder}`,
-                backdropFilter: solid ? 'none' : 'blur(6px)',
                 transition: fade,
               }}
             >
@@ -225,7 +222,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                 borderRadius: '50%',
                 backgroundColor: chipFill,
                 border: `1px solid ${chipBorder}`,
-                backdropFilter: solid ? 'none' : 'blur(6px)',
                 transition: fade,
               }}
             >

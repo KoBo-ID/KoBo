@@ -136,7 +136,7 @@ export const MobileNav: React.FC = () => {
             }}
           >
             <Building2 size={20} />
-            <span>Papan Kamar</span>
+            <span>Okupansi</span>
           </Link>
 
           <Link
@@ -152,7 +152,7 @@ export const MobileNav: React.FC = () => {
             }}
           >
             <Home size={20} />
-            <span>Kelola Kos</span>
+            <span>Properti</span>
           </Link>
 
           <Link

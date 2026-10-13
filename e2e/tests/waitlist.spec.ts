@@ -62,9 +62,10 @@ test('demo student queues for a full kos, gets the room when the owner frees it,
   await page.goto(`/owner/dashboard?kos=${kosId}`)
   const row = page.getByRole('row').filter({ hasText: 'Booking' }).first()
   const roomNumber = (await row.getByRole('button', { name: /Aksi lainnya Kamar/ }).getAttribute('aria-label'))!.replace('Aksi lainnya Kamar ', '')
-  page.once('dialog', (d) => void d.accept())
   await row.getByRole('button', { name: /Aksi lainnya Kamar/ }).click()
   await page.getByRole('menuitem', { name: 'Batalkan Booking' }).click()
+  // The dashboard confirms inline (no native dialog).
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Batalkan booking' }).click()
   await expect(page.getByText('Sewa diakhiri. Kamar kembali kosong.')).toBeVisible()
 
   // 5. The student reloads: the room is theirs for 24 hours, and "Pesan Sekarang" leads to checkout.

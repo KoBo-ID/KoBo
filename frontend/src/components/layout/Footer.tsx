@@ -1,149 +1,69 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { PRESET_LOCATIONS } from '../../data/locations';
+import { Building2, Home, LayoutDashboard, LogIn, Scissors, Search, UserRound } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import '../../styles/footer.css';
 
-export const Footer: React.FC = () => {
-  return (
-    <footer
-      style={{
-        backgroundColor: 'var(--bg-surface)',
-        borderTop: '1px solid var(--border-subtle)',
-        paddingTop: '3.5rem',
-        paddingBottom: '3rem',
-        marginTop: '4rem',
-      }}
-    >
-      <div className="app-container">
-        {/* Footer Navigation Columns */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '2.5rem',
-            marginBottom: '3rem',
-          }}
-        >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '1rem' }}>
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
-                  backgroundColor: 'var(--primary)',
-                  color: 'white',
-                  fontWeight: 800,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                K
-              </div>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-                Ko<span style={{ color: 'var(--primary)' }}>Bo</span>
-              </span>
-            </div>
-            <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', letterSpacing: '0.04em', marginBottom: '0.35rem' }}>
-              Kos Booking with KoBo
-            </p>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-              Platform persewaan kos modern, bersih, dan bebas calo. Menghubungkan penyewa dengan pemilik kos secara transparan dan manusiawi.
-            </p>
-          </div>
+type TabLink = { to: string; label: string; Icon: LucideIcon };
 
-          <div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem' }}>Lokasi Populer</h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              {PRESET_LOCATIONS.map((loc) => (
-                <li key={loc.id}>
-                  <Link
-                    to={`/search?loc=${loc.id}`}
-                    style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}
-                    className="interactive-tap"
-                  >
-                    Kos di {loc.label}, {loc.city}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+const SEEKER: TabLink[] = [
+  { to: '/search', label: 'Cari Kos', Icon: Search },
+  { to: '/my-kos', label: 'Kos Saya', Icon: Home },
+  { to: '/profile', label: 'Profil & Email Kampus', Icon: UserRound },
+];
+const OWNER: TabLink[] = [
+  { to: '/owner/login', label: 'Masuk Portal Pemilik', Icon: LogIn },
+  { to: '/owner/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { to: '/owner/kos', label: 'Kelola Kos', Icon: Building2 },
+];
 
-          <div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem' }}>Untuk Pencari Kos</h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              <li>
-                <Link to="/search" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Cari Kos Terdekat
-                </Link>
-              </li>
-              <li>
-                <Link to="/my-kos" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Jadwal Survey Saya
-                </Link>
-              </li>
-              <li>
-                <Link to="/profile" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Verifikasi Email Kampus
-                </Link>
-              </li>
-              <li>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Bantuan Sewa: WhatsApp Support
-                </span>
-              </li>
-            </ul>
-          </div>
+const Flyer: React.FC<{ cls: string; title: string; note: string; label: string; links: TabLink[] }> = ({
+  cls, title, note, label, links,
+}) => (
+  <div className={`kf-card kf-flyer ${cls}`}>
+    <span className="kf-pin" aria-hidden="true" />
+    <div className="kf-flyer-body">
+      <h2 className="kf-flyer-title">{title}</h2>
+      <p className="kf-flyer-note">{note}</p>
+    </div>
+    <div className="kf-cut" aria-hidden="true">
+      <Scissors size={14} strokeWidth={2.25} />
+    </div>
+    <nav aria-label={label} className="kf-tabnav">
+      <ul className="kf-tabs">
+        {links.map(({ to, label: text, Icon }) => (
+          <li key={to}>
+            <Link to={to} className="kf-tab">
+              <Icon size={19} strokeWidth={2} aria-hidden="true" />
+              <span className="kf-tab-text">{text}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+);
 
-          <div>
-            <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem' }}>Untuk Pemilik Kos</h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              <li>
-                <Link to="/owner/login" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Portal Masuk Pemilik Kos
-                </Link>
-              </li>
-              <li>
-                <Link to="/owner/kos" style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Tambah &amp; Kelola Properti
-                </Link>
-              </li>
-              <li>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Tagih Sewa WhatsApp Otomatis
-                </span>
-              </li>
-              <li>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Download Kuitansi PDF Resmi
-                </span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Bottom Bar */}
-        <div
-          style={{
-            paddingTop: '2rem',
-            borderTop: '1px solid var(--border-subtle)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '1rem',
-            fontSize: '0.8rem',
-            color: 'var(--text-subtle)',
-          }}
-        >
-          <p>© 2026 KoBo Indonesia. Dibuat dengan penuh dedikasi untuk pencari kos &amp; Bapak/Ibu pemilik kos.</p>
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
-            <span>Syarat &amp; Ketentuan</span>
-            <span>Kebijakan Privasi</span>
-            <span>Standar Komunitas Kos</span>
-          </div>
+// Notice-board footer: the band is a kos notice board; the seeker and owner
+// links are the tear-off tabs of two flyers. Legal links return once those
+// pages exist (see docs/superpowers/plans/2026-10-13-landing-deslop.md).
+export const Footer: React.FC = () => (
+  <footer className="kf-footer">
+    <div className="app-container kf-grid">
+      <div className="kf-card kf-main">
+        <span className="kf-pin" aria-hidden="true" />
+        <p className="kf-brand">
+          Ko<span>Bo</span>
+        </p>
+        <p className="kf-headline">Survey dulu, baru sewa.</p>
+        <p className="kf-sub">Cari kos dekat kampus, lihat langsung sebelum memutuskan.</p>
+        <div className="kf-note">
+          <span className="kf-tape" aria-hidden="true" />
+          <p>© 2026 KoBo</p>
         </div>
       </div>
-    </footer>
-  );
-};
+      <Flyer cls="kf-b" title="Cari kos?" note="Sobek satu, mulai dari sini." label="Untuk pencari kos" links={SEEKER} />
+      <Flyer cls="kf-c" title="Punya kos?" note="Kelola kamar dan pengajuan dari satu papan." label="Untuk pemilik kos" links={OWNER} />
+    </div>
+  </footer>
+);

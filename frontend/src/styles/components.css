@@ -321,10 +321,8 @@
 .kobo-popover__title {
   margin-bottom: 0.5rem;
   color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .kobo-popover__footer {
@@ -460,10 +458,10 @@
   background-color: var(--bg-muted);
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.045em;
+  /* Sentence-case column headers: uppercase tracked micro-labels read as
+     template scaffolding and are harder to scan. */
+  font-size: 0.78rem;
+  font-weight: 600;
   text-align: left;
   white-space: nowrap;
 }
@@ -495,10 +493,8 @@
   border-top: 1px solid var(--border-subtle);
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-muted);
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-size: 0.8rem;
+  font-weight: 700;
   text-align: left;
 }
 
@@ -682,10 +678,53 @@
   align-items: center;
 }
 
+.kobo-hero__copy {
+  min-width: 0;
+  text-align: center;
+}
+
+.kobo-hero__title {
+  font-size: clamp(2rem, 1.2rem + 2.6vw, 3.25rem);
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  text-wrap: balance;
+  margin-bottom: 0.9rem;
+}
+
+.kobo-hero__sub {
+  font-size: 1.02rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 auto 2.25rem;
+  max-width: 34rem;
+  text-wrap: pretty;
+}
+
+.kobo-hero__search {
+  position: relative;
+  max-width: 41rem;
+  margin: 0 auto;
+}
+
+/* Content-sized pair, centred as a unit, so the visible composition has
+   equal outer margins. The grid centres the building's VISIBLE ink, not its
+   canvas box: see the --hero-ink-* note on .kobo-hero-canvas below. */
 @media (min-width: 1024px) {
   .kobo-hero {
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-    gap: 3rem;
+    grid-template-columns: minmax(0, 36rem) minmax(0, calc(var(--hero-canvas-max) * var(--hero-ink-w)));
+    justify-content: center;
+    /* Visual gap is now text-to-building, no longer padded by dead canvas. */
+    gap: clamp(4rem, 8vw, 9rem);
+  }
+  .kobo-hero__copy {
+    text-align: left;
+  }
+  .kobo-hero__sub,
+  .kobo-hero__search {
+    margin-left: 0;
+    margin-right: 0;
   }
 }
 
@@ -697,6 +736,30 @@
   max-width: var(--hero-canvas-max);
   margin-inline: auto;
   aspect-ratio: 3 / 2; /* wider than tall, so the section reads across */
+}
+
+/* The building only fills the middle of its stage: measured at every desktop
+   tier, the visible ink spans ~70.5% of the canvas width, with ~12.2% dead on
+   the left and ~17.4% on the right (scene framing + feathered mask). The grid
+   column is sized to the ink, and the canvas overhangs it by the dead space,
+   so centring the column centres what the eye actually sees. Re-measure these
+   if the camera in scene/building.ts or the poster framing changes. */
+:root {
+  --hero-ink-w: 0.705;
+  --hero-dead-l: 0.122;
+  --hero-dead-r: 0.174;
+}
+
+@media (min-width: 1024px) {
+  #kobo-hero {
+    overflow-x: clip; /* the overhang is transparent, but never scroll for it */
+  }
+  .kobo-hero-canvas {
+    width: calc(100% / var(--hero-ink-w));
+    max-width: none;
+    margin-left: calc(-100% * var(--hero-dead-l) / var(--hero-ink-w));
+    margin-right: calc(-100% * var(--hero-dead-r) / var(--hero-ink-w));
+  }
 }
 
 /* The scene is a SECTION of a taller, wider building, so instead of a hard

@@ -73,6 +73,201 @@
     "Dipatiukur",
     "Coblong"
    ]
+  },
+  {
+   "id": "ipb-dramaga",
+   "name": "IPB University - Kampus Dramaga",
+   "shortName": "IPB Dramaga",
+   "city": "Bogor",
+   "coordinates": {
+    "lat": -6.5553,
+    "lng": 106.725
+   },
+   "suggestedDistricts": [
+    "Babakan Raya",
+    "Babakan Tengah",
+    "Dramaga"
+   ]
+  },
+  {
+   "id": "umn-gading-serpong",
+   "name": "Universitas Multimedia Nusantara - Gading Serpong",
+   "shortName": "UMN Serpong",
+   "city": "Tangerang",
+   "coordinates": {
+    "lat": -6.2577,
+    "lng": 106.6182
+   },
+   "suggestedDistricts": [
+    "Curug Sangereng",
+    "Medang",
+    "Kelapa Dua"
+   ]
+  },
+  {
+   "id": "president-university",
+   "name": "President University - Kampus Jababeka",
+   "shortName": "President University",
+   "city": "Bekasi",
+   "coordinates": {
+    "lat": -6.2856,
+    "lng": 107.1707
+   },
+   "suggestedDistricts": [
+    "Simpangan",
+    "Mekarmukti",
+    "Cikarang Utara"
+   ]
+  },
+  {
+   "id": "undip-tembalang",
+   "name": "Universitas Diponegoro - Kampus Tembalang",
+   "shortName": "Undip Tembalang",
+   "city": "Semarang",
+   "coordinates": {
+    "lat": -7.0516,
+    "lng": 110.4395
+   },
+   "suggestedDistricts": [
+    "Tembalang",
+    "Bulusan",
+    "Sumurboto"
+   ]
+  },
+  {
+   "id": "ugm-bulaksumur",
+   "name": "Universitas Gadjah Mada - Bulaksumur",
+   "shortName": "UGM",
+   "city": "Yogyakarta",
+   "coordinates": {
+    "lat": -7.7704,
+    "lng": 110.3778
+   },
+   "suggestedDistricts": [
+    "Pogung",
+    "Karangmalang",
+    "Sagan"
+   ]
+  },
+  {
+   "id": "uns-kentingan",
+   "name": "Universitas Sebelas Maret - Kampus Kentingan",
+   "shortName": "UNS Kentingan",
+   "city": "Surakarta",
+   "coordinates": {
+    "lat": -7.5599,
+    "lng": 110.857
+   },
+   "suggestedDistricts": [
+    "Kentingan",
+    "Jebres",
+    "Mojosongo"
+   ]
+  },
+  {
+   "id": "its-sukolilo",
+   "name": "Institut Teknologi Sepuluh Nopember - Sukolilo",
+   "shortName": "ITS Sukolilo",
+   "city": "Surabaya",
+   "coordinates": {
+    "lat": -7.2827,
+    "lng": 112.7957
+   },
+   "suggestedDistricts": [
+    "Keputih",
+    "Gebang",
+    "Sukolilo"
+   ]
+  },
+  {
+   "id": "ub-malang",
+   "name": "Universitas Brawijaya - Kampus Veteran",
+   "shortName": "UB Malang",
+   "city": "Malang",
+   "coordinates": {
+    "lat": -7.9518,
+    "lng": 112.6138
+   },
+   "suggestedDistricts": [
+    "Ketawanggede",
+    "Dinoyo",
+    "Sumbersari"
+   ]
+  },
+  {
+   "id": "untirta-serang",
+   "name": "Universitas Sultan Ageng Tirtayasa - Kampus Sindangsari",
+   "shortName": "Untirta",
+   "city": "Serang",
+   "coordinates": {
+    "lat": -6.1905,
+    "lng": 106.1245
+   },
+   "suggestedDistricts": [
+    "Sindangsari",
+    "Rancalutung",
+    "Curug"
+   ]
+  },
+  {
+   "id": "unsil-tasikmalaya",
+   "name": "Universitas Siliwangi - Kampus Siliwangi",
+   "shortName": "Unsil",
+   "city": "Tasikmalaya",
+   "coordinates": {
+    "lat": -7.349,
+    "lng": 108.2228
+   },
+   "suggestedDistricts": [
+    "Kahuripan",
+    "Tawang",
+    "Mugarsari"
+   ]
+  },
+  {
+   "id": "unsoed-purwokerto",
+   "name": "Universitas Jenderal Soedirman - Kampus Grendeng",
+   "shortName": "Unsoed",
+   "city": "Purwokerto",
+   "coordinates": {
+    "lat": -7.404,
+    "lng": 109.246
+   },
+   "suggestedDistricts": [
+    "Grendeng",
+    "Karangwangkal",
+    "Purwanegara"
+   ]
+  },
+  {
+   "id": "uksw-salatiga",
+   "name": "Universitas Kristen Satya Wacana - Kampus Diponegoro",
+   "shortName": "UKSW",
+   "city": "Salatiga",
+   "coordinates": {
+    "lat": -7.319,
+    "lng": 110.4995
+   },
+   "suggestedDistricts": [
+    "Jangkungan",
+    "Dukuh",
+    "Sidorejo"
+   ]
+  },
+  {
+   "id": "unej-jember",
+   "name": "Universitas Jember - Kampus Tegalboto",
+   "shortName": "Unej",
+   "city": "Jember",
+   "coordinates": {
+    "lat": -8.1646,
+    "lng": 113.7155
+   },
+   "suggestedDistricts": [
+    "Tegalboto",
+    "Sumbersari",
+    "Kranjingan"
+   ]
   }
  ],
  "kos": [
@@ -1006,6 +1201,4324 @@
      "bedType": "Single Bed 120x200",
      "priceMonthly": 1800000,
      "status": "vacant"
+    }
+   ]
+  },
+  {
+   "id": "kos-6",
+   "name": "Kost Putri Melati Kukusan",
+   "slug": "kost-putri-melati-kukusan",
+   "gender": "putri",
+   "address": "Jl. Kukusan Teknik No. 17, RT 04/RW 09, Kukusan, Beji",
+   "district": "Kukusan",
+   "city": "Depok",
+   "coordinates": {
+    "lat": -6.3655,
+    "lng": 106.8238
+   },
+   "campusProximity": {
+    "campusId": "ui-depok",
+    "campusName": "UI Depok",
+    "distanceMeters": 472,
+    "walkMinutes": 6
+   },
+   "rating": 4.6,
+   "reviewCount": 17,
+   "priceMonthlyStart": 1350000,
+   "studentDiscountAmount": 100000,
+   "studentDiscountLabel": "Diskon Mhs Rp 100rb",
+   "images": [
+    "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "AC 1/2 PK",
+    "Kamar Mandi Dalam",
+    "Kasur Springbed 120x200",
+    "Meja Belajar & Kursi",
+    "Lemari Pakaian 2 Pintu"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 50 Mbps",
+    "Dapur Bersama",
+    "Mesin Cuci Koin",
+    "Parkir Motor Berkanopi",
+    "CCTV 24 Jam"
+   ],
+   "electricityType": "token",
+   "totalRooms": 10,
+   "availableRooms": 2,
+   "owner": {
+    "id": "owner-5",
+    "name": "Ibu Siti Nurhayati",
+    "phone": "081380224417",
+    "avatar": "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "97% (balas < 15 mnt)",
+    "memberSince": "Februari 2022",
+    "verified": true,
+    "totalProperties": 1,
+    "bio": "Tinggal di Kukusan sejak 2005 dan mulai membuka kos putri tahun 2019. Anak-anak kos sudah seperti keluarga sendiri."
+   },
+   "rules": [
+    {
+     "id": "r6-1",
+     "tier": 1,
+     "categoryTitle": "Khusus Putri & Jam Kunjungan",
+     "rules": [
+      "Kos hanya untuk penghuni putri. Tamu laki-laki hanya boleh sampai teras depan dan maksimal pukul 20.00 WIB.",
+      "Gerbang dikunci pukul 22.30 WIB. Pulang lebih malam wajib memberi kabar ke ibu kos lewat WhatsApp."
+     ],
+     "penaltyAmount": 50000,
+     "penaltyClause": "Tamu laki-laki masuk ke area kamar dikenakan denda Rp 50.000 per kejadian."
+    },
+    {
+     "id": "r6-2",
+     "tier": 2,
+     "categoryTitle": "Kebersihan Dapur & Kamar Mandi",
+     "rules": [
+      "Piring dan peralatan masak dicuci sendiri sehabis dipakai.",
+      "Sampah kamar dibuang ke tong depan setiap pagi, jangan ditumpuk di lorong."
+     ]
+    },
+    {
+     "id": "r6-3",
+     "tier": 3,
+     "categoryTitle": "Pembayaran & Kerusakan",
+     "rules": [
+      "Sewa dibayar paling lambat tanggal 3 setiap bulan, denda Rp 20.000 per hari.",
+      "Kerusakan fasilitas karena kelalaian diganti sesuai harga perbaikan."
+     ],
+     "penaltyAmount": 20000,
+     "penaltyClause": "Denda telat bayar Rp 20.000 per hari setelah tanggal 3."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-61",
+     "category": "campus",
+     "name": "UI Depok (Gerbang Fakultas Teknik)",
+     "distanceMeters": 472,
+     "walkMinutes": 6,
+     "description": "Lewat Jl. Kukusan Teknik yang ramai mahasiswa, ada jalur pejalan kaki sampai pintu Fakultas Teknik."
+    },
+    {
+     "id": "poi-62",
+     "category": "food",
+     "name": "Warung Bu Tini Kukusan",
+     "distanceMeters": 70,
+     "walkMinutes": 1,
+     "description": "Nasi rames, ayam penyet, dan sayur lodeh mulai Rp 13.000, buka dari subuh."
+    },
+    {
+     "id": "poi-63",
+     "category": "laundry",
+     "name": "Laundry Kiloan Kukusan Bersih",
+     "distanceMeters": 120,
+     "walkMinutes": 2,
+     "description": "Cuci setrika Rp 7.000/kg, selesai 2 hari dan bisa antar ke kamar."
+    },
+    {
+     "id": "poi-64",
+     "category": "market",
+     "name": "Alfamart Kukusan Teknik",
+     "distanceMeters": 160,
+     "walkMinutes": 2,
+     "description": "Buka 24 jam, ada ATM Mandiri dan mesin top up e-money."
+    },
+    {
+     "id": "poi-65",
+     "category": "transit",
+     "name": "Stasiun Universitas Indonesia",
+     "distanceMeters": 1150,
+     "walkMinutes": 14,
+     "description": "Naik KRL ke Jakarta Kota atau Bogor, cukup jalan kaki sekitar 14 menit."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k6-101",
+     "kosId": "kos-6",
+     "roomNumber": "101",
+     "floor": 1,
+     "roomType": "Standard Putri AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1350000,
+     "status": "paid",
+     "tenantName": "Nabila Zahra",
+     "tenantPhone": "081310445921",
+     "tenantCampus": "UI Depok (FT)",
+     "dueDate": "2026-10-28",
+     "lastPaymentDate": "2026-09-27"
+    },
+    {
+     "id": "room-k6-102",
+     "kosId": "kos-6",
+     "roomNumber": "102",
+     "floor": 1,
+     "roomType": "Standard Putri AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1350000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k6-201",
+     "kosId": "kos-6",
+     "roomNumber": "201",
+     "floor": 2,
+     "roomType": "Deluxe Putri Balkon",
+     "size": "3.5 x 4 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1550000,
+     "status": "due",
+     "tenantName": "Cindy Marlina",
+     "tenantPhone": "085776120834",
+     "tenantCampus": "UI Depok (FEB)",
+     "dueDate": "2026-10-13",
+     "daysOverdue": 0
+    }
+   ]
+  },
+  {
+   "id": "kos-7",
+   "name": "Kost Sekeloa Asri Putra",
+   "slug": "kost-sekeloa-asri-putra",
+   "gender": "putra",
+   "address": "Jl. Sekeloa Tengah No. 41, RT 03/RW 07, Sekeloa, Coblong",
+   "district": "Sekeloa",
+   "city": "Bandung",
+   "coordinates": {
+    "lat": -6.8878,
+    "lng": 107.6168
+   },
+   "campusProximity": {
+    "campusId": "itb-ganesha",
+    "campusName": "ITB Ganesha",
+    "distanceMeters": 789,
+    "walkMinutes": 10
+   },
+   "rating": 4.5,
+   "reviewCount": 14,
+   "priceMonthlyStart": 1450000,
+   "studentDiscountAmount": 0,
+   "studentDiscountLabel": "",
+   "images": [
+    "https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560448075-bb485b067938?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin & Jendela Besar",
+    "Kamar Mandi Dalam",
+    "Kasur Busa Tebal 100x200",
+    "Meja Belajar",
+    "Lemari Pakaian Kayu",
+    "Water Heater"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 30 Mbps",
+    "Ruang Tamu Bersama",
+    "Dapur Kecil + Kulkas",
+    "Parkir Motor",
+    "Jemuran Atap"
+   ],
+   "electricityType": "included",
+   "totalRooms": 14,
+   "availableRooms": 3,
+   "owner": {
+    "id": "owner-6",
+    "name": "Pak Dedi Supriadi",
+    "phone": "081321998076",
+    "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "94% (balas < 30 mnt)",
+    "memberSince": "Mei 2021",
+    "verified": true,
+    "totalProperties": 1,
+    "bio": "Pensiunan pegawai swasta yang mengelola kos putra di Sekeloa. Rumah beliau bersebelahan dengan kos sehingga mudah dihubungi kapan saja."
+   },
+   "rules": [
+    {
+     "id": "r7-1",
+     "tier": 1,
+     "categoryTitle": "Tata Tertib Kos Putra",
+     "rules": [
+      "Jam malam pukul 00.00 WIB, setelah itu pagar dikunci dan penghuni masuk lewat pintu samping dengan kunci pribadi.",
+      "Tamu perempuan hanya boleh di ruang tamu sampai pukul 21.00 WIB."
+     ]
+    },
+    {
+     "id": "r7-2",
+     "tier": 2,
+     "categoryTitle": "Listrik Sudah Termasuk",
+     "rules": [
+      "Biaya listrik sudah termasuk untuk laptop, charger, dan kipas angin.",
+      "Alat pemanas air, rice cooker, dan setrika wajib izin ke pemilik karena bisa membuat listrik turun."
+     ],
+     "penaltyAmount": 100000,
+     "penaltyClause": "Pemakaian alat listrik berdaya besar tanpa izin dikenai tambahan listrik Rp 100.000 per bulan."
+    },
+    {
+     "id": "r7-3",
+     "tier": 3,
+     "categoryTitle": "Ketenangan & Kebersihan",
+     "rules": [
+      "Jam tenang pukul 22.00 sampai 05.00 WIB, gunakan headset saat bermain game.",
+      "Dilarang merokok di dalam kamar dan ruang tamu, area merokok ada di teras belakang."
+     ]
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-71",
+     "category": "campus",
+     "name": "ITB Ganesha (Gerbang Utama)",
+     "distanceMeters": 789,
+     "walkMinutes": 10,
+     "description": "Jalan kaki lewat Jl. Gelap Nyawang, sebagian tanjakan ringan. Banyak anak ITB dan Unpad yang lewat sini."
+    },
+    {
+     "id": "poi-72",
+     "category": "food",
+     "name": "Nasi Goreng Gila Sekeloa",
+     "distanceMeters": 90,
+     "walkMinutes": 1,
+     "description": "Buka sampai dini hari, porsi besar dan harganya mahasiswa banget."
+    },
+    {
+     "id": "poi-73",
+     "category": "food",
+     "name": "Batagor Kingsley Dipatiukur",
+     "distanceMeters": 650,
+     "walkMinutes": 8,
+     "description": "Batagor dan siomay legendaris, antreannya ramai saat akhir pekan."
+    },
+    {
+     "id": "poi-74",
+     "category": "laundry",
+     "name": "Sekeloa Laundry Express",
+     "distanceMeters": 130,
+     "walkMinutes": 2,
+     "description": "Cuci setrika Rp 8.000/kg, bisa selesai di hari yang sama."
+    },
+    {
+     "id": "poi-75",
+     "category": "market",
+     "name": "Indomaret Sekeloa",
+     "distanceMeters": 210,
+     "walkMinutes": 3,
+     "description": "Buka 24 jam, ada ATM BRI dan layanan bayar tagihan."
+    },
+    {
+     "id": "poi-76",
+     "category": "transit",
+     "name": "Halte Angkot Cisitu - Dago",
+     "distanceMeters": 380,
+     "walkMinutes": 5,
+     "description": "Angkot Kalapa-Dago lewat tiap beberapa menit menuju Stasiun Bandung."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k7-1",
+     "kosId": "kos-7",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standard Putra",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 1450000,
+     "status": "paid",
+     "tenantName": "Fikri Maulana",
+     "tenantPhone": "081322670145",
+     "tenantCampus": "ITB (Teknik Elektro)",
+     "dueDate": "2026-10-30",
+     "lastPaymentDate": "2026-09-29"
+    },
+    {
+     "id": "room-k7-2",
+     "kosId": "kos-7",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standard Putra",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 1450000,
+     "status": "overdue",
+     "tenantName": "Raka Anggara",
+     "tenantPhone": "085720913348",
+     "tenantCampus": "ITB (FTI)",
+     "dueDate": "2026-10-05",
+     "daysOverdue": 8
+    },
+    {
+     "id": "room-k7-3",
+     "kosId": "kos-7",
+     "roomNumber": "3",
+     "floor": 2,
+     "roomType": "Deluxe Putra Jendela Luar",
+     "size": "3.5 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1650000,
+     "status": "vacant"
+    }
+   ]
+  },
+  {
+   "id": "kos-8",
+   "name": "Kost Babakan Raya Wisma Rimbun",
+   "slug": "kost-babakan-raya-wisma-rimbun",
+   "gender": "campur",
+   "address": "Jl. Babakan Raya No. 52, RT 02/RW 05, Babakan, Dramaga",
+   "district": "Babakan Raya",
+   "city": "Bogor",
+   "coordinates": {
+    "lat": -6.5612,
+    "lng": 106.7322
+   },
+   "campusProximity": {
+    "campusId": "ipb-dramaga",
+    "campusName": "IPB Dramaga",
+    "distanceMeters": 1031,
+    "walkMinutes": 13
+   },
+   "rating": 4.7,
+   "reviewCount": 22,
+   "priceMonthlyStart": 1200000,
+   "studentDiscountAmount": 120000,
+   "studentDiscountLabel": "Diskon Mhs Rp 120rb",
+   "images": [
+    "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1595526051245-4506e0005bd0?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin",
+    "Kamar Mandi Dalam",
+    "Kasur Springbed 120x200",
+    "Meja Belajar Lipat",
+    "Lemari 2 Pintu"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 50 Mbps",
+    "Dapur Bersama + Kulkas",
+    "Ruang Jemur Tertutup",
+    "Parkir Motor & Sepeda",
+    "Taman Kecil Belakang"
+   ],
+   "electricityType": "token",
+   "totalRooms": 16,
+   "availableRooms": 4,
+   "owner": {
+    "id": "owner-7",
+    "name": "Pak Wahyu Hidayat",
+    "phone": "081286553092",
+    "avatar": "https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "96% (balas < 20 mnt)",
+    "memberSince": "Juli 2020",
+    "verified": true,
+    "totalProperties": 2,
+    "bio": "Alumni IPB angkatan 90-an. Mengelola dua kos di Babakan dengan prinsip bersih, aman, dan murah untuk mahasiswa perantau."
+   },
+   "rules": [
+    {
+     "id": "r8-1",
+     "tier": 1,
+     "categoryTitle": "Akses & Kunjungan Tamu",
+     "rules": [
+      "Pagar dikunci pukul 23.30 WIB, penghuni memegang kunci duplikat gerbang.",
+      "Tamu lawan jenis hanya di teras depan sampai pukul 21.00 WIB. Menginap wajib lapor ke pemilik."
+     ],
+     "penaltyAmount": 75000,
+     "penaltyClause": "Tamu menginap tanpa izin dikenakan Rp 75.000 per malam."
+    },
+    {
+     "id": "r8-2",
+     "tier": 2,
+     "categoryTitle": "Kelistrikan Token",
+     "rules": [
+      "Listrik memakai token mandiri per kamar, isi ulang sendiri di minimarket.",
+      "Setrika dan rice cooker diperbolehkan, tapi dilarang dipakai bersamaan dengan pemanas air."
+     ]
+    },
+    {
+     "id": "r8-3",
+     "tier": 3,
+     "categoryTitle": "Jam Tenang Lingkungan Kampus",
+     "rules": [
+      "Jam tenang 22.30 sampai 05.00 WIB. Kegiatan kelompok dipindah ke ruang tamu depan.",
+      "Hewan peliharaan tidak diperkenankan."
+     ]
+    },
+    {
+     "id": "r8-4",
+     "tier": 4,
+     "categoryTitle": "Pembayaran Sewa",
+     "rules": [
+      "Jatuh tempo setiap tanggal 8, denda Rp 15.000 per hari bila terlambat."
+     ],
+     "penaltyAmount": 15000,
+     "penaltyClause": "Denda telat bayar Rp 15.000 per hari setelah tanggal 8."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-81",
+     "category": "campus",
+     "name": "IPB Dramaga (Gerbang Utama)",
+     "distanceMeters": 1031,
+     "walkMinutes": 13,
+     "description": "Jalan kaki lewat Jl. Babakan Raya, ada trotoar dan sering ada sepeda kampus lewat."
+    },
+    {
+     "id": "poi-82",
+     "category": "food",
+     "name": "Warteg Bahari Babakan",
+     "distanceMeters": 60,
+     "walkMinutes": 1,
+     "description": "Nasi dengan dua lauk dan sayur sekitar Rp 12.000, buka sampai malam."
+    },
+    {
+     "id": "poi-83",
+     "category": "food",
+     "name": "Ayam Geprek Pak Ndut",
+     "distanceMeters": 180,
+     "walkMinutes": 2,
+     "description": "Ayam geprek sambal bawang, favorit anak Fapet dan Faperta."
+    },
+    {
+     "id": "poi-84",
+     "category": "laundry",
+     "name": "Babakan Laundry Mahasiswa",
+     "distanceMeters": 100,
+     "walkMinutes": 1,
+     "description": "Rp 6.500/kg, ada layanan kilat 6 jam untuk kemeja praktikum."
+    },
+    {
+     "id": "poi-85",
+     "category": "market",
+     "name": "Alfamart Babakan Raya",
+     "distanceMeters": 230,
+     "walkMinutes": 3,
+     "description": "Lengkap, ada ATM dan mesin cetak foto."
+    },
+    {
+     "id": "poi-86",
+     "category": "transit",
+     "name": "Terminal Laladon",
+     "distanceMeters": 3600,
+     "walkMinutes": 9,
+     "description": "Angkot 03 dan 06 menuju Terminal Laladon lalu lanjut ke Bogor kota."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k8-101",
+     "kosId": "kos-8",
+     "roomNumber": "101",
+     "floor": 1,
+     "roomType": "Standard Kipas",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1200000,
+     "status": "paid",
+     "tenantName": "Alvin Rizaldi",
+     "tenantPhone": "081380556219",
+     "tenantCampus": "IPB Dramaga (Agronomi)",
+     "dueDate": "2026-10-27",
+     "lastPaymentDate": "2026-09-26"
+    },
+    {
+     "id": "room-k8-102",
+     "kosId": "kos-8",
+     "roomNumber": "102",
+     "floor": 1,
+     "roomType": "Standard Kipas",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1200000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k8-201",
+     "kosId": "kos-8",
+     "roomNumber": "201",
+     "floor": 2,
+     "roomType": "Standard Jendela Luar",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1300000,
+     "status": "paid",
+     "tenantName": "Dinda Safitri",
+     "tenantPhone": "082112349870",
+     "tenantCampus": "IPB Dramaga (Ilmu Gizi)",
+     "dueDate": "2026-11-05",
+     "lastPaymentDate": "2026-10-04"
+    },
+    {
+     "id": "room-k8-202",
+     "kosId": "kos-8",
+     "roomNumber": "202",
+     "floor": 2,
+     "roomType": "Standard Jendela Luar",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1300000,
+     "status": "booking",
+     "tenantName": "Yoga Permana (DP Rp300rb)",
+     "tenantPhone": "085624100763",
+     "tenantCampus": "IPB Dramaga (FMIPA)",
+     "dueDate": "2026-10-20"
+    }
+   ]
+  },
+  {
+   "id": "kos-9",
+   "name": "Kost Putri Anggrek Biru Dramaga",
+   "slug": "kost-putri-anggrek-biru-dramaga",
+   "gender": "putri",
+   "address": "Gg. Bara No. 8, RT 05/RW 03, Babakan Tengah, Dramaga",
+   "district": "Babakan Tengah",
+   "city": "Bogor",
+   "coordinates": {
+    "lat": -6.5528,
+    "lng": 106.7296
+   },
+   "campusProximity": {
+    "campusId": "ipb-dramaga",
+    "campusName": "IPB Dramaga",
+    "distanceMeters": 579,
+    "walkMinutes": 7
+   },
+   "rating": 4.8,
+   "reviewCount": 26,
+   "priceMonthlyStart": 1100000,
+   "studentDiscountAmount": 0,
+   "studentDiscountLabel": "",
+   "images": [
+    "https://images.unsplash.com/photo-1540518614846-7eded433c457?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1620626011761-996317b8d101?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1615874959474-d609969a20ed?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin & Jendela Ventilasi",
+    "Kamar Mandi Luar Bersih",
+    "Kasur Busa 100x200",
+    "Meja Belajar",
+    "Lemari Pakaian"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 30 Mbps",
+    "Dapur Bersama",
+    "Ruang Santai Mahasiswi",
+    "Jemuran Atap",
+    "Pagar Tinggi + CCTV"
+   ],
+   "electricityType": "included",
+   "totalRooms": 12,
+   "availableRooms": 0,
+   "owner": {
+    "id": "owner-7",
+    "name": "Pak Wahyu Hidayat",
+    "phone": "081286553092",
+    "avatar": "https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "96% (balas < 20 mnt)",
+    "memberSince": "Juli 2020",
+    "verified": true,
+    "totalProperties": 2,
+    "bio": "Alumni IPB angkatan 90-an. Mengelola dua kos di Babakan dengan prinsip bersih, aman, dan murah untuk mahasiswa perantau."
+   },
+   "rules": [
+    {
+     "id": "r9-1",
+     "tier": 1,
+     "categoryTitle": "Keamanan Khusus Putri",
+     "rules": [
+      "Tidak menerima tamu laki-laki di dalam bangunan, ruang tamu luar hanya sampai pukul 19.30 WIB.",
+      "Gerbang dikunci pukul 22.00 WIB. Izin pulang larut harus lewat ibu kos atau penjaga."
+     ],
+     "penaltyAmount": 100000,
+     "penaltyClause": "Tamu laki-laki masuk ke dalam area kos dikenakan denda Rp 100.000."
+    },
+    {
+     "id": "r9-2",
+     "tier": 2,
+     "categoryTitle": "Kebersihan Bersama",
+     "rules": [
+      "Jadwal piket lorong dan dapur dibuat bergilir tiap minggu, daftar ditempel di dapur.",
+      "Kamar mandi luar dibersihkan setiap selesai dipakai."
+     ]
+    },
+    {
+     "id": "r9-3",
+     "tier": 3,
+     "categoryTitle": "Listrik & Pembayaran",
+     "rules": [
+      "Listrik sudah termasuk untuk laptop, charger, dan kipas. Rice cooker dan setrika dilarang di kamar.",
+      "Sewa dibayar tanggal 1 sampai 7 setiap bulan."
+     ]
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-91",
+     "category": "campus",
+     "name": "IPB Dramaga (Gerbang Belakang)",
+     "distanceMeters": 579,
+     "walkMinutes": 7,
+     "description": "Cukup keluar gang lalu belok ke Jl. Dramaga-Bubulak, kurang dari sepuluh menit jalan santai."
+    },
+    {
+     "id": "poi-92",
+     "category": "food",
+     "name": "Katering Bu Haji Imas",
+     "distanceMeters": 90,
+     "walkMinutes": 1,
+     "description": "Langganan makan 3x sehari Rp 28.000, menu rumahan ganti tiap hari."
+    },
+    {
+     "id": "poi-93",
+     "category": "laundry",
+     "name": "Cahaya Laundry Dramaga",
+     "distanceMeters": 140,
+     "walkMinutes": 2,
+     "description": "Rp 7.000/kg, jemput dan antar ke gang kos."
+    },
+    {
+     "id": "poi-94",
+     "category": "market",
+     "name": "Warung Sembako Pak Odeh",
+     "distanceMeters": 70,
+     "walkMinutes": 1,
+     "description": "Kebutuhan harian, gas, dan galon isi ulang."
+    },
+    {
+     "id": "poi-95",
+     "category": "health",
+     "name": "Klinik Pratama Dramaga Sehat",
+     "distanceMeters": 750,
+     "walkMinutes": 9,
+     "description": "Dokter umum buka sore sampai malam, menerima BPJS."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k9-1",
+     "kosId": "kos-9",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standar Putri",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 1100000,
+     "status": "paid",
+     "tenantName": "Laila Maharani",
+     "tenantPhone": "081296340871",
+     "tenantCampus": "IPB Dramaga (Kedokteran Hewan)",
+     "dueDate": "2026-11-02",
+     "lastPaymentDate": "2026-10-01"
+    },
+    {
+     "id": "room-k9-2",
+     "kosId": "kos-9",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standar Putri",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 1100000,
+     "status": "paid",
+     "tenantName": "Winda Pratiwi",
+     "tenantPhone": "085735012469",
+     "tenantCampus": "IPB Dramaga (Gizi)",
+     "dueDate": "2026-10-24",
+     "lastPaymentDate": "2026-09-23"
+    },
+    {
+     "id": "room-k9-3",
+     "kosId": "kos-9",
+     "roomNumber": "3",
+     "floor": 2,
+     "roomType": "Putri Lantai 2 Balkon",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1250000,
+     "status": "due",
+     "tenantName": "Rachel Sihombing",
+     "tenantPhone": "082139920618",
+     "tenantCampus": "IPB Dramaga (Ekonomi Manajemen)",
+     "dueDate": "2026-10-13",
+     "daysOverdue": 0
+    }
+   ]
+  },
+  {
+   "id": "kos-10",
+   "name": "Kost Eksklusif Scientia Residence",
+   "slug": "kost-eksklusif-scientia-residence",
+   "gender": "campur",
+   "address": "Jl. Scientia Boulevard Blok C No. 12, Curug Sangereng, Kelapa Dua",
+   "district": "Curug Sangereng",
+   "city": "Tangerang",
+   "coordinates": {
+    "lat": -6.2588,
+    "lng": 106.6232
+   },
+   "campusProximity": {
+    "campusId": "umn-gading-serpong",
+    "campusName": "UMN Serpong",
+    "distanceMeters": 566,
+    "walkMinutes": 7
+   },
+   "rating": 4.8,
+   "reviewCount": 24,
+   "priceMonthlyStart": 2100000,
+   "studentDiscountAmount": 210000,
+   "studentDiscountLabel": "Diskon Mhs 10% (Rp 210rb)",
+   "images": [
+    "https://images.unsplash.com/photo-1554995207-c18c203602cb?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "AC Inverter 1/2 PK",
+    "Kamar Mandi Dalam + Water Heater",
+    "Springbed Queen 160x200",
+    "Smart Lock Pintu Kamar",
+    "Meja Kerja & Kursi Ergonomis",
+    "Lemari Pakaian Built-in"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi Fiber 150 Mbps",
+    "Co-Working Space 24 Jam",
+    "Pantry + Kulkas Besar",
+    "Parkir Motor & Mobil",
+    "Laundry Self-Service",
+    "Akses Kartu Elektronik"
+   ],
+   "electricityType": "token",
+   "totalRooms": 18,
+   "availableRooms": 3,
+   "owner": {
+    "id": "owner-8",
+    "name": "Ibu Melinda Tanuwijaya",
+    "phone": "081911207345",
+    "avatar": "https://images.unsplash.com/photo-1507101105822-7472b28e22ac?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "99% (balas < 10 mnt)",
+    "memberSince": "Januari 2023",
+    "verified": false,
+    "totalProperties": 2,
+    "bio": "Pengelola kos di kawasan Gading Serpong. Fokus pada kos modern dengan akses cepat ke kampus dan pusat kuliner."
+   },
+   "rules": [
+    {
+     "id": "r10-1",
+     "tier": 1,
+     "categoryTitle": "Akses Kartu & Keamanan",
+     "rules": [
+      "Pintu utama dan kamar memakai kartu akses, kehilangan kartu wajib lapor ke pengelola dalam 12 jam.",
+      "Tamu wajib mendaftar ke resepsionis dan tidak boleh menginap."
+     ],
+     "penaltyAmount": 150000,
+     "penaltyClause": "Penggantian kartu akses yang hilang dikenakan Rp 150.000."
+    },
+    {
+     "id": "r10-2",
+     "tier": 2,
+     "categoryTitle": "Co-Working & Ketenangan",
+     "rules": [
+      "Ruang co-working dibuka 24 jam, pembicaraan lewat telepon dilakukan di pantry.",
+      "Jam tenang kamar pukul 23.00 sampai 06.00 WIB."
+     ]
+    },
+    {
+     "id": "r10-3",
+     "tier": 3,
+     "categoryTitle": "Listrik Token & Elektronik",
+     "rules": [
+      "Setiap kamar memiliki meteran token sendiri, saldo dipantau lewat aplikasi pengelola.",
+      "Alat masak listrik hanya diperbolehkan di pantry."
+     ]
+    },
+    {
+     "id": "r10-4",
+     "tier": 4,
+     "categoryTitle": "Pembayaran & Kerusakan",
+     "rules": [
+      "Sewa dibayar paling lambat tanggal 5. Keterlambatan dikenakan Rp 30.000 per hari.",
+      "Kerusakan furnitur karena kelalaian diganti sesuai nilai barang."
+     ],
+     "penaltyAmount": 30000,
+     "penaltyClause": "Denda telat bayar Rp 30.000 per hari setelah jatuh tempo."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-101",
+     "category": "campus",
+     "name": "UMN (Gerbang Scientia Boulevard)",
+     "distanceMeters": 566,
+     "walkMinutes": 7,
+     "description": "Jalan kaki lewat Jl. Scientia Square, trotoar lebar dan teduh sampai gerbang kampus."
+    },
+    {
+     "id": "poi-102",
+     "category": "food",
+     "name": "Food Court Summarecon Mall Serpong",
+     "distanceMeters": 1100,
+     "walkMinutes": 14,
+     "description": "Puluhan gerai makanan dari Jepang sampai warung Padang, nyaman untuk makan siang."
+    },
+    {
+     "id": "poi-103",
+     "category": "food",
+     "name": "Kopi Dekat UMN",
+     "distanceMeters": 350,
+     "walkMinutes": 4,
+     "description": "Kafe kecil dengan colokan di tiap meja, ramai saat musim tugas besar."
+    },
+    {
+     "id": "poi-104",
+     "category": "laundry",
+     "name": "Clean & Press Gading Serpong",
+     "distanceMeters": 260,
+     "walkMinutes": 3,
+     "description": "Rp 9.000/kg cuci setrika, ada layanan dry clean jas almamater."
+    },
+    {
+     "id": "poi-105",
+     "category": "market",
+     "name": "Indomaret Fresh Scientia",
+     "distanceMeters": 280,
+     "walkMinutes": 4,
+     "description": "Buka 24 jam, ada Point Coffee dan ATM BCA."
+    },
+    {
+     "id": "poi-106",
+     "category": "transit",
+     "name": "Stasiun Cisauk",
+     "distanceMeters": 4200,
+     "walkMinutes": 11,
+     "description": "KRL Commuter Line tujuan Tanah Abang, naik ojek online sekitar 12 menit."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k10-101",
+     "kosId": "kos-10",
+     "roomNumber": "101",
+     "floor": 1,
+     "roomType": "Deluxe AC Smart Lock",
+     "size": "3.5 x 4 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 2100000,
+     "status": "paid",
+     "tenantName": "Gabriella Chandra",
+     "tenantPhone": "081211340986",
+     "tenantCampus": "UMN (DKV)",
+     "dueDate": "2026-10-29",
+     "lastPaymentDate": "2026-09-28"
+    },
+    {
+     "id": "room-k10-102",
+     "kosId": "kos-10",
+     "roomNumber": "102",
+     "floor": 1,
+     "roomType": "Deluxe AC Smart Lock",
+     "size": "3.5 x 4 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 2100000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k10-201",
+     "kosId": "kos-10",
+     "roomNumber": "201",
+     "floor": 2,
+     "roomType": "Premium Queen Balkon",
+     "size": "4 x 4 m",
+     "bedType": "Queen Bed 160x200",
+     "priceMonthly": 2450000,
+     "status": "paid",
+     "tenantName": "Kevin Hartanto",
+     "tenantPhone": "085691770215",
+     "tenantCampus": "UMN (Informatika)",
+     "dueDate": "2026-11-04",
+     "lastPaymentDate": "2026-10-03"
+    },
+    {
+     "id": "room-k10-202",
+     "kosId": "kos-10",
+     "roomNumber": "202",
+     "floor": 2,
+     "roomType": "Premium Queen Balkon",
+     "size": "4 x 4 m",
+     "bedType": "Queen Bed 160x200",
+     "priceMonthly": 2450000,
+     "status": "booking",
+     "tenantName": "Jessica Tan (DP Rp1jt)",
+     "tenantPhone": "081934005512",
+     "tenantCampus": "UMN (Akuntansi)",
+     "dueDate": "2026-10-22"
+    }
+   ]
+  },
+  {
+   "id": "kos-11",
+   "name": "Kost Putra Medang Gading Serpong",
+   "slug": "kost-putra-medang-gading-serpong",
+   "gender": "putra",
+   "address": "Jl. Medang Lestari No. 6, RT 01/RW 04, Medang, Pagedangan",
+   "district": "Medang",
+   "city": "Tangerang",
+   "coordinates": {
+    "lat": -6.2632,
+    "lng": 106.6152
+   },
+   "campusProximity": {
+    "campusId": "umn-gading-serpong",
+    "campusName": "UMN Serpong",
+    "distanceMeters": 696,
+    "walkMinutes": 9
+   },
+   "rating": 4.4,
+   "reviewCount": 11,
+   "priceMonthlyStart": 1750000,
+   "studentDiscountAmount": 100000,
+   "studentDiscountLabel": "Diskon Mhs Rp 100rb",
+   "images": [
+    "https://images.unsplash.com/photo-1556020685-ae41abfc9365?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560448075-bb485b067938?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1617325247661-675ab4b64ae2?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "AC 1/2 PK",
+    "Kamar Mandi Dalam",
+    "Kasur Springbed 120x200",
+    "Meja Belajar",
+    "Lemari Baju"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 75 Mbps",
+    "Dapur Bersama",
+    "Parkir Motor Luas",
+    "Ruang Tamu Bersama"
+   ],
+   "electricityType": "included",
+   "totalRooms": 9,
+   "availableRooms": 1,
+   "owner": {
+    "id": "owner-8",
+    "name": "Ibu Melinda Tanuwijaya",
+    "phone": "081911207345",
+    "avatar": "https://images.unsplash.com/photo-1507101105822-7472b28e22ac?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "99% (balas < 10 mnt)",
+    "memberSince": "Januari 2023",
+    "verified": false,
+    "totalProperties": 2,
+    "bio": "Pengelola kos di kawasan Gading Serpong. Fokus pada kos modern dengan akses cepat ke kampus dan pusat kuliner."
+   },
+   "rules": [
+    {
+     "id": "r11-1",
+     "tier": 1,
+     "categoryTitle": "Kunjungan & Jam Malam",
+     "rules": [
+      "Pagar ditutup pukul 00.00 WIB, penghuni yang pulang lebih malam wajib memberi kabar.",
+      "Tamu hanya boleh di ruang tamu sampai pukul 22.00 WIB."
+     ]
+    },
+    {
+     "id": "r11-2",
+     "tier": 2,
+     "categoryTitle": "Listrik & Perlengkapan",
+     "rules": [
+      "Listrik sudah termasuk dengan batas pemakaian wajar. Penggunaan lebih dari 200 kWh per bulan ditagih selisihnya.",
+      "Dilarang memasak di kamar, gunakan dapur bersama."
+     ],
+     "penaltyAmount": 50000,
+     "penaltyClause": "Memasak di kamar dikenakan denda Rp 50.000 dan peralatan disita sementara."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-111",
+     "category": "campus",
+     "name": "UMN (Gerbang Belakang)",
+     "distanceMeters": 696,
+     "walkMinutes": 9,
+     "description": "Lewat jalan lingkungan Medang menuju gerbang samping kampus, ada jalur motor dan pejalan kaki."
+    },
+    {
+     "id": "poi-112",
+     "category": "food",
+     "name": "Bakmi Pontianak Medang",
+     "distanceMeters": 140,
+     "walkMinutes": 2,
+     "description": "Mie ayam dan pangsit goreng, buka sampai pukul 22.00."
+    },
+    {
+     "id": "poi-113",
+     "category": "laundry",
+     "name": "Serpong Wash Laundry",
+     "distanceMeters": 220,
+     "walkMinutes": 3,
+     "description": "Rp 8.000/kg, jemput antar gratis minimal 3 kg."
+    },
+    {
+     "id": "poi-114",
+     "category": "market",
+     "name": "Alfamart Medang Lestari",
+     "distanceMeters": 190,
+     "walkMinutes": 2,
+     "description": "Buka 24 jam, lengkap untuk kebutuhan harian."
+    },
+    {
+     "id": "poi-115",
+     "category": "transit",
+     "name": "Halte Bus Scientia Boulevard",
+     "distanceMeters": 750,
+     "walkMinutes": 9,
+     "description": "Bus feeder menuju Stasiun Cisauk dan Alam Sutera."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k11-1",
+     "kosId": "kos-11",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standar Putra AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1750000,
+     "status": "paid",
+     "tenantName": "Bryan Setiawan",
+     "tenantPhone": "081319442076",
+     "tenantCampus": "UMN (Teknik Komputer)",
+     "dueDate": "2026-10-31",
+     "lastPaymentDate": "2026-09-30"
+    },
+    {
+     "id": "room-k11-2",
+     "kosId": "kos-11",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standar Putra AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1750000,
+     "status": "overdue",
+     "tenantName": "Marcel Kurniawan",
+     "tenantPhone": "085212063389",
+     "tenantCampus": "UMN (Manajemen)",
+     "dueDate": "2026-10-06",
+     "daysOverdue": 7
+    },
+    {
+     "id": "room-k11-3",
+     "kosId": "kos-11",
+     "roomNumber": "3",
+     "floor": 2,
+     "roomType": "Deluxe Putra",
+     "size": "3.5 x 4 m",
+     "bedType": "Single Bed 140x200",
+     "priceMonthly": 1950000,
+     "status": "vacant"
+    }
+   ]
+  },
+  {
+   "id": "kos-12",
+   "name": "Kost Jababeka Student Hub",
+   "slug": "kost-jababeka-student-hub",
+   "gender": "campur",
+   "address": "Jl. Ki Hajar Dewantara Gg. Melati No. 9, Simpangan, Cikarang Utara",
+   "district": "Simpangan",
+   "city": "Bekasi",
+   "coordinates": {
+    "lat": -6.2827,
+    "lng": 107.1741
+   },
+   "campusProximity": {
+    "campusId": "president-university",
+    "campusName": "President University",
+    "distanceMeters": 495,
+    "walkMinutes": 6
+   },
+   "rating": 4.6,
+   "reviewCount": 19,
+   "priceMonthlyStart": 1300000,
+   "studentDiscountAmount": 130000,
+   "studentDiscountLabel": "Diskon Mhs Rp 130rb",
+   "images": [
+    "https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "AC 1/2 PK",
+    "Kamar Mandi Dalam",
+    "Springbed 120x200",
+    "Meja Belajar Lebar",
+    "Lemari 2 Pintu",
+    "Water Heater"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 100 Mbps",
+    "Dapur Bersama + Kulkas",
+    "Mesin Cuci Bersama",
+    "Parkir Motor Berkanopi",
+    "Ruang Diskusi Kecil"
+   ],
+   "electricityType": "token",
+   "totalRooms": 14,
+   "availableRooms": 4,
+   "owner": {
+    "id": "owner-9",
+    "name": "Pak Yohanes Sihombing",
+    "phone": "085215536680",
+    "avatar": "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "93% (balas < 45 mnt)",
+    "memberSince": "September 2022",
+    "verified": true,
+    "totalProperties": 2,
+    "bio": "Mantan karyawan kawasan industri Jababeka yang beralih mengelola kos untuk mahasiswa dan karyawan muda."
+   },
+   "rules": [
+    {
+     "id": "r12-1",
+     "tier": 1,
+     "categoryTitle": "Kunjungan & Keamanan",
+     "rules": [
+      "Gerbang dikunci pukul 23.30 WIB, penghuni mendapat kunci pribadi.",
+      "Tamu lawan jenis hanya di ruang diskusi lantai 1 sampai pukul 21.30 WIB."
+     ],
+     "penaltyAmount": 100000,
+     "penaltyClause": "Tamu menginap tanpa izin dikenakan denda Rp 100.000 per malam."
+    },
+    {
+     "id": "r12-2",
+     "tier": 2,
+     "categoryTitle": "Listrik, Wi-Fi & Alat Elektronik",
+     "rules": [
+      "Listrik token per kamar dengan meteran terpisah.",
+      "Wi-Fi dibagi per lantai, dilarang mengunduh berkas besar saat jam kuliah daring."
+     ]
+    },
+    {
+     "id": "r12-3",
+     "tier": 3,
+     "categoryTitle": "Pembayaran & Kerusakan",
+     "rules": [
+      "Sewa dibayar tanggal 1 sampai 5. Telat dikenai Rp 25.000 per hari.",
+      "Penghuni internasional dipersilakan menggunakan bahasa Inggris saat menghubungi pengelola."
+     ],
+     "penaltyAmount": 25000,
+     "penaltyClause": "Denda telat bayar Rp 25.000 per hari setelah tanggal 5."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-121",
+     "category": "campus",
+     "name": "President University (Gerbang Utama)",
+     "distanceMeters": 495,
+     "walkMinutes": 6,
+     "description": "Jalan kaki 6 menit lewat Jl. Ki Hajar Dewantara, aman dan banyak mahasiswa asrama lewat."
+    },
+    {
+     "id": "poi-122",
+     "category": "food",
+     "name": "Kantin Pak Mamat Jababeka",
+     "distanceMeters": 130,
+     "walkMinutes": 2,
+     "description": "Soto betawi dan nasi uduk, buka dari pagi sampai sore."
+    },
+    {
+     "id": "poi-123",
+     "category": "food",
+     "name": "Ayam Bakar Mas Kuncoro",
+     "distanceMeters": 330,
+     "walkMinutes": 4,
+     "description": "Menu ayam bakar dan lele dengan sambal terasi pedas."
+    },
+    {
+     "id": "poi-124",
+     "category": "laundry",
+     "name": "Jababeka Clean Laundry",
+     "distanceMeters": 170,
+     "walkMinutes": 2,
+     "description": "Rp 8.000/kg, express 5 jam Rp 12.000/kg."
+    },
+    {
+     "id": "poi-125",
+     "category": "market",
+     "name": "Indomaret Jababeka Residence",
+     "distanceMeters": 300,
+     "walkMinutes": 4,
+     "description": "Buka 24 jam, ada ATM BNI."
+    },
+    {
+     "id": "poi-126",
+     "category": "transit",
+     "name": "Stasiun Cikarang",
+     "distanceMeters": 5200,
+     "walkMinutes": 13,
+     "description": "KRL Lintas Cikarang menuju Jakarta, naik ojek online sekitar 15 menit."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k12-101",
+     "kosId": "kos-12",
+     "roomNumber": "101",
+     "floor": 1,
+     "roomType": "Standard AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1300000,
+     "status": "paid",
+     "tenantName": "Nicholas Wijaya",
+     "tenantPhone": "081511920733",
+     "tenantCampus": "President University (Computer Science)",
+     "dueDate": "2026-10-30",
+     "lastPaymentDate": "2026-09-29"
+    },
+    {
+     "id": "room-k12-102",
+     "kosId": "kos-12",
+     "roomNumber": "102",
+     "floor": 1,
+     "roomType": "Standard AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1300000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k12-201",
+     "kosId": "kos-12",
+     "roomNumber": "201",
+     "floor": 2,
+     "roomType": "Deluxe AC Jendela Luar",
+     "size": "3.5 x 4 m",
+     "bedType": "Queen Bed 140x200",
+     "priceMonthly": 1500000,
+     "status": "due",
+     "tenantName": "Putu Ayu Dharmawati",
+     "tenantPhone": "087855120964",
+     "tenantCampus": "President University (Business)",
+     "dueDate": "2026-10-13",
+     "daysOverdue": 0
+    }
+   ]
+  },
+  {
+   "id": "kos-13",
+   "name": "Kost Putri Simpangan Residence",
+   "slug": "kost-putri-simpangan-residence",
+   "gender": "putri",
+   "address": "Jl. Raya Mekarmukti No. 31, RT 06/RW 02, Mekarmukti, Cikarang Utara",
+   "district": "Mekarmukti",
+   "city": "Bekasi",
+   "coordinates": {
+    "lat": -6.2895,
+    "lng": 107.1668
+   },
+   "campusProximity": {
+    "campusId": "president-university",
+    "campusName": "President University",
+    "distanceMeters": 611,
+    "walkMinutes": 8
+   },
+   "rating": 4.5,
+   "reviewCount": 13,
+   "priceMonthlyStart": 1150000,
+   "studentDiscountAmount": 0,
+   "studentDiscountLabel": "",
+   "images": [
+    "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1620626011761-996317b8d101?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "AC 1/2 PK",
+    "Kamar Mandi Dalam",
+    "Kasur Springbed 120x200",
+    "Meja Rias & Kursi",
+    "Lemari Pakaian"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 50 Mbps",
+    "Dapur Bersama",
+    "Jemuran Tertutup",
+    "Parkir Motor",
+    "CCTV & Satpam Malam"
+   ],
+   "electricityType": "included",
+   "totalRooms": 12,
+   "availableRooms": 2,
+   "owner": {
+    "id": "owner-9",
+    "name": "Pak Yohanes Sihombing",
+    "phone": "085215536680",
+    "avatar": "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "93% (balas < 45 mnt)",
+    "memberSince": "September 2022",
+    "verified": true,
+    "totalProperties": 2,
+    "bio": "Mantan karyawan kawasan industri Jababeka yang beralih mengelola kos untuk mahasiswa dan karyawan muda."
+   },
+   "rules": [
+    {
+     "id": "r13-1",
+     "tier": 1,
+     "categoryTitle": "Khusus Mahasiswi",
+     "rules": [
+      "Tamu laki-laki hanya boleh sampai gerbang depan. Orang tua dan keluarga dapat masuk ke ruang tamu dengan lapor ke pengelola.",
+      "Gerbang ditutup pukul 22.30 WIB, satpam malam berjaga sampai subuh."
+     ]
+    },
+    {
+     "id": "r13-2",
+     "tier": 2,
+     "categoryTitle": "Kebersihan & Ketertiban",
+     "rules": [
+      "Kamar dijaga bersih, pemeriksaan kebersihan umum dilakukan setiap bulan.",
+      "Dilarang membawa hewan peliharaan atau menyimpan makanan sisa di kamar."
+     ]
+    },
+    {
+     "id": "r13-3",
+     "tier": 3,
+     "categoryTitle": "Pembayaran",
+     "rules": [
+      "Sewa dibayar paling lambat tanggal 10 setiap bulan, denda Rp 20.000 per hari.",
+      "Deposit Rp 500.000 dikembalikan penuh saat check-out bila tidak ada kerusakan."
+     ],
+     "penaltyAmount": 20000,
+     "penaltyClause": "Denda telat bayar Rp 20.000 per hari setelah tanggal 10."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-131",
+     "category": "campus",
+     "name": "President University (Gerbang Selatan)",
+     "distanceMeters": 611,
+     "walkMinutes": 8,
+     "description": "Jalan kaki lewat Jl. Raya Mekarmukti, siang hari ada angkot yang lewat tiap 10 menit."
+    },
+    {
+     "id": "poi-132",
+     "category": "food",
+     "name": "Warung Makan Bu Sri Simpangan",
+     "distanceMeters": 90,
+     "walkMinutes": 1,
+     "description": "Nasi pecel dan rawon, harga mulai Rp 12.000."
+    },
+    {
+     "id": "poi-133",
+     "category": "laundry",
+     "name": "Simpangan Laundry & Dry Clean",
+     "distanceMeters": 200,
+     "walkMinutes": 3,
+     "description": "Cuci setrika Rp 7.500/kg, antar ke kamar tiap sore."
+    },
+    {
+     "id": "poi-134",
+     "category": "market",
+     "name": "Alfamart Simpangan",
+     "distanceMeters": 180,
+     "walkMinutes": 2,
+     "description": "Buka 24 jam, tersedia galon dan token listrik."
+    },
+    {
+     "id": "poi-135",
+     "category": "health",
+     "name": "Apotek Kimia Farma Cikarang",
+     "distanceMeters": 1400,
+     "walkMinutes": 18,
+     "description": "Obat lengkap dan bisa konsultasi apoteker."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k13-1",
+     "kosId": "kos-13",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standar Putri AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1150000,
+     "status": "paid",
+     "tenantName": "Melati Kusumawardani",
+     "tenantPhone": "082144310926",
+     "tenantCampus": "President University (Hukum)",
+     "dueDate": "2026-11-01",
+     "lastPaymentDate": "2026-10-01"
+    },
+    {
+     "id": "room-k13-2",
+     "kosId": "kos-13",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standar Putri AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1150000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k13-3",
+     "kosId": "kos-13",
+     "roomNumber": "3",
+     "floor": 2,
+     "roomType": "Deluxe Putri Balkon",
+     "size": "3.5 x 4 m",
+     "bedType": "Single Bed 140x200",
+     "priceMonthly": 1350000,
+     "status": "paid",
+     "tenantName": "Anindya Paramitha",
+     "tenantPhone": "081388202145",
+     "tenantCampus": "President University (Desain)",
+     "dueDate": "2026-10-26",
+     "lastPaymentDate": "2026-09-25"
+    }
+   ]
+  },
+  {
+   "id": "kos-14",
+   "name": "Kost Putra Tembalang Raya",
+   "slug": "kost-putra-tembalang-raya",
+   "gender": "putra",
+   "address": "Jl. Banjarsari Raya No. 23, RT 05/RW 04, Tembalang, Tembalang",
+   "district": "Tembalang",
+   "city": "Semarang",
+   "coordinates": {
+    "lat": -7.0572,
+    "lng": 110.4392
+   },
+   "campusProximity": {
+    "campusId": "undip-tembalang",
+    "campusName": "Undip Tembalang",
+    "distanceMeters": 624,
+    "walkMinutes": 8
+   },
+   "rating": 4.5,
+   "reviewCount": 20,
+   "priceMonthlyStart": 850000,
+   "studentDiscountAmount": 50000,
+   "studentDiscountLabel": "Diskon Mhs Rp 50rb",
+   "images": [
+    "https://images.unsplash.com/photo-1595526051245-4506e0005bd0?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin",
+    "Kamar Mandi Dalam",
+    "Kasur Busa 120x200",
+    "Meja Belajar",
+    "Lemari Pakaian"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 30 Mbps",
+    "Dapur Bersama",
+    "Garasi Motor",
+    "Teras Santai",
+    "Jemuran Atap"
+   ],
+   "electricityType": "token",
+   "totalRooms": 15,
+   "availableRooms": 3,
+   "owner": {
+    "id": "owner-10",
+    "name": "Ibu Retno Wulandari",
+    "phone": "081325660913",
+    "avatar": "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "98% (balas < 15 mnt)",
+    "memberSince": "April 2020",
+    "verified": true,
+    "totalProperties": 2,
+    "bio": "Warga asli Tembalang. Kos dikelola langsung bersama keluarga, ada penjaga yang tinggal di lokasi."
+   },
+   "rules": [
+    {
+     "id": "r14-1",
+     "tier": 1,
+     "categoryTitle": "Jam Malam & Kunjungan Tamu",
+     "rules": [
+      "Pintu pagar ditutup pukul 23.30 WIB, penghuni yang pulang lebih malam mengabari penjaga kos.",
+      "Tamu perempuan hanya boleh di teras depan sampai pukul 21.00 WIB."
+     ]
+    },
+    {
+     "id": "r14-2",
+     "tier": 2,
+     "categoryTitle": "Listrik Token & Alat Elektronik",
+     "rules": [
+      "Kamar memakai listrik token, isi ulang sendiri.",
+      "Rice cooker diperbolehkan untuk memasak nasi, kompor listrik tidak diperkenankan."
+     ]
+    },
+    {
+     "id": "r14-3",
+     "tier": 3,
+     "categoryTitle": "Pembayaran Sewa",
+     "rules": [
+      "Sewa dibayar paling lambat tanggal 7 setiap bulan, denda Rp 10.000 per hari.",
+      "Kehilangan kunci kamar dikenai biaya ganti Rp 40.000."
+     ],
+     "penaltyAmount": 10000,
+     "penaltyClause": "Denda telat bayar Rp 10.000 per hari setelah tanggal 7."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-141",
+     "category": "campus",
+     "name": "Undip Tembalang (Gerbang Rektorat)",
+     "distanceMeters": 624,
+     "walkMinutes": 8,
+     "description": "Jalan kaki lewat Jl. Banjarsari Raya, jalannya agak menanjak tapi teduh pohon."
+    },
+    {
+     "id": "poi-142",
+     "category": "food",
+     "name": "Warung Ayam Penyet Bu Eni",
+     "distanceMeters": 90,
+     "walkMinutes": 1,
+     "description": "Ayam penyet sambal korek dan es jeruk, paket hemat Rp 14.000."
+    },
+    {
+     "id": "poi-143",
+     "category": "food",
+     "name": "Soto Ayam Pak Karto Tembalang",
+     "distanceMeters": 240,
+     "walkMinutes": 3,
+     "description": "Soto Semarangan hangat, favorit untuk sarapan sebelum kelas pagi."
+    },
+    {
+     "id": "poi-144",
+     "category": "laundry",
+     "name": "Tembalang Laundry Kiloan",
+     "distanceMeters": 150,
+     "walkMinutes": 2,
+     "description": "Rp 6.000/kg, selesai dua hari dan bisa jemput."
+    },
+    {
+     "id": "poi-145",
+     "category": "market",
+     "name": "Indomaret Banjarsari",
+     "distanceMeters": 200,
+     "walkMinutes": 3,
+     "description": "Buka 24 jam, ada ATM BRI."
+    },
+    {
+     "id": "poi-146",
+     "category": "transit",
+     "name": "Halte Trans Semarang Koridor Undip",
+     "distanceMeters": 520,
+     "walkMinutes": 7,
+     "description": "Bus Trans Semarang ke pusat kota, tarif Rp 4.000."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k14-1",
+     "kosId": "kos-14",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standar Putra",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 850000,
+     "status": "paid",
+     "tenantName": "Dimas Prakoso",
+     "tenantPhone": "081325771906",
+     "tenantCampus": "Undip Tembalang (Teknik Sipil)",
+     "dueDate": "2026-10-29",
+     "lastPaymentDate": "2026-09-28"
+    },
+    {
+     "id": "room-k14-2",
+     "kosId": "kos-14",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standar Putra",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 850000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k14-3",
+     "kosId": "kos-14",
+     "roomNumber": "3",
+     "floor": 2,
+     "roomType": "Putra Lantai 2",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 950000,
+     "status": "due",
+     "tenantName": "Ilham Syahputra",
+     "tenantPhone": "085640228319",
+     "tenantCampus": "Undip Tembalang (Teknik Industri)",
+     "dueDate": "2026-10-13",
+     "daysOverdue": 0
+    }
+   ]
+  },
+  {
+   "id": "kos-15",
+   "name": "Kost Campur Bulusan Hijau",
+   "slug": "kost-campur-bulusan-hijau",
+   "gender": "campur",
+   "address": "Jl. Bulusan Raya Gg. IV No. 14, RT 07/RW 02, Bulusan, Tembalang",
+   "district": "Bulusan",
+   "city": "Semarang",
+   "coordinates": {
+    "lat": -7.0592,
+    "lng": 110.4425
+   },
+   "campusProximity": {
+    "campusId": "undip-tembalang",
+    "campusName": "Undip Tembalang",
+    "distanceMeters": 908,
+    "walkMinutes": 11
+   },
+   "rating": 4.7,
+   "reviewCount": 16,
+   "priceMonthlyStart": 1100000,
+   "studentDiscountAmount": 110000,
+   "studentDiscountLabel": "Diskon Mhs 10% (Rp 110rb)",
+   "images": [
+    "https://images.unsplash.com/photo-1615874959474-d609969a20ed?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560448075-bb485b067938?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "AC 1/2 PK",
+    "Kamar Mandi Dalam",
+    "Kasur Springbed 120x200",
+    "Meja Belajar & Rak Buku",
+    "Lemari 2 Pintu"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 100 Mbps",
+    "Ruang Belajar Bersama",
+    "Dapur Bersih + Kulkas",
+    "Parkir Motor Berkanopi",
+    "Kebun Mini di Teras"
+   ],
+   "electricityType": "included",
+   "totalRooms": 11,
+   "availableRooms": 2,
+   "owner": {
+    "id": "owner-10",
+    "name": "Ibu Retno Wulandari",
+    "phone": "081325660913",
+    "avatar": "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "98% (balas < 15 mnt)",
+    "memberSince": "April 2020",
+    "verified": true,
+    "totalProperties": 2,
+    "bio": "Warga asli Tembalang. Kos dikelola langsung bersama keluarga, ada penjaga yang tinggal di lokasi."
+   },
+   "rules": [
+    {
+     "id": "r15-1",
+     "tier": 1,
+     "categoryTitle": "Kamar Campur Terpisah Lantai",
+     "rules": [
+      "Lantai 1 untuk penghuni putri dan lantai 2 untuk penghuni putra, dilarang naik ke lantai lain tanpa izin.",
+      "Pagar dikunci pukul 23.00 WIB."
+     ]
+    },
+    {
+     "id": "r15-2",
+     "tier": 2,
+     "categoryTitle": "Ruang Belajar & Ketenangan",
+     "rules": [
+      "Ruang belajar bersama dibuka sampai pukul 24.00 WIB, makanan berbau tajam dilarang dibawa ke sana.",
+      "Jam tenang kamar pukul 22.00 sampai 05.00 WIB."
+     ]
+    },
+    {
+     "id": "r15-3",
+     "tier": 3,
+     "categoryTitle": "Listrik, Pembayaran & Kerusakan",
+     "rules": [
+      "Listrik sudah termasuk, pemakaian AC dibatasi hingga pukul 07.00 WIB bila kamar kosong.",
+      "Sewa dibayar tanggal 5 setiap bulan, denda Rp 20.000 per hari."
+     ],
+     "penaltyAmount": 20000,
+     "penaltyClause": "Denda telat bayar Rp 20.000 per hari setelah tanggal 5."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-151",
+     "category": "campus",
+     "name": "Undip Tembalang (Gerbang Bulusan)",
+     "distanceMeters": 908,
+     "walkMinutes": 11,
+     "description": "Lewat Jl. Bulusan Raya, ada trotoar sebagian dan lampu jalan di sepanjang rute."
+    },
+    {
+     "id": "poi-152",
+     "category": "food",
+     "name": "Nasi Kucing Bulusan Bu Narti",
+     "distanceMeters": 70,
+     "walkMinutes": 1,
+     "description": "Nasi kucing, sate usus, dan wedang jahe, ramai selepas magrib."
+    },
+    {
+     "id": "poi-153",
+     "category": "food",
+     "name": "Lumpia Gang Lombok Tembalang",
+     "distanceMeters": 330,
+     "walkMinutes": 4,
+     "description": "Lumpia basah dan goreng khas Semarang, cocok untuk oleh-oleh teman."
+    },
+    {
+     "id": "poi-154",
+     "category": "laundry",
+     "name": "Bulusan Fresh Laundry",
+     "distanceMeters": 110,
+     "walkMinutes": 1,
+     "description": "Rp 7.000/kg, ada layanan setrika saja Rp 4.000/kg."
+    },
+    {
+     "id": "poi-155",
+     "category": "market",
+     "name": "Alfamart Bulusan",
+     "distanceMeters": 160,
+     "walkMinutes": 2,
+     "description": "Buka sampai pukul 23.00, tersedia kopi dan roti."
+    },
+    {
+     "id": "poi-156",
+     "category": "health",
+     "name": "Puskesmas Tembalang",
+     "distanceMeters": 900,
+     "walkMinutes": 11,
+     "description": "Poli umum dan gigi buka pagi, ada layanan imunisasi mahasiswa baru."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k15-101",
+     "kosId": "kos-15",
+     "roomNumber": "101",
+     "floor": 1,
+     "roomType": "Standar Putri AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1100000,
+     "status": "paid",
+     "tenantName": "Ayu Wulandari",
+     "tenantPhone": "081228450763",
+     "tenantCampus": "Undip Tembalang (Kedokteran)",
+     "dueDate": "2026-11-03",
+     "lastPaymentDate": "2026-10-02"
+    },
+    {
+     "id": "room-k15-102",
+     "kosId": "kos-15",
+     "roomNumber": "102",
+     "floor": 1,
+     "roomType": "Standar Putri AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1100000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k15-201",
+     "kosId": "kos-15",
+     "roomNumber": "201",
+     "floor": 2,
+     "roomType": "Standar Putra AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1100000,
+     "status": "paid",
+     "tenantName": "Rizky Aditya",
+     "tenantPhone": "085727031158",
+     "tenantCampus": "Undip Tembalang (Teknik Mesin)",
+     "dueDate": "2026-10-25",
+     "lastPaymentDate": "2026-09-24"
+    },
+    {
+     "id": "room-k15-202",
+     "kosId": "kos-15",
+     "roomNumber": "202",
+     "floor": 2,
+     "roomType": "Putra Balkon",
+     "size": "3.5 x 4 m",
+     "bedType": "Single Bed 140x200",
+     "priceMonthly": 1250000,
+     "status": "booking",
+     "tenantName": "Fajar Nugraha (DP Rp300rb)",
+     "tenantPhone": "082134905572",
+     "tenantCampus": "Undip Tembalang (FEB)",
+     "dueDate": "2026-10-21"
+    }
+   ]
+  },
+  {
+   "id": "kos-16",
+   "name": "Kost Pogung Baru Mahasiswa UGM",
+   "slug": "kost-pogung-baru-mahasiswa-ugm",
+   "gender": "campur",
+   "address": "Jl. Pogung Baru Gg. Kenanga No. 5, Pogung Lor, Sinduadi, Mlati",
+   "district": "Pogung",
+   "city": "Yogyakarta",
+   "coordinates": {
+    "lat": -7.764,
+    "lng": 110.3745
+   },
+   "campusProximity": {
+    "campusId": "ugm-bulaksumur",
+    "campusName": "UGM",
+    "distanceMeters": 799,
+    "walkMinutes": 10
+   },
+   "rating": 4.8,
+   "reviewCount": 28,
+   "priceMonthlyStart": 1250000,
+   "studentDiscountAmount": 100000,
+   "studentDiscountLabel": "Diskon Mhs Rp 100rb",
+   "images": [
+    "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560185007-cde436f6a4d0?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "AC 1/2 PK",
+    "Kamar Mandi Dalam",
+    "Kasur Springbed 120x200",
+    "Meja Belajar & Rak",
+    "Lemari Pakaian"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 100 Mbps",
+    "Dapur Bersama + Kulkas",
+    "Ruang Diskusi Teras",
+    "Parkir Motor & Sepeda",
+    "Mesin Cuci Koin"
+   ],
+   "electricityType": "token",
+   "totalRooms": 18,
+   "availableRooms": 4,
+   "owner": {
+    "id": "owner-11",
+    "name": "Mas Bagus Prasetyo",
+    "phone": "081227340158",
+    "avatar": "https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "95% (balas < 20 mnt)",
+    "memberSince": "Agustus 2021",
+    "verified": true,
+    "totalProperties": 2,
+    "bio": "Alumni UGM yang membangun kos dari rumah keluarga di kawasan Pogung dan Karangmalang. Terbuka untuk masukan penghuni."
+   },
+   "rules": [
+    {
+     "id": "r16-1",
+     "tier": 1,
+     "categoryTitle": "Akses & Kunjungan",
+     "rules": [
+      "Gerbang digembok pukul 23.00 WIB. Penghuni yang pulang lebih malam masuk lewat pintu samping dengan kunci pribadi.",
+      "Tamu lawan jenis hanya di teras diskusi sampai pukul 21.00 WIB."
+     ]
+    },
+    {
+     "id": "r16-2",
+     "tier": 2,
+     "categoryTitle": "Wi-Fi & Listrik",
+     "rules": [
+      "Wi-Fi sudah termasuk, penghuni diminta tidak mengunduh berkas besar pada jam sibuk 19.00 sampai 22.00.",
+      "Listrik token per kamar, isi ulang di minimarket depan."
+     ]
+    },
+    {
+     "id": "r16-3",
+     "tier": 3,
+     "categoryTitle": "Kebersihan & Pembayaran",
+     "rules": [
+      "Sampah dipilah organik dan anorganik di bak depan, diangkut petugas tiap Selasa dan Sabtu.",
+      "Sewa dibayar tanggal 1 sampai 5. Telat dikenai Rp 20.000 per hari."
+     ],
+     "penaltyAmount": 20000,
+     "penaltyClause": "Denda telat bayar Rp 20.000 per hari setelah tanggal 5."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-161",
+     "category": "campus",
+     "name": "UGM (Gerbang Utara Fakultas Teknik)",
+     "distanceMeters": 799,
+     "walkMinutes": 10,
+     "description": "Bisa jalan kaki lewat Jl. Pogung Raya atau bersepeda, jalur ramai mahasiswa dari pagi."
+    },
+    {
+     "id": "poi-162",
+     "category": "food",
+     "name": "Warung Burjo Pogung Berkah",
+     "distanceMeters": 60,
+     "walkMinutes": 1,
+     "description": "Burjo 24 jam, mie rebus telur, nasi telur, dan es kopi susu."
+    },
+    {
+     "id": "poi-163",
+     "category": "food",
+     "name": "Ayam Goreng Mbok Yem",
+     "distanceMeters": 220,
+     "walkMinutes": 3,
+     "description": "Ayam kampung goreng dan sambal bawang, antre saat jam makan siang."
+    },
+    {
+     "id": "poi-164",
+     "category": "laundry",
+     "name": "Pogung Laundry Kilat",
+     "distanceMeters": 90,
+     "walkMinutes": 1,
+     "description": "Rp 6.000/kg, kilat 5 jam Rp 10.000/kg."
+    },
+    {
+     "id": "poi-165",
+     "category": "market",
+     "name": "Indomaret Pogung Raya",
+     "distanceMeters": 250,
+     "walkMinutes": 3,
+     "description": "Buka 24 jam, ada ATM BRI."
+    },
+    {
+     "id": "poi-166",
+     "category": "transit",
+     "name": "Halte Trans Jogja Jl. Kaliurang",
+     "distanceMeters": 700,
+     "walkMinutes": 9,
+     "description": "Trans Jogja ke Malioboro dan Terminal Giwangan."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k16-101",
+     "kosId": "kos-16",
+     "roomNumber": "101",
+     "floor": 1,
+     "roomType": "Standar AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1250000,
+     "status": "paid",
+     "tenantName": "Hanif Ramadhan",
+     "tenantPhone": "081227085334",
+     "tenantCampus": "UGM (Teknik Mesin)",
+     "dueDate": "2026-10-27",
+     "lastPaymentDate": "2026-09-26"
+    },
+    {
+     "id": "room-k16-102",
+     "kosId": "kos-16",
+     "roomNumber": "102",
+     "floor": 1,
+     "roomType": "Standar AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1250000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k16-201",
+     "kosId": "kos-16",
+     "roomNumber": "201",
+     "floor": 2,
+     "roomType": "Deluxe AC Balkon",
+     "size": "3.5 x 4 m",
+     "bedType": "Single Bed 140x200",
+     "priceMonthly": 1400000,
+     "status": "due",
+     "tenantName": "Salsabila Kinanti",
+     "tenantPhone": "085643110892",
+     "tenantCampus": "UGM (Psikologi)",
+     "dueDate": "2026-10-14",
+     "daysOverdue": 0
+    }
+   ]
+  },
+  {
+   "id": "kos-17",
+   "name": "Kost Putri Karangmalang Sagan",
+   "slug": "kost-putri-karangmalang-sagan",
+   "gender": "putri",
+   "address": "Jl. Karangmalang B No. 18, Karangmalang, Caturtunggal, Depok",
+   "district": "Karangmalang",
+   "city": "Yogyakarta",
+   "coordinates": {
+    "lat": -7.7737,
+    "lng": 110.385
+   },
+   "campusProximity": {
+    "campusId": "ugm-bulaksumur",
+    "campusName": "UGM",
+    "distanceMeters": 874,
+    "walkMinutes": 11
+   },
+   "rating": 4.9,
+   "reviewCount": 30,
+   "priceMonthlyStart": 750000,
+   "studentDiscountAmount": 0,
+   "studentDiscountLabel": "",
+   "images": [
+    "https://images.unsplash.com/photo-1617325247661-675ab4b64ae2?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1620626011761-996317b8d101?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1540518614846-7eded433c457?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin & Ventilasi Silang",
+    "Kamar Mandi Dalam",
+    "Kasur Busa 100x200",
+    "Meja Belajar",
+    "Lemari Pakaian"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 50 Mbps",
+    "Dapur Bersama",
+    "Ruang Tamu Mahasiswi",
+    "Jemuran Atap",
+    "Parkir Motor"
+   ],
+   "electricityType": "included",
+   "totalRooms": 8,
+   "availableRooms": 0,
+   "owner": {
+    "id": "owner-11",
+    "name": "Mas Bagus Prasetyo",
+    "phone": "081227340158",
+    "avatar": "https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "95% (balas < 20 mnt)",
+    "memberSince": "Agustus 2021",
+    "verified": true,
+    "totalProperties": 2,
+    "bio": "Alumni UGM yang membangun kos dari rumah keluarga di kawasan Pogung dan Karangmalang. Terbuka untuk masukan penghuni."
+   },
+   "rules": [
+    {
+     "id": "r17-1",
+     "tier": 1,
+     "categoryTitle": "Kos Putri & Keamanan",
+     "rules": [
+      "Tidak menerima tamu laki-laki masuk ke area kamar, ruang tamu hanya sampai pukul 20.00 WIB.",
+      "Pagar dikunci pukul 22.00 WIB, ada penjaga yang tinggal di lantai bawah."
+     ],
+     "penaltyAmount": 50000,
+     "penaltyClause": "Tamu laki-laki masuk ke area kamar dikenakan denda Rp 50.000."
+    },
+    {
+     "id": "r17-2",
+     "tier": 2,
+     "categoryTitle": "Listrik & Perlengkapan",
+     "rules": [
+      "Listrik sudah termasuk untuk laptop dan kipas angin.",
+      "Rice cooker dan setrika dipakai di dapur bersama, tidak di kamar."
+     ]
+    },
+    {
+     "id": "r17-3",
+     "tier": 3,
+     "categoryTitle": "Pembayaran",
+     "rules": [
+      "Sewa dibayar tanggal 5 setiap bulan, denda Rp 10.000 per hari.",
+      "Pembayaran per semester mendapat potongan Rp 100.000."
+     ]
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-171",
+     "category": "campus",
+     "name": "UGM (Gerbang Selatan Sagan)",
+     "distanceMeters": 874,
+     "walkMinutes": 11,
+     "description": "Jalan kaki melewati Jl. Karangmalang, banyak toko fotokopi dan kafe di sepanjang jalan."
+    },
+    {
+     "id": "poi-172",
+     "category": "food",
+     "name": "Warung Gudeg Bu Lies",
+     "distanceMeters": 80,
+     "walkMinutes": 1,
+     "description": "Gudeg komplit dengan telur dan ayam, mulai Rp 14.000."
+    },
+    {
+     "id": "poi-173",
+     "category": "food",
+     "name": "Burjo Karangmalang Sejahtera",
+     "distanceMeters": 130,
+     "walkMinutes": 2,
+     "description": "Buka sampai tengah malam, menu mie dan nasi telur."
+    },
+    {
+     "id": "poi-174",
+     "category": "laundry",
+     "name": "Karangmalang Laundry",
+     "distanceMeters": 100,
+     "walkMinutes": 1,
+     "description": "Rp 5.500/kg, cuci setrika dua hari."
+    },
+    {
+     "id": "poi-175",
+     "category": "market",
+     "name": "Alfamart Karangmalang",
+     "distanceMeters": 180,
+     "walkMinutes": 2,
+     "description": "Buka 24 jam, tersedia ATM BNI."
+    },
+    {
+     "id": "poi-176",
+     "category": "print",
+     "name": "Fotokopi & Print Sagan Jaya",
+     "distanceMeters": 140,
+     "walkMinutes": 2,
+     "description": "Print, jilid, dan cetak poster A2 untuk tugas studio."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k17-1",
+     "kosId": "kos-17",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standar Putri",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 750000,
+     "status": "paid",
+     "tenantName": "Tiara Anggraeni",
+     "tenantPhone": "081392205718",
+     "tenantCampus": "UGM (Farmasi)",
+     "dueDate": "2026-10-30",
+     "lastPaymentDate": "2026-09-29"
+    },
+    {
+     "id": "room-k17-2",
+     "kosId": "kos-17",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standar Putri",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 750000,
+     "status": "paid",
+     "tenantName": "Wulan Pamungkas",
+     "tenantPhone": "085741230965",
+     "tenantCampus": "UGM (Ilmu Komunikasi)",
+     "dueDate": "2026-11-03",
+     "lastPaymentDate": "2026-10-02"
+    },
+    {
+     "id": "room-k17-3",
+     "kosId": "kos-17",
+     "roomNumber": "3",
+     "floor": 2,
+     "roomType": "Putri Lantai 2",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 850000,
+     "status": "overdue",
+     "tenantName": "Elisabeth Rahayu",
+     "tenantPhone": "082125770341",
+     "tenantCampus": "UGM (Ekonomika)",
+     "dueDate": "2026-10-08",
+     "daysOverdue": 5
+    }
+   ]
+  },
+  {
+   "id": "kos-18",
+   "name": "Kost Putra Kentingan Baru",
+   "slug": "kost-putra-kentingan-baru",
+   "gender": "putra",
+   "address": "Jl. Kentingan Baru No. 11, RT 02/RW 08, Jebres, Jebres",
+   "district": "Kentingan",
+   "city": "Surakarta",
+   "coordinates": {
+    "lat": -7.5565,
+    "lng": 110.8547
+   },
+   "campusProximity": {
+    "campusId": "uns-kentingan",
+    "campusName": "UNS Kentingan",
+    "distanceMeters": 455,
+    "walkMinutes": 6
+   },
+   "rating": 4.4,
+   "reviewCount": 12,
+   "priceMonthlyStart": 650000,
+   "studentDiscountAmount": 50000,
+   "studentDiscountLabel": "Diskon Mhs Rp 50rb",
+   "images": [
+    "https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1554995207-c18c203602cb?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin",
+    "Kamar Mandi Dalam",
+    "Kasur Busa 100x200",
+    "Meja Belajar",
+    "Lemari Pakaian"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 30 Mbps",
+    "Dapur Bersama",
+    "Parkir Motor Luas",
+    "Teras Belakang",
+    "Jemuran"
+   ],
+   "electricityType": "included",
+   "totalRooms": 13,
+   "availableRooms": 3,
+   "owner": {
+    "id": "owner-12",
+    "name": "Mbak Ayu Larasati",
+    "phone": "082136678241",
+    "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "92% (balas < 1 jam)",
+    "memberSince": "November 2022",
+    "verified": false,
+    "totalProperties": 2,
+    "bio": "Mengelola kos warisan orang tua di sekitar Kentingan dan Jebres sambil bekerja sebagai guru."
+   },
+   "rules": [
+    {
+     "id": "r18-1",
+     "tier": 1,
+     "categoryTitle": "Jam Malam & Tamu",
+     "rules": [
+      "Pagar dikunci pukul 23.30 WIB. Penghuni mendapat kunci pintu samping untuk pulang malam.",
+      "Tamu hanya boleh di teras depan dan harus pulang sebelum pukul 22.00 WIB."
+     ]
+    },
+    {
+     "id": "r18-2",
+     "tier": 2,
+     "categoryTitle": "Kebersihan Kamar & Lingkungan",
+     "rules": [
+      "Kamar dan teras dijaga bersih, pengecekan dilakukan tiap awal bulan.",
+      "Dilarang membuang puntung rokok sembarangan, sediakan asbak sendiri."
+     ]
+    },
+    {
+     "id": "r18-3",
+     "tier": 3,
+     "categoryTitle": "Pembayaran",
+     "rules": [
+      "Sewa dibayar paling lambat tanggal 5 setiap bulan, denda Rp 10.000 per hari.",
+      "Biaya listrik sudah termasuk dengan batas 150 kWh per bulan."
+     ],
+     "penaltyAmount": 10000,
+     "penaltyClause": "Denda telat bayar Rp 10.000 per hari setelah tanggal 5."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-181",
+     "category": "campus",
+     "name": "UNS Kentingan (Gerbang Utama)",
+     "distanceMeters": 455,
+     "walkMinutes": 6,
+     "description": "Jalan kaki lewat Jl. Kentingan Baru, trotoar rata dan ramai mahasiswa tiap pagi."
+    },
+    {
+     "id": "poi-182",
+     "category": "food",
+     "name": "Warung Selat Solo Bu Wid",
+     "distanceMeters": 150,
+     "walkMinutes": 2,
+     "description": "Selat Solo dan timlo, buka dari siang sampai malam."
+    },
+    {
+     "id": "poi-183",
+     "category": "food",
+     "name": "Angkringan Kentingan Barokah",
+     "distanceMeters": 70,
+     "walkMinutes": 1,
+     "description": "Nasi kucing, sate-satean, dan wedang jahe, favorit nongkrong malam."
+    },
+    {
+     "id": "poi-184",
+     "category": "laundry",
+     "name": "Kentingan Laundry Express",
+     "distanceMeters": 110,
+     "walkMinutes": 1,
+     "description": "Rp 6.000/kg, kilat 6 jam Rp 9.000/kg."
+    },
+    {
+     "id": "poi-185",
+     "category": "market",
+     "name": "Indomaret Kentingan",
+     "distanceMeters": 240,
+     "walkMinutes": 3,
+     "description": "Buka 24 jam, ada ATM Mandiri."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k18-1",
+     "kosId": "kos-18",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standar Putra",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 650000,
+     "status": "paid",
+     "tenantName": "Wahyu Kurniawan",
+     "tenantPhone": "081329004451",
+     "tenantCampus": "UNS Kentingan (Teknik Industri)",
+     "dueDate": "2026-10-31",
+     "lastPaymentDate": "2026-09-30"
+    },
+    {
+     "id": "room-k18-2",
+     "kosId": "kos-18",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standar Putra",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 650000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k18-3",
+     "kosId": "kos-18",
+     "roomNumber": "3",
+     "floor": 2,
+     "roomType": "Putra Lantai 2",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 750000,
+     "status": "paid",
+     "tenantName": "Bayu Setiaji",
+     "tenantPhone": "085640192286",
+     "tenantCampus": "UNS Kentingan (FKIP)",
+     "dueDate": "2026-11-05",
+     "lastPaymentDate": "2026-10-04"
+    }
+   ]
+  },
+  {
+   "id": "kos-19",
+   "name": "Kost Campur Jebres Griya Nirmala",
+   "slug": "kost-campur-jebres-griya-nirmala",
+   "gender": "campur",
+   "address": "Jl. Ir. Sutami Gg. Kenari No. 7, RT 03/RW 05, Jebres, Jebres",
+   "district": "Jebres",
+   "city": "Surakarta",
+   "coordinates": {
+    "lat": -7.5628,
+    "lng": 110.8602
+   },
+   "campusProximity": {
+    "campusId": "uns-kentingan",
+    "campusName": "UNS Kentingan",
+    "distanceMeters": 478,
+    "walkMinutes": 6
+   },
+   "rating": 4.6,
+   "reviewCount": 15,
+   "priceMonthlyStart": 900000,
+   "studentDiscountAmount": 90000,
+   "studentDiscountLabel": "Diskon Mhs 10% (Rp 90rb)",
+   "images": [
+    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560448075-bb485b067938?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "AC 1/2 PK",
+    "Kamar Mandi Dalam",
+    "Kasur Springbed 120x200",
+    "Meja Belajar",
+    "Lemari 2 Pintu"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 50 Mbps",
+    "Dapur Bersama",
+    "Ruang Tamu Bersama",
+    "Parkir Motor Berkanopi",
+    "Jemuran Atap"
+   ],
+   "electricityType": "token",
+   "totalRooms": 10,
+   "availableRooms": 2,
+   "owner": {
+    "id": "owner-12",
+    "name": "Mbak Ayu Larasati",
+    "phone": "082136678241",
+    "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "92% (balas < 1 jam)",
+    "memberSince": "November 2022",
+    "verified": false,
+    "totalProperties": 2,
+    "bio": "Mengelola kos warisan orang tua di sekitar Kentingan dan Jebres sambil bekerja sebagai guru."
+   },
+   "rules": [
+    {
+     "id": "r19-1",
+     "tier": 1,
+     "categoryTitle": "Akses & Tamu",
+     "rules": [
+      "Pagar ditutup pukul 23.00 WIB, kunci pintu depan dipegang penghuni.",
+      "Tamu lawan jenis dilarang masuk ke area kamar, diterima di ruang tamu sampai pukul 21.30 WIB."
+     ],
+     "penaltyAmount": 75000,
+     "penaltyClause": "Tamu lawan jenis masuk ke kamar dikenakan denda Rp 75.000."
+    },
+    {
+     "id": "r19-2",
+     "tier": 2,
+     "categoryTitle": "Listrik Token",
+     "rules": [
+      "Listrik token per kamar, isi ulang sendiri melalui aplikasi PLN Mobile.",
+      "AC dimatikan saat kamar ditinggal lebih dari 3 jam."
+     ]
+    },
+    {
+     "id": "r19-3",
+     "tier": 3,
+     "categoryTitle": "Kebersihan & Pembayaran",
+     "rules": [
+      "Dapur dibersihkan setiap selesai dipakai, kompor dimatikan sebelum ditinggal.",
+      "Sewa dibayar paling lambat tanggal 7, denda Rp 15.000 per hari."
+     ]
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-191",
+     "category": "campus",
+     "name": "UNS Kentingan (Gerbang Jebres)",
+     "distanceMeters": 478,
+     "walkMinutes": 6,
+     "description": "Lewat Jl. Ir. Sutami, ada jalur pejalan kaki dan halte bus kampus di dekat gerbang."
+    },
+    {
+     "id": "poi-192",
+     "category": "food",
+     "name": "Nasi Liwet Bu Wongso Jebres",
+     "distanceMeters": 260,
+     "walkMinutes": 3,
+     "description": "Nasi liwet dengan suwiran ayam dan telur pindang, khas Solo."
+    },
+    {
+     "id": "poi-193",
+     "category": "food",
+     "name": "Warmindo Jebres 99",
+     "distanceMeters": 90,
+     "walkMinutes": 1,
+     "description": "Buka 24 jam, es teh jumbo dan mie dok-dok."
+    },
+    {
+     "id": "poi-194",
+     "category": "laundry",
+     "name": "Jebres Clean Laundry",
+     "distanceMeters": 140,
+     "walkMinutes": 2,
+     "description": "Rp 7.000/kg, jemput dan antar gratis."
+    },
+    {
+     "id": "poi-195",
+     "category": "market",
+     "name": "Alfamart Jebres",
+     "distanceMeters": 170,
+     "walkMinutes": 2,
+     "description": "Buka sampai pukul 22.00, lengkap."
+    },
+    {
+     "id": "poi-196",
+     "category": "health",
+     "name": "Apotek K-24 Jebres",
+     "distanceMeters": 600,
+     "walkMinutes": 8,
+     "description": "Buka 24 jam, melayani resep dan konsultasi apoteker."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k19-101",
+     "kosId": "kos-19",
+     "roomNumber": "101",
+     "floor": 1,
+     "roomType": "Standar AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 900000,
+     "status": "paid",
+     "tenantName": "Annisa Rahmawati",
+     "tenantPhone": "082135206648",
+     "tenantCampus": "UNS Kentingan (FEB)",
+     "dueDate": "2026-10-28",
+     "lastPaymentDate": "2026-09-27"
+    },
+    {
+     "id": "room-k19-102",
+     "kosId": "kos-19",
+     "roomNumber": "102",
+     "floor": 1,
+     "roomType": "Standar AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 900000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k19-201",
+     "kosId": "kos-19",
+     "roomNumber": "201",
+     "floor": 2,
+     "roomType": "Deluxe AC Balkon",
+     "size": "3.5 x 4 m",
+     "bedType": "Single Bed 140x200",
+     "priceMonthly": 1050000,
+     "status": "due",
+     "tenantName": "Dwi Cahyono",
+     "tenantPhone": "085726470193",
+     "tenantCampus": "UNS Kentingan (Teknik Sipil)",
+     "dueDate": "2026-10-13",
+     "daysOverdue": 0
+    }
+   ]
+  },
+  {
+   "id": "kos-20",
+   "name": "Kost Putri Keputih Permai ITS",
+   "slug": "kost-putri-keputih-permai-its",
+   "gender": "putri",
+   "address": "Jl. Keputih Tegal Timur No. 33, Keputih, Sukolilo",
+   "district": "Keputih",
+   "city": "Surabaya",
+   "coordinates": {
+    "lat": -7.2892,
+    "lng": 112.794
+   },
+   "campusProximity": {
+    "campusId": "its-sukolilo",
+    "campusName": "ITS Sukolilo",
+    "distanceMeters": 747,
+    "walkMinutes": 9
+   },
+   "rating": 4.7,
+   "reviewCount": 21,
+   "priceMonthlyStart": 1650000,
+   "studentDiscountAmount": 165000,
+   "studentDiscountLabel": "Diskon Mhs 10% (Rp 165rb)",
+   "images": [
+    "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "AC 1/2 PK",
+    "Kamar Mandi Dalam + Water Heater",
+    "Springbed 120x200",
+    "Meja Belajar Lebar",
+    "Lemari Pakaian 2 Pintu"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi Fiber 100 Mbps",
+    "Dapur Bersama + Kulkas",
+    "Mesin Cuci Bersama",
+    "Parkir Motor Berkanopi",
+    "CCTV 24 Jam",
+    "Ruang Belajar Bersama"
+   ],
+   "electricityType": "token",
+   "totalRooms": 16,
+   "availableRooms": 5,
+   "owner": {
+    "id": "owner-13",
+    "name": "Pak Hartono Susanto",
+    "phone": "081231885204",
+    "avatar": "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "97% (balas < 15 mnt)",
+    "memberSince": "Maret 2019",
+    "verified": true,
+    "totalProperties": 2,
+    "bio": "Pengusaha properti kecil di Sukolilo. Setiap kamar rutin dicek tiap bulan dan keluhan ditangani maksimal 1x24 jam."
+   },
+   "rules": [
+    {
+     "id": "r20-1",
+     "tier": 1,
+     "categoryTitle": "Khusus Putri & Keamanan",
+     "rules": [
+      "Kos hanya untuk putri, tamu laki-laki hanya sampai teras depan dan harus pulang sebelum pukul 20.30 WIB.",
+      "Gerbang otomatis dikunci pukul 22.30 WIB."
+     ],
+     "penaltyAmount": 75000,
+     "penaltyClause": "Tamu laki-laki masuk ke area dalam dikenakan denda Rp 75.000."
+    },
+    {
+     "id": "r20-2",
+     "tier": 2,
+     "categoryTitle": "Listrik Token & Elektronik",
+     "rules": [
+      "Setiap kamar memiliki meteran token sendiri.",
+      "Hair dryer dan catokan diperbolehkan, kompor listrik dilarang."
+     ]
+    },
+    {
+     "id": "r20-3",
+     "tier": 3,
+     "categoryTitle": "Kebersihan & Pembayaran",
+     "rules": [
+      "Penghuni wajib menyapu kamar dan membuang sampah sendiri, petugas kebersihan hanya untuk lorong dan area bersama.",
+      "Sewa dibayar tanggal 1 sampai 6. Telat dikenai Rp 25.000 per hari."
+     ],
+     "penaltyAmount": 25000,
+     "penaltyClause": "Denda telat bayar Rp 25.000 per hari setelah tanggal 6."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-201",
+     "category": "campus",
+     "name": "ITS Sukolilo (Gerbang Utama Raya ITS)",
+     "distanceMeters": 747,
+     "walkMinutes": 9,
+     "description": "Naik motor atau jalan kaki lewat Jl. Keputih, jalan lurus dan terang sampai gerbang ITS."
+    },
+    {
+     "id": "poi-202",
+     "category": "food",
+     "name": "Depot Rawon Setan Keputih",
+     "distanceMeters": 190,
+     "walkMinutes": 2,
+     "description": "Rawon dan pecel, buka sampai tengah malam, banyak dikunjungi anak ITS."
+    },
+    {
+     "id": "poi-203",
+     "category": "food",
+     "name": "Warkop Cak Min Keputih",
+     "distanceMeters": 110,
+     "walkMinutes": 1,
+     "description": "Kopi hitam, jagung bakar, dan mie rebus untuk begadang tugas."
+    },
+    {
+     "id": "poi-204",
+     "category": "laundry",
+     "name": "Keputih Laundry Sehat",
+     "distanceMeters": 130,
+     "walkMinutes": 2,
+     "description": "Rp 7.500/kg, express 6 jam Rp 11.000/kg."
+    },
+    {
+     "id": "poi-205",
+     "category": "market",
+     "name": "Indomaret Keputih Tegal",
+     "distanceMeters": 220,
+     "walkMinutes": 3,
+     "description": "Buka 24 jam, ada ATM BCA dan BNI."
+    },
+    {
+     "id": "poi-206",
+     "category": "transit",
+     "name": "Halte Suroboyo Bus ITS",
+     "distanceMeters": 1000,
+     "walkMinutes": 13,
+     "description": "Suroboyo Bus bisa ditukar sampah plastik untuk ke Terminal Purabaya."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k20-101",
+     "kosId": "kos-20",
+     "roomNumber": "101",
+     "floor": 1,
+     "roomType": "Standar Putri AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1650000,
+     "status": "paid",
+     "tenantName": "Syifa Aulia",
+     "tenantPhone": "081231940582",
+     "tenantCampus": "ITS (Teknik Kimia)",
+     "dueDate": "2026-10-29",
+     "lastPaymentDate": "2026-09-28"
+    },
+    {
+     "id": "room-k20-102",
+     "kosId": "kos-20",
+     "roomNumber": "102",
+     "floor": 1,
+     "roomType": "Standar Putri AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1650000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k20-201",
+     "kosId": "kos-20",
+     "roomNumber": "201",
+     "floor": 2,
+     "roomType": "Deluxe Putri Balkon",
+     "size": "4 x 4 m",
+     "bedType": "Queen Bed 140x200",
+     "priceMonthly": 1850000,
+     "status": "paid",
+     "tenantName": "Michelle Angelina",
+     "tenantPhone": "085731672204",
+     "tenantCampus": "ITS (Desain Produk)",
+     "dueDate": "2026-11-04",
+     "lastPaymentDate": "2026-10-03"
+    },
+    {
+     "id": "room-k20-202",
+     "kosId": "kos-20",
+     "roomNumber": "202",
+     "floor": 2,
+     "roomType": "Deluxe Putri Balkon",
+     "size": "4 x 4 m",
+     "bedType": "Queen Bed 140x200",
+     "priceMonthly": 1850000,
+     "status": "overdue",
+     "tenantName": "Dewi Kartika",
+     "tenantPhone": "081330718456",
+     "tenantCampus": "ITS (Statistika)",
+     "dueDate": "2026-10-07",
+     "daysOverdue": 6
+    }
+   ]
+  },
+  {
+   "id": "kos-21",
+   "name": "Kost Gebang Lor Student Residence",
+   "slug": "kost-gebang-lor-student-residence",
+   "gender": "campur",
+   "address": "Jl. Gebang Lor No. 56, RT 01/RW 01, Gebang Putih, Sukolilo",
+   "district": "Gebang",
+   "city": "Surabaya",
+   "coordinates": {
+    "lat": -7.2812,
+    "lng": 112.7878
+   },
+   "campusProximity": {
+    "campusId": "its-sukolilo",
+    "campusName": "ITS Sukolilo",
+    "distanceMeters": 887,
+    "walkMinutes": 11
+   },
+   "rating": 4.5,
+   "reviewCount": 18,
+   "priceMonthlyStart": 1100000,
+   "studentDiscountAmount": 0,
+   "studentDiscountLabel": "",
+   "images": [
+    "https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1620626011761-996317b8d101?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin",
+    "Kamar Mandi Dalam",
+    "Kasur Busa 120x200",
+    "Meja Belajar",
+    "Lemari Pakaian"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 50 Mbps",
+    "Dapur Bersama",
+    "Parkir Motor",
+    "Ruang Tamu Bersama",
+    "Jemuran Atap"
+   ],
+   "electricityType": "included",
+   "totalRooms": 14,
+   "availableRooms": 3,
+   "owner": {
+    "id": "owner-13",
+    "name": "Pak Hartono Susanto",
+    "phone": "081231885204",
+    "avatar": "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "97% (balas < 15 mnt)",
+    "memberSince": "Maret 2019",
+    "verified": true,
+    "totalProperties": 2,
+    "bio": "Pengusaha properti kecil di Sukolilo. Setiap kamar rutin dicek tiap bulan dan keluhan ditangani maksimal 1x24 jam."
+   },
+   "rules": [
+    {
+     "id": "r21-1",
+     "tier": 1,
+     "categoryTitle": "Jam Malam & Tamu",
+     "rules": [
+      "Gerbang ditutup pukul 23.30 WIB, penghuni mendapat kunci pintu depan.",
+      "Tamu lawan jenis hanya di ruang tamu sampai pukul 21.00 WIB dan tidak boleh menginap."
+     ],
+     "penaltyAmount": 80000,
+     "penaltyClause": "Tamu menginap tanpa izin dikenakan denda Rp 80.000 per malam."
+    },
+    {
+     "id": "r21-2",
+     "tier": 2,
+     "categoryTitle": "Listrik Termasuk",
+     "rules": [
+      "Listrik sudah termasuk untuk laptop dan kipas angin.",
+      "Dispenser pribadi dan kulkas mini wajib lapor, biaya tambahan Rp 50.000 per bulan."
+     ]
+    },
+    {
+     "id": "r21-3",
+     "tier": 3,
+     "categoryTitle": "Pembayaran & Kebersihan",
+     "rules": [
+      "Sewa dibayar tanggal 1 sampai 7, denda Rp 15.000 per hari.",
+      "Piket dapur bergilir, jadwal ditempel di pintu dapur."
+     ]
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-211",
+     "category": "campus",
+     "name": "ITS Sukolilo (Gerbang Barat Gebang)",
+     "distanceMeters": 887,
+     "walkMinutes": 11,
+     "description": "Jalan kaki sekitar 11 menit lewat Jl. Gebang Lor, atau naik sepeda motor 3 menit."
+    },
+    {
+     "id": "poi-212",
+     "category": "food",
+     "name": "Warung Pecel Madiun Gebang",
+     "distanceMeters": 100,
+     "walkMinutes": 1,
+     "description": "Nasi pecel lengkap dengan tempe dan peyek, harga Rp 11.000."
+    },
+    {
+     "id": "poi-213",
+     "category": "food",
+     "name": "Kedai Kopi Sukolilo",
+     "distanceMeters": 380,
+     "walkMinutes": 5,
+     "description": "Kopi susu dan roti bakar, buka sampai pukul 01.00."
+    },
+    {
+     "id": "poi-214",
+     "category": "laundry",
+     "name": "Gebang Laundry Murah",
+     "distanceMeters": 120,
+     "walkMinutes": 2,
+     "description": "Rp 5.500/kg, cuci setrika dua hari."
+    },
+    {
+     "id": "poi-215",
+     "category": "market",
+     "name": "Alfamart Gebang Lor",
+     "distanceMeters": 210,
+     "walkMinutes": 3,
+     "description": "Buka 24 jam, tersedia ATM Mandiri."
+    },
+    {
+     "id": "poi-216",
+     "category": "print",
+     "name": "Fotokopi & Print Gebang",
+     "distanceMeters": 170,
+     "walkMinutes": 2,
+     "description": "Print laporan praktikum dan jilid spiral."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k21-1",
+     "kosId": "kos-21",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standar Kipas",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1100000,
+     "status": "paid",
+     "tenantName": "Rangga Pradipta",
+     "tenantPhone": "081331820976",
+     "tenantCampus": "ITS (Teknik Fisika)",
+     "dueDate": "2026-10-30",
+     "lastPaymentDate": "2026-09-29"
+    },
+    {
+     "id": "room-k21-2",
+     "kosId": "kos-21",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standar Kipas",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1100000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k21-3",
+     "kosId": "kos-21",
+     "roomNumber": "3",
+     "floor": 2,
+     "roomType": "Standar Jendela Luar",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1250000,
+     "status": "due",
+     "tenantName": "Nurul Fadhilah",
+     "tenantPhone": "085233190467",
+     "tenantCampus": "ITS (Teknik Lingkungan)",
+     "dueDate": "2026-10-13",
+     "daysOverdue": 0
+    }
+   ]
+  },
+  {
+   "id": "kos-22",
+   "name": "Kost Putra Sumbersari UB",
+   "slug": "kost-putra-sumbersari-ub",
+   "gender": "putra",
+   "address": "Jl. Bendungan Sutami Gg. 2 No. 14, RT 04/RW 06, Sumbersari, Lowokwaru",
+   "district": "Sumbersari",
+   "city": "Malang",
+   "coordinates": {
+    "lat": -7.9578,
+    "lng": 112.616
+   },
+   "campusProximity": {
+    "campusId": "ub-malang",
+    "campusName": "UB Malang",
+    "distanceMeters": 710,
+    "walkMinutes": 9
+   },
+   "rating": 4.6,
+   "reviewCount": 25,
+   "priceMonthlyStart": 700000,
+   "studentDiscountAmount": 50000,
+   "studentDiscountLabel": "Diskon Mhs Rp 50rb",
+   "images": [
+    "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1595526051245-4506e0005bd0?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin",
+    "Kamar Mandi Dalam",
+    "Kasur Busa 120x200",
+    "Meja Belajar",
+    "Lemari Pakaian",
+    "Water Heater"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 50 Mbps",
+    "Dapur Bersama",
+    "Parkir Motor Luas",
+    "Ruang Santai Lantai 2",
+    "Jemuran"
+   ],
+   "electricityType": "token",
+   "totalRooms": 12,
+   "availableRooms": 0,
+   "owner": {
+    "id": "owner-14",
+    "name": "Mbak Dian Pertiwi",
+    "phone": "081334127659",
+    "avatar": "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "96% (balas < 25 mnt)",
+    "memberSince": "Oktober 2021",
+    "verified": true,
+    "totalProperties": 2,
+    "bio": "Lulusan Universitas Brawijaya yang mengelola kos di sekitar kampus. Paham betul kebutuhan anak kos soal Wi-Fi dan ruang belajar."
+   },
+   "rules": [
+    {
+     "id": "r22-1",
+     "tier": 1,
+     "categoryTitle": "Tata Tertib Kos Putra",
+     "rules": [
+      "Pagar dikunci pukul 00.00 WIB, setelah itu penghuni masuk dengan kunci cadangan.",
+      "Tamu perempuan hanya boleh di ruang tamu depan sampai pukul 21.30 WIB."
+     ]
+    },
+    {
+     "id": "r22-2",
+     "tier": 2,
+     "categoryTitle": "Listrik Token & Wi-Fi",
+     "rules": [
+      "Listrik token per kamar, saldo diisi sendiri oleh penghuni.",
+      "Wi-Fi sudah termasuk, kecepatan dibagi per lantai."
+     ]
+    },
+    {
+     "id": "r22-3",
+     "tier": 3,
+     "categoryTitle": "Ketenangan & Pembayaran",
+     "rules": [
+      "Jam tenang pukul 23.00 sampai 05.00 WIB, termasuk saat nonton bola bersama.",
+      "Sewa dibayar tanggal 5 setiap bulan, denda Rp 10.000 per hari."
+     ],
+     "penaltyAmount": 10000,
+     "penaltyClause": "Denda telat bayar Rp 10.000 per hari setelah tanggal 5."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-221",
+     "category": "campus",
+     "name": "Universitas Brawijaya (Gerbang Veteran)",
+     "distanceMeters": 710,
+     "walkMinutes": 9,
+     "description": "Jalan kaki lewat Jl. Veteran, udara Malang sejuk jadi tidak terlalu capek."
+    },
+    {
+     "id": "poi-222",
+     "category": "food",
+     "name": "Bakso Bakar Pak Man Sumbersari",
+     "distanceMeters": 120,
+     "walkMinutes": 2,
+     "description": "Bakso bakar dan bakso urat, khas anak UB, buka sore sampai malam."
+    },
+    {
+     "id": "poi-223",
+     "category": "food",
+     "name": "Warung Nasi Campur Bu Nuning",
+     "distanceMeters": 80,
+     "walkMinutes": 1,
+     "description": "Nasi campur lauk melimpah Rp 12.000."
+    },
+    {
+     "id": "poi-224",
+     "category": "laundry",
+     "name": "Sumbersari Laundry Kiloan",
+     "distanceMeters": 140,
+     "walkMinutes": 2,
+     "description": "Rp 6.000/kg, bisa antar jemput di sekitar Jl. Bendungan Sutami."
+    },
+    {
+     "id": "poi-225",
+     "category": "market",
+     "name": "Indomaret Sumbersari",
+     "distanceMeters": 180,
+     "walkMinutes": 2,
+     "description": "Buka 24 jam, ada Point Coffee."
+    },
+    {
+     "id": "poi-226",
+     "category": "transit",
+     "name": "Stasiun Malang Kota Baru",
+     "distanceMeters": 3300,
+     "walkMinutes": 8,
+     "description": "Naik angkot AG atau ojek online sekitar 10 menit."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k22-1",
+     "kosId": "kos-22",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standar Putra",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 700000,
+     "status": "paid",
+     "tenantName": "Fadhil Akbar",
+     "tenantPhone": "081334906218",
+     "tenantCampus": "UB Malang (Teknik Elektro)",
+     "dueDate": "2026-10-28",
+     "lastPaymentDate": "2026-09-27"
+    },
+    {
+     "id": "room-k22-2",
+     "kosId": "kos-22",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standar Putra",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 700000,
+     "status": "paid",
+     "tenantName": "Gilang Saputra",
+     "tenantPhone": "085234018762",
+     "tenantCampus": "UB Malang (Ilmu Komputer)",
+     "dueDate": "2026-11-02",
+     "lastPaymentDate": "2026-10-01"
+    },
+    {
+     "id": "room-k22-3",
+     "kosId": "kos-22",
+     "roomNumber": "3",
+     "floor": 2,
+     "roomType": "Putra Water Heater",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 800000,
+     "status": "overdue",
+     "tenantName": "Yusuf Maulana",
+     "tenantPhone": "082142760539",
+     "tenantCampus": "UB Malang (FEB)",
+     "dueDate": "2026-10-09",
+     "daysOverdue": 4
+    }
+   ]
+  },
+  {
+   "id": "kos-23",
+   "name": "Kost Putri Dinoyo Gajayana Asri",
+   "slug": "kost-putri-dinoyo-gajayana-asri",
+   "gender": "putri",
+   "address": "Jl. Gajayana Gg. 3 No. 22, RT 02/RW 03, Dinoyo, Lowokwaru",
+   "district": "Dinoyo",
+   "city": "Malang",
+   "coordinates": {
+    "lat": -7.9433,
+    "lng": 112.6102
+   },
+   "campusProximity": {
+    "campusId": "ub-malang",
+    "campusName": "UB Malang",
+    "distanceMeters": 1025,
+    "walkMinutes": 13
+   },
+   "rating": 4.8,
+   "reviewCount": 20,
+   "priceMonthlyStart": 1350000,
+   "studentDiscountAmount": 100000,
+   "studentDiscountLabel": "Diskon Mhs Rp 100rb",
+   "images": [
+    "https://images.unsplash.com/photo-1540518614846-7eded433c457?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560448075-bb485b067938?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1615874959474-d609969a20ed?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "AC 1/2 PK",
+    "Kamar Mandi Dalam + Water Heater",
+    "Springbed 120x200",
+    "Meja Belajar & Rak Buku",
+    "Lemari 2 Pintu"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 100 Mbps",
+    "Dapur Bersama + Kulkas",
+    "Ruang Belajar Mahasiswi",
+    "Parkir Motor Berkanopi",
+    "CCTV 24 Jam"
+   ],
+   "electricityType": "token",
+   "totalRooms": 15,
+   "availableRooms": 2,
+   "owner": {
+    "id": "owner-14",
+    "name": "Mbak Dian Pertiwi",
+    "phone": "081334127659",
+    "avatar": "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "96% (balas < 25 mnt)",
+    "memberSince": "Oktober 2021",
+    "verified": true,
+    "totalProperties": 2,
+    "bio": "Lulusan Universitas Brawijaya yang mengelola kos di sekitar kampus. Paham betul kebutuhan anak kos soal Wi-Fi dan ruang belajar."
+   },
+   "rules": [
+    {
+     "id": "r23-1",
+     "tier": 1,
+     "categoryTitle": "Keamanan & Kunjungan",
+     "rules": [
+      "Kos khusus putri. Tamu laki-laki hanya diterima di teras depan sampai pukul 20.00 WIB.",
+      "Gerbang dikunci pukul 22.30 WIB, penghuni dengan kepentingan kuliah malam wajib lapor."
+     ],
+     "penaltyAmount": 100000,
+     "penaltyClause": "Tamu laki-laki masuk ke area kamar dikenakan denda Rp 100.000."
+    },
+    {
+     "id": "r23-2",
+     "tier": 2,
+     "categoryTitle": "Ruang Belajar & Ketenangan",
+     "rules": [
+      "Ruang belajar dibuka sampai pukul 23.30 WIB, dilarang makan makanan berat di dalamnya.",
+      "Jam tenang kamar pukul 22.00 sampai 05.30 WIB."
+     ]
+    },
+    {
+     "id": "r23-3",
+     "tier": 3,
+     "categoryTitle": "Listrik & Pembayaran",
+     "rules": [
+      "Listrik token per kamar, AC wajib dimatikan saat kamar ditinggal.",
+      "Sewa dibayar tanggal 3 sampai 8. Telat dikenai Rp 20.000 per hari."
+     ],
+     "penaltyAmount": 20000,
+     "penaltyClause": "Denda telat bayar Rp 20.000 per hari setelah tanggal 8."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-231",
+     "category": "campus",
+     "name": "Universitas Brawijaya (Gerbang Dinoyo)",
+     "distanceMeters": 1025,
+     "walkMinutes": 13,
+     "description": "Lewat Jl. Gajayana yang teduh dan ramai, ada jalur sepeda menuju gerbang UB."
+    },
+    {
+     "id": "poi-232",
+     "category": "food",
+     "name": "Warung Rawon Dinoyo",
+     "distanceMeters": 110,
+     "walkMinutes": 1,
+     "description": "Rawon dan soto daging, populer sebagai makan siang anak UB."
+    },
+    {
+     "id": "poi-233",
+     "category": "food",
+     "name": "Pecel Kawi Gajayana",
+     "distanceMeters": 240,
+     "walkMinutes": 3,
+     "description": "Pecel dengan sambal kacang tebal dan tempe mendoan."
+    },
+    {
+     "id": "poi-234",
+     "category": "laundry",
+     "name": "Gajayana Laundry & Setrika",
+     "distanceMeters": 130,
+     "walkMinutes": 2,
+     "description": "Rp 7.000/kg, ada jasa setrika harian."
+    },
+    {
+     "id": "poi-235",
+     "category": "market",
+     "name": "Alfamart Dinoyo",
+     "distanceMeters": 170,
+     "walkMinutes": 2,
+     "description": "Buka 24 jam, ada ATM BCA."
+    },
+    {
+     "id": "poi-236",
+     "category": "market",
+     "name": "Mall Olympic Garden (MOG)",
+     "distanceMeters": 2300,
+     "walkMinutes": 6,
+     "description": "Supermarket, bioskop, dan toko buku, naik angkot atau ojek online sekitar 8 menit."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k23-101",
+     "kosId": "kos-23",
+     "roomNumber": "101",
+     "floor": 1,
+     "roomType": "Standar Putri AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1350000,
+     "status": "paid",
+     "tenantName": "Keisha Maharani",
+     "tenantPhone": "081235570194",
+     "tenantCampus": "UB Malang (Kedokteran Gigi)",
+     "dueDate": "2026-10-31",
+     "lastPaymentDate": "2026-09-30"
+    },
+    {
+     "id": "room-k23-102",
+     "kosId": "kos-23",
+     "roomNumber": "102",
+     "floor": 1,
+     "roomType": "Standar Putri AC",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 1350000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k23-201",
+     "kosId": "kos-23",
+     "roomNumber": "201",
+     "floor": 2,
+     "roomType": "Deluxe Putri Balkon",
+     "size": "3.5 x 4 m",
+     "bedType": "Single Bed 140x200",
+     "priceMonthly": 1500000,
+     "status": "paid",
+     "tenantName": "Aulia Rahmadani",
+     "tenantPhone": "085245830716",
+     "tenantCampus": "UB Malang (Psikologi)",
+     "dueDate": "2026-11-06",
+     "lastPaymentDate": "2026-10-05"
+    },
+    {
+     "id": "room-k23-202",
+     "kosId": "kos-23",
+     "roomNumber": "202",
+     "floor": 2,
+     "roomType": "Deluxe Putri Balkon",
+     "size": "3.5 x 4 m",
+     "bedType": "Single Bed 140x200",
+     "priceMonthly": 1500000,
+     "status": "booking",
+     "tenantName": "Priska Natalia (DP Rp400rb)",
+     "tenantPhone": "082131709265",
+     "tenantCampus": "UB Malang (Ilmu Administrasi)",
+     "dueDate": "2026-10-19"
+    }
+   ]
+  },
+  {
+   "id": "kos-24",
+   "name": "Kost Untirta Palima Nyaman",
+   "slug": "kost-untirta-palima-nyaman",
+   "gender": "campur",
+   "address": "Jl. Raya Serang-Pandeglang Gg. Pesantren No. 4, Rancalutung, Sindangsari",
+   "district": "Sindangsari",
+   "city": "Serang",
+   "coordinates": {
+    "lat": -6.193,
+    "lng": 106.1262
+   },
+   "campusProximity": {
+    "campusId": "untirta-serang",
+    "campusName": "Untirta",
+    "distanceMeters": 336,
+    "walkMinutes": 4
+   },
+   "rating": 4.4,
+   "reviewCount": 8,
+   "priceMonthlyStart": 650000,
+   "studentDiscountAmount": 0,
+   "studentDiscountLabel": "",
+   "images": [
+    "https://images.unsplash.com/photo-1554995207-c18c203602cb?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin",
+    "Kamar Mandi Dalam",
+    "Kasur Busa 100x200",
+    "Meja Belajar",
+    "Lemari Pakaian"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 20 Mbps",
+    "Dapur Bersama",
+    "Parkir Motor",
+    "Teras Santai"
+   ],
+   "electricityType": "included",
+   "totalRooms": 10,
+   "availableRooms": 3,
+   "owner": {
+    "id": "owner-15",
+    "name": "Bang Ahmad Fauzi",
+    "phone": "087770215386",
+    "avatar": "https://images.unsplash.com/photo-1530268729831-4b0b9e170218?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "90% (balas < 1 jam)",
+    "memberSince": "Februari 2023",
+    "verified": false,
+    "totalProperties": 1,
+    "bio": "Pemilik kos sederhana dekat Untirta Sindangsari. Utamakan harga bersahabat dan lingkungan yang aman."
+   },
+   "rules": [
+    {
+     "id": "r24-1",
+     "tier": 1,
+     "categoryTitle": "Jam Malam & Tamu",
+     "rules": [
+      "Pagar ditutup pukul 22.30 WIB. Tamu hanya boleh di teras depan sampai pukul 20.30 WIB.",
+      "Penghuni lawan jenis tidak diperkenankan masuk ke lorong kamar masing-masing."
+     ]
+    },
+    {
+     "id": "r24-2",
+     "tier": 2,
+     "categoryTitle": "Listrik & Kebersihan",
+     "rules": [
+      "Listrik sudah termasuk untuk laptop dan kipas angin.",
+      "Kebersihan kamar mandi dalam menjadi tanggung jawab penghuni."
+     ]
+    },
+    {
+     "id": "r24-3",
+     "tier": 3,
+     "categoryTitle": "Pembayaran",
+     "rules": [
+      "Sewa dibayar paling lambat tanggal 10, denda Rp 10.000 per hari."
+     ],
+     "penaltyAmount": 10000,
+     "penaltyClause": "Denda telat bayar Rp 10.000 per hari setelah tanggal 10."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-241",
+     "category": "campus",
+     "name": "Untirta Kampus Sindangsari (Gerbang Utama)",
+     "distanceMeters": 336,
+     "walkMinutes": 4,
+     "description": "Jalan kaki lewat gang samping Jl. Raya Serang-Pandeglang, tidak perlu menyeberang jalan besar."
+    },
+    {
+     "id": "poi-242",
+     "category": "food",
+     "name": "Sate Bandeng Palima",
+     "distanceMeters": 450,
+     "walkMinutes": 6,
+     "description": "Makanan khas Serang, cocok sebagai oleh-oleh untuk teman luar kota."
+    },
+    {
+     "id": "poi-243",
+     "category": "food",
+     "name": "Warung Nasi Bu Mumun",
+     "distanceMeters": 80,
+     "walkMinutes": 1,
+     "description": "Nasi sayur dan ikan asin, harga Rp 10.000."
+    },
+    {
+     "id": "poi-244",
+     "category": "laundry",
+     "name": "Palima Laundry",
+     "distanceMeters": 150,
+     "walkMinutes": 2,
+     "description": "Rp 5.000/kg, selesai dua hari."
+    },
+    {
+     "id": "poi-245",
+     "category": "market",
+     "name": "Alfamart Kadukilung",
+     "distanceMeters": 260,
+     "walkMinutes": 3,
+     "description": "Buka sampai pukul 23.00, lengkap."
+    },
+    {
+     "id": "poi-246",
+     "category": "transit",
+     "name": "Terminal Pakupatan",
+     "distanceMeters": 10200,
+     "walkMinutes": 26,
+     "description": "Angkot dan bus menuju Jakarta dan Merak, naik ojek online sekitar 30 menit."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k24-1",
+     "kosId": "kos-24",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standar Kipas",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 650000,
+     "status": "paid",
+     "tenantName": "Rizal Firmansyah",
+     "tenantPhone": "087770314926",
+     "tenantCampus": "Untirta (Teknik Industri)",
+     "dueDate": "2026-10-29",
+     "lastPaymentDate": "2026-09-28"
+    },
+    {
+     "id": "room-k24-2",
+     "kosId": "kos-24",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standar Kipas",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 650000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k24-3",
+     "kosId": "kos-24",
+     "roomNumber": "3",
+     "floor": 1,
+     "roomType": "Standar Jendela Luar",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 750000,
+     "status": "due",
+     "tenantName": "Siti Maesaroh",
+     "tenantPhone": "081280436517",
+     "tenantCampus": "Untirta (FKIP)",
+     "dueDate": "2026-10-14",
+     "daysOverdue": 0
+    }
+   ]
+  },
+  {
+   "id": "kos-25",
+   "name": "Kost Putri Kahuripan Siliwangi",
+   "slug": "kost-putri-kahuripan-siliwangi",
+   "gender": "putri",
+   "address": "Jl. Siliwangi Gg. Mawar No. 12, RT 03/RW 05, Kahuripan, Tawang",
+   "district": "Kahuripan",
+   "city": "Tasikmalaya",
+   "coordinates": {
+    "lat": -7.3472,
+    "lng": 108.2247
+   },
+   "campusProximity": {
+    "campusId": "unsil-tasikmalaya",
+    "campusName": "Unsil",
+    "distanceMeters": 290,
+    "walkMinutes": 4
+   },
+   "rating": 4.5,
+   "reviewCount": 9,
+   "priceMonthlyStart": 550000,
+   "studentDiscountAmount": 25000,
+   "studentDiscountLabel": "Diskon Mhs Rp 25rb",
+   "images": [
+    "https://images.unsplash.com/photo-1556020685-ae41abfc9365?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1620626011761-996317b8d101?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1617325247661-675ab4b64ae2?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin",
+    "Kamar Mandi Dalam",
+    "Kasur Springbed 100x200",
+    "Meja Belajar",
+    "Lemari Pakaian"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 20 Mbps",
+    "Dapur Bersama",
+    "Ruang Tamu",
+    "Jemuran Atap",
+    "Parkir Motor"
+   ],
+   "electricityType": "included",
+   "totalRooms": 8,
+   "availableRooms": 2,
+   "owner": {
+    "id": "owner-16",
+    "name": "Ibu Euis Komalasari",
+    "phone": "082117463380",
+    "avatar": "https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "95% (balas < 30 mnt)",
+    "memberSince": "Juni 2021",
+    "verified": true,
+    "totalProperties": 1,
+    "bio": "Mengelola kos putri di Kahuripan sejak 2016. Ada jam malam dan penjaga agar orang tua penghuni tenang."
+   },
+   "rules": [
+    {
+     "id": "r25-1",
+     "tier": 1,
+     "categoryTitle": "Khusus Putri & Jam Malam",
+     "rules": [
+      "Gerbang dikunci pukul 21.30 WIB. Pulang terlambat wajib izin ke ibu kos sebelum pukul 20.00 WIB.",
+      "Tamu laki-laki hanya boleh sampai ruang tamu depan sampai pukul 19.30 WIB."
+     ],
+     "penaltyAmount": 30000,
+     "penaltyClause": "Tamu laki-laki melewati batas waktu dikenakan denda Rp 30.000."
+    },
+    {
+     "id": "r25-2",
+     "tier": 2,
+     "categoryTitle": "Kebersihan Bersama",
+     "rules": [
+      "Penghuni menyapu dan mengepel kamar sendiri, lorong dibersihkan petugas tiap hari Sabtu.",
+      "Sampah dibuang ke bak depan sebelum pukul 07.00 WIB."
+     ]
+    },
+    {
+     "id": "r25-3",
+     "tier": 3,
+     "categoryTitle": "Pembayaran",
+     "rules": [
+      "Sewa dibayar tanggal 1 sampai 5, denda Rp 10.000 per hari.",
+      "Pembayaran satu semester langsung diberi diskon Rp 100.000."
+     ]
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-251",
+     "category": "campus",
+     "name": "Universitas Siliwangi (Gerbang Rektorat)",
+     "distanceMeters": 290,
+     "walkMinutes": 4,
+     "description": "Hanya beberapa menit jalan kaki lewat Jl. Siliwangi, trotoar rata dan ramai pedagang."
+    },
+    {
+     "id": "poi-252",
+     "category": "food",
+     "name": "Nasi Tutug Oncom Bu Eha",
+     "distanceMeters": 80,
+     "walkMinutes": 1,
+     "description": "Nasi tutug oncom dengan ayam goreng, khas Tasikmalaya, mulai Rp 12.000."
+    },
+    {
+     "id": "poi-253",
+     "category": "food",
+     "name": "Bakso Mang Ade",
+     "distanceMeters": 160,
+     "walkMinutes": 2,
+     "description": "Bakso kuah hangat cocok saat Tasik mendung dan hujan."
+    },
+    {
+     "id": "poi-254",
+     "category": "laundry",
+     "name": "Kahuripan Laundry Bersih",
+     "distanceMeters": 110,
+     "walkMinutes": 1,
+     "description": "Rp 5.000/kg, selesai dua hari."
+    },
+    {
+     "id": "poi-255",
+     "category": "market",
+     "name": "Indomaret Siliwangi",
+     "distanceMeters": 200,
+     "walkMinutes": 3,
+     "description": "Buka 24 jam, ada ATM BRI."
+    },
+    {
+     "id": "poi-256",
+     "category": "transit",
+     "name": "Terminal Indihiang",
+     "distanceMeters": 6500,
+     "walkMinutes": 16,
+     "description": "Bus antarkota ke Bandung dan Jogja, naik angkot lanjut ojek online."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k25-1",
+     "kosId": "kos-25",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standar Putri",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 550000,
+     "status": "paid",
+     "tenantName": "Rani Nurfadillah",
+     "tenantPhone": "082117530894",
+     "tenantCampus": "Unsil (Ekonomi)",
+     "dueDate": "2026-10-30",
+     "lastPaymentDate": "2026-09-29"
+    },
+    {
+     "id": "room-k25-2",
+     "kosId": "kos-25",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standar Putri",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 550000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k25-3",
+     "kosId": "kos-25",
+     "roomNumber": "3",
+     "floor": 2,
+     "roomType": "Putri Lantai 2",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 650000,
+     "status": "paid",
+     "tenantName": "Ayu Lestari",
+     "tenantPhone": "085659302178",
+     "tenantCampus": "Unsil (Keguruan)",
+     "dueDate": "2026-11-04",
+     "lastPaymentDate": "2026-10-03"
+    }
+   ]
+  },
+  {
+   "id": "kos-26",
+   "name": "Kost Putra Grendeng Unsoed",
+   "slug": "kost-putra-grendeng-unsoed",
+   "gender": "putra",
+   "address": "Jl. HR Bunyamin Gg. Merpati No. 9, RT 02/RW 06, Grendeng, Purwokerto Utara",
+   "district": "Grendeng",
+   "city": "Purwokerto",
+   "coordinates": {
+    "lat": -7.4078,
+    "lng": 109.2487
+   },
+   "campusProximity": {
+    "campusId": "unsoed-purwokerto",
+    "campusName": "Unsoed",
+    "distanceMeters": 517,
+    "walkMinutes": 6
+   },
+   "rating": 4.5,
+   "reviewCount": 12,
+   "priceMonthlyStart": 600000,
+   "studentDiscountAmount": 30000,
+   "studentDiscountLabel": "Diskon Mhs Rp 30rb",
+   "images": [
+    "https://images.unsplash.com/photo-1560185893-a55cbc8c57e8?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin",
+    "Kamar Mandi Dalam",
+    "Kasur Busa 100x200",
+    "Meja Belajar",
+    "Lemari Pakaian"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 30 Mbps",
+    "Dapur Bersama",
+    "Parkir Motor Luas",
+    "Teras Belakang",
+    "Jemuran"
+   ],
+   "electricityType": "token",
+   "totalRooms": 14,
+   "availableRooms": 3,
+   "owner": {
+    "id": "owner-17",
+    "name": "Pak Slamet Riyadi",
+    "phone": "081542093317",
+    "avatar": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "94% (balas < 30 mnt)",
+    "memberSince": "Januari 2020",
+    "verified": true,
+    "totalProperties": 1,
+    "bio": "Pensiunan PNS yang memiliki kos putra di Grendeng. Dikenal sabar dan rajin menanyakan kabar penghuni."
+   },
+   "rules": [
+    {
+     "id": "r26-1",
+     "tier": 1,
+     "categoryTitle": "Jam Malam & Tamu",
+     "rules": [
+      "Pagar dikunci pukul 23.30 WIB. Penghuni yang pulang lebih malam wajib memberi kabar ke Pak Slamet.",
+      "Tamu perempuan hanya di teras depan sampai pukul 21.00 WIB."
+     ]
+    },
+    {
+     "id": "r26-2",
+     "tier": 2,
+     "categoryTitle": "Listrik Token",
+     "rules": [
+      "Kamar memakai listrik token mandiri.",
+      "Setrika dan rice cooker boleh dipakai, kompor listrik dilarang."
+     ]
+    },
+    {
+     "id": "r26-3",
+     "tier": 3,
+     "categoryTitle": "Pembayaran",
+     "rules": [
+      "Sewa dibayar tanggal 5, denda Rp 10.000 per hari.",
+      "Kehilangan kunci pagar dikenai biaya ganti Rp 30.000."
+     ],
+     "penaltyAmount": 10000,
+     "penaltyClause": "Denda telat bayar Rp 10.000 per hari setelah tanggal 5."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-261",
+     "category": "campus",
+     "name": "Unsoed Grendeng (Gerbang Utama)",
+     "distanceMeters": 517,
+     "walkMinutes": 6,
+     "description": "Jalan kaki lewat Jl. HR Bunyamin, ramai warung makan dan ramai mahasiswa tiap hari."
+    },
+    {
+     "id": "poi-262",
+     "category": "food",
+     "name": "Mendoan Hangat Pak Kasdi",
+     "distanceMeters": 90,
+     "walkMinutes": 1,
+     "description": "Mendoan dan tempe goreng khas Banyumas, Rp 1.500 per potong."
+    },
+    {
+     "id": "poi-263",
+     "category": "food",
+     "name": "Soto Sokaraja Grendeng",
+     "distanceMeters": 250,
+     "walkMinutes": 3,
+     "description": "Soto dengan bumbu kacang dan ketupat, buka dari pagi."
+    },
+    {
+     "id": "poi-264",
+     "category": "laundry",
+     "name": "Grendeng Laundry Kilat",
+     "distanceMeters": 120,
+     "walkMinutes": 2,
+     "description": "Rp 5.500/kg, selesai sehari bila datang sebelum pukul 10.00."
+    },
+    {
+     "id": "poi-265",
+     "category": "market",
+     "name": "Indomaret Grendeng",
+     "distanceMeters": 220,
+     "walkMinutes": 3,
+     "description": "Buka 24 jam, lengkap dengan mesin ATM."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k26-1",
+     "kosId": "kos-26",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standar Putra",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 600000,
+     "status": "paid",
+     "tenantName": "Anggit Prasetya",
+     "tenantPhone": "081542310687",
+     "tenantCampus": "Unsoed (Teknik Informatika)",
+     "dueDate": "2026-10-29",
+     "lastPaymentDate": "2026-09-28"
+    },
+    {
+     "id": "room-k26-2",
+     "kosId": "kos-26",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standar Putra",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 600000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k26-3",
+     "kosId": "kos-26",
+     "roomNumber": "3",
+     "floor": 2,
+     "roomType": "Putra Lantai 2",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 700000,
+     "status": "overdue",
+     "tenantName": "Teguh Wibowo",
+     "tenantPhone": "085640127935",
+     "tenantCampus": "Unsoed (Pertanian)",
+     "dueDate": "2026-10-06",
+     "daysOverdue": 7
+    }
+   ]
+  },
+  {
+   "id": "kos-27",
+   "name": "Kost Campur Dukuh Satya UKSW",
+   "slug": "kost-campur-dukuh-satya-uksw",
+   "gender": "campur",
+   "address": "Jl. Cempaka III No. 27, RT 01/RW 03, Jangkungan",
+   "district": "Jangkungan",
+   "city": "Salatiga",
+   "coordinates": {
+    "lat": -7.3225,
+    "lng": 110.4985
+   },
+   "campusProximity": {
+    "campusId": "uksw-salatiga",
+    "campusName": "UKSW",
+    "distanceMeters": 405,
+    "walkMinutes": 5
+   },
+   "rating": 4.7,
+   "reviewCount": 14,
+   "priceMonthlyStart": 850000,
+   "studentDiscountAmount": 85000,
+   "studentDiscountLabel": "Diskon Mhs 10% (Rp 85rb)",
+   "images": [
+    "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560448075-bb485b067938?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1560185007-cde436f6a4d0?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1556912172-45b7abe8b7e1?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin",
+    "Kamar Mandi Dalam + Water Heater",
+    "Kasur Springbed 120x200",
+    "Meja Belajar",
+    "Lemari Pakaian 2 Pintu"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 50 Mbps",
+    "Dapur Bersama",
+    "Ruang Belajar",
+    "Parkir Motor",
+    "Taman Depan"
+   ],
+   "electricityType": "token",
+   "totalRooms": 11,
+   "availableRooms": 2,
+   "owner": {
+    "id": "owner-18",
+    "name": "Ibu Margaretha Lestari",
+    "phone": "081228814506",
+    "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "98% (balas < 20 mnt)",
+    "memberSince": "Desember 2021",
+    "verified": true,
+    "totalProperties": 1,
+    "bio": "Dosen dan pengelola kos dekat UKSW. Suasana kos tenang, cocok untuk mahasiswa yang butuh waktu belajar."
+   },
+   "rules": [
+    {
+     "id": "r27-1",
+     "tier": 1,
+     "categoryTitle": "Akses & Kunjungan",
+     "rules": [
+      "Pagar dikunci pukul 22.30 WIB. Penghuni lawan jenis menempati lantai berbeda.",
+      "Tamu diterima di ruang belajar lantai bawah sampai pukul 21.00 WIB."
+     ]
+    },
+    {
+     "id": "r27-2",
+     "tier": 2,
+     "categoryTitle": "Ketenangan & Ibadah",
+     "rules": [
+      "Jam tenang pukul 21.30 sampai 05.00 WIB. Kegiatan persekutuan dan ibadah kecil boleh dilakukan di ruang belajar dengan izin.",
+      "Dilarang membawa minuman keras ke dalam lingkungan kos."
+     ]
+    },
+    {
+     "id": "r27-3",
+     "tier": 3,
+     "categoryTitle": "Listrik & Pembayaran",
+     "rules": [
+      "Listrik token per kamar.",
+      "Sewa dibayar tanggal 5 setiap bulan, denda Rp 15.000 per hari."
+     ],
+     "penaltyAmount": 15000,
+     "penaltyClause": "Denda telat bayar Rp 15.000 per hari setelah tanggal 5."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-271",
+     "category": "campus",
+     "name": "UKSW (Gerbang Diponegoro)",
+     "distanceMeters": 405,
+     "walkMinutes": 5,
+     "description": "Jalan kaki lewat Jl. Diponegoro yang rindang, udara Salatiga sejuk sepanjang tahun."
+    },
+    {
+     "id": "poi-272",
+     "category": "food",
+     "name": "Roti Tan Ek Tjoan Salatiga",
+     "distanceMeters": 600,
+     "walkMinutes": 8,
+     "description": "Toko roti tua legendaris Salatiga, cocok sebagai oleh-oleh."
+    },
+    {
+     "id": "poi-273",
+     "category": "food",
+     "name": "Warung Makan Bu Tini Dukuh",
+     "distanceMeters": 110,
+     "walkMinutes": 1,
+     "description": "Nasi sayur dan ayam goreng kremes, harga Rp 11.000."
+    },
+    {
+     "id": "poi-274",
+     "category": "laundry",
+     "name": "Satya Laundry Kiloan",
+     "distanceMeters": 130,
+     "walkMinutes": 2,
+     "description": "Rp 6.500/kg, bisa antar jemput."
+    },
+    {
+     "id": "poi-275",
+     "category": "market",
+     "name": "Alfamart Dukuh",
+     "distanceMeters": 200,
+     "walkMinutes": 3,
+     "description": "Buka sampai pukul 23.00, ada ATM BRI."
+    },
+    {
+     "id": "poi-276",
+     "category": "health",
+     "name": "RS Ananda Salatiga",
+     "distanceMeters": 1700,
+     "walkMinutes": 4,
+     "description": "IGD 24 jam, bisa dijangkau ojek online sekitar 7 menit."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k27-101",
+     "kosId": "kos-27",
+     "roomNumber": "101",
+     "floor": 1,
+     "roomType": "Standar Putri",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 850000,
+     "status": "paid",
+     "tenantName": "Grace Natalia",
+     "tenantPhone": "081228540763",
+     "tenantCampus": "UKSW (Teologi)",
+     "dueDate": "2026-10-30",
+     "lastPaymentDate": "2026-09-29"
+    },
+    {
+     "id": "room-k27-102",
+     "kosId": "kos-27",
+     "roomNumber": "102",
+     "floor": 1,
+     "roomType": "Standar Putri",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 850000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k27-201",
+     "kosId": "kos-27",
+     "roomNumber": "201",
+     "floor": 2,
+     "roomType": "Standar Putra Water Heater",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 950000,
+     "status": "paid",
+     "tenantName": "Michael Pramono",
+     "tenantPhone": "085640932157",
+     "tenantCampus": "UKSW (Fisika)",
+     "dueDate": "2026-11-03",
+     "lastPaymentDate": "2026-10-02"
+    },
+    {
+     "id": "room-k27-202",
+     "kosId": "kos-27",
+     "roomNumber": "202",
+     "floor": 2,
+     "roomType": "Standar Putra Water Heater",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 120x200",
+     "priceMonthly": 950000,
+     "status": "booking",
+     "tenantName": "Elia Sembiring (DP Rp250rb)",
+     "tenantPhone": "082230185469",
+     "tenantCampus": "UKSW (Ekonomi)",
+     "dueDate": "2026-10-18"
+    }
+   ]
+  },
+  {
+   "id": "kos-28",
+   "name": "Kost Putri Tegalboto Mawar",
+   "slug": "kost-putri-tegalboto-mawar",
+   "gender": "putri",
+   "address": "Jl. Kalimantan Gg. 6 No. 15, RT 03/RW 02, Tegalboto, Sumbersari",
+   "district": "Tegalboto",
+   "city": "Jember",
+   "coordinates": {
+    "lat": -8.1672,
+    "lng": 113.7185
+   },
+   "campusProximity": {
+    "campusId": "unej-jember",
+    "campusName": "Unej",
+    "distanceMeters": 439,
+    "walkMinutes": 5
+   },
+   "rating": 4.3,
+   "reviewCount": 6,
+   "priceMonthlyStart": 480000,
+   "studentDiscountAmount": 0,
+   "studentDiscountLabel": "",
+   "images": [
+    "https://images.unsplash.com/photo-1595526051245-4506e0005bd0?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1484101403633-562f891dc89a?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=800&auto=format&fit=crop&q=80"
+   ],
+   "privateAmenities": [
+    "Kipas Angin",
+    "Kamar Mandi Dalam",
+    "Kasur Busa 100x200",
+    "Meja Belajar",
+    "Lemari Pakaian"
+   ],
+   "sharedAmenities": [
+    "Wi-Fi 20 Mbps",
+    "Dapur Bersama",
+    "Ruang Tamu",
+    "Jemuran",
+    "Parkir Motor"
+   ],
+   "electricityType": "included",
+   "totalRooms": 7,
+   "availableRooms": 2,
+   "owner": {
+    "id": "owner-19",
+    "name": "Pak Agus Setiawan",
+    "phone": "085236790142",
+    "avatar": "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=160&auto=format&fit=crop&q=80",
+    "responseRate": "91% (balas < 1 jam)",
+    "memberSince": "Maret 2023",
+    "verified": false,
+    "totalProperties": 1,
+    "bio": "Membuka kos putri di Tegalboto agar anak perempuan sendiri dan teman-temannya punya tempat tinggal yang aman."
+   },
+   "rules": [
+    {
+     "id": "r28-1",
+     "tier": 1,
+     "categoryTitle": "Khusus Putri & Jam Malam",
+     "rules": [
+      "Gerbang dikunci pukul 21.30 WIB. Keperluan pulang malam harus lapor ke pengelola.",
+      "Tamu laki-laki hanya boleh sampai teras depan."
+     ]
+    },
+    {
+     "id": "r28-2",
+     "tier": 2,
+     "categoryTitle": "Kebersihan",
+     "rules": [
+      "Kamar dan kamar mandi dalam dibersihkan oleh penghuni, lorong disapu bergilir.",
+      "Dilarang menjemur pakaian di pagar depan."
+     ]
+    },
+    {
+     "id": "r28-3",
+     "tier": 3,
+     "categoryTitle": "Pembayaran",
+     "rules": [
+      "Sewa dibayar paling lambat tanggal 10 setiap bulan, denda Rp 5.000 per hari.",
+      "Listrik sudah termasuk untuk laptop dan kipas angin."
+     ],
+     "penaltyAmount": 5000,
+     "penaltyClause": "Denda telat bayar Rp 5.000 per hari setelah tanggal 10."
+    }
+   ],
+   "pois": [
+    {
+     "id": "poi-281",
+     "category": "campus",
+     "name": "Universitas Jember (Gerbang Kalimantan)",
+     "distanceMeters": 439,
+     "walkMinutes": 5,
+     "description": "Jalan kaki lewat Jl. Kalimantan, ramai dan terang sampai malam."
+    },
+    {
+     "id": "poi-282",
+     "category": "food",
+     "name": "Pecel Rawon Bu Yati Jember",
+     "distanceMeters": 120,
+     "walkMinutes": 2,
+     "description": "Pecel dan rawon, harga mahasiswa Rp 10.000."
+    },
+    {
+     "id": "poi-283",
+     "category": "food",
+     "name": "Tape Manis Suwar Suwir",
+     "distanceMeters": 700,
+     "walkMinutes": 9,
+     "description": "Oleh-oleh khas Jember, tape dan suwar-suwir."
+    },
+    {
+     "id": "poi-284",
+     "category": "laundry",
+     "name": "Tegalboto Laundry",
+     "distanceMeters": 140,
+     "walkMinutes": 2,
+     "description": "Rp 5.000/kg cuci setrika."
+    },
+    {
+     "id": "poi-285",
+     "category": "market",
+     "name": "Alfamart Kalimantan",
+     "distanceMeters": 190,
+     "walkMinutes": 2,
+     "description": "Buka sampai pukul 23.00."
+    },
+    {
+     "id": "poi-286",
+     "category": "print",
+     "name": "Fotokopi Berkah Unej",
+     "distanceMeters": 160,
+     "walkMinutes": 2,
+     "description": "Print dan jilid skripsi, harga sangat murah."
+    }
+   ],
+   "rooms": [
+    {
+     "id": "room-k28-1",
+     "kosId": "kos-28",
+     "roomNumber": "1",
+     "floor": 1,
+     "roomType": "Standar Putri",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 480000,
+     "status": "paid",
+     "tenantName": "Dewi Kurniasih",
+     "tenantPhone": "085236019824",
+     "tenantCampus": "Unej (Keperawatan)",
+     "dueDate": "2026-10-31",
+     "lastPaymentDate": "2026-09-30"
+    },
+    {
+     "id": "room-k28-2",
+     "kosId": "kos-28",
+     "roomNumber": "2",
+     "floor": 1,
+     "roomType": "Standar Putri",
+     "size": "3 x 3 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 480000,
+     "status": "vacant"
+    },
+    {
+     "id": "room-k28-3",
+     "kosId": "kos-28",
+     "roomNumber": "3",
+     "floor": 2,
+     "roomType": "Putri Lantai 2",
+     "size": "3 x 3.5 m",
+     "bedType": "Single Bed 100x200",
+     "priceMonthly": 550000,
+     "status": "due",
+     "tenantName": "Nadiyah Qurrota",
+     "tenantPhone": "081334720591",
+     "tenantCampus": "Unej (FKIP)",
+     "dueDate": "2026-10-13",
+     "daysOverdue": 0
     }
    ]
   }

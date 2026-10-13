@@ -82,6 +82,19 @@ const EMAIL_DOMAINS: Record<string, string[]> = {
   'binus-kijang': ['binus.ac.id', 'student.binus.ac.id'],
   'ui-depok': ['ui.ac.id'],
   'itb-ganesha': ['itb.ac.id', 'students.itb.ac.id'],
+  'ipb-dramaga': ['apps.ipb.ac.id'],
+  'umn-gading-serpong': ['student.umn.ac.id'],
+  'president-university': ['student.president.ac.id'],
+  'undip-tembalang': ['students.undip.ac.id'],
+  'ugm-bulaksumur': ['mail.ugm.ac.id'],
+  'uns-kentingan': ['student.uns.ac.id'],
+  'its-sukolilo': ['student.its.ac.id'],
+  'ub-malang': ['student.ub.ac.id'],
+  'untirta-serang': ['untirta.ac.id', 'students.untirta.ac.id'],
+  'unsil-tasikmalaya': ['student.unsil.ac.id'],
+  'unsoed-purwokerto': ['mhs.unsoed.ac.id'],
+  'uksw-salatiga': ['student.uksw.edu'],
+  'unej-jember': ['mail.unej.ac.id', 'students.unej.ac.id'],
 }
 
 const MONTHS: Record<string, number> = {
