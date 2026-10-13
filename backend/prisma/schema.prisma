@@ -28,12 +28,13 @@ model User {
   campusEmailVerifiedAt DateTime? @db.Timestamptz(3)
   isDemo                Boolean   @default(false)
 
-  sessions        Session[]
-  accounts        Account[]
-  ownerProfile    OwnerProfile?
-  tenancies       Tenancy[]
-  visits          Visit[]
-  waitlistEntries WaitlistEntry[]
+  sessions           Session[]
+  accounts           Account[]
+  ownerProfile       OwnerProfile?
+  tenancies          Tenancy[]
+  visits             Visit[]
+  waitlistEntries    WaitlistEntry[]
+  rentalApplications RentalApplication[]
 }
 
 model Session {
@@ -105,6 +106,13 @@ enum TenancyStatus {
   PENDING
   ACTIVE
   ENDED
+}
+
+enum RentalApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
 }
 
 enum InvoiceStatus {
@@ -223,8 +231,9 @@ model Room {
   priceMonthly Int
   occupancy    Occupancy @default(VACANT)
 
-  tenancies      Tenancy[]
-  waitlistOffers WaitlistEntry[]
+  tenancies          Tenancy[]
+  waitlistOffers     WaitlistEntry[]
+  rentalApplications RentalApplication[]
 
   @@unique([kosId, roomNumber])
 }
@@ -242,11 +251,33 @@ model Tenancy {
   endedAt        DateTime?     @db.Timestamptz(3)
   createdAt      DateTime      @default(now()) @db.Timestamptz(3)
 
-  invoices Invoice[]
-  review   Review?
+  invoices          Invoice[]
+  review            Review?
+  rentalApplication RentalApplication?
 
   @@index([roomId])
   @@index([userId])
+}
+
+model RentalApplication {
+  id             String                  @id @default(cuid(2))
+  roomId         String
+  room           Room                    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         RentalApplicationStatus @default(PENDING)
+  startDate      DateTime                @db.Date
+  durationMonths Int
+  occupation     String
+  note           String?
+  tenancyId      String?                 @unique
+  tenancy        Tenancy?                @relation(fields: [tenancyId], references: [id], onDelete: SetNull)
+  decidedAt      DateTime?               @db.Timestamptz(3)
+  createdAt      DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                @updatedAt @db.Timestamptz(3)
+
+  @@index([roomId, status, createdAt])
+  @@index([userId, createdAt])
 }
 
 model Invoice {

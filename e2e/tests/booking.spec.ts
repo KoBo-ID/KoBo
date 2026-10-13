@@ -1,9 +1,8 @@
 import { test, expect, loginAs } from './fixtures'
 
-// Money flow 1 (spec section 11): book -> pay -> ACTIVE. The e2e database is reseeded when the server starts.
-// No hard-coded counts: the room is whatever the kos page preselects as the first vacant one.
+// Application flow: renter applies -> owner approves -> renter pays -> ACTIVE.
 
-test('demo student books a vacant room, simulates payment and sees it ACTIVE in Kos Saya', async ({ page }) => {
+test('demo student applies, gets owner approval, pays and sees an active rental', async ({ page, browser }) => {
   await loginAs(page, 'student')
 
   // kos.detail tells us which kos still has a vacant room (seed numbers may change).
@@ -13,21 +12,27 @@ test('demo student books a vacant room, simulates payment and sees it ACTIVE in 
   expect(kos, 'a kos with a vacant room').toBeTruthy()
 
   await page.goto(`/kos/${kos!.id}`)
-  await page.getByRole('button', { name: 'Ajukan Sewa & Bayar' }).click()
+  await page.getByRole('button', { name: 'Ajukan Sewa' }).click()
   await expect(page).toHaveURL(new RegExp(`/checkout/${kos!.id}\\?room=`))
 
-  // The server-shaped breakdown is on screen before paying.
-  const total = page.getByTestId('checkout-total')
-  await expect(total).toContainText('Rp')
+  await page.getByLabel('Pekerjaan atau kegiatan utama').fill('Mahasiswa BINUS')
+  await page.getByRole('button', { name: 'Kirim Pengajuan' }).click()
+  await expect(page.getByRole('heading', { name: 'Pengajuan Terkirim' })).toBeVisible()
+  await page.getByRole('link', { name: 'Pantau Pengajuan' }).click()
+  await expect(page.getByTestId('application-card').filter({ hasText: kos!.name })).toContainText('Menunggu Pemilik')
 
-  await page.getByRole('button', { name: /Pesan & Bayar/ }).click()
-  await expect(page.getByTestId('payment-instruction')).toBeVisible()
+  const ownerContext = await browser.newContext({ baseURL: test.info().project.use.baseURL })
+  const ownerPage = await ownerContext.newPage()
+  await loginAs(ownerPage, 'owner')
+  await ownerPage.goto(`/owner/dashboard?kos=${kos!.id}`)
+  ownerPage.once('dialog', (dialog) => dialog.accept())
+  await ownerPage.getByTestId('owner-application').filter({ hasText: 'Mahasiswa BINUS' }).getByRole('button', { name: 'Terima' }).click()
+  await expect(ownerPage.getByTestId('owner-application').filter({ hasText: 'Mahasiswa BINUS' })).toHaveCount(0)
+  await ownerContext.close()
 
+  await page.reload()
+  await expect(page.getByTestId('application-card').filter({ hasText: kos!.name })).toContainText('Diterima')
   await page.getByRole('button', { name: 'Simulasikan Pembayaran' }).click()
-  await expect(page.getByRole('heading', { name: 'Pembayaran Berhasil' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Lihat Kuitansi' })).toHaveAttribute('href', /\/kuitansi\/\d+$/)
-
-  await page.getByRole('link', { name: 'Buka Kos Saya' }).click()
   await expect(page).toHaveURL(/\/my-kos/)
   const card = page.getByTestId('tenancy-card').filter({ hasText: kos!.name }).first()
   await expect(card).toHaveAttribute('data-status', 'ACTIVE')
@@ -36,7 +41,7 @@ test('demo student books a vacant room, simulates payment and sees it ACTIVE in 
 
 test('checkout asks a signed-out visitor to sign in instead of booking', async ({ page }) => {
   await page.goto('/kos/kos-1')
-  await page.getByRole('button', { name: 'Ajukan Sewa & Bayar' }).click()
+  await page.getByRole('button', { name: 'Ajukan Sewa' }).click()
   await expect(page).toHaveURL(/\/checkout\/kos-1/)
-  await expect(page.getByRole('button', { name: 'Masuk untuk Memesan' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Masuk untuk Mengajukan' })).toBeVisible()
 })

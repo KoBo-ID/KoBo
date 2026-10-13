@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Users, DollarSign, AlertCircle, AlertTriangle, MessageSquare, CheckCircle2, Hourglass } from 'lucide-react';
 import type { BoardRoom } from '../../../../backend/src/trpc/router';
 import { RoomOccupancyBoard } from '../../components/owner/RoomOccupancyBoard';
+import { ApplicationsPanel } from '../../components/owner/ApplicationsPanel';
 import { VisitsPanel } from '../../components/owner/VisitsPanel';
 import { WhatsAppModal } from '../../components/owner/WhatsAppModal';
 import { RoomStatus } from '../../types';
@@ -211,6 +212,8 @@ export const OwnerDashboard: React.FC = () => {
 
       {hasAttention && attentionSection}
       {hasVisitAttention && visitsSection}
+
+      <ApplicationsPanel kosId={selectedKos.id} />
 
       <RoomOccupancyBoard
         kosName={selectedKos.name}

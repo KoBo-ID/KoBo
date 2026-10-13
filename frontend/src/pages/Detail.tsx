@@ -247,12 +247,12 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <h4 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{kos.owner.name}</h4>
-                  <span style={{ color: 'var(--primary)' }}>
+                  {kos.owner.verified && <span style={{ color: 'var(--primary)' }} aria-label="Pemilik terverifikasi">
                     <ShieldCheck size={18} />
-                  </span>
+                  </span>}
                 </div>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                  Pemilik Terverifikasi · Respon {kos.owner.responseRate} · Bergabung sejak {kos.owner.memberSince}
+                  {kos.owner.verified ? 'Pemilik terverifikasi' : 'Identitas belum diverifikasi'} · Respon {kos.owner.responseRate} · Bergabung sejak {kos.owner.memberSince}
                 </p>
               </div>
             </div>

@@ -3,6 +3,7 @@ import { addDays, computeCheckoutTotal, deriveRoomStatus, formatReceiptNo, today
 import { bookingCreateInput } from '@kobo/shared/schemas'
 import type { RoomStatus } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
+import type { Prisma } from '../generated/prisma/client.ts'
 import { mockInstructions } from '../payments.ts'
 import { advanceWaitlist, liveOffer } from '../waitlist.ts'
 import { reviewEditable, reviewEligible } from './review.ts'
@@ -86,17 +87,90 @@ export interface MyTenancy {
   review: MyReview | null
 }
 
-const OFFERED_ELSEWHERE = Symbol('offered-elsewhere')
+export const OFFERED_ELSEWHERE = Symbol('offered-elsewhere')
 
 const dateOnly = (d: Date) => d.toISOString().slice(0, 10)
 
 /** Unique-violation on the one-live-tenancy-per-room index, whichever shape the driver adapter reports it in. */
-function isRoomTakenError(e: unknown): boolean {
+export function isRoomTakenError(e: unknown): boolean {
   const err = e as { code?: string; message?: string; meta?: { driverAdapterError?: { cause?: { kind?: string; constraint?: unknown } } } } | null
   if (!err) return false
   if (err.code === 'P2002') return true
   const text = `${err.message ?? ''} ${JSON.stringify(err.meta ?? {})}`
   return text.includes('tenancy_one_active_per_room') || text.includes('23505')
+}
+
+interface PendingBookingInput {
+  userId: string
+  startDate: string
+  durationMonths: number
+  campusEmailVerified: boolean
+  room: {
+    id: string
+    kosId: string
+    priceMonthly: number
+    kos: { applicationFee: number; studentDiscountAmount: number }
+  }
+  now: Date
+}
+
+/** Creates the existing timed payment hold inside the caller's transaction. */
+export async function createPendingBooking(tx: Prisma.TransactionClient, input: PendingBookingInput): Promise<BookingCreated | typeof OFFERED_ELSEWHERE> {
+  const { room, now } = input
+  const breakdown = computeCheckoutTotal({
+    monthlyRent: room.priceMonthly,
+    applicationFee: room.kos.applicationFee,
+    discountAmount: room.kos.studentDiscountAmount,
+    campusEmailVerified: input.campusEmailVerified,
+  })
+  const dueDate = new Date(`${input.startDate}T00:00:00Z`)
+  const externalId = `mock_${randomUUID()}`
+
+  await tx.tenancy.updateMany({
+    where: { roomId: room.id, status: 'PENDING', expiresAt: { lt: now } },
+    data: { status: 'ENDED', endedAt: now },
+  })
+  await advanceWaitlist(tx, room.kosId, now)
+  const offer = await tx.waitlistEntry.findFirst({ where: { offeredRoomId: room.id, ...liveOffer(now) }, select: { userId: true } })
+  if (offer && offer.userId !== input.userId) return OFFERED_ELSEWHERE
+
+  const tenancy = await tx.tenancy.create({
+    data: {
+      roomId: room.id,
+      userId: input.userId,
+      status: 'PENDING',
+      startDate: new Date(`${input.startDate}T00:00:00+07:00`),
+      durationMonths: input.durationMonths,
+      expiresAt: new Date(now.getTime() + HOLD_HOURS * 3600_000),
+    },
+  })
+  const invoice = await tx.invoice.create({
+    data: { tenancyId: tenancy.id, periodStart: dueDate, dueDate, amount: breakdown.total, status: 'UNPAID' },
+  })
+  const payment = await tx.payment.create({
+    data: { invoiceId: invoice.id, provider: 'MOCK', externalId, amount: breakdown.total, status: 'PENDING' },
+  })
+
+  const queued = await tx.waitlistEntry.findMany({
+    where: { kosId: room.kosId, userId: input.userId, status: { in: ['WAITING', 'OFFERED'] } },
+    select: { id: true, status: true, offeredRoomId: true },
+  })
+  if (queued.length > 0) {
+    await tx.waitlistEntry.updateMany({ where: { id: { in: queued.map((q) => q.id) } }, data: { status: 'FULFILLED', resolvedAt: now } })
+    if (queued.some((q) => q.status === 'OFFERED' && q.offeredRoomId !== room.id)) await advanceWaitlist(tx, room.kosId, now)
+  }
+
+  return {
+    tenancyId: tenancy.id,
+    roomId: room.id,
+    kosId: room.kosId,
+    expiresAt: tenancy.expiresAt!.toISOString(),
+    startDate: input.startDate,
+    durationMonths: input.durationMonths,
+    invoiceId: invoice.id,
+    breakdown,
+    payment: { id: payment.id, externalId, provider: 'MOCK', status: 'PENDING', amount: payment.amount, instructions: mockInstructions(externalId) },
+  }
 }
 
 export const bookingRouter = router({
@@ -119,60 +193,16 @@ export const bookingRouter = router({
     if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kamar tidak ditemukan.' })
     if (!user) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Silakan masuk terlebih dahulu.' })
 
-    const breakdown = computeCheckoutTotal({
-      monthlyRent: room.priceMonthly,
-      applicationFee: room.kos.applicationFee,
-      discountAmount: room.kos.studentDiscountAmount,
-      campusEmailVerified: user.campusEmailVerifiedAt !== null,
-    })
-    const dueDate = new Date(`${input.startDate}T00:00:00Z`)
-    const externalId = `mock_${randomUUID()}`
-
     try {
       const booked = await prisma.$transaction(async (tx): Promise<BookingCreated | typeof OFFERED_ELSEWHERE> => {
-        await tx.tenancy.updateMany({
-          where: { roomId: room.id, status: 'PENDING', expiresAt: { lt: now } },
-          data: { status: 'ENDED', endedAt: now },
-        })
-        // Holds lapse lazily, so settle the queue now: a room that just came free is already offered to #1 when the guard below runs.
-        await advanceWaitlist(tx, room.kosId, now)
-        const offer = await tx.waitlistEntry.findFirst({ where: { offeredRoomId: room.id, ...liveOffer(now) }, select: { userId: true } })
-        // Returned, not thrown: the advance above must commit so the room really is offered to #1 (and #1 gets the email).
-        if (offer && offer.userId !== ctx.user.id) return OFFERED_ELSEWHERE
-        const tenancy = await tx.tenancy.create({
-          data: {
-            roomId: room.id,
-            userId: ctx.user.id,
-            status: 'PENDING',
-            startDate: new Date(`${input.startDate}T00:00:00+07:00`),
-            durationMonths: input.durationMonths,
-            expiresAt: new Date(now.getTime() + HOLD_HOURS * 3600_000),
-          },
-        })
-        const invoice = await tx.invoice.create({
-          data: { tenancyId: tenancy.id, periodStart: dueDate, dueDate, amount: breakdown.total, status: 'UNPAID' },
-        })
-        const payment = await tx.payment.create({
-          data: { invoiceId: invoice.id, provider: 'MOCK', externalId, amount: breakdown.total, status: 'PENDING' },
-        })
-        // Booking ends this student's place in the queue (their offer, or a waiting entry when they take another open room).
-        const queued = await tx.waitlistEntry.findMany({ where: { kosId: room.kosId, userId: ctx.user.id, status: { in: ['WAITING', 'OFFERED'] } }, select: { id: true, status: true, offeredRoomId: true } })
-        if (queued.length > 0) {
-          await tx.waitlistEntry.updateMany({ where: { id: { in: queued.map((q) => q.id) } }, data: { status: 'FULFILLED', resolvedAt: now } })
-          // An offer on a different room than the one booked is released to the next entry.
-          if (queued.some((q) => q.status === 'OFFERED' && q.offeredRoomId !== room.id)) await advanceWaitlist(tx, room.kosId, now)
-        }
-        return {
-          tenancyId: tenancy.id,
-          roomId: room.id,
-          kosId: room.kosId,
-          expiresAt: tenancy.expiresAt!.toISOString(),
+        return createPendingBooking(tx, {
+          userId: ctx.user.id,
           startDate: input.startDate,
           durationMonths: input.durationMonths,
-          invoiceId: invoice.id,
-          breakdown,
-          payment: { id: payment.id, externalId, provider: 'MOCK', status: 'PENDING', amount: payment.amount, instructions: mockInstructions(externalId) },
-        }
+          campusEmailVerified: user.campusEmailVerifiedAt !== null,
+          room,
+          now,
+        })
       })
       if (booked === OFFERED_ELSEWHERE) throw new TRPCError({ code: 'CONFLICT', message: OFFERED_ELSEWHERE_MESSAGE })
       return booked

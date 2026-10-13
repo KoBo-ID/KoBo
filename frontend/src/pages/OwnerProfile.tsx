@@ -81,7 +81,7 @@ export const OwnerProfile: React.FC = () => {
                 <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>
                   {owner.name}
                 </h1>
-                <div
+                {owner.verified && <div
                   style={{
                     backgroundColor: 'var(--primary-light)',
                     color: 'var(--primary)',
@@ -96,7 +96,7 @@ export const OwnerProfile: React.FC = () => {
                 >
                   <ShieldCheck size={14} />
                   <span>Pemilik Kos Terverifikasi KoBo</span>
-                </div>
+                </div>}
               </div>
 
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.35rem', maxWidth: '640px', lineHeight: 1.5 }}>

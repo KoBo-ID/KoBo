@@ -1,5 +1,5 @@
 import React from 'react';
-import { CreditCard, Calendar, GraduationCap, ShieldCheck } from 'lucide-react';
+import { ClipboardList, Calendar, GraduationCap, ShieldCheck } from 'lucide-react';
 import type { WaitlistStatusResult } from '../../../../../backend/src/trpc/router';
 import { Room, Kos } from '../../../types';
 import { Button } from '../../ui/Button';
@@ -199,9 +199,9 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
               fullWidth
               disabled={!isVacant}
               onClick={onGoToCheckout}
-              icon={<CreditCard size={18} />}
+              icon={<ClipboardList size={18} />}
             >
-              {isVacant ? 'Ajukan Sewa & Bayar' : 'Kamar Saat Ini Terisi'}
+              {isVacant ? 'Ajukan Sewa' : 'Kamar Saat Ini Terisi'}
             </Button>
           )}
 

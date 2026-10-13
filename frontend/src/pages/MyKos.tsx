@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Home, Calendar, FileText, FlaskConical, MessageSquare, ShieldCheck, Star } from 'lucide-react';
+import { Home, Calendar, FileText, FlaskConical, MessageSquare, ShieldCheck, Star, ClipboardList } from 'lucide-react';
 import type { MyReview } from '../../../backend/src/trpc/router';
 import { ReviewFormModal } from '../components/kos/ReviewFormModal';
 import { WaitlistSection } from '../components/booking/WaitlistSection';
@@ -29,6 +29,13 @@ const TENANCY_BADGE: Record<string, { label: string; bg: string; color: string }
   vacant: { label: 'Selesai', bg: 'var(--bg-muted)', color: 'var(--text-muted)' },
 };
 
+const APPLICATION_BADGE = {
+  PENDING: { label: 'Menunggu Pemilik', bg: 'var(--status-due-bg)', color: 'var(--status-due)' },
+  APPROVED: { label: 'Diterima', bg: 'var(--status-paid-bg)', color: 'var(--status-paid)' },
+  REJECTED: { label: 'Tidak Diterima', bg: 'var(--status-overdue-bg)', color: 'var(--status-overdue)' },
+  WITHDRAWN: { label: 'Dibatalkan', bg: 'var(--bg-muted)', color: 'var(--text-muted)' },
+} as const;
+
 const Fact: React.FC<{ label: string; value: string; strong?: boolean }> = ({ label, value, strong }) => (
   <div>
     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>{label}</span>
@@ -45,6 +52,7 @@ export const MyKos: React.FC = () => {
   const [reviewing, setReviewing] = useState<{ tenancyId: string; kosName: string; existing: MyReview | null } | null>(null);
 
   const mine = useQuery({ ...trpc.booking.mine.queryOptions(), enabled: !!me });
+  const applicationQuery = useQuery({ ...trpc.application.mine.queryOptions(), enabled: !!me });
   const visitsQuery = useQuery({ ...trpc.visit.mine.queryOptions(), enabled: !!me });
   const visits = me ? (visitsQuery.data ?? []) : [];
   const scheduledCount = visits.filter((v) => v.status === 'SCHEDULED').length;
@@ -68,6 +76,7 @@ export const MyKos: React.FC = () => {
   const rentals = (me ? (mine.data ?? []) : []).filter(
     (t) => t.status === 'ACTIVE' || (t.status === 'PENDING' && t.derivedStatus === 'booking') || t.invoices.some((i) => i.status === 'PAID'),
   );
+  const applications = me ? (applicationQuery.data ?? []) : [];
 
   return (
     <div className="app-container" style={{ maxWidth: '960px', paddingTop: '2.5rem', paddingBottom: '4rem' }}>
@@ -125,8 +134,35 @@ export const MyKos: React.FC = () => {
           )}
           {me && mine.isPending && <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat kamar Anda…</p>}
           {me && mine.isError && <ErrorState message="Gagal memuat daftar sewa Anda." onRetry={() => void mine.refetch()} minHeight="10rem" />}
+          {me && applicationQuery.isError && <ErrorState message="Gagal memuat pengajuan sewa Anda." onRetry={() => void applicationQuery.refetch()} minHeight="8rem" />}
           {simulate.isError && <Notice tone="error">{messageForError(simulate.error)}</Notice>}
           {me && <WaitlistSection />}
+
+          {applications.length > 0 && (
+            <section aria-labelledby="applications-title" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <h2 id="applications-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem', fontWeight: 700 }}><ClipboardList size={18} /> Pengajuan Sewa</h2>
+              {applications.map((application) => {
+                const badge = APPLICATION_BADGE[application.status];
+                return (
+                  <div key={application.id} data-testid="application-card" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
+                      {application.kos.image ? <img src={application.kos.image} alt="" style={{ width: '52px', height: '52px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }} /> : <ClipboardList size={24} color="var(--text-subtle)" />}
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <strong>{application.kos.name}</strong>
+                          <span style={{ backgroundColor: badge.bg, color: badge.color, fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-xs)' }}>{badge.label}</span>
+                        </div>
+                        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Kamar {application.room.roomNumber} · mulai {formatDate(application.startDate)} · {application.durationMonths} bulan</p>
+                        {application.status === 'PENDING' && <p style={{ fontSize: '0.76rem', color: 'var(--text-subtle)', marginTop: '0.15rem' }}>Kamar belum ditahan. Pemilik sedang meninjau pengajuan.</p>}
+                        {application.status === 'APPROVED' && <p style={{ fontSize: '0.76rem', color: 'var(--status-paid)', marginTop: '0.15rem' }}>Pengajuan diterima. Selesaikan pembayaran pada kartu kamar di bawah.</p>}
+                      </div>
+                    </div>
+                    <Link to={`/kos/${application.kos.id}`}><Button variant="outline" size="sm">Lihat Kos</Button></Link>
+                  </div>
+                );
+              })}
+            </section>
+          )}
 
           {rentals.map((t) => {
             const badge = TENANCY_BADGE[t.derivedStatus] ?? TENANCY_BADGE.paid;
@@ -230,7 +266,7 @@ export const MyKos: React.FC = () => {
             );
           })}
 
-          {me && mine.isSuccess && rentals.length === 0 && (
+          {me && mine.isSuccess && applicationQuery.isSuccess && rentals.length === 0 && applications.length === 0 && (
             <div style={{ textAlign: 'center', padding: '4rem 1rem', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
               <Home size={40} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>Belum Ada Kamar Kos yang Disewa</h3>

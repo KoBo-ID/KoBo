@@ -34,6 +34,17 @@ export const bookingCreateInput = z.object({
 })
 export type BookingCreateInput = z.input<typeof bookingCreateInput>
 
+export const rentalApplicationCreateInput = bookingCreateInput.extend({
+  occupation: z.string().trim().min(2).max(120),
+  note: z.string().trim().max(500).optional(),
+})
+
+export const rentalApplicationDecisionInput = z.object({
+  kosId: z.string().min(1).max(64),
+  applicationId: z.string().min(1).max(64),
+  decision: z.enum(['APPROVE', 'REJECT']),
+})
+
 export const paymentIdInput = z.object({ paymentId: z.string().min(1).max(64) })
 
 /** `kosId` is required by ownerProcedure (the authorization root); the invoice must belong to that kos. */

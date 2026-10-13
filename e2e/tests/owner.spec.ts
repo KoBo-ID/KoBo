@@ -20,7 +20,7 @@ test('owner marks a booked room paid and opens its kuitansi', async ({ page, bro
   expect(kos, 'an owner kos with a vacant room').toBeTruthy()
   const vacant = kos!.rooms.filter((r) => r.status === 'vacant')
 
-  // A second account books a vacant room: invoice 1 is now unpaid and the room reads "Booking".
+  // A second account applies, then the owner approves it: invoice 1 is unpaid and the room reads "Booking".
   // Parallel tests may grab the same room, so a CONFLICT just means "try another one".
   const baseURL = test.info().project.use.baseURL as string
   const tenantCtx = await browser.newContext({ baseURL })
@@ -29,8 +29,8 @@ test('owner marks a booked room paid and opens its kuitansi', async ({ page, bro
   const startDate = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
   let room: Room | undefined
   for (const candidate of [...vacant].sort(() => Math.random() - 0.5)) {
-    const res = await tenantCtx.request.post('/api/trpc/booking.create', {
-      data: { roomId: candidate.id, startDate, durationMonths: 3 },
+    const res = await tenantCtx.request.post('/api/trpc/application.create', {
+      data: { roomId: candidate.id, startDate, durationMonths: 3, occupation: 'Mahasiswa penguji' },
       headers: { origin: new URL(baseURL).origin },
     })
     if (res.ok()) {
@@ -39,10 +39,14 @@ test('owner marks a booked room paid and opens its kuitansi', async ({ page, bro
     }
     expect(res.status(), 'only a lost race may fail').toBe(409)
   }
-  expect(room, 'tenant booked a vacant room').toBeTruthy()
+  expect(room, 'tenant applied for a vacant room').toBeTruthy()
   await tenantCtx.close()
 
   await page.goto(`/owner/dashboard?kos=${kos!.id}`)
+  const application = page.getByTestId('owner-application').filter({ hasText: `Kamar ${room!.roomNumber}` })
+  page.once('dialog', (dialog) => dialog.accept())
+  await application.getByRole('button', { name: 'Terima' }).click()
+  await expect(application).toHaveCount(0)
   const row = page.getByRole('row').filter({ hasText: `Kamar ${room!.roomNumber}` })
   await expect(row.getByText('Booking', { exact: true })).toBeVisible()
 

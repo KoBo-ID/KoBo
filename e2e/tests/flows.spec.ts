@@ -109,7 +109,7 @@ test('owner profile lists that owner kos from owner.publicProfile', async ({ pag
 
 test('detail to checkout navigation', async ({ page }) => {
   await page.goto('/kos/kos-1')
-  await page.getByRole('button', { name: 'Ajukan Sewa & Bayar' }).click()
+  await page.getByRole('button', { name: 'Ajukan Sewa' }).click()
   await expect(page).toHaveURL(/\/checkout\/kos-1/)
   await expect(page.getByRole('heading').first()).toBeVisible()
 })
