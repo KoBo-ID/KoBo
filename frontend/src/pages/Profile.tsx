@@ -82,7 +82,7 @@ export const Profile: React.FC = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr',
+          gridTemplateColumns: 'minmax(0, 1fr)',
           gap: '2rem',
           alignItems: 'start',
         }}

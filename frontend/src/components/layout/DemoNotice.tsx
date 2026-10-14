@@ -33,6 +33,7 @@ export const DemoNotice: React.FC = () => {
         type="button"
         onClick={() => reset.mutate()}
         disabled={reset.isPending}
+        className="demo-notice__btn"
         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontWeight: 600, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'inherit' }}
       >
         <RotateCcw size={13} aria-hidden="true" />

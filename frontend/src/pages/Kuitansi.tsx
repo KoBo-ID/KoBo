@@ -19,9 +19,9 @@ const METHOD_LABEL = {
 } as const;
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '0.5rem' }}>
+  <div className="kuitansi-row">
     <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{label}</span>
-    <span>{children}</span>
+    <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{children}</span>
   </div>
 );
 
@@ -67,38 +67,13 @@ export const Kuitansi: React.FC = () => {
           backgroundColor: 'var(--bg-surface)',
           border: '2px solid var(--border-strong)',
           borderRadius: 'var(--radius-md)',
-          padding: '2rem',
           position: 'relative',
           boxShadow: 'var(--shadow-sm)',
           color: 'var(--text-main)',
           fontFamily: 'var(--font-sans)',
         }}
       >
-        <div
-          style={{
-            position: 'absolute',
-            right: '2.5rem',
-            bottom: '2.5rem',
-            border: '3px dashed var(--primary)',
-            borderRadius: 'var(--radius-md)',
-            padding: '0.6rem 1rem',
-            color: 'var(--primary)',
-            fontWeight: 800,
-            fontSize: '0.85rem',
-            textTransform: 'uppercase',
-            pointerEvents: 'none',
-            opacity: 0.85,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
-          <ShieldCheck size={26} />
-          <span>LUNAS · TERCATAT</span>
-          <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>KOBO</span>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: '1.25rem', borderBottom: '2px solid var(--border-subtle)', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem 1rem', paddingBottom: '1.25rem', borderBottom: '2px solid var(--border-subtle)', marginBottom: '1.5rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
@@ -139,6 +114,8 @@ export const Kuitansi: React.FC = () => {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'baseline',
+              flexWrap: 'wrap',
+              gap: '0.25rem 1rem',
             }}
           >
             <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)' }}>JUMLAH DITERIMA:</span>
@@ -146,14 +123,19 @@ export const Kuitansi: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '2.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem', marginTop: '2.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', maxWidth: '320px' }}>
             Dokumen ini diterbitkan otomatis oleh sistem KoBo dan sah tanpa tanda tangan basah.
           </div>
-          <div style={{ textAlign: 'center', minWidth: '180px' }}>
+          <div style={{ textAlign: 'center', minWidth: '180px', flex: '0 1 auto' }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '1.75rem' }}>Pengelola Kos,</span>
             <span style={{ fontSize: '0.875rem', fontWeight: 700, textDecoration: 'underline' }}>{k.owner.name}</span>
           </div>
+        </div>
+        <div className="kuitansi-stamp">
+          <ShieldCheck size={26} />
+          <span>LUNAS · TERCATAT</span>
+          <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>KOBO</span>
         </div>
       </div>
 

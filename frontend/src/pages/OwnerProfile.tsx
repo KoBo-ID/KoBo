@@ -69,16 +69,16 @@ export const OwnerProfile: React.FC = () => {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
             <Avatar
               src={owner.avatar}
               name={owner.name}
               size={90}
               style={{ border: '3px solid var(--primary-light)', boxShadow: 'var(--shadow-md)' }}
             />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h1 style={{ fontSize: 'clamp(1.4rem, 1.1rem + 1.2vw, 1.75rem)', fontWeight: 800, color: 'var(--text-main)' }}>
                   {owner.name}
                 </h1>
                 {owner.verified && <div

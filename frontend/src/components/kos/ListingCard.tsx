@@ -93,7 +93,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
           >
             <button
               onClick={handlePrevImage}
-              className="interactive-tap"
+              className="interactive-tap kobo-carousel-btn"
               style={{
                 pointerEvents: 'auto',
                 width: '24px',
@@ -112,7 +112,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
             </button>
             <button
               onClick={handleNextImage}
-              className="interactive-tap"
+              className="interactive-tap kobo-carousel-btn"
               style={{
                 pointerEvents: 'auto',
                 width: '24px',

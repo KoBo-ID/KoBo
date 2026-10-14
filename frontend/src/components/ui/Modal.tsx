@@ -73,35 +73,13 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 'var(--z-modal-backdrop)',
-        backgroundColor: 'rgba(15, 23, 42, 0.65)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1.25rem',
-      }}
       onClick={onClose}
-      className="animate-fade-in"
+      className="kobo-modal-backdrop animate-fade-in"
     >
       <div
-        style={{
-          backgroundColor: 'var(--bg-surface)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-xl)',
-          width: '100%',
-          maxWidth: maxWidthMap[maxWidth],
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          zIndex: 'var(--z-modal)',
-          border: '1px solid var(--border-subtle)',
-        }}
+        style={{ maxWidth: maxWidthMap[maxWidth], zIndex: 'var(--z-modal)' }}
         onClick={(e) => e.stopPropagation()}
-        className="animate-slide-up"
+        className="kobo-modal animate-slide-up"
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
@@ -110,16 +88,7 @@ export const Modal: React.FC<ModalProps> = ({
       >
         {/* Modal Header */}
         {(title || showCloseButton) && (
-          <div
-            style={{
-              padding: '1.25rem 1.5rem',
-              borderBottom: '1px solid var(--border-subtle)',
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-              gap: '1rem',
-            }}
-          >
+          <div className="kobo-modal__header">
             <div>
               {title && (
                 <h3 id={titleId} style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>
@@ -136,16 +105,7 @@ export const Modal: React.FC<ModalProps> = ({
               <button
                 onClick={onClose}
                 aria-label="Tutup modal"
-                className="interactive-tap"
-                style={{
-                  padding: '0.6rem',
-                  borderRadius: 'var(--radius-sm)',
-                  color: 'var(--text-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: 'var(--bg-muted)',
-                }}
+                className="kobo-modal__close interactive-tap"
               >
                 <X size={18} />
               </button>
@@ -154,13 +114,7 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Modal Body */}
-        <div
-          style={{
-            padding: '1.5rem',
-            overflowY: 'auto',
-            flex: 1,
-          }}
-        >
+        <div className="kobo-modal__body">
           {children}
         </div>
       </div>

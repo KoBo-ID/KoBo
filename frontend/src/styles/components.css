@@ -873,7 +873,7 @@
 /* ---- Page layouts that used to be inline <style> blocks ---- */
 
 /* /kos/:id: info, then the booking card, then reviews on a phone; two columns with a sticky card from 1024px. */
-.detail-split-layout { display: grid; grid-template-columns: 1fr; gap: 2.5rem; margin-top: 2.5rem; align-items: start; }
+.detail-split-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem; margin-top: 2.5rem; align-items: start; }
 .detail-info { order: 1; display: flex; flex-direction: column; min-width: 0; }
 .detail-sidebar { order: 2; align-self: stretch; min-width: 0; }
 .detail-reviews { order: 3; min-width: 0; }
@@ -886,9 +886,9 @@
 }
 
 /* /checkout/:id */
-.checkout-split-layout { display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: start; }
-.application-form-grid { display: grid; grid-template-columns: 1fr; gap: 0.9rem; }
-@media (min-width: 640px) { .application-form-grid { grid-template-columns: 1fr 1fr; } }
+.checkout-split-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; align-items: start; }
+.application-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
+@media (min-width: 640px) { .application-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1024px) { .checkout-split-layout { grid-template-columns: 58fr 42fr; } }
 
 /* Mobile bottom dock hides from tablet width. !important because the dock sets display inline. */
@@ -897,7 +897,7 @@
 }
 
 /* /search. !important rules override layout the page still sets inline; --filter-bar-height is set on the page root. */
-.search-cards-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+.search-cards-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
 @media (min-width: 560px) { .search-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 /* 3 across only from 1280px: at 1024px the 64% feed column is ~614px, which would squeeze each card under 200px. */
 @media (min-width: 1280px) { .search-cards-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -915,3 +915,97 @@
 
 /* One page-title size for every top-level page (was 2rem, 2.1rem and 2.2rem). */
 .page-title { font-size: clamp(1.6rem, 1.2rem + 1.2vw, 2rem); font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; line-height: 1.2; }
+
+/* ════════════════════════════════════════════════════════════════════
+   RESPONSIVE LAYER (390px to 1600px)
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Modal: dvh so the mobile browser chrome never pushes the footer off screen; tighter padding on phones. */
+.kobo-modal-backdrop { position: fixed; inset: 0; z-index: var(--z-modal-backdrop); display: flex; align-items: center; justify-content: center; padding: 1.25rem; background-color: rgba(15, 23, 42, 0.65); }
+.kobo-modal { display: flex; flex-direction: column; width: 100%; max-height: 90vh; max-height: 90dvh; overflow: hidden; background-color: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); }
+.kobo-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-subtle); }
+.kobo-modal__header > div:first-child { min-width: 0; }
+.kobo-modal__body { flex: 1; min-height: 0; padding: 1.5rem; overflow-y: auto; overscroll-behavior: contain; }
+.kobo-modal__close { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: var(--control-height); height: var(--control-height); border-radius: var(--radius-sm); background-color: var(--bg-muted); color: var(--text-muted); }
+@media (max-width: 560px) {
+  .kobo-modal-backdrop { padding: 0.75rem; }
+  .kobo-modal__header { padding: 1rem; }
+  .kobo-modal__body { padding: 1rem; }
+}
+/* Phone landscape and other short windows: use the full height. */
+@media (max-height: 480px) {
+  .kobo-modal-backdrop { padding: 0.5rem; }
+  .kobo-modal { max-height: 100vh; max-height: 100dvh; }
+}
+
+/* Toasts: bottom-right on desktop; full width above the dock on phones. */
+.kobo-toasts { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: var(--z-toast); display: flex; flex-direction: column; gap: 0.75rem; max-width: 420px; pointer-events: none; }
+@media (max-width: 767px) {
+  .kobo-toasts { left: 1rem; right: 1rem; max-width: none; bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
+}
+
+/* Mobile dock: equal-width 48px targets, and room for it under the page (footer included). */
+.mobile-only-dock > a { flex: 1 1 0; min-width: 0; min-height: 48px; justify-content: center; }
+@media (max-width: 767px) {
+  body:has(.mobile-only-dock) { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
+}
+
+/* Segmented control: never wider than its container; scrolls sideways instead of breaking the page. */
+.kobo-segmented { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.kobo-segmented::-webkit-scrollbar { display: none; }
+
+/* Touch: controls reach 40px (the product floor) on phones and coarse pointers. */
+.kobo-carousel-btn { position: relative; }
+.kobo-carousel-btn::after { content: ''; position: absolute; inset: -8px; }
+@media (max-width: 767px), (pointer: coarse) {
+  header a[href='/my-kos'], .os-brand, .kobo-btn, .kobo-back, .demo-notice__btn, .interactive-tap:not(.kobo-carousel-btn):is(button, a) { min-height: var(--control-height); }
+  .kobo-segmented button { height: var(--control-height); }
+  .kobo-icon-btn--sm { width: var(--control-height); height: var(--control-height); }
+}
+
+/* Owner room board: stacked cards on phones (the wrapper must not clip the row action menu). */
+@media (max-width: 760px) {
+  .kobo-table-wrap:has(.kobo-table--stack) { overflow: visible; }
+  .kobo-table--stack, .kobo-table--stack tbody, .kobo-table--stack tr, .kobo-table--stack td, .kobo-table--stack th { display: block; }
+  .kobo-table--stack caption { display: block; }
+  .kobo-table--stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .kobo-table--stack tbody tr:not(.kobo-table__group) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'room status' 'tenant price' 'due actions';
+    align-items: center;
+    gap: 0.4rem 1rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .kobo-table--stack tbody tr:last-child { border-bottom: none; }
+  .kobo-table--stack tbody td { padding: 0; border-bottom: none; min-width: 0; }
+  .kobo-table--stack td[data-cell='room'] { grid-area: room; }
+  .kobo-table--stack td[data-cell='status'] { grid-area: status; text-align: right; }
+  .kobo-table--stack td[data-cell='tenant'] { grid-area: tenant; }
+  .kobo-table--stack td[data-cell='price'] { grid-area: price; text-align: right; }
+  .kobo-table--stack td[data-cell='due'] { grid-area: due; }
+  .kobo-table--stack td[data-cell='due']::before { content: 'Jatuh tempo '; color: var(--text-muted); font-size: 0.75rem; }
+  .kobo-table--stack td[data-cell='actions'] { grid-area: actions; }
+}
+
+/* /my-kos invoice row: label left, amount + status + actions right; stacked under 560px. */
+.invoice-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 0.35rem 1rem; padding: 0.6rem 0; }
+.invoice-row__meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.35rem 0.75rem; min-width: 0; }
+@media (max-width: 560px) {
+  .invoice-row { grid-template-columns: minmax(0, 1fr); }
+  .invoice-row__meta { justify-content: flex-start; }
+  .invoice-row__meta .invoice-pay { flex-basis: 100%; }
+}
+
+/* /kuitansi/:receiptNo: label column shrinks on phones; the stamp sits in flow below the signature instead of over it. */
+.kuitansi-paper { padding: 1.25rem; }
+.kuitansi-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.1rem; }
+.kuitansi-stamp { display: flex; flex-direction: column; align-items: center; width: fit-content; margin: 1.5rem auto 0; padding: 0.6rem 1rem; border: 3px dashed var(--primary); border-radius: var(--radius-md); color: var(--primary); font-size: 0.85rem; font-weight: 800; text-transform: uppercase; opacity: 0.85; pointer-events: none; }
+@media (min-width: 640px) {
+  .kuitansi-paper { padding: 2rem; }
+  .kuitansi-row { grid-template-columns: 180px minmax(0, 1fr); gap: 0.5rem; }
+}
+@media (min-width: 820px) {
+  .kuitansi-stamp { position: absolute; right: 13.5rem; bottom: 1.75rem; margin: 0; }
+}

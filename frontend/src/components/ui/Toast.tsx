@@ -9,17 +9,7 @@ export const ToastContainer: React.FC = () => {
     <div
       role="status"
       aria-live="polite"
-      style={{
-        position: 'fixed',
-        bottom: '1.5rem',
-        right: '1.5rem',
-        zIndex: 'var(--z-toast)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.75rem',
-        maxWidth: '420px',
-        pointerEvents: 'none',
-      }}
+      className="kobo-toasts"
     >
       {toasts.map((toast) => {
         const getIcon = () => {

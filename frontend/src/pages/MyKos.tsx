@@ -221,9 +221,9 @@ export const MyKos: React.FC = () => {
 
                 <div role="table" aria-label="Tagihan" style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem' }}>
                   {t.invoices.map((inv, i) => (
-                    <div key={inv.id} role="row" style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.5rem 0', borderTop: i ? '1px solid var(--border-subtle)' : undefined, flexWrap: 'wrap' }}>
+                    <div key={inv.id} role="row" className="invoice-row" style={{ borderTop: i ? '1px solid var(--border-subtle)' : undefined }}>
                       <span role="cell">Bulan {i + 1} · jatuh tempo {formatDate(inv.dueDate)}</span>
-                      <span role="cell" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                      <span role="cell" className="invoice-row__meta">
                         <strong>{formatRupiah(inv.amount)}</strong>
                         <span style={{ color: inv.status === 'PAID' ? 'var(--status-paid)' : 'var(--text-muted)', fontWeight: 600 }}>{inv.status === 'PAID' ? 'Lunas' : t.status === 'ENDED' ? 'Tidak ditagih, sewa berakhir' : 'Belum dibayar'}</span>
                         <InvoicePaymentActions

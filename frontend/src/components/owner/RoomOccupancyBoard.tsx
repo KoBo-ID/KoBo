@@ -182,24 +182,24 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
       </div>
 
       <div className="kobo-table-wrap">
-        <table className="kobo-table">
+        <table className="kobo-table kobo-table--stack" role="table">
           <caption style={{ captionSide: 'top', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
             Daftar kamar {kosName} per lantai beserta penghuni, jatuh tempo, dan status pembayaran.
           </caption>
-          <thead>
-            <tr>
-              <th scope="col">Kamar</th>
-              <th scope="col" className="kobo-table__right">Harga</th>
-              <th scope="col">Penghuni</th>
-              <th scope="col">Jatuh tempo</th>
-              <th scope="col">Status</th>
-              <th scope="col" className="kobo-table__right">Aksi</th>
+          <thead role="rowgroup">
+            <tr role="row">
+              <th role="columnheader" scope="col">Kamar</th>
+              <th role="columnheader" scope="col" className="kobo-table__right">Harga</th>
+              <th role="columnheader" scope="col">Penghuni</th>
+              <th role="columnheader" scope="col">Jatuh tempo</th>
+              <th role="columnheader" scope="col">Status</th>
+              <th role="columnheader" scope="col" className="kobo-table__right">Aksi</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody role="rowgroup">
             {filteredRooms.length === 0 && (
-              <tr>
-                <td colSpan={COLUMN_COUNT} className="kobo-table__empty">
+              <tr role="row">
+                <td role="cell" colSpan={COLUMN_COUNT} className="kobo-table__empty">
                   Tidak ada kamar yang cocok dengan filter ini.
                 </td>
               </tr>
@@ -207,8 +207,8 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
 
             {visibleFloors.map((floor) => (
               <React.Fragment key={floor}>
-                <tr className="kobo-table__group">
-                  <th colSpan={COLUMN_COUNT} scope="colgroup">Lantai {floor}</th>
+                <tr role="row" className="kobo-table__group">
+                  <th role="rowheader" colSpan={COLUMN_COUNT} scope="colgroup">Lantai {floor}</th>
                 </tr>
                 {filteredRooms
                   .filter((r) => r.floor === floor)
@@ -216,15 +216,15 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                     const isVacant = room.status === 'vacant';
                     const late = room.daysOverdue;
                     return (
-                      <tr key={room.id}>
-                        <td>
+                      <tr role="row" key={room.id}>
+                        <td role="cell" data-cell="room">
                           <div className="kobo-table__strong">Kamar {room.roomNumber}</div>
                           <div className="kobo-table__muted" style={{ fontSize: '0.75rem' }}>
                             {room.type} · {room.size}
                           </div>
                         </td>
-                        <td className="kobo-table__num kobo-table__right">{formatRupiah(room.priceMonthly)}</td>
-                        <td>
+                        <td role="cell" data-cell="price" className="kobo-table__num kobo-table__right">{formatRupiah(room.priceMonthly)}</td>
+                        <td role="cell" data-cell="tenant">
                           {isVacant ? (
                             <span className="kobo-table__muted" aria-label="Belum ada penghuni">&mdash;</span>
                           ) : (
@@ -238,7 +238,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             </>
                           )}
                         </td>
-                        <td>
+                        <td role="cell" data-cell="due">
                           {isVacant ? (
                             <span className="kobo-table__muted" aria-label="Tidak ada jatuh tempo">&mdash;</span>
                           ) : (
@@ -252,7 +252,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             </>
                           )}
                         </td>
-                        <td>
+                        <td role="cell" data-cell="status">
                           <span className={statusClass(room.status)} style={{ ['--dot' as string]: STATUS_META[room.status].dot }}>
                             <span className="kobo-status__dot" aria-hidden="true" />
                             {STATUS_META[room.status].label}
@@ -263,7 +263,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             </div>
                           )}
                         </td>
-                        <td>
+                        <td role="cell" data-cell="actions">
                           <div className="kobo-table__actions">
                             {renderPrimaryAction(room)}
                             {!isVacant && (
