@@ -16,6 +16,7 @@ const AUTH_CODES: Record<string, string> = {
   PASSWORD_TOO_LONG: 'Kata sandi terlalu panjang.',
   USER_ALREADY_EXISTS: 'Email ini sudah terdaftar. Silakan masuk.',
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: 'Email ini sudah terdaftar. Silakan masuk.',
+  INVALID_PASSWORD: 'Kata sandi saat ini salah.',
   INVALID_TOKEN: 'Tautan tidak valid atau sudah kedaluwarsa. Minta tautan baru.',
   TOKEN_EXPIRED: 'Tautan sudah kedaluwarsa. Minta tautan baru.',
   INVALID_CAMPUS_EMAIL: 'Gunakan email kampus yang berakhiran .ac.id.',

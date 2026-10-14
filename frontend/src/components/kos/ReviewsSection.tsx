@@ -228,7 +228,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                     <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>
                       Tanggapan Pemilik Kos
                     </span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-subtle)' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                       · {review.ownerReply.date}
                     </span>
                   </div>

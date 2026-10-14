@@ -1,5 +1,6 @@
 import React from 'react';
 import { Room } from '../../../types';
+import { formatRupiah } from '../../../lib/format';
 
 interface RoomPickerProps {
   rooms: Room[];
@@ -15,14 +16,6 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
   onSelectRoom,
   onSelectFullType,
 }) => {
-  const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
-
   const grouped = rooms.reduce((acc, room) => {
     if (!acc[room.roomType]) acc[room.roomType] = [];
     acc[room.roomType].push(room);
@@ -90,7 +83,7 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.4rem',
-                transition: 'all var(--duration-fast)',
+                transition: 'background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast), box-shadow var(--duration-fast), transform var(--duration-fast), opacity var(--duration-fast)',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -113,7 +106,7 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
 
               {reservedCount > 0 && (
                 <span
-                  style={{ alignSelf: 'flex-start', fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-badge)', backgroundColor: 'var(--status-booking-bg)', color: 'var(--status-booking)' }}
+                  style={{ alignSelf: 'flex-start', fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-badge)', backgroundColor: 'var(--status-booking-bg)', color: 'var(--status-booking-text)' }}
                 >
                   Dipesan antrean{reservedCount > 1 ? ` (${reservedCount})` : ''}
                 </span>
@@ -124,7 +117,7 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Ukuran: {firstRoom.size}
               </span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 Kasur: {firstRoom.bedType}
               </span>
 

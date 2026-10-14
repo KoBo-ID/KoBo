@@ -25,8 +25,8 @@ test('demo student applies, gets owner approval, pays and sees an active rental'
   const ownerPage = await ownerContext.newPage()
   await loginAs(ownerPage, 'owner')
   await ownerPage.goto(`/owner/dashboard?kos=${kos!.id}`)
-  ownerPage.once('dialog', (dialog) => dialog.accept())
   await ownerPage.getByTestId('owner-application').filter({ hasText: 'Mahasiswa BINUS' }).getByRole('button', { name: 'Terima' }).click()
+  await ownerPage.getByRole('dialog').getByRole('button', { name: 'Terima Pengajuan' }).click()
   await expect(ownerPage.getByTestId('owner-application').filter({ hasText: 'Mahasiswa BINUS' })).toHaveCount(0)
   await ownerContext.close()
 

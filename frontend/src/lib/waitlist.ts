@@ -85,8 +85,8 @@ export function useWaitlistActions() {
 
   return {
     busy: join.isPending || leave.isPending || decline.isPending,
-    join: (kosId: string, roomType: string | null) => run(() => join.mutateAsync({ kosId, roomType }), 'Kamu masuk daftar tunggu. Kami kirim email saat kamar tersedia.'),
-    leave: (entryId: string) => run(() => leave.mutateAsync({ entryId }), 'Kamu keluar dari daftar tunggu.', 'info'),
+    join: (kosId: string, roomType: string | null) => run(() => join.mutateAsync({ kosId, roomType }), 'Anda masuk daftar tunggu. Kami kirim email saat kamar tersedia.'),
+    leave: (entryId: string) => run(() => leave.mutateAsync({ entryId }), 'Anda keluar dari daftar tunggu.', 'info'),
     decline: (entryId: string) => run(() => decline.mutateAsync({ entryId }), 'Penawaran dilewati. Kamar diteruskan ke antrean berikutnya.', 'info'),
   };
 }

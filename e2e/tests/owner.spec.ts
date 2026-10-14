@@ -20,7 +20,7 @@ test('owner marks a booked room paid and opens its kuitansi', async ({ page, bro
   expect(kos, 'an owner kos with a vacant room').toBeTruthy()
   const vacant = kos!.rooms.filter((r) => r.status === 'vacant')
 
-  // A second account applies, then the owner approves it: invoice 1 is unpaid and the room reads "Booking".
+  // A second account applies, then the owner approves it: invoice 1 is unpaid and the room reads "Dipesan".
   // Parallel tests may grab the same room, so a CONFLICT just means "try another one".
   const baseURL = test.info().project.use.baseURL as string
   const tenantCtx = await browser.newContext({ baseURL })
@@ -44,11 +44,11 @@ test('owner marks a booked room paid and opens its kuitansi', async ({ page, bro
 
   await page.goto(`/owner/dashboard?kos=${kos!.id}`)
   const application = page.getByTestId('owner-application').filter({ hasText: `Kamar ${room!.roomNumber}` })
-  page.once('dialog', (dialog) => dialog.accept())
   await application.getByRole('button', { name: 'Terima' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Terima Pengajuan' }).click()
   await expect(application).toHaveCount(0)
   const row = page.getByRole('row').filter({ hasText: `Kamar ${room!.roomNumber}` })
-  await expect(row.getByText('Booking', { exact: true })).toBeVisible()
+  await expect(row.getByText('Dipesan', { exact: true })).toBeVisible()
 
   await row.getByRole('button', { name: `Tandai Lunas Kamar ${room!.roomNumber}` }).click()
   const modal = page.getByRole('dialog')

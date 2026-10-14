@@ -34,7 +34,7 @@ export const SafeImage: React.FC<SafeImageProps> = ({ placeholderStyle, iconSize
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: 'var(--bg-muted)',
-          color: 'var(--text-subtle)',
+          color: 'var(--text-muted)',
           ...placeholderStyle,
         }}
       >

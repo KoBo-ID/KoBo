@@ -85,7 +85,7 @@ Mohon kabari kami setelah pembayaran dilakukan. Terima kasih atas perhatian dan 
       onClose={onClose}
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <MessageSquare size={20} color="#25D366" />
+          <MessageSquare size={20} color="var(--whatsapp)" />
           <span>Pengingat WhatsApp Santun</span>
         </div>
       }
@@ -198,7 +198,7 @@ Mohon kabari kami setelah pembayaran dilakukan. Terima kasih atas perhatian dan 
                 variant="primary"
                 size="sm"
                 icon={<ExternalLink size={15} />}
-                style={{ backgroundColor: '#25D366', borderColor: '#25D366' }}
+                style={{ backgroundColor: 'var(--whatsapp)', borderColor: 'var(--whatsapp)' }}
               >
                 Buka WhatsApp (wa.me)
               </Button>

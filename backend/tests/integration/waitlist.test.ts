@@ -101,7 +101,7 @@ describe('waitlist.join', () => {
     const a = await join(full.kos.id)
     const e = await err(a.c.waitlist.join({ kosId: full.kos.id, roomType: 'Deluxe' }))
     expect(e?.code).toBe('CONFLICT')
-    expect(e?.message).toBe('Kamu sudah ada di daftar tunggu kos ini.')
+    expect(e?.message).toBe('Anda sudah ada di daftar tunggu kos ini.')
   })
 
   it('rejects a sixth live entry across kos', async () => {

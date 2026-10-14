@@ -202,7 +202,7 @@ img {
   border: 1.5px solid var(--border-strong);
   box-shadow: var(--shadow-md);
   white-space: nowrap;
-  transition: all var(--duration-fast) var(--ease-out-spring);
+  transition: background-color var(--duration-fast) var(--ease-out-spring), border-color var(--duration-fast) var(--ease-out-spring), color var(--duration-fast) var(--ease-out-spring), box-shadow var(--duration-fast) var(--ease-out-spring), transform var(--duration-fast) var(--ease-out-spring), opacity var(--duration-fast) var(--ease-out-spring);
   cursor: pointer;
   transform: translate(-50%, -50%);
 }

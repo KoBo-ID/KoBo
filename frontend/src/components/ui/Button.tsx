@@ -70,7 +70,7 @@ export const Button: React.FC<ButtonProps> = ({
       boxShadow: 'var(--shadow-sm)',
     },
     accent: {
-      backgroundColor: 'var(--accent)',
+      backgroundColor: 'var(--accent-strong)',
       color: 'var(--text-inverse)',
       boxShadow: 'var(--shadow-sm)',
     },
@@ -89,12 +89,12 @@ export const Button: React.FC<ButtonProps> = ({
     },
     danger: {
       backgroundColor: 'var(--status-overdue-bg)',
-      color: 'var(--status-overdue)',
+      color: 'var(--status-overdue-text)',
       borderColor: 'var(--status-overdue-border)',
     },
     success: {
       backgroundColor: 'var(--status-paid-bg)',
-      color: 'var(--status-paid)',
+      color: 'var(--status-paid-text)',
       borderColor: 'var(--status-paid-border)',
     },
   };

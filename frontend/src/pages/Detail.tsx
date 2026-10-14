@@ -153,13 +153,13 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
             }}
           >
             <Footprints size={14} />
-            <span>{kos.campusProximity.distanceMeters}m ke {kos.campusProximity.campusName}</span>
+            <span>{kos.campusProximity.campusName ? `${kos.campusProximity.distanceMeters}m ke ${kos.campusProximity.campusName}` : 'Jarak ke kampus belum tersedia'}</span>
           </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 style={{ fontSize: '2.1rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+            <h1 className="page-title">
               {kos.name}
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.4rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
@@ -193,18 +193,9 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
       <PhotoHeroMosaic images={kos.images} kosName={kos.name} />
 
       {/* Split Content Layout: 65% Details (Left) / 35% Sticky Booking Box (Right) */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr',
-          gap: '2.5rem',
-          marginTop: '2.5rem',
-          alignItems: 'start',
-        }}
-        className="detail-split-layout"
-      >
+      <div className="detail-split-layout">
         {/* Left Column (65% on Desktop) */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="detail-info">
           {/* Room Picker Section */}
           {selectedRoom ? (
             <RoomPicker
@@ -252,7 +243,7 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
                   </span>}
                 </div>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                  {kos.owner.verified ? 'Pemilik terverifikasi' : 'Identitas belum diverifikasi'} · Respon {kos.owner.responseRate} · Bergabung sejak {kos.owner.memberSince}
+                  {kos.owner.verified ? 'Pemilik terverifikasi' : 'Identitas belum diverifikasi'}{kos.owner.responseRate && kos.owner.responseRate !== '-' ? ` · Respon ${kos.owner.responseRate}` : ''} · Bergabung sejak {kos.owner.memberSince}
                 </p>
               </div>
             </div>
@@ -283,9 +274,10 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
           {/* Tata Tertib & Denda Accordion */}
           <RulesAccordion rules={kos.rules} />
 
-          <hr className="section-divider" />
+        </div>
 
-          {/* Verified Student Reviews */}
+        {/* Verified Student Reviews: after the booking card on a phone, under the details on desktop */}
+        <div className="detail-reviews">
           <ReviewsSection
             kosId={kos.id}
             ratingOverall={detail.rating}
@@ -297,6 +289,7 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
 
         {/* Right Column: Sticky Booking Widget (35% on Desktop) */}
         {selectedRoom && (
+          <div className="detail-sidebar">
           <StickyBookingSidebar
             kos={kos}
             selectedRoom={selectedRoom}
@@ -306,6 +299,7 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
             onOpenSurveyModal={() => setSurveyModalOpen(true)}
             waitlist={{ status: waitlist.data, joinType, onBookOffer: handleBookOffer, onBackToBooking: () => setJoinType(undefined) }}
           />
+          </div>
         )}
       </div>
 
@@ -315,15 +309,6 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
         onClose={() => setSurveyModalOpen(false)}
         kos={kos}
       />
-
-      <style>{`
-        @media (min-width: 1024px) {
-          .detail-split-layout {
-            grid-template-columns: minmax(0, 1fr) 360px !important;
-            gap: 2.25rem !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };

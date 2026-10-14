@@ -41,6 +41,8 @@ test('"Kirim ulang email verifikasi" queues a fresh link that verifies the accou
   await expect(dialog.getByText('Cek email Anda').first()).toBeVisible()
   const firstLink = await outboxLink(email, 'verify-email')
 
+  // The verification link is a token with second-resolution timestamps: a resend inside the same second is the same link.
+  await page.waitForTimeout(1100)
   await dialog.getByRole('button', { name: 'Kirim ulang email verifikasi' }).click()
   await expect(dialog.getByText('Tautan verifikasi dikirim ulang.', { exact: false })).toBeVisible()
   await expect.poll(() => outboxCount(email, 'verify-email')).toBe(2)

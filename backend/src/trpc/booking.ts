@@ -68,6 +68,8 @@ export interface MyTenancy {
   startDate: string
   durationMonths: number
   expiresAt: string | null
+  /** When the tenancy ended (owner move-out or booking cancelled); null while it is live. */
+  endedAt: string | null
   kos: { id: string; name: string; address: string; image: string | null; ownerName: string; ownerPhone: string | null }
   room: { id: string; roomNumber: string; floor: number; type: string; priceMonthly: number }
   invoices: MyInvoice[]
@@ -200,6 +202,7 @@ export const bookingRouter = router({
         startDate: todayWIB(t.startDate),
         durationMonths: t.durationMonths,
         expiresAt: t.expiresAt?.toISOString() ?? null,
+        endedAt: t.endedAt?.toISOString() ?? null,
         kos: {
           id: t.room.kos.id,
           name: t.room.kos.name,

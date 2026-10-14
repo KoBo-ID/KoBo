@@ -52,8 +52,8 @@ export interface OwnerWaitlistEntry {
 const LIVE = ['WAITING', 'OFFERED'] as const
 const HISTORY_LIMIT = 10
 
-const ALREADY_QUEUED = 'Kamu sudah ada di daftar tunggu kos ini.'
-const ALREADY_RENTING = 'Kamu sudah menyewa kamar di kos ini.'
+const ALREADY_QUEUED = 'Anda sudah ada di daftar tunggu kos ini.'
+const ALREADY_RENTING = 'Anda sudah menyewa kamar di kos ini.'
 const NOT_OWN = 'Anda hanya dapat mengubah antrean Anda sendiri.'
 const NOT_LIVE = 'Antrean ini sudah selesai.'
 
@@ -146,7 +146,7 @@ export const waitlistRouter = router({
         if ((await rentingInKos(tx, ctx.user.id, kos.id, now)) > 0) throw new TRPCError({ code: 'BAD_REQUEST', message: ALREADY_RENTING })
         const mine = await tx.waitlistEntry.findMany({ where: { userId: ctx.user.id, status: { in: [...LIVE] } }, select: { kosId: true } })
         if (mine.some((m) => m.kosId === kos.id)) throw new TRPCError({ code: 'CONFLICT', message: ALREADY_QUEUED })
-        if (mine.length >= MAX_LIVE_ENTRIES) throw new TRPCError({ code: 'BAD_REQUEST', message: `Kamu hanya bisa mengantre di ${MAX_LIVE_ENTRIES} kos sekaligus.` })
+        if (mine.length >= MAX_LIVE_ENTRIES) throw new TRPCError({ code: 'BAD_REQUEST', message: `Anda hanya bisa mengantre di ${MAX_LIVE_ENTRIES} kos sekaligus.` })
         const rooms = await tx.room.findMany({ where: { kosId: kos.id }, select: { type: true } })
         if (input.roomType !== null && !rooms.some((r) => r.type === input.roomType)) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tipe kamar tidak ditemukan di kos ini.' })
         if ((await bookableRooms(tx, kos.id, now)).some((r) => input.roomType === null || r.type === input.roomType)) {

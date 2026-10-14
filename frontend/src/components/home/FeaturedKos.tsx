@@ -29,7 +29,7 @@ export const FeaturedKos: React.FC<FeaturedKosProps> = ({ onOpenSurvey }) => {
   return (
         <section className="app-container">
           <div className="featured-head">
-            <h2 className="featured-head__title">Kos yang baru bisa kamu survey</h2>
+            <h2 className="featured-head__title">Kos yang baru bisa Anda survey</h2>
             <Link to="/search">
               <Button variant="outline" size="sm" icon={<ArrowRight size={16} />} iconPosition="right">
                 {data ? `Lihat Semua (${kosList.length})` : 'Lihat Semua'}

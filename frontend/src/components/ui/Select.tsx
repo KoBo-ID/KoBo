@@ -68,7 +68,7 @@ export const Select: React.FC<SelectProps> = ({
           style={{
             position: 'absolute',
             right: '0.85rem',
-            color: 'var(--text-subtle)',
+            color: 'var(--text-muted)',
             pointerEvents: 'none',
             display: 'flex',
             alignItems: 'center',
@@ -78,7 +78,7 @@ export const Select: React.FC<SelectProps> = ({
         </span>
       </div>
       {error && (
-        <span style={{ fontSize: '0.8rem', color: 'var(--status-overdue)', fontWeight: 500 }}>
+        <span style={{ fontSize: '0.8rem', color: 'var(--status-overdue-text)', fontWeight: 500 }}>
           {error}
         </span>
       )}

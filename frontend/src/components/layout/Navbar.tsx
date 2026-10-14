@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -26,6 +26,26 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
   const { logout } = useAuthActions();
 
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // The user menu closes on Escape (returning focus to its button) and on a press outside it.
+  useEffect(() => {
+    if (!profileDropdownOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setProfileDropdownOpen(false);
+      profileRef.current?.querySelector<HTMLButtonElement>('button[aria-haspopup]')?.focus();
+    };
+    const onPointer = (e: PointerEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileDropdownOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointer);
+    };
+  }, [profileDropdownOpen]);
 
   /* On Home the bar starts transparent over the full-viewport hero and only
      turns solid once the hero has scrolled past it. Every other route keeps
@@ -168,7 +188,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                   height: '18px',
                   padding: '0 4px',
                   borderRadius: 'var(--radius-pill)',
-                  backgroundColor: 'var(--accent)',
+                  backgroundColor: 'var(--accent-strong)',
                   color: 'white',
                   fontSize: '0.65rem',
                   fontWeight: 800,
@@ -209,11 +229,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
 
           {/* User Profile Trigger */}
           {me && (
-          <div style={{ position: 'relative' }}>
+          <div ref={profileRef} style={{ position: 'relative' }}>
             <button
               onClick={() => setProfileDropdownOpen((prev) => !prev)}
               className="interactive-tap"
               aria-label="Menu Pengguna"
+              aria-haspopup="true"
+              aria-expanded={profileDropdownOpen}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -365,7 +387,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                     width: '100%',
                     padding: '0.65rem 1rem',
                     fontSize: '0.875rem',
-                    color: 'var(--status-overdue)',
+                    color: 'var(--status-overdue-text)',
                     textAlign: 'left',
                   }}
                   className="interactive-tap"

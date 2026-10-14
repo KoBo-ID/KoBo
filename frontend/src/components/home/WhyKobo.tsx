@@ -68,7 +68,7 @@ export const WhyKobo: React.FC = () => (
       <article className="why__tile why__tile--rules">
         <div>
           <h3>Aturan dan denda tertulis</h3>
-          <p>Peraturan dan nominal denda tertulis sebelum kamu mengajukan.</p>
+          <p>Peraturan dan nominal denda tertulis sebelum Anda mengajukan.</p>
         </div>
         <div className="why__receipt" aria-hidden="true">
           <span className="why__caption">Contoh aturan</span>

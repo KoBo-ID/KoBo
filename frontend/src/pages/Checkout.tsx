@@ -16,10 +16,7 @@ import { Notice } from '../components/ui/Notice';
 import { ErrorState, NotFoundState } from '../components/ui/QueryState';
 import { SafeImage } from '../components/ui/SafeImage';
 import type { KosDetail } from '../../../backend/src/trpc/router';
-
-const formatRupiah = (value: number) =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value);
-
+import { formatRupiah } from '../lib/format';
 const card: React.CSSProperties = {
   backgroundColor: 'var(--bg-surface)',
   borderRadius: 'var(--radius-lg)',
@@ -78,7 +75,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
     },
   }));
 
-  const roomUnavailable = !room || room.status !== 'vacant';
+  const roomUnavailable = !room || room.status !== 'vacant' || room.reservedForWaitlist;
   const breakdown = room
     ? computeCheckoutTotal({ monthlyRent: room.priceMonthly, applicationFee: kos.applicationFee, discountAmount: kos.studentDiscountAmount, campusEmailVerified: !!me?.campusVerified })
     : null;
@@ -110,7 +107,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
     <div className="app-container" style={{ maxWidth: '960px', paddingTop: '1.5rem', paddingBottom: '4rem' }}>
       <div style={{ marginBottom: '2rem' }}>
         <BackButton style={{ marginBottom: '0.5rem' }} />
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>Pengajuan Sewa</h1>
+        <h1 className="page-title">Pengajuan Sewa</h1>
         <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Kirim rencana sewa untuk ditinjau pemilik. Pembayaran baru tersedia setelah pengajuan diterima.</p>
       </div>
 
@@ -122,12 +119,12 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
         </div>
       ) : (
         <form onSubmit={submit}>
-          <div className="checkout-split-layout" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', alignItems: 'start' }}>
+          <div className="checkout-split-layout">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <CampusDiscountCard studentDiscountAmount={kos.studentDiscountAmount} compact />
+              <CampusDiscountCard studentDiscountAmount={kos.studentDiscountAmount || undefined} compact />
               <section style={card} aria-labelledby="rental-plan-title">
                 <h2 id="rental-plan-title" style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem' }}>Rencana Sewa</h2>
-                <div className="application-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.9rem' }}>
+                <div className="application-form-grid">
                   <Input label="Tanggal Mulai Sewa" type="date" value={startDate} min={today} max={addDays(today, 120)} onChange={(event) => setStartDate(event.target.value)} required />
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                     <label htmlFor="application-duration" style={{ fontSize: '0.875rem', fontWeight: 600 }}>Durasi Sewa</label>
@@ -137,7 +134,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
                   </div>
                   <Input label="Pekerjaan atau kegiatan utama" value={occupation} onChange={(event) => setOccupation(event.target.value)} placeholder="Contoh: Mahasiswa BINUS" maxLength={120} required />
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', gridColumn: '1 / -1' }}>
-                    <label htmlFor="application-note" style={{ fontSize: '0.875rem', fontWeight: 600 }}>Catatan untuk pemilik <span style={{ color: 'var(--text-subtle)', fontWeight: 400 }}>(opsional)</span></label>
+                    <label htmlFor="application-note" style={{ fontSize: '0.875rem', fontWeight: 600 }}>Catatan untuk pemilik <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(opsional)</span></label>
                     <textarea id="application-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={4} placeholder="Perkenalkan kebutuhan atau rencana tinggal Anda" style={{ resize: 'vertical', minHeight: '96px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', padding: '0.75rem', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', font: 'inherit' }} />
                   </div>
                 </div>
@@ -157,7 +154,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
 
               {breakdown && (
                 <div>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-subtle)', display: 'block', marginBottom: '0.75rem' }}>Perkiraan pembayaran setelah disetujui</span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.75rem' }}>Perkiraan pembayaran setelah disetujui</span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.875rem' }}>
                     <Row label="Sewa bulan pertama" value={formatRupiah(breakdown.rent)} />
                     {breakdown.discount > 0 && <Row tone="primary" label="Diskon mahasiswa" value={`- ${formatRupiah(breakdown.discount)}`} />}
@@ -170,7 +167,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
 
               {create.isError && <Notice tone="error">{messageForError(create.error)}</Notice>}
               <Button type="submit" variant="primary" size="lg" fullWidth isLoading={create.isPending} icon={<Send size={16} />}>{me ? 'Kirim Pengajuan' : 'Masuk untuk Mengajukan'}</Button>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.75rem', color: 'var(--text-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 <ShieldCheck size={15} color="var(--primary)" style={{ flexShrink: 0 }} />
                 <span>Pengajuan tidak menahan kamar dan tidak memindahkan uang.</span>
               </div>
@@ -179,10 +176,6 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
         </form>
       )}
 
-      <style>{`
-        @media (min-width: 640px) { .application-form-grid { grid-template-columns: 1fr 1fr !important; } }
-        @media (min-width: 1024px) { .checkout-split-layout { grid-template-columns: 58fr 42fr !important; } }
-      `}</style>
     </div>
   );
 };

@@ -143,8 +143,8 @@ test('an owner uploads a photo: it is resized in the browser, stored, and shows 
   expect((await served.body()).byteLength).toBeLessThan(2 * 1024 * 1024)
 
   // Cleanup keeps reruns tidy.
-  page.once('dialog', (d) => void d.accept())
   await photos.last().getByRole('button', { name: /Hapus foto/ }).click()
+  await page.getByRole('dialog').filter({ hasText: 'Hapus foto ini?' }).getByRole('button', { name: 'Hapus Foto', exact: true }).click()
   await expect(photos).toHaveCount(before)
 })
 

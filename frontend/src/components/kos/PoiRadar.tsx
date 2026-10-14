@@ -31,13 +31,13 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
       case 'food':
         return <Utensils size={18} color="var(--accent)" />;
       case 'laundry':
-        return <WashingMachine size={18} color="#0284C7" />;
+        return <WashingMachine size={18} color="var(--text-muted)" />;
       case 'print':
-        return <Printer size={18} color="#7C3AED" />;
+        return <Printer size={18} color="var(--text-muted)" />;
       case 'market':
-        return <ShoppingCart size={18} color="#059669" />;
+        return <ShoppingCart size={18} color="var(--text-muted)" />;
       case 'health':
-        return <HeartPulse size={18} color="#E11D48" />;
+        return <HeartPulse size={18} color="var(--text-muted)" />;
       default:
         return <MapPin size={18} color="var(--text-muted)" />;
     }
@@ -110,7 +110,7 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
                 color: isActive ? 'white' : 'var(--text-muted)',
                 border: '1px solid transparent',
                 whiteSpace: 'nowrap',
-                transition: 'all var(--duration-fast) var(--ease-out-spring)',
+                transition: 'background-color var(--duration-fast) var(--ease-out-spring), border-color var(--duration-fast) var(--ease-out-spring), color var(--duration-fast) var(--ease-out-spring), box-shadow var(--duration-fast) var(--ease-out-spring), transform var(--duration-fast) var(--ease-out-spring), opacity var(--duration-fast) var(--ease-out-spring)',
               }}
             >
               {cat.icon}
@@ -134,7 +134,7 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--border-subtle)',
               backgroundColor: 'var(--bg-page)',
-              transition: 'all var(--duration-fast) var(--ease-out-spring)',
+              transition: 'background-color var(--duration-fast) var(--ease-out-spring), border-color var(--duration-fast) var(--ease-out-spring), color var(--duration-fast) var(--ease-out-spring), box-shadow var(--duration-fast) var(--ease-out-spring), transform var(--duration-fast) var(--ease-out-spring), opacity var(--duration-fast) var(--ease-out-spring)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>

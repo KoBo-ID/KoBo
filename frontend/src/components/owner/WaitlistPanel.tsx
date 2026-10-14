@@ -116,7 +116,7 @@ export const WaitlistPanel: React.FC<{ kosId: string; kosName: string }> = ({ ko
                             <Button
                               variant="ghost"
                               size="sm"
-                              style={{ minHeight: 40, color: 'var(--status-overdue)' }}
+                              style={{ minHeight: 40, color: 'var(--status-overdue-text)' }}
                               aria-label={`Hapus ${e.user.name} dari daftar tunggu`}
                               onClick={() => setConfirmId(e.id)}
                             >

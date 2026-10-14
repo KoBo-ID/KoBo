@@ -10,6 +10,7 @@ import { Campus, Kos, LocationPin } from '../../types';
 import { CAMPUSES } from '../../data/campuses';
 import { formatDistance, haversineMeters } from '../../utils/geo';
 import { SafeImage } from '../ui/SafeImage';
+import { formatRupiah } from '../../lib/format';
 
 interface LeafletMapProps {
   kosList: Kos[];
@@ -126,15 +127,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   const center: [number, number] = activeLocation
     ? [activeLocation.coordinates.lat, activeLocation.coordinates.lng]
     : [-6.24, 106.81];
-
-  const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
-
   const formatPriceChip = (price: number) => {
     const inJuta = price / 1000000;
     return `Rp ${inJuta.toFixed(1).replace('.0', '').replace('.', ',')}jt`;
@@ -198,17 +190,17 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
             >
               <Popup>
                 <div style={{ minWidth: '200px', fontFamily: 'var(--font-sans)' }}>
-                  <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#0F172A' }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-main)' }}>
                     {activeLocation.label}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.1rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
                     {activeLocation.area}, {activeLocation.city}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.45rem', lineHeight: 1.5 }}>
-                    Titik acuan pencarian. Menampilkan <strong style={{ color: '#0F172A' }}>{kosList.length} kos</strong>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.45rem', lineHeight: 1.5 }}>
+                    Titik acuan pencarian. Menampilkan <strong style={{ color: 'var(--text-main)' }}>{kosList.length} kos</strong>
                     {nearbyCampuses.length > 0 && (
                       <>
-                        {' '}dan <strong style={{ color: '#0F172A' }}>{nearbyCampuses.length} kampus</strong> di radius {Math.round(
+                        {' '}dan <strong style={{ color: 'var(--text-main)' }}>{nearbyCampuses.length} kampus</strong> di radius {Math.round(
                           RADIUS_METERS / 1000
                         )} km.
                       </>
@@ -233,8 +225,8 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           >
             <Popup>
               <div style={{ minWidth: '180px', fontFamily: 'var(--font-sans)' }}>
-                <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#0F172A' }}>{campus.name}</div>
-                <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.15rem' }}>
+                <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-main)' }}>{campus.name}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                   {campus.city}
                   {activeLocation && (
                     <> &middot; {formatDistance(haversineMeters(activeLocation.coordinates, campus.coordinates))} dari titik lokasi</>
@@ -282,28 +274,28 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
                     }}
                   />
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.7rem', color: '#64748B', textTransform: 'capitalize' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
                       Kos {kos.gender}
                     </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.75rem', fontWeight: 700, color: '#F59E0B' }}>
-                      <Star size={12} fill="#F59E0B" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--status-due-text)' }}>
+                      <Star size={12} fill="var(--accent)" />
                       <span>{kos.rating}</span>
                     </div>
                   </div>
-                  <h4 style={{ fontSize: '0.88rem', fontWeight: 700, margin: '0.2rem 0', color: '#0F172A' }}>
+                  <h4 style={{ fontSize: '0.88rem', fontWeight: 700, margin: '0.2rem 0', color: 'var(--text-main)' }}>
                     {kos.name}
                   </h4>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#1D8758', margin: '0.25rem 0' }}>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--primary)', margin: '0.25rem 0' }}>
                     {formatRupiah(kos.priceMonthlyStart)}
-                    <span style={{ fontSize: '0.7rem', fontWeight: 500, color: '#64748B' }}> /bln</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}> /bln</span>
                   </div>
                   <Link
                     to={`/kos/${kos.id}`}
                     style={{
                       display: 'block',
                       textAlign: 'center',
-                      backgroundColor: '#1D8758',
-                      color: '#ffffff',
+                      backgroundColor: 'var(--primary)',
+                      color: 'var(--text-inverse)',
                       padding: '0.4rem',
                       borderRadius: '6px',
                       fontSize: '0.78rem',
@@ -332,7 +324,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
             alignItems: 'center',
             gap: '0.5rem',
             backgroundColor: 'rgba(255, 255, 255, 0.94)',
-            backdropFilter: 'blur(6px)',
             border: '1px solid var(--border-subtle)',
             borderRadius: 'var(--radius-md)',
             padding: '0.5rem 0.75rem',

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldAlert, ChevronDown, Clock, Zap, BookOpen, AlertCircle, Coins } from 'lucide-react';
 import { HouseRule } from '../../types';
+import { formatRupiah } from '../../lib/format';
 
 interface RulesAccordionProps {
   rules: HouseRule[];
@@ -8,23 +9,14 @@ interface RulesAccordionProps {
 
 export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
   const [expandedTier, setExpandedTier] = useState<number | null>(1);
-
-  const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
-
   const getTierIcon = (tier: number) => {
     switch (tier) {
       case 1:
         return <Clock size={18} color="var(--primary)" />;
       case 2:
-        return <Zap size={18} color="#D97706" />;
+        return <Zap size={18} color="var(--text-muted)" />;
       case 3:
-        return <BookOpen size={18} color="#2563EB" />;
+        return <BookOpen size={18} color="var(--text-muted)" />;
       case 4:
         return <AlertCircle size={18} color="var(--status-overdue)" />;
       default:
@@ -47,7 +39,7 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <ShieldAlert size={22} color="var(--status-due)" />
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-              Tata Tertib & Denda Transparan
+              Tata tertib dan denda
             </h3>
           </div>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
@@ -61,7 +53,7 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
             alignItems: 'center',
             gap: '0.35rem',
             backgroundColor: 'var(--status-due-bg)',
-            color: 'var(--status-due)',
+            color: 'var(--status-due-text)',
             padding: '0.35rem 0.75rem',
             borderRadius: 'var(--radius-badge)',
             fontSize: '0.75rem',
@@ -69,7 +61,7 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
           }}
         >
           <Coins size={14} />
-          <span>Klausul Denda Riil & Pasti</span>
+          <span>Denda tertulis sebelum Anda mengajukan</span>
         </div>
       </div>
 
@@ -86,7 +78,7 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
                 borderRadius: 'var(--radius-md)',
                 overflow: 'hidden',
                 backgroundColor: isExpanded ? 'var(--bg-page)' : 'var(--bg-surface)',
-                transition: 'all var(--duration-fast) var(--ease-out-spring)',
+                transition: 'background-color var(--duration-fast) var(--ease-out-spring), border-color var(--duration-fast) var(--ease-out-spring), color var(--duration-fast) var(--ease-out-spring), box-shadow var(--duration-fast) var(--ease-out-spring), transform var(--duration-fast) var(--ease-out-spring), opacity var(--duration-fast) var(--ease-out-spring)',
               }}
             >
               {/* Accordion Header */}
@@ -130,7 +122,7 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
                       style={{
                         fontSize: '0.75rem',
                         fontWeight: 700,
-                        color: 'var(--status-overdue)',
+                        color: 'var(--status-overdue-text)',
                         backgroundColor: 'var(--status-overdue-bg)',
                         border: '1px solid var(--status-overdue-border)',
                         padding: '0.2rem 0.55rem',
@@ -181,7 +173,7 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
                         alignItems: 'flex-start',
                         gap: '0.65rem',
                         fontSize: '0.8125rem',
-                        color: 'var(--status-overdue)',
+                        color: 'var(--status-overdue-text)',
                         fontWeight: 600,
                       }}
                     >

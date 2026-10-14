@@ -252,7 +252,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             </Button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-subtle)', fontSize: '0.78rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
             <span style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
             <span>atau dengan email</span>
             <span style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />

@@ -4,6 +4,7 @@ import type { WaitlistStatusResult } from '../../../../../backend/src/trpc/route
 import { Room, Kos } from '../../../types';
 import { Button } from '../../ui/Button';
 import { JoinCard, OfferBanner, QueuedCard } from './WaitlistBox';
+import { formatRupiah } from '../../../lib/format';
 
 interface StickyBookingSidebarProps {
   kos: Kos;
@@ -31,14 +32,6 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
   onOpenSurveyModal,
   waitlist,
 }) => {
-  const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
-
   const appFee = 25000;
   const isVacant = selectedRoom.status === 'vacant' && !selectedRoom.reservedForWaitlist;
   const hasDiscount = kos.studentDiscountAmount > 0;
@@ -110,7 +103,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
             </span>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>/ bulan</span>
           </div>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-subtle)' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             Kamar {selectedRoom.roomNumber} ({selectedRoom.roomType})
           </span>
         </div>
@@ -182,7 +175,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
             <span>{formatRupiah(total)}</span>
           </div>
           {hasDiscount && (
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-subtle)', margin: '0.15rem 0 0' }}>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0.15rem 0 0' }}>
               Diskon aktif otomatis setelah verifikasi email kampus.
             </p>
           )}
@@ -228,7 +221,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           }}
         >
           <ShieldCheck size={14} color="var(--primary)" />
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-subtle)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             Survey fisik gratis · Tanpa biaya tersembunyi
           </span>
         </div>

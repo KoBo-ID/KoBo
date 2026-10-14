@@ -6,6 +6,7 @@ import { GenderBadge, Badge } from '../ui/Badge';
 import { useAppStore } from '../../store/AppContext';
 import { formatDistance } from '../../utils/geo';
 import { SafeImage } from '../ui/SafeImage';
+import { formatRupiah } from '../../lib/format';
 
 interface ListingCardProps {
   kos: Kos;
@@ -29,19 +30,12 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
     e.stopPropagation();
     setActiveImageIndex((prev) => (prev < kos.images.length - 1 ? prev + 1 : 0));
   };
-
-  const formatRupiah = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0,
-    }).format(val);
-  };
-
   const distanceLabel =
     distance !== undefined
       ? `${formatDistance(distance)} dari titik lokasi`
-      : `${kos.campusProximity.distanceMeters} m ke ${kos.campusProximity.campusName}`;
+      : kos.campusProximity.campusName
+        ? `${kos.campusProximity.distanceMeters} m ke ${kos.campusProximity.campusName}`
+        : 'Jarak ke kampus belum tersedia';
 
   return (
     <div
@@ -60,7 +54,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
         flexDirection: 'column',
         position: 'relative',
         height: '100%',
-        transition: 'all var(--duration-normal) var(--ease-out-spring)',
+        transition: 'background-color var(--duration-normal) var(--ease-out-spring), border-color var(--duration-normal) var(--ease-out-spring), color var(--duration-normal) var(--ease-out-spring), box-shadow var(--duration-normal) var(--ease-out-spring), transform var(--duration-normal) var(--ease-out-spring), opacity var(--duration-normal) var(--ease-out-spring)',
       }}
     >
       {/* Photo Area */}
@@ -158,7 +152,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
                 height: '5px',
                 borderRadius: 'var(--radius-pill)',
                 backgroundColor: i === activeImageIndex ? 'white' : 'rgba(255, 255, 255, 0.55)',
-                transition: 'all 0.2s ease',
+                transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
               }}
             />
           ))}
@@ -197,7 +191,6 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
               fontWeight: 600,
               padding: '0.18rem 0.45rem',
               borderRadius: 'var(--radius-xs)',
-              backdropFilter: 'blur(4px)',
             }}
           >
             Sisa {kos.availableRooms} kamar

@@ -7,16 +7,14 @@ import { Notice } from '../ui/Notice';
 import { useAppStore } from '../../store/AppContext';
 import { useSession } from '../../lib/session';
 import { messageForError } from '../../lib/errors';
+import { formatRupiah } from '../../lib/format';
 
 interface CampusDiscountCardProps {
-  studentDiscountAmount: number;
+  /** The kos's own discount per month, when it offers one. Never a made-up figure. */
+  studentDiscountAmount?: number;
   /** Checkout shows status and links to /profile; the profile page holds the actual form. */
   compact?: boolean;
 }
-
-const formatRupiah = (val: number) =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
-
 /**
  * Student discount via campus-email verification (spec section 5): the student submits a *.ac.id address, we
  * email a signed link, and clicking it verifies. Status comes from auth.me (`campusVerified`); the link lands
@@ -80,7 +78,7 @@ export const CampusDiscountCard: React.FC<CampusDiscountCardProps> = ({ studentD
               Email kampus terverifikasi{me.user.campusEmail ? ` (${me.user.campusEmail})` : ''}
             </span>
             <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
-              Potongan sewa sebesar {formatRupiah(studentDiscountAmount)} / bulan diterapkan otomatis.
+              {studentDiscountAmount ? `Potongan sewa sebesar ${formatRupiah(studentDiscountAmount)} / bulan diterapkan otomatis.` : 'Potongan sewa mahasiswa diterapkan otomatis pada kos yang menyediakannya.'}
             </span>
           </div>
         </div>
@@ -152,7 +150,7 @@ export const CampusDiscountCard: React.FC<CampusDiscountCardProps> = ({ studentD
         border: `1.5px solid ${verified ? 'var(--primary)' : 'var(--border-strong)'}`,
         borderRadius: 'var(--radius-lg)',
         padding: '1.25rem',
-        transition: 'all var(--duration-fast) var(--ease-out-spring)',
+        transition: 'background-color var(--duration-fast) var(--ease-out-spring), border-color var(--duration-fast) var(--ease-out-spring), color var(--duration-fast) var(--ease-out-spring), box-shadow var(--duration-fast) var(--ease-out-spring), transform var(--duration-fast) var(--ease-out-spring), opacity var(--duration-fast) var(--ease-out-spring)',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
@@ -170,19 +168,21 @@ export const CampusDiscountCard: React.FC<CampusDiscountCardProps> = ({ studentD
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-              <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>Diskon Mahasiswa Indo</h4>
+              <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>Diskon mahasiswa</h4>
+              {!!studentDiscountAmount && (
               <span
-                style={{
-                  backgroundColor: 'var(--accent)',
-                  color: 'white',
-                  fontSize: '0.7rem',
-                  fontWeight: 800,
-                  padding: '0.15rem 0.5rem',
-                  borderRadius: 'var(--radius-badge)',
-                }}
-              >
-                HEMAT {formatRupiah(studentDiscountAmount)}
-              </span>
+                  style={{
+                    backgroundColor: 'var(--accent-strong)',
+                    color: 'white',
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: 'var(--radius-badge)',
+                  }}
+                >
+                  HEMAT {formatRupiah(studentDiscountAmount)}
+                </span>
+              )}
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
               Verifikasi email kampus (.ac.id) Anda sekali untuk klaim potongan harga sewa. Tanpa unggah dokumen.

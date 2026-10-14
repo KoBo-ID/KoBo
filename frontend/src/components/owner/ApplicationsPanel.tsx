@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Notice } from '../ui/Notice';
 import { Skeleton } from '../ui/Skeleton';
 import { messageForError } from '../../lib/errors';
@@ -23,17 +24,26 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
     },
   }));
 
-  const act = (applicationId: string, decision: 'APPROVE' | 'REJECT', applicantName: string) => {
-    const prompt = decision === 'APPROVE'
-      ? `Terima pengajuan ${applicantName}? Kamar akan ditahan 24 jam untuk pembayaran.`
-      : `Tolak pengajuan ${applicantName}?`;
-    if (window.confirm(prompt)) decide.mutate({ kosId, applicationId, decision });
-  };
+  const [confirming, setConfirming] = useState<{ applicationId: string; decision: 'APPROVE' | 'REJECT'; name: string } | null>(null);
+  const act = (applicationId: string, decision: 'APPROVE' | 'REJECT', applicantName: string) => setConfirming({ applicationId, decision, name: applicantName });
 
   const count = applications.data?.length ?? 0;
 
   return (
     <section aria-labelledby="owner-applications-title" className="od-section">
+      {confirming && (
+        <ConfirmDialog
+          title={confirming.decision === 'APPROVE' ? 'Terima pengajuan?' : 'Tolak pengajuan?'}
+          message={confirming.decision === 'APPROVE' ? `Kamar akan ditahan 24 jam untuk pembayaran ${confirming.name}.` : `Pengajuan ${confirming.name} akan ditolak dan tidak menahan kamar.`}
+          confirmLabel={confirming.decision === 'APPROVE' ? 'Terima Pengajuan' : 'Tolak Pengajuan'}
+          danger={confirming.decision === 'REJECT'}
+          onCancel={() => setConfirming(null)}
+          onConfirm={() => {
+            decide.mutate({ kosId, applicationId: confirming.applicationId, decision: confirming.decision });
+            setConfirming(null);
+          }}
+        />
+      )}
       <h2 id="owner-applications-title" className="od-section__title">
         Pengajuan sewa
         {count > 0 && <span className="od-count">{count}</span>}

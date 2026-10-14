@@ -309,7 +309,7 @@ export const Search: React.FC = () => {
   const currentSortLabel = sortOptions.find((o) => o.id === sortBy)?.label ?? 'Urutkan';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - var(--header-height))' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - var(--header-height))', ['--filter-bar-height' as string]: `${filterBarHeight}px` }}>
       {/* Sticky Filter Bar */}
       <div
         ref={filterBarRef}
@@ -700,7 +700,7 @@ export const Search: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem' }}>
               <div>
                 <h1 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                  {activeLocation ? `Kos di Sekitar ${activeLocation.label}` : 'Kos Terverifikasi'}
+                  {activeLocation ? `Kos di Sekitar ${activeLocation.label}` : 'Semua Kos'}
                 </h1>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                   {searchPending || searchFailed ? (
@@ -827,54 +827,6 @@ export const Search: React.FC = () => {
       </div>
 
       {/* Responsive Split View Media Queries */}
-      <style>{`
-        .search-cards-grid {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 1rem;
-        }
-        @media (min-width: 560px) {
-          .search-cards-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-        }
-        /* 3 across only from 1280px: at 1024px the 64% feed column is ~614px,
-           which would squeeze each card under 200px. */
-        @media (min-width: 1280px) {
-          .search-cards-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-          }
-        }
-        @media (min-width: 1024px) {
-          .search-split-grid {
-            grid-template-columns: 64fr 36fr !important;
-          }
-          .search-feed-column {
-            display: flex !important;
-          }
-          .search-map-column {
-            display: block !important;
-          }
-          .mobile-map-toggle {
-            display: none !important;
-          }
-        }
-        @media (max-width: 640px) {
-          .hide-on-mobile {
-            display: none !important;
-          }
-        }
-        @media (max-width: 1023px) {
-          .search-filter-bar {
-            position: static !important;
-          }
-          .search-map-column {
-            position: static !important;
-            height: calc(100vh - var(--header-height) - ${filterBarHeight}px - 1rem) !important;
-            min-height: 360px;
-          }
-        }
-      `}</style>
     </div>
   );
 };

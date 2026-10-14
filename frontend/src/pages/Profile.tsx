@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Notice } from '../components/ui/Notice';
 import { Avatar } from '../components/ui/Avatar';
+import { AccountSecurityCard } from '../components/auth/AccountSecurityCard';
 import { CampusDiscountCard } from '../components/booking/CampusDiscountCard';
 import { useSession } from '../lib/session';
 import { useBecomeOwner } from '../lib/owner';
@@ -14,7 +15,6 @@ import { useTRPC } from '../lib/trpc';
 import { messageForError } from '../lib/errors';
 
 /** Headline student discount shown on the verification card (the per-kos amount applies at checkout). */
-const DISCOUNT_UP_TO = 150000;
 
 export const Profile: React.FC = () => {
   const { addToast, openAuthModal } = useAppStore();
@@ -71,7 +71,7 @@ export const Profile: React.FC = () => {
   return (
     <div className="app-container" style={{ maxWidth: '960px', paddingTop: '2.5rem', paddingBottom: '4rem' }}>
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+        <h1 className="page-title">
           Profil Akun & Verifikasi Kampus
         </h1>
         <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
@@ -190,7 +190,9 @@ export const Profile: React.FC = () => {
           )}
         </div>
 
-        <CampusDiscountCard studentDiscountAmount={DISCOUNT_UP_TO} />
+        <CampusDiscountCard />
+
+        {me && !me.user.isDemo && <AccountSecurityCard />}
 
         {me && !me.user.isDemo && (
           <div
@@ -212,7 +214,7 @@ export const Profile: React.FC = () => {
               <>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Akun Anda sudah terdaftar sebagai pemilik.</p>
                 <Link to="/owner/dashboard">
-                  <Button variant="outline" size="sm">Buka Dashboard Pemilik</Button>
+                  <Button variant="outline" size="sm">Buka Dasbor Pemilik</Button>
                 </Link>
               </>
             ) : (

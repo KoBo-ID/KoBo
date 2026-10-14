@@ -27,9 +27,9 @@ export interface BoardRoom {
   lastReceipt: { receiptNumber: number; receiptNo: string } | null
   /**
    * Safe payment label for the live tenancy's open invoice. Never carries a checkout URL or tenant-only controls.
-   * AWAITING_ONLINE: the tenant is mid online payment (manual entry is blocked). REFUND: a late payment is being refunded.
+   * AWAITING_ONLINE: the tenant is mid online payment (manual entry is blocked). REFUND_PENDING / REFUNDED: a late payment is on its way back / was returned.
    */
-  payment: { state: 'AWAITING_ONLINE' | 'VERIFIED' | 'MANUAL' | 'REFUND' | 'NEEDS_REVIEW'; expiresAt: string | null } | null
+  payment: { state: 'AWAITING_ONLINE' | 'VERIFIED' | 'MANUAL' | 'REFUND_PENDING' | 'REFUNDED' | 'NEEDS_REVIEW'; expiresAt: string | null } | null
 }
 
 export interface BoardSummary {
@@ -145,9 +145,10 @@ type BoardPayment = BoardRoom['payment']
 function boardPayment(payments: { provider: 'XENDIT' | 'MOCK' | 'MANUAL'; status: string; expiresAt: Date | null; createdAt: Date }[], lastPaidBy: 'XENDIT' | 'MOCK' | 'MANUAL' | undefined, now: Date): BoardPayment {
   const live = payments.find((p) => p.provider !== 'MANUAL' && (p.status === 'CREATING' || p.status === 'PENDING') && (!p.expiresAt || p.expiresAt > now))
   if (live) return { state: 'AWAITING_ONLINE', expiresAt: live.expiresAt?.toISOString() ?? null }
-  const refunding = payments.find((p) => p.status === 'REFUND_PENDING' || p.status === 'REFUNDED')
-  if (refunding) return { state: 'REFUND', expiresAt: null }
+  // Worst first: a failed refund needs a person, then one still in flight, then one that is done.
   if (payments.some((p) => p.status === 'REFUND_FAILED')) return { state: 'NEEDS_REVIEW', expiresAt: null }
+  if (payments.some((p) => p.status === 'REFUND_PENDING')) return { state: 'REFUND_PENDING', expiresAt: null }
+  if (payments.some((p) => p.status === 'REFUNDED')) return { state: 'REFUNDED', expiresAt: null }
   // Nothing open: say how the newest receipt was verified. Collected by Xendit is verified; a MOCK demo payment shows nothing.
   if (lastPaidBy === 'XENDIT') return { state: 'VERIFIED', expiresAt: null }
   if (lastPaidBy === 'MANUAL') return { state: 'MANUAL', expiresAt: null }

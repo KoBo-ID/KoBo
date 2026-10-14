@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Home, Calendar, FileText, MessageSquare, ShieldCheck, Star, ClipboardList } from 'lucide-react';
-import type { MyReview } from '../../../backend/src/trpc/router';
+import type { MyReview, MyTenancy } from '../../../backend/src/trpc/router';
 import { ReviewFormModal } from '../components/kos/ReviewFormModal';
 import { InvoicePaymentActions } from '../components/booking/InvoicePaymentActions';
 import { WaitlistSection } from '../components/booking/WaitlistSection';
@@ -15,26 +15,23 @@ import { useSession } from '../lib/session';
 import { useTRPC } from '../lib/trpc';
 import { messageForError } from '../lib/errors';
 import { formatVisitDate, VISIT_SLOT_LABEL } from '../lib/visits';
-
-const formatRupiah = (val: number) =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
-
+import { formatRupiah } from '../lib/format';
 /** 'YYYY-MM-DD' (a WIB calendar day) as "5 Oktober 2026". */
 const formatDate = (d: string) =>
   new Date(`${d}T00:00:00+07:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
 const TENANCY_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-  booking: { label: 'Menunggu Pembayaran', bg: 'var(--status-due-bg)', color: 'var(--status-due)' },
-  paid: { label: 'Sewa Aktif', bg: 'var(--status-paid-bg)', color: 'var(--status-paid)' },
-  due: { label: 'Sewa Aktif · Segera Jatuh Tempo', bg: 'var(--status-due-bg)', color: 'var(--status-due)' },
-  overdue: { label: 'Menunggak', bg: 'var(--status-overdue-bg)', color: 'var(--status-overdue)' },
+  booking: { label: 'Menunggu Pembayaran', bg: 'var(--status-due-bg)', color: 'var(--status-due-text)' },
+  paid: { label: 'Sewa Aktif', bg: 'var(--status-paid-bg)', color: 'var(--status-paid-text)' },
+  due: { label: 'Sewa Aktif · Segera Jatuh Tempo', bg: 'var(--status-due-bg)', color: 'var(--status-due-text)' },
+  overdue: { label: 'Menunggak', bg: 'var(--status-overdue-bg)', color: 'var(--status-overdue-text)' },
   vacant: { label: 'Selesai', bg: 'var(--bg-muted)', color: 'var(--text-muted)' },
 };
 
 const APPLICATION_BADGE = {
-  PENDING: { label: 'Menunggu Pemilik', bg: 'var(--status-due-bg)', color: 'var(--status-due)' },
-  APPROVED: { label: 'Diterima', bg: 'var(--status-paid-bg)', color: 'var(--status-paid)' },
-  REJECTED: { label: 'Tidak Diterima', bg: 'var(--status-overdue-bg)', color: 'var(--status-overdue)' },
+  PENDING: { label: 'Menunggu Pemilik', bg: 'var(--status-due-bg)', color: 'var(--status-due-text)' },
+  APPROVED: { label: 'Diterima', bg: 'var(--status-paid-bg)', color: 'var(--status-paid-text)' },
+  REJECTED: { label: 'Tidak Diterima', bg: 'var(--status-overdue-bg)', color: 'var(--status-overdue-text)' },
   WITHDRAWN: { label: 'Dibatalkan', bg: 'var(--bg-muted)', color: 'var(--text-muted)' },
 } as const;
 
@@ -70,22 +67,43 @@ export const MyKos: React.FC = () => {
     }),
   );
   // Lapsed holds and abandoned (never paid) tenancies are noise, not rentals.
+  // A lapsed hold that took a late payment stays visible, so the tenant can see the refund instead of silence.
+  const refunding = (t: MyTenancy) => t.invoices.some((i) => i.latestPayment?.status.startsWith('REFUND_'));
   const rentals = (me ? (mine.data ?? []) : []).filter(
-    (t) => t.status === 'ACTIVE' || (t.status === 'PENDING' && t.derivedStatus === 'booking') || t.invoices.some((i) => i.status === 'PAID'),
+    (t) => t.status === 'ACTIVE' || (t.status === 'PENDING' && t.derivedStatus === 'booking') || t.invoices.some((i) => i.status === 'PAID') || refunding(t),
   );
+  const liveCardFor = (a: { kos: { id: string }; room: { roomNumber: string } }) =>
+    rentals.some((t) => t.kos.id === a.kos.id && t.room.roomNumber === a.room.roomNumber && (t.status === 'ACTIVE' || t.derivedStatus === 'booking'));
   const applications = me ? (applicationQuery.data ?? []) : [];
+
+  // A return link that matches no invoice, or an invoice that is already settled, must not linger in the URL.
+  useEffect(() => {
+    if (!returnedPayment || !mine.isSuccess) return;
+    const inv = (mine.data ?? []).flatMap((t) => t.invoices).find((i) => i.activePayment?.id === returnedPayment || i.latestPayment?.id === returnedPayment);
+    if (!inv) {
+      addToast('Pembayaran tidak ditemukan di akun Anda.', 'info');
+    } else if (inv.status === 'PAID') {
+      addToast('Pembayaran sudah tercatat. Kuitansi tersedia di kartu kamar.', 'success');
+    } else {
+      return; // still pending: InvoicePaymentActions waits and clears it
+    }
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [returnedPayment, mine.isSuccess]);
 
   return (
     <div className="app-container" style={{ maxWidth: '960px', paddingTop: '2.5rem', paddingBottom: '4rem' }}>
       <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>Kos Saya & Jadwal Survey</h1>
+        <h1 className="page-title">Kos Saya & Jadwal Survey</h1>
         <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
           Kelola kamar kos yang sedang Anda sewa, cek jadwal tagihan bulanan, lihat kuitansi resmi, dan pantau survey gratis.
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '2rem' }}>
+      <div role="tablist" aria-label="Kos Saya" style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '2rem' }}>
         <button
+          role="tab"
+          aria-selected={activeTab === 'rentals'}
           onClick={() => setActiveTab('rentals')}
           className="interactive-tap"
           style={{
@@ -101,6 +119,8 @@ export const MyKos: React.FC = () => {
         </button>
 
         <button
+          role="tab"
+          aria-selected={activeTab === 'visits'}
           onClick={() => setActiveTab('visits')}
           className="interactive-tap"
           style={{
@@ -149,8 +169,8 @@ export const MyKos: React.FC = () => {
                           <span style={{ backgroundColor: badge.bg, color: badge.color, fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-xs)' }}>{badge.label}</span>
                         </div>
                         <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Kamar {application.room.roomNumber} · mulai {formatDate(application.startDate)} · {application.durationMonths} bulan</p>
-                        {application.status === 'PENDING' && <p style={{ fontSize: '0.76rem', color: 'var(--text-subtle)', marginTop: '0.15rem' }}>Kamar belum ditahan. Pemilik sedang meninjau pengajuan.</p>}
-                        {application.status === 'APPROVED' && <p style={{ fontSize: '0.76rem', color: 'var(--status-paid)', marginTop: '0.15rem' }}>Pengajuan diterima. Selesaikan pembayaran pada kartu kamar di bawah.</p>}
+                        {application.status === 'PENDING' && <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Kamar belum ditahan. Pemilik sedang meninjau pengajuan.</p>}
+                        {application.status === 'APPROVED' && <p style={{ fontSize: '0.76rem', color: 'var(--status-paid-text)', marginTop: '0.15rem' }}>{liveCardFor(application) ? 'Pengajuan diterima. Selesaikan pembayaran pada kartu kamar di bawah.' : 'Pengajuan diterima, tetapi masa tahan kamar sudah berakhir. Ajukan lagi bila kamar masih tersedia.'}</p>}
                       </div>
                     </div>
                     <Link to={`/kos/${application.kos.id}`}><Button variant="outline" size="sm">Lihat Kos</Button></Link>
@@ -188,11 +208,11 @@ export const MyKos: React.FC = () => {
                   <div style={{ textAlign: 'right' }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Sewa Bulanan</span>
                     <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>{formatRupiah(t.room.priceMonthly)}</span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', display: 'block' }}>/ bulan</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>/ bulan</span>
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', backgroundColor: 'var(--bg-page)', borderRadius: 'var(--radius-md)', padding: '1rem', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', padding: '1rem 0', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
                   <Fact label="Mulai Sewa" value={formatDate(t.startDate)} />
                   <Fact label="Durasi Sewa" value={`${t.durationMonths} Bulan`} />
                   <Fact label={t.status === 'PENDING' ? 'Tagihan Pertama' : 'Jatuh Tempo Berikutnya'} value={nextInvoice ? formatDate(nextInvoice.dueDate) : 'Lunas'} strong />
@@ -205,7 +225,7 @@ export const MyKos: React.FC = () => {
                       <span role="cell">Bulan {i + 1} · jatuh tempo {formatDate(inv.dueDate)}</span>
                       <span role="cell" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                         <strong>{formatRupiah(inv.amount)}</strong>
-                        <span style={{ color: inv.status === 'PAID' ? 'var(--status-paid)' : 'var(--text-muted)', fontWeight: 600 }}>{inv.status === 'PAID' ? 'Lunas' : 'Belum dibayar'}</span>
+                        <span style={{ color: inv.status === 'PAID' ? 'var(--status-paid)' : 'var(--text-muted)', fontWeight: 600 }}>{inv.status === 'PAID' ? 'Lunas' : t.status === 'ENDED' ? 'Tidak ditagih, sewa berakhir' : 'Belum dibayar'}</span>
                         <InvoicePaymentActions
                           invoice={inv}
                           returnedPaymentId={returnedPayment && (inv.activePayment?.id === returnedPayment || inv.latestPayment?.id === returnedPayment) ? returnedPayment : undefined}
@@ -223,9 +243,11 @@ export const MyKos: React.FC = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
                     <ShieldCheck size={16} />
                     <span>
-                      {t.status === 'PENDING' && t.expiresAt
-                        ? `Kamar ditahan sampai ${new Date(t.expiresAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}`
-                        : 'Pembayaran tercatat di KoBo'}
+                      {t.status === 'ENDED'
+                        ? `Sewa berakhir${t.endedAt ? ` pada ${new Date(t.endedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}`
+                        : t.status === 'PENDING' && t.expiresAt
+                          ? `Kamar ditahan sampai ${new Date(t.expiresAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}`
+                          : 'Pembayaran tercatat di KoBo'}
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -251,7 +273,7 @@ export const MyKos: React.FC = () => {
                         rel="noopener noreferrer"
                         style={{ textDecoration: 'none' }}
                       >
-                        <Button type="button" variant="primary" size="sm" icon={<MessageSquare size={15} />} style={{ backgroundColor: '#25D366', borderColor: '#25D366' }}>
+                        <Button type="button" variant="primary" size="sm" icon={<MessageSquare size={15} />} style={{ backgroundColor: 'var(--whatsapp)', borderColor: 'var(--whatsapp)' }}>
                           Hubungi Pemilik (WA)
                         </Button>
                       </a>
@@ -267,8 +289,7 @@ export const MyKos: React.FC = () => {
               <Home size={40} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>Belum Ada Kamar Kos yang Disewa</h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.3rem', maxWidth: '360px', margin: '0.3rem auto 1.5rem' }}>
-                Temukan kos idaman Anda di sekitar titik lokasi pilihan, klaim diskon mahasiswa, dan bayar dengan mudah.
-              </p>
+                Cari kos, jadwalkan survey, lalu ajukan sewa. Kamar yang Anda sewa muncul di sini.</p>
               <Link to="/search">
                 <Button variant="primary" size="md">Cari Kos Sekarang</Button>
               </Link>
@@ -283,6 +304,8 @@ export const MyKos: React.FC = () => {
       {activeTab === 'visits' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {cancelVisit.isError && <Notice tone="error">{messageForError(cancelVisit.error)}</Notice>}
+          {me && visitsQuery.isPending && <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat jadwal survey…</p>}
+          {me && visitsQuery.isError && <ErrorState message="Gagal memuat jadwal survey Anda." onRetry={() => void visitsQuery.refetch()} minHeight="8rem" />}
           {visits.map((vis) => (
             <div
               key={vis.id}
@@ -303,7 +326,7 @@ export const MyKos: React.FC = () => {
                     Tanggal: <strong>{formatVisitDate(vis.date)}</strong> · Sesi{' '}
                     <strong>{VISIT_SLOT_LABEL[vis.timeSlot]}</strong>
                   </p>
-                  {vis.notes && <p style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', marginTop: '0.2rem' }}>Catatan: "{vis.notes}"</p>}
+                  {vis.notes && <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Catatan: "{vis.notes}"</p>}
                 </div>
               </div>
 
@@ -312,7 +335,7 @@ export const MyKos: React.FC = () => {
                   <Button variant="outline" size="sm">Lihat Kos</Button>
                 </Link>
                 {vis.status === 'SCHEDULED' && (
-                  <Button variant="ghost" size="sm" isLoading={cancelVisit.isPending} onClick={() => cancelVisit.mutate({ visitId: vis.id })} style={{ color: 'var(--status-overdue)' }}>
+                  <Button variant="ghost" size="sm" isLoading={cancelVisit.isPending && cancelVisit.variables?.visitId === vis.id} disabled={cancelVisit.isPending} onClick={() => cancelVisit.mutate({ visitId: vis.id })} style={{ color: 'var(--status-overdue-text)' }}>
                     Batalkan Survey
                   </Button>
                 )}

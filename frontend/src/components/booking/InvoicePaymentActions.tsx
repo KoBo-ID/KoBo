@@ -51,7 +51,7 @@ export const InvoicePaymentActions: React.FC<{ invoice: Invoice; returnedPayment
   const status = useQuery({
     ...trpc.payment.status.queryOptions({ paymentId: waitingFor ?? '' }),
     enabled: !!waitingFor,
-    refetchInterval: (q) => (q.state.data && TERMINAL.has(q.state.data.status) ? false : polling && Date.now() - startedAt < POLL_WINDOW_MS ? POLL_MS : false),
+    refetchInterval: (q) => (q.state.status === 'error' || (q.state.data && TERMINAL.has(q.state.data.status)) ? false : polling && Date.now() - startedAt < POLL_WINDOW_MS ? POLL_MS : false),
   });
   const current = status.data;
   const settled = !!current && TERMINAL.has(current.status);
@@ -130,11 +130,11 @@ export const InvoicePaymentActions: React.FC<{ invoice: Invoice; returnedPayment
     reconcile.mutate({ paymentId });
   };
 
-  if (invoice.status === 'PAID') return null;
-
   const active = invoice.activePayment;
   const latest = invoice.latestPayment;
   const refundState = (current ?? latest)?.status;
+  // A paid invoice has nothing to pay, but a second (late) payment on it is being refunded: say so.
+  if (invoice.status === 'PAID' && !refundState?.startsWith('REFUND_')) return null;
   const awaiting = waitingFor && !settled ? waitingFor : null;
   const lapsed = latest && (latest.status === 'EXPIRED' || latest.status === 'FAILED');
 
@@ -142,6 +142,7 @@ export const InvoicePaymentActions: React.FC<{ invoice: Invoice; returnedPayment
   if (refundState === 'REFUND_PENDING') message = 'Pembayaran diterima setelah masa tahan berakhir. Dana sedang dikembalikan.';
   else if (refundState === 'REFUNDED') message = 'Dana telah dikembalikan.';
   else if (refundState === 'REFUND_FAILED') message = 'Pengembalian dana tertunda. Hubungi KoBo.';
+  else if (status.isError) message = 'Status pembayaran belum dapat dimuat. Periksa status untuk mencoba lagi.';
   else if (awaiting && polling && Date.now() - startedAt < POLL_WINDOW_MS) message = 'Menunggu konfirmasi pembayaran…';
   else if (awaiting) message = 'Pembayaran belum terkonfirmasi. Periksa status untuk memastikan.';
   else if (lapsed && invoice.canPay) message = 'Sesi pembayaran sebelumnya berakhir. Silakan mulai pembayaran baru.';
@@ -153,17 +154,17 @@ export const InvoicePaymentActions: React.FC<{ invoice: Invoice; returnedPayment
   return (
     <span className="invoice-pay">
       <span className="invoice-pay__actions">
-        {invoice.canPay && !awaiting && (
+        {invoice.status !== 'PAID' && invoice.canPay && !awaiting && (
           <Button variant="primary" size="sm" isLoading={start.isPending} disabled={start.isPending} onClick={begin}>
             Bayar Sekarang
           </Button>
         )}
-        {resumeUrl && !awaiting && (
+        {invoice.status !== 'PAID' && resumeUrl && !awaiting && (
           <Button variant="primary" size="sm" onClick={() => { const url = safeCheckoutUrl(resumeUrl); if (url) window.location.assign(url); else setError('Tautan pembayaran tidak valid.'); }}>
             Lanjutkan Pembayaran
           </Button>
         )}
-        {checkId && (!polling || Date.now() - startedAt >= POLL_WINDOW_MS || !awaiting) && (
+        {checkId && (!polling || status.isError || Date.now() - startedAt >= POLL_WINDOW_MS || !awaiting) && (
           <Button variant="outline" size="sm" isLoading={reconcile.isPending} disabled={reconcile.isPending || cooldown > 0} onClick={() => check(checkId)}>
             {cooldown > 0 ? `Periksa Status (${cooldown} dtk)` : 'Periksa Status'}
           </Button>

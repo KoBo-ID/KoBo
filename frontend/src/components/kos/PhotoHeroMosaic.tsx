@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Grid, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { SafeImage } from '../ui/SafeImage';
 
@@ -12,6 +12,26 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
   const displayImages = images.slice(0, 5);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  // The lightbox behaves like a dialog: focus goes in, Escape closes, arrows page, focus returns to what opened it.
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxOpen(false);
+      else if (e.key === 'ArrowLeft') setActivePhotoIdx((p) => (p > 0 ? p - 1 : images.length - 1));
+      else if (e.key === 'ArrowRight') setActivePhotoIdx((p) => (p < images.length - 1 ? p + 1 : 0));
+      else if (e.key === 'Tab') { e.preventDefault(); closeRef.current?.focus(); } // only the close button and arrows act; keep focus in the lightbox
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      openerRef.current?.focus();
+    };
+  }, [lightboxOpen, images.length]);
 
   const openLightbox = (index: number) => {
     setActivePhotoIdx(index);
@@ -106,7 +126,6 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
           bottom: '1rem',
           right: '1rem',
           backgroundColor: 'rgba(255, 255, 255, 0.94)',
-          backdropFilter: 'blur(6px)',
           border: '1px solid var(--border-strong)',
           borderRadius: 'var(--radius-sm)',
           padding: '0.45rem 0.85rem',
@@ -126,6 +145,9 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
       {/* Fullscreen Lightbox Modal */}
       {lightboxOpen && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Galeri foto ${kosName}`}
           style={{
             position: 'fixed',
             inset: 0,
@@ -153,6 +175,8 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
               {kosName} · Foto {activePhotoIdx + 1} dari {images.length}
             </span>
             <button
+              ref={closeRef}
+              aria-label="Tutup galeri foto"
               onClick={() => setLightboxOpen(false)}
               className="interactive-tap"
               style={{
@@ -259,7 +283,7 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
                   cursor: 'pointer',
                   border: i === activePhotoIdx ? '2px solid var(--accent)' : '2px solid transparent',
                   opacity: i === activePhotoIdx ? 1 : 0.6,
-                  transition: 'all 0.2s ease',
+                  transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
                 }}
               />
             ))}

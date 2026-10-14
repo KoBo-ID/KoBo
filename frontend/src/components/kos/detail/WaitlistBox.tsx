@@ -6,13 +6,10 @@ import { Select } from '../../ui/Select';
 import { useAppStore } from '../../../store/AppContext';
 import { useSession } from '../../../lib/session';
 import { formatTimeLeft, roomTypeLabel, useNow, useWaitlistActions } from '../../../lib/waitlist';
-
-const formatRupiah = (val: number) =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
-
+import { formatRupiah } from '../../../lib/format';
 const ANY = '__any__';
 
-/** "Kamu antrean #3" card with the way out. */
+/** "Anda di antrean #3" card with the way out. */
 export const QueuedCard: React.FC<{ entry: MyWaitlistEntry }> = ({ entry }) => {
   const { leave, busy } = useWaitlistActions();
   return (
@@ -22,12 +19,12 @@ export const QueuedCard: React.FC<{ entry: MyWaitlistEntry }> = ({ entry }) => {
           <Hourglass size={18} />
         </span>
         <div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>Kamu antrean #{entry.position}</div>
+          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>Anda di antrean #{entry.position}</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{roomTypeLabel(entry.roomType)}</div>
         </div>
       </div>
       <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-        Kami kirim email saat kamar tersedia. Kamu punya 24 jam untuk memesan.
+        Kami kirim email saat kamar tersedia. Anda punya 24 jam untuk memesan.
       </p>
       <Button variant="outline" size="md" fullWidth disabled={busy} onClick={() => void leave(entry.id)}>
         Keluar antrean
@@ -90,7 +87,7 @@ export const JoinCard: React.FC<JoinCardProps> = ({ kosId, status, initialType, 
   if (status.rentingHere) {
     return (
       <div data-testid="waitlist-join" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Kamu sudah menyewa kamar di kos ini, jadi tidak perlu ikut daftar tunggu.</div>
+        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Anda sudah menyewa kamar di kos ini, jadi tidak perlu ikut daftar tunggu.</div>
         {onBack && (
           <Button variant="ghost" size="sm" fullWidth onClick={onBack}>
             Lihat kamar yang tersedia
@@ -103,12 +100,12 @@ export const JoinCard: React.FC<JoinCardProps> = ({ kosId, status, initialType, 
   return (
     <div data-testid="waitlist-join" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-        <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: 'var(--radius-btn)', backgroundColor: 'var(--status-overdue-bg)', color: 'var(--status-overdue)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: 'var(--radius-btn)', backgroundColor: 'var(--status-overdue-bg)', color: 'var(--status-overdue-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Users size={18} />
         </span>
         <div>
           <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>{status.full ? 'Kamar Penuh' : 'Tipe Ini Penuh'}</div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Antre dulu, kamu dapat giliran sesuai nomor antrean.</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Antre dulu, Anda dapat giliran sesuai nomor antrean.</div>
         </div>
       </div>
       <Select label="Tipe kamar yang dicari" value={type} onChange={(e) => setType(e.target.value)} options={options} />

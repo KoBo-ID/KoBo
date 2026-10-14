@@ -13,7 +13,7 @@ const SEEKER: TabLink[] = [
 ];
 const OWNER: TabLink[] = [
   { to: '/owner/login', label: 'Masuk Portal Pemilik', Icon: LogIn },
-  { to: '/owner/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
+  { to: '/owner/dashboard', label: 'Dasbor', Icon: LayoutDashboard },
   { to: '/owner/kos', label: 'Kelola Kos', Icon: Building2 },
 ];
 

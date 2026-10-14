@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ImagePlus, Trash2 } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Notice } from '../ui/Notice';
@@ -26,6 +27,7 @@ export const KosPhotosModal: React.FC<KosPhotosModalProps> = ({ kosId, kosName, 
   const remove = useMutation(trpc.owner.image.delete.mutationOptions());
   const reorder = useMutation(trpc.owner.image.reorder.mutationOptions());
   const fileInput = useRef<HTMLInputElement>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,6 +103,20 @@ export const KosPhotosModal: React.FC<KosPhotosModalProps> = ({ kosId, kosName, 
 
   return (
     <Modal isOpen onClose={onClose} title="Foto Kos" subtitle={kosName} maxWidth="lg">
+      {deleting && (
+        <ConfirmDialog
+          title="Hapus foto ini?"
+          message="Foto akan dihapus dari galeri kos."
+          confirmLabel="Hapus Foto"
+          danger
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => {
+            const imageId = deleting;
+            setDeleting(null);
+            void act(() => remove.mutateAsync({ kosId, imageId }), 'Foto dihapus.');
+          }}
+        />
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -148,10 +164,8 @@ export const KosPhotosModal: React.FC<KosPhotosModalProps> = ({ kosId, kosName, 
                     type="button"
                     aria-label={`Hapus foto ${i + 1}`}
                     disabled={busy}
-                    onClick={() => {
-                      if (window.confirm('Hapus foto ini?')) void act(() => remove.mutateAsync({ kosId, imageId: img.id }), 'Foto dihapus.');
-                    }}
-                    style={{ padding: '0.25rem', cursor: 'pointer', color: 'var(--status-overdue)' }}
+                    onClick={() => setDeleting(img.id)}
+                    style={{ padding: '0.25rem', cursor: 'pointer', color: 'var(--status-overdue-text)' }}
                   >
                     <Trash2 size={14} />
                   </button>

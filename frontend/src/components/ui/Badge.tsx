@@ -60,19 +60,19 @@ export const Badge: React.FC<BadgeProps> = ({
       case 'paid':
         return {
           backgroundColor: 'var(--status-paid-bg)',
-          color: 'var(--status-paid)',
+          color: 'var(--status-paid-text)',
           border: '1px solid var(--status-paid-border)',
         };
       case 'due':
         return {
           backgroundColor: 'var(--status-due-bg)',
-          color: 'var(--status-due)',
+          color: 'var(--status-due-text)',
           border: '1px solid var(--status-due-border)',
         };
       case 'overdue':
         return {
           backgroundColor: 'var(--status-overdue-bg)',
-          color: 'var(--status-overdue)',
+          color: 'var(--status-overdue-text)',
           border: '1px solid var(--status-overdue-border)',
         };
       case 'vacant':
@@ -84,7 +84,7 @@ export const Badge: React.FC<BadgeProps> = ({
       case 'booking':
         return {
           backgroundColor: 'var(--status-booking-bg)',
-          color: 'var(--status-booking)',
+          color: 'var(--status-booking-text)',
           border: '1px solid var(--status-booking-border)',
         };
       case 'primary':
@@ -143,10 +143,10 @@ export const GenderBadge: React.FC<{ gender: KosGender; size?: 'sm' | 'md' }> = 
 export const RoomStatusBadge: React.FC<{ status: RoomStatus; size?: 'sm' | 'md' }> = ({ status, size }) => {
   const labelMap: Record<RoomStatus, string> = {
     paid: 'Lunas',
-    due: 'Jatuh Tempo',
+    due: 'Jatuh tempo',
     overdue: 'Menunggak',
     vacant: 'Kosong',
-    booking: 'Booking',
+    booking: 'Dipesan',
   };
 
   return (

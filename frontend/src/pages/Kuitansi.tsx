@@ -9,10 +9,7 @@ import { useTRPC } from '../lib/trpc';
 import { errorCode } from '../lib/queryErrors';
 import { messageForError } from '../lib/errors';
 import { useAppStore } from '../store/AppContext';
-
-const formatRupiah = (val: number) =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
-
+import { formatRupiah } from '../lib/format';
 const longDate = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
 const METHOD_LABEL = {
@@ -23,7 +20,7 @@ const METHOD_LABEL = {
 
 const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '0.5rem' }}>
-    <span style={{ color: '#64748B', fontWeight: 600 }}>{label}</span>
+    <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{label}</span>
     <span>{children}</span>
   </div>
 );
@@ -67,13 +64,13 @@ export const Kuitansi: React.FC = () => {
       <div
         className="kuitansi-paper"
         style={{
-          backgroundColor: '#FFFFFF',
+          backgroundColor: 'var(--bg-surface)',
           border: '2px solid var(--border-strong)',
           borderRadius: 'var(--radius-md)',
           padding: '2rem',
           position: 'relative',
           boxShadow: 'var(--shadow-sm)',
-          color: '#0F172A',
+          color: 'var(--text-main)',
           fontFamily: 'var(--font-sans)',
         }}
       >
@@ -89,7 +86,6 @@ export const Kuitansi: React.FC = () => {
             fontWeight: 800,
             fontSize: '0.85rem',
             textTransform: 'uppercase',
-            transform: 'rotate(-10deg)',
             pointerEvents: 'none',
             opacity: 0.85,
             display: 'flex',
@@ -102,20 +98,19 @@ export const Kuitansi: React.FC = () => {
           <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>KOBO</span>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: '1.25rem', borderBottom: '2px solid #E2E8F0', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: '1.25rem', borderBottom: '2px solid var(--border-subtle)', marginBottom: '1.5rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'var(--primary)', color: 'white', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>K</div>
               <span style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
                 Ko<span style={{ color: 'var(--primary)' }}>Bo</span>
               </span>
             </div>
-            <span style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 600 }}>BUKTI PEMBAYARAN SEWA</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>BUKTI PEMBAYARAN SEWA</span>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '0.75rem', color: '#64748B', display: 'block' }}>Nomor Kuitansi:</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Nomor Kuitansi:</span>
             <span data-testid="kuitansi-no" style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary)' }}>{k.receiptNo}</span>
-            <span style={{ fontSize: '0.75rem', color: '#64748B', display: 'block', marginTop: '0.15rem' }}>Tanggal: {longDate(new Date(k.paidAt))}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.15rem' }}>Tanggal: {longDate(new Date(k.paidAt))}</span>
           </div>
         </div>
 
@@ -138,25 +133,25 @@ export const Kuitansi: React.FC = () => {
             style={{
               marginTop: '1rem',
               padding: '1rem 1.25rem',
-              backgroundColor: '#F8FAFC',
+              backgroundColor: 'var(--bg-page)',
               borderRadius: '8px',
-              border: '1px solid #E2E8F0',
+              border: '1px solid var(--border-subtle)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'baseline',
             }}
           >
-            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#475569' }}>JUMLAH DITERIMA:</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)' }}>JUMLAH DITERIMA:</span>
             <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)' }}>{formatRupiah(k.amount)}</span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '2.5rem', paddingTop: '1rem', borderTop: '1px solid #E2E8F0' }}>
-          <div style={{ fontSize: '0.72rem', color: '#94A3B8', maxWidth: '320px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '2.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', maxWidth: '320px' }}>
             Dokumen ini diterbitkan otomatis oleh sistem KoBo dan sah tanpa tanda tangan basah.
           </div>
           <div style={{ textAlign: 'center', minWidth: '180px' }}>
-            <span style={{ fontSize: '0.75rem', color: '#64748B', display: 'block', marginBottom: '1.75rem' }}>Pengelola Kos,</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '1.75rem' }}>Pengelola Kos,</span>
             <span style={{ fontSize: '0.875rem', fontWeight: 700, textDecoration: 'underline' }}>{k.owner.name}</span>
           </div>
         </div>

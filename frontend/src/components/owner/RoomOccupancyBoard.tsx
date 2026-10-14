@@ -8,10 +8,10 @@ import { formatDueDate, formatRupiah } from '../../lib/ownerWorkspace';
 
 export const STATUS_META: Record<RoomStatus, { label: string; dot: string }> = {
   paid: { label: 'Lunas', dot: 'var(--status-paid)' },
-  due: { label: 'Jatuh Tempo', dot: 'var(--status-due)' },
+  due: { label: 'Jatuh tempo', dot: 'var(--status-due)' },
   overdue: { label: 'Menunggak', dot: 'var(--status-overdue)' },
   vacant: { label: 'Kosong', dot: 'var(--status-vacant)' },
-  booking: { label: 'Booking', dot: 'var(--status-booking)' },
+  booking: { label: 'Dipesan', dot: 'var(--status-booking)' },
 };
 
 const STATUS_ORDER: RoomStatus[] = ['paid', 'due', 'overdue', 'vacant', 'booking'];
@@ -32,11 +32,12 @@ interface RoomOccupancyBoardProps {
 
 /** Owner-safe payment labels. Xendit collection is "terverifikasi"; nothing here claims funds were paid out. */
 const PAYMENT_LABEL: Record<string, string | null> = {
-  AWAITING_ONLINE: 'Menunggu pembayaran',
+  AWAITING_ONLINE: 'Penyewa sedang membayar online',
   VERIFIED: 'Pembayaran terverifikasi',
   MANUAL: 'Dicatat manual',
-  REFUND: 'Dana dikembalikan ke penyewa',
-  NEEDS_REVIEW: 'Perlu ditinjau',
+  REFUND_PENDING: 'Dana penyewa sedang dikembalikan',
+  REFUNDED: 'Dana penyewa telah dikembalikan',
+  NEEDS_REVIEW: 'Pengembalian dana gagal, perlu ditinjau',
   NONE: null,
 };
 
@@ -75,7 +76,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
   ];
 
   const countStyle: React.CSSProperties = {
-    color: 'var(--text-subtle)',
+    color: 'var(--text-muted)',
     fontVariantNumeric: 'tabular-nums',
     fontWeight: 600,
   };
@@ -117,9 +118,9 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
           <button
             type="button"
             className={btnClass}
-            disabled={busy}
+            disabled={busy || room.payment?.state === 'AWAITING_ONLINE'}
             aria-label={`Tandai Lunas Kamar ${room.roomNumber}`}
-            title="Tandai Lunas dan aktifkan sewa"
+            title={room.payment?.state === 'AWAITING_ONLINE' ? 'Penyewa sedang membayar online. Tunggu sesi pembayaran berakhir.' : 'Tandai Lunas dan aktifkan sewa'}
             onClick={() => onMarkPaid(room)}
           >
             <CheckCircle2 size={15} />
@@ -190,7 +191,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
               <th scope="col">Kamar</th>
               <th scope="col" className="kobo-table__right">Harga</th>
               <th scope="col">Penghuni</th>
-              <th scope="col">Jatuh Tempo</th>
+              <th scope="col">Jatuh tempo</th>
               <th scope="col">Status</th>
               <th scope="col" className="kobo-table__right">Aksi</th>
             </tr>
@@ -228,7 +229,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             <span className="kobo-table__muted" aria-label="Belum ada penghuni">&mdash;</span>
                           ) : (
                             <>
-                              <div className="kobo-table__strong">{room.tenant?.name || 'Penghuni Aktif'}</div>
+                              <div className="kobo-table__strong">{room.tenant?.name || 'Penghuni aktif'}</div>
                               {room.tenant?.campus && (
                                 <div className="kobo-table__muted" style={{ fontSize: '0.75rem' }}>
                                   {room.tenant.campus}
@@ -244,7 +245,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             <>
                               <span className="kobo-table__num">{formatDueDate(room.invoice?.dueDate)}</span>
                               {late > 0 && (
-                                <div style={{ color: 'var(--status-overdue)', fontSize: '0.75rem', fontWeight: 700 }}>
+                                <div style={{ color: 'var(--status-overdue-text)', fontSize: '0.75rem', fontWeight: 700 }}>
                                   Telat {late} hari
                                 </div>
                               )}
@@ -288,7 +289,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                                       <button
                                         type="button"
                                         role="menuitem"
-                                        disabled={busyRoomId === room.id}
+                                        disabled={busyRoomId === room.id || room.payment?.state === 'AWAITING_ONLINE'}
                                         onClick={() => {
                                           onMarkPaid(room);
                                           close();
@@ -319,13 +320,13 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                                       type="button"
                                       role="menuitem"
                                       disabled={busyRoomId === room.id}
-                                      style={{ color: 'var(--status-overdue)' }}
+                                      style={{ color: 'var(--status-overdue-text)' }}
                                       onClick={() => {
                                         onEndTenancy(room);
                                         close();
                                       }}
                                     >
-                                      {room.status === 'booking' ? 'Batalkan Booking' : 'Akhiri Sewa'}
+                                      {room.status === 'booking' ? 'Batalkan Pesanan' : 'Akhiri Sewa'}
                                     </button>
                                   </>
                                 )}

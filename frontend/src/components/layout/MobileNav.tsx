@@ -90,7 +90,7 @@ export const MobileNav: React.FC = () => {
                   right: '6px',
                   width: '16px',
                   height: '16px',
-                  backgroundColor: 'var(--accent)',
+                  backgroundColor: 'var(--accent-strong)',
                   color: 'white',
                   borderRadius: '50%',
                   fontSize: '0.6rem',
@@ -173,13 +173,6 @@ export const MobileNav: React.FC = () => {
         </>
       )}
 
-      <style>{`
-        @media (min-width: 768px) {
-          .mobile-only-dock {
-            display: none !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };

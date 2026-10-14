@@ -58,7 +58,7 @@
 .od-row__sub { color: var(--text-muted); font-size: 0.8125rem; overflow-wrap: anywhere; }
 .od-row__amount { font-weight: 600; font-variant-numeric: tabular-nums; }
 .od-row__due { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
-.od-row__late { color: var(--status-overdue); font-weight: 700; font-size: 0.8125rem; }
+.od-row__late { color: var(--status-overdue-text); font-weight: 700; font-size: 0.8125rem; }
 .od-row__soon { font-weight: 700; font-size: 0.8125rem; }
 .od-row__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 .od-row__note { color: var(--text-main); font-size: 0.8125rem; max-width: 60ch; margin-top: 0.2rem; }

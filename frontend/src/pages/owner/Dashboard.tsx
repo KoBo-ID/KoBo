@@ -8,6 +8,7 @@ import { RoomOccupancyBoard } from '../../components/owner/RoomOccupancyBoard';
 import { ApplicationsPanel } from '../../components/owner/ApplicationsPanel';
 import { VisitsPanel } from '../../components/owner/VisitsPanel';
 import { ManualPaymentModal } from '../../components/owner/ManualPaymentModal';
+import { Notice } from '../../components/ui/Notice';
 import { WhatsAppModal } from '../../components/owner/WhatsAppModal';
 import { OwnerPageHeader } from '../../components/owner/OwnerPageHeader';
 import { RoomStatus } from '../../types';
@@ -111,6 +112,8 @@ export const OwnerDashboard: React.FC = () => {
   const attentionRooms = rooms
     .filter((r) => r.status === 'overdue' || r.status === 'due')
     .sort((a, b) => b.daysOverdue - a.daysOverdue);
+
+  const needsReview = rooms.filter((r) => r.payment?.state === 'NEEDS_REVIEW');
 
   const kpiTiles: { filter: RoomStatus | 'all'; label: string; icon: React.ReactNode; value: React.ReactNode; meta: string }[] = [
     {
@@ -259,6 +262,12 @@ export const OwnerDashboard: React.FC = () => {
       <VisitsPanel kosId={selectedKos.id} promoted={hasVisitAttention} />
 
       <ApplicationsPanel kosId={selectedKos.id} />
+
+      {needsReview.length > 0 && (
+        <Notice tone="error">
+          Pengembalian dana gagal untuk Kamar {needsReview.map((r) => r.roomNumber).join(', ')}. Dana penyewa belum kembali, jadi mohon hubungi KoBo agar segera ditinjau.
+        </Notice>
+      )}
 
       <RoomOccupancyBoard
         kosName={selectedKos.name}

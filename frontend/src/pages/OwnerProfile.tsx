@@ -116,7 +116,7 @@ export const OwnerProfile: React.FC = () => {
               variant="primary"
               size="md"
               icon={<MessageSquare size={16} />}
-              style={{ backgroundColor: '#25D366', borderColor: '#25D366' }}
+              style={{ backgroundColor: 'var(--whatsapp)', borderColor: 'var(--whatsapp)' }}
             >
               Hubungi via WhatsApp
             </Button>
@@ -179,7 +179,7 @@ export const OwnerProfile: React.FC = () => {
               Daftar Kos Milik {owner.name} ({ownerKosList.length})
             </h2>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-              Semua properti resmi yang dikelola langsung oleh Bapak/Ibu Kos ini.
+              Kos yang dikelola pemilik ini di KoBo.
             </p>
           </div>
         </div>

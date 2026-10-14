@@ -125,7 +125,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
                     backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-surface)',
                     color: isSelected ? 'white' : 'var(--text-main)',
                     boxShadow: isSelected ? 'var(--shadow-md)' : 'none',
-                    transition: 'all var(--duration-fast) var(--ease-out-spring)',
+                    transition: 'background-color var(--duration-fast) var(--ease-out-spring), border-color var(--duration-fast) var(--ease-out-spring), color var(--duration-fast) var(--ease-out-spring), box-shadow var(--duration-fast) var(--ease-out-spring), transform var(--duration-fast) var(--ease-out-spring), opacity var(--duration-fast) var(--ease-out-spring)',
                   }}
                 >
                   <span style={{ fontSize: '0.72rem', opacity: isSelected ? 0.9 : 0.6 }}>

@@ -40,7 +40,7 @@
 .os-picker__name { min-width: 0; }
 .os-menu-empty { padding: 0.5rem 0.75rem; font-size: 0.8rem; color: var(--text-muted); }
 .os-menu-name { flex: 1; }
-.os-menu-meta { color: var(--text-subtle); font-weight: 500; }
+.os-menu-meta { color: var(--text-muted); font-weight: 500; }
 
 .os-nav { flex: 1; padding: 1rem 0.85rem; display: flex; flex-direction: column; gap: 0.25rem; overflow-y: auto; }
 .os-nav__link {

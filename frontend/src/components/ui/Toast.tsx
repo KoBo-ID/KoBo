@@ -5,10 +5,10 @@ import { useAppStore } from '../../store/AppContext';
 export const ToastContainer: React.FC = () => {
   const { toasts, removeToast } = useAppStore();
 
-  if (toasts.length === 0) return null;
-
   return (
     <div
+      role="status"
+      aria-live="polite"
       style={{
         position: 'fixed',
         bottom: '1.5rem',
@@ -76,7 +76,7 @@ export const ToastContainer: React.FC = () => {
               onClick={() => removeToast(toast.id)}
               className="interactive-tap"
               style={{
-                color: 'var(--text-subtle)',
+                color: 'var(--text-muted)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

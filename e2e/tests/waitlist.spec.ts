@@ -67,15 +67,15 @@ test('demo student queues for a full kos, gets the room when the owner frees it,
   await page.goto(`/kos/${kosId}`)
   await expect(page.getByTestId('waitlist-join')).toContainText('Kamar Penuh')
   await page.getByRole('button', { name: 'Ikut Daftar Tunggu' }).click()
-  await expect(page.getByTestId('waitlist-queued')).toContainText('Kamu antrean #1')
+  await expect(page.getByTestId('waitlist-queued')).toContainText('Anda di antrean #1')
 
   // 4. The owner cancels one booking from the dashboard.
   await loginAs(page, 'owner')
   await page.goto(`/owner/dashboard?kos=${kosId}`)
-  const row = page.getByRole('row').filter({ hasText: 'Booking' }).first()
+  const row = page.getByRole('row').filter({ hasText: 'Dipesan' }).first()
   const roomNumber = (await row.getByRole('button', { name: /Aksi lainnya Kamar/ }).getAttribute('aria-label'))!.replace('Aksi lainnya Kamar ', '')
   await row.getByRole('button', { name: /Aksi lainnya Kamar/ }).click()
-  await page.getByRole('menuitem', { name: 'Batalkan Booking' }).click()
+  await page.getByRole('menuitem', { name: 'Batalkan Pesanan' }).click()
   // The dashboard confirms inline (no native dialog).
   await page.getByRole('alertdialog').getByRole('button', { name: 'Batalkan booking' }).click()
   await expect(page.getByText('Sewa diakhiri. Kamar kembali kosong.')).toBeVisible()

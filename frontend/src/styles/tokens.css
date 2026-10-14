@@ -9,6 +9,8 @@
   /* Brand Secondary / Accent - Bioluminescent Cyan / Prismarine Crystal */
   --accent: hsl(190, 95%, 42%);           /* Vivid Cyan */
   --accent-hover: hsl(190, 95%, 36%);
+  /* Accent as a fill under white text: --accent itself is 2.6:1 on white, this is above 4.5:1. */
+  --accent-strong: hsl(190, 95%, 26%);
   --accent-light: hsl(190, 85%, 95%);
   --accent-subtle: hsl(190, 70%, 98%);
   --accent-glow: hsla(190, 95%, 42%, 0.2);
@@ -44,6 +46,13 @@
   --status-booking: hsl(199, 89%, 46%);   /* Cyan/Blue: Booking */
   --status-booking-bg: hsl(199, 85%, 95%);
   --status-booking-border: hsl(199, 70%, 85%);
+
+  /* Text-safe variants: the base status colours are for dots, borders and fills; these pass 4.5:1 as text. */
+  --status-paid-text: hsl(142, 76%, 24%);
+  --status-due-text: hsl(32, 90%, 28%);
+  --status-overdue-text: hsl(0, 72%, 40%);
+  --status-booking-text: hsl(199, 89%, 28%);
+  --whatsapp: hsl(142, 70%, 28%);
 
   /* Surface & Neutral Scale */
   --bg-page: hsl(210, 20%, 98%);          /* #F8FAFC */

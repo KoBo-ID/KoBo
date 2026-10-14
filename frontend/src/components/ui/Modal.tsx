@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 import { useScrollLock } from '../../hooks/useScrollLock';
 
@@ -23,6 +23,33 @@ export const Modal: React.FC<ModalProps> = ({
 }) => {
   // Prevent background scroll and compensate for scrollbar width
   useScrollLock(isOpen);
+
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  // Focus moves into the dialog, Tab stays inside it, and focus returns to what opened it.
+  useEffect(() => {
+    if (!isOpen) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    const focusables = () =>
+      Array.from(dialog?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []);
+    (dialog?.querySelector<HTMLElement>('[autofocus], input:not([disabled]), textarea:not([disabled])') ?? focusables()[0] ?? dialog)?.focus();
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const items = focusables();
+      if (items.length === 0) return e.preventDefault();
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', trap);
+    return () => {
+      document.removeEventListener('keydown', trap);
+      opener?.focus();
+    };
+  }, [isOpen]);
 
   // ESC listener
   useEffect(() => {
@@ -51,7 +78,6 @@ export const Modal: React.FC<ModalProps> = ({
         inset: 0,
         zIndex: 'var(--z-modal-backdrop)',
         backgroundColor: 'rgba(15, 23, 42, 0.65)',
-        backdropFilter: 'blur(6px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -78,6 +104,9 @@ export const Modal: React.FC<ModalProps> = ({
         className="animate-slide-up"
         role="dialog"
         aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        ref={dialogRef}
+        tabIndex={-1}
       >
         {/* Modal Header */}
         {(title || showCloseButton) && (
@@ -93,7 +122,7 @@ export const Modal: React.FC<ModalProps> = ({
           >
             <div>
               {title && (
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                <h3 id={titleId} style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>
                   {title}
                 </h3>
               )}
@@ -109,7 +138,7 @@ export const Modal: React.FC<ModalProps> = ({
                 aria-label="Tutup modal"
                 className="interactive-tap"
                 style={{
-                  padding: '0.4rem',
+                  padding: '0.6rem',
                   borderRadius: 'var(--radius-sm)',
                   color: 'var(--text-muted)',
                   display: 'flex',

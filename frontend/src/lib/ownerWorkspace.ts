@@ -16,8 +16,7 @@ export function pickKos(kosList: OwnerKos[], id: string | null): OwnerKos | null
   return kosList.find((k) => k.id === id) ?? kosList[0] ?? null;
 }
 
-export const formatRupiah = (val: number) =>
-  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
+export { formatRupiah } from './format';
 
 /** 'YYYY-MM-DD' (a WIB calendar day) as "5 Okt". */
 export const formatDueDate = (value?: string | null): string => {

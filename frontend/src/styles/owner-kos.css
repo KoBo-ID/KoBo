@@ -136,7 +136,7 @@
 
 .owner-kos .kobo-menu button.is-danger,
 .owner-kos .kobo-menu .is-danger {
-  color: var(--status-overdue);
+  color: var(--status-overdue-text);
 }
 
 .owner-kos__confirm {

@@ -72,7 +72,7 @@ function offerCopy(p: Partial<OfferPayload>): Copy | null {
     subject: `Kamar di ${p.kosName} tersedia untukmu`,
     intro: `Kabar baik: kamar ${p.roomNumber} di ${p.kosName} sekarang tersedia dan kami simpan khusus untukmu. Pesan sebelum ${deadline}, setelah itu kamar ditawarkan ke pengantre berikutnya.`,
     action: 'Pesan Kamar',
-    outro: 'Kamu tidak perlu membalas email ini. Jika sudah tidak berminat, abaikan saja atau pilih Lewati di halaman kos.',
+    outro: 'Anda tidak perlu membalas email ini. Jika sudah tidak berminat, abaikan saja atau pilih Lewati di halaman kos.',
   }
 }
 

@@ -20,7 +20,7 @@ export const OwnerLogin: React.FC = () => {
   const isDemo = !!me?.user.isDemo;
 
   // One CTA, three meanings: sign in, open the workspace, or self-register as an owner.
-  const ctaLabel = !me ? 'Masuk untuk Mendaftar sebagai Pemilik' : me.isOwner ? 'Lanjut ke Dashboard Pemilik' : 'Daftarkan diri sebagai pemilik';
+  const ctaLabel = !me ? 'Masuk untuk Mendaftar sebagai Pemilik' : me.isOwner ? 'Lanjut ke Dasbor Pemilik' : 'Daftarkan diri sebagai pemilik';
   const onCta = () => {
     if (!me) openAuthModal();
     else if (me.isOwner) navigate('/owner/dashboard');
@@ -29,7 +29,7 @@ export const OwnerLogin: React.FC = () => {
 
   const features = [
     { icon: <LayoutDashboard size={16} />, text: 'Papan Okupansi 5 Status Kamar' },
-    { icon: <Users size={16} />, text: 'Pengingat Tagihan WhatsApp Otomatis' },
+    { icon: <Users size={16} />, text: 'Tagihan WhatsApp Sekali Klik' },
     { icon: <FileText size={16} />, text: 'Kuitansi Resmi Digital 1 Klik' },
   ];
 
@@ -115,7 +115,7 @@ export const OwnerLogin: React.FC = () => {
             style={{
               textAlign: 'center',
               fontSize: '0.75rem',
-              color: 'var(--text-subtle)',
+              color: 'var(--text-muted)',
               marginTop: '1rem',
             }}
           >

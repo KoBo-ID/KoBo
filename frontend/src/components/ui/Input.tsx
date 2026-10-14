@@ -50,7 +50,7 @@ export const Input: React.FC<InputProps> = ({
             style={{
               position: 'absolute',
               left: '0.85rem',
-              color: 'var(--text-subtle)',
+              color: 'var(--text-muted)',
               display: 'flex',
               alignItems: 'center',
               pointerEvents: 'none',
@@ -83,7 +83,7 @@ export const Input: React.FC<InputProps> = ({
             style={{
               position: 'absolute',
               right: '0.85rem',
-              color: 'var(--text-subtle)',
+              color: 'var(--text-muted)',
               display: 'flex',
               alignItems: 'center',
             }}
@@ -93,7 +93,7 @@ export const Input: React.FC<InputProps> = ({
         )}
       </div>
       {error && (
-        <span style={{ fontSize: '0.8rem', color: 'var(--status-overdue)', fontWeight: 500 }}>
+        <span style={{ fontSize: '0.8rem', color: 'var(--status-overdue-text)', fontWeight: 500 }}>
           {error}
         </span>
       )}
