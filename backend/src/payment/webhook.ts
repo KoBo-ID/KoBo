@@ -29,12 +29,14 @@ const envelope = z.object({ event: z.string().min(1), business_id: z.string().mi
 const sessionData = z.object({
   payment_session_id: z.string().min(1),
   reference_id: z.string().min(1).max(64),
-  amount: z.number().int().nonnegative(),
-  currency: z.string().min(1),
+  // amount and currency appear in Xendit's examples but not its schema, so their absence is audited, not a 400.
+  amount: z.number().int().nonnegative().optional(),
+  currency: z.string().min(1).optional(),
   status: z.string().optional(),
   updated: iso.optional(),
   business_id: z.string().min(1).optional(),
   payment_request_id: z.string().min(1).nullish(),
+  latest_payment_request_id: z.string().min(1).nullish(),
   payment_id: z.string().min(1).nullish(),
 })
 const refundData = z.object({
@@ -67,21 +69,26 @@ export function parseXenditWebhook(json: unknown): ParsedWebhook {
     const d = sessionData.safeParse(data)
     const businessId = d.success ? (env.data.business_id ?? d.data.business_id) : undefined
     if (!d.success || !businessId) return { kind: 'MALFORMED' }
-    if (d.data.currency !== 'IDR') return { kind: 'REJECTED', eventType, resourceId: d.data.payment_session_id, reason: 'CURRENCY_MISMATCH' }
+    const resourceId = d.data.payment_session_id
+    if (d.data.currency !== undefined && d.data.currency !== 'IDR') return { kind: 'REJECTED', eventType, resourceId, reason: 'CURRENCY_MISMATCH' }
+    const requestId = d.data.payment_request_id ?? d.data.latest_payment_request_id
+    // A completed event that cannot be verified is audited (200) so Xendit stops retrying; the background sweep then
+    // asks Xendit for the authoritative session and settles it.
+    if (eventType === 'payment_session.completed' && (d.data.amount === undefined || d.data.currency === undefined)) return { kind: 'REJECTED', eventType, resourceId, reason: 'MISSING_AMOUNT' }
+    if (eventType === 'payment_session.completed' && (!requestId || !d.data.payment_id)) return { kind: 'REJECTED', eventType, resourceId, reason: 'MISSING_PAYMENT_IDS' }
     const updated = d.data.updated ?? created
-    const base = { referenceId: d.data.reference_id, providerBusinessId: businessId, amount: d.data.amount, currency: 'IDR' as const, occurredAt: new Date(updated) }
-    const metadata = { sessionId: d.data.payment_session_id, paymentRequestId: d.data.payment_request_id ?? null, amount: d.data.amount, currency: d.data.currency, businessId, providerStatus: d.data.status ?? null, providerUpdatedAt: updated }
+    const base = { referenceId: d.data.reference_id, providerBusinessId: businessId, amount: d.data.amount ?? 0, currency: 'IDR' as const, occurredAt: new Date(updated) }
+    const metadata = { sessionId: d.data.payment_session_id, paymentRequestId: d.data.payment_request_id ?? null, amount: d.data.amount ?? null, currency: d.data.currency ?? null, businessId, providerStatus: d.data.status ?? null, providerUpdatedAt: updated }
     if (eventType === 'payment_session.expired') {
       return { kind: 'KNOWN', eventType, resourceId: d.data.payment_session_id, updated, metadata, event: { ...base, kind: 'SESSION_EXPIRED', providerSessionId: d.data.payment_session_id } }
     }
-    if (!d.data.payment_request_id || !d.data.payment_id) return { kind: 'MALFORMED' }
     return {
       kind: 'KNOWN',
       eventType,
       resourceId: d.data.payment_session_id,
       updated,
       metadata,
-      event: { ...base, kind: 'SESSION_COMPLETED', providerSessionId: d.data.payment_session_id, providerPaymentRequestId: d.data.payment_request_id, providerPaymentId: d.data.payment_id },
+      event: { ...base, kind: 'SESSION_COMPLETED', providerSessionId: d.data.payment_session_id, providerPaymentRequestId: requestId!, providerPaymentId: d.data.payment_id! },
     }
   }
 

@@ -1,6 +1,7 @@
 import type { PrismaClient } from '../db/client.ts'
 import type { Prisma } from '../generated/prisma/client.ts'
 import { settleInvoice } from '../payments.ts'
+import { liveOffer } from '../waitlist.ts'
 import type { NormalizedPaymentEvent } from './provider.ts'
 
 type Tx = Prisma.TransactionClient
@@ -65,7 +66,16 @@ export async function applyPaymentEvent(tx: Tx, opts: SettlementOptions, event: 
   let refundReason: string | null = null
   if (invoice.status === 'PAID') refundReason = 'INVOICE_ALREADY_PAID'
   else if (tenancy.status === 'ENDED') refundReason = 'TENANCY_ENDED'
-  else if (tenancy.status === 'PENDING' && !(isFirstInvoice && tenancy.expiresAt && tenancy.expiresAt > now)) refundReason = 'HOLD_EXPIRED'
+  else if (tenancy.status === 'PENDING') {
+    // The session ends with the hold, so a callback delayed by a retry can land just after it. The payment is honoured
+    // when it COMPLETED before the hold ended and nobody else has the room (a lapsed hold is ended by the next booking
+    // for the room, and a live waitlist offer reserves it).
+    let holdLive = !!tenancy.expiresAt && tenancy.expiresAt > now
+    if (!holdLive && tenancy.expiresAt && event.occurredAt <= tenancy.expiresAt) {
+      holdLive = (await tx.waitlistEntry.count({ where: { offeredRoomId: tenancy.roomId, ...liveOffer(now) } })) === 0
+    }
+    if (!(isFirstInvoice && holdLive)) refundReason = 'HOLD_EXPIRED'
+  }
 
   // Money arrived whatever happens next: keep the provider identifiers the refund worker needs.
   const received = {
@@ -147,7 +157,9 @@ async function applyRefundEvent(
 ): Promise<SettlementResult> {
   const found =
     (await tx.paymentRefund.findUnique({ where: { referenceId: event.referenceId }, select: { id: true } })) ??
-    (await tx.paymentRefund.findUnique({ where: { providerRefundId: event.providerRefundId }, select: { id: true } }))
+    (await tx.paymentRefund.findUnique({ where: { providerRefundId: event.providerRefundId }, select: { id: true } })) ??
+    // An operator re-queue gives the row a fresh reference; a late callback for the ORIGINAL reference still finds it.
+    (await originalReference(tx, event.referenceId))
   if (!found) return { outcome: 'UNMATCHED', paymentId: null }
 
   const refund = await tx.paymentRefund.findUniqueOrThrow({ where: { id: found.id }, include: { payment: true } })
@@ -168,4 +180,9 @@ async function applyRefundEvent(
   if (res.outcome === 'REJECTED') return reject(res.reason ?? 'REJECTED')
   if (res.outcome === 'DUPLICATE') return { outcome: 'DUPLICATE', paymentId: payment.id }
   return { outcome: res.outcome === 'REFUNDED' ? 'REFUNDED' : 'REFUND_FAILED', paymentId: payment.id, reason: res.reason }
+}
+
+async function originalReference(tx: Tx, referenceId: string): Promise<{ id: string } | null> {
+  const m = /^refund_([A-Za-z0-9]+)$/.exec(referenceId)
+  return m ? tx.paymentRefund.findUnique({ where: { paymentId: m[1] }, select: { id: true } }) : null
 }

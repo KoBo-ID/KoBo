@@ -125,5 +125,6 @@ test('a new user can register as an owner and reach the dashboard', async ({ pag
   await page.goto('/owner/login')
   await page.getByRole('button', { name: 'Daftarkan diri sebagai pemilik' }).click()
   await expect(page).toHaveURL(/\/owner\/dashboard$/)
-  await expect(page.getByText('Mitra Pemilik Aktif')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Papan okupansi', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Belum ada kos' })).toBeVisible()
 })

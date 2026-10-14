@@ -62,7 +62,8 @@ export async function startPaymentAttempt(
   invoiceId: string,
   now = new Date(),
 ): Promise<StartPaymentResult> {
-  const minWindow = provider.kind === 'XENDIT' ? MIN_XENDIT_CHECKOUT_WINDOW_MS : MIN_MOCK_WINDOW_MS
+  // A margin over the provider's own check, which uses a later clock reading.
+  const minWindow = provider.kind === 'XENDIT' ? MIN_XENDIT_CHECKOUT_WINDOW_MS + 30_000 : MIN_MOCK_WINDOW_MS
   const liveWhere = { invoiceId, provider: { in: ONLINE }, status: { in: LIVE } }
 
   let phase1: Phase1

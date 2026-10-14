@@ -103,6 +103,17 @@ export function paymentEnv(env: NodeJS.ProcessEnv = process.env): PaymentConfig 
   const customApiBaseUrl = env.XENDIT_API_BASE_URL?.trim()
   if (customApiBaseUrl && env.NODE_ENV !== 'test') throw new Error('XENDIT_API_BASE_URL may only be overridden when NODE_ENV=test')
 
+  const returnOrigin = env.PAYMENT_RETURN_ORIGIN?.trim()
+  if (provider === 'xendit' && returnOrigin) {
+    let origin: URL | null = null
+    try {
+      origin = new URL(returnOrigin)
+    } catch {
+      /* reported below */
+    }
+    if (!origin || origin.protocol !== 'https:') throw new Error('PAYMENT_RETURN_ORIGIN must be an https origin (Xendit rejects other return URLs)')
+  }
+
   const apiBaseUrl = (customApiBaseUrl || 'https://api.xendit.co').replace(/\/+$/, '')
   let parsedApiBaseUrl: URL
   try {

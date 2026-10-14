@@ -229,7 +229,8 @@ export class XenditPaymentProvider implements PaymentProvider {
       operation,
       method: 'POST',
       providerBusinessId: input.providerBusinessId,
-      // Stable per refund row, so a retry after a crash or timeout cannot create a second refund.
+      // Defence in depth only: Xendit's refund spec does not document this header, so safety rests on the
+      // stable reference_id plus treating REFUND_IN_PROGRESS / REFUND_AMOUNT_EXCEEDED as "already refunding" (refunds.ts).
       idempotencyKey: input.referenceId,
       body: {
         reference_id: input.referenceId,

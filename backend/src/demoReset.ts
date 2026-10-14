@@ -40,6 +40,23 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
 
   await prisma.$transaction(
     async (tx) => {
+      // 0. Refund rows are financial history (onDelete Restrict), so they go first, only for the tenancies this reset deletes below.
+      await tx.paymentRefund.deleteMany({
+        where: {
+          payment: {
+            invoice: {
+              tenancy: {
+                OR: [
+                  { userId: demoStudent.id },
+                  { userId: { in: seedUserIds }, room: { kosId: { in: seedKosIds } } },
+                  { room: { kos: { ownerId: demoProfile.id, id: { notIn: seedKosIds } } } },
+                ],
+              },
+            },
+          },
+        },
+      })
+
       // 1. Demo student: visits and (below) tenancies.
       await tx.visit.deleteMany({ where: { userId: demoStudent.id } })
 

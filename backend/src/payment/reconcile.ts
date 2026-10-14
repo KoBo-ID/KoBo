@@ -29,6 +29,8 @@ export function eventFromSnapshot(
   return { ...base, kind: 'SESSION_EXPIRED', providerSessionId: snap.providerSessionId }
 }
 
+type PaymentRow = NonNullable<Awaited<ReturnType<PrismaClient['payment']['findFirst']>>>
+
 /**
  * Asks the provider (server to server) what happened to one attempt and feeds the answer through the same settlement
  * as a webhook. Returns once the state is current; it never trusts the browser. No lock is held during the lookup.
@@ -36,7 +38,11 @@ export function eventFromSnapshot(
 export async function reconcilePayment(prisma: PrismaClient, service: Service, userId: string, paymentId: string, now = new Date()): Promise<void> {
   const payment = await prisma.payment.findFirst({ where: { id: paymentId, invoice: { tenancy: { userId } } } })
   if (!payment) throw new TRPCError({ code: 'NOT_FOUND', message: 'Pembayaran tidak ditemukan.' })
+  await reconcileAttempt(prisma, service, payment, now, true)
+}
 
+/** Shared by the tenant action and the background sweep. `strict` surfaces provider errors to the caller. */
+async function reconcileAttempt(prisma: PrismaClient, service: Service, payment: PaymentRow, now: Date, strict: boolean): Promise<void> {
   // Settled, refunding, manual or in-app attempts have nothing to ask the provider; MOCK is only ever settled by simulate.
   if (payment.provider !== 'XENDIT' || !['CREATING', 'PENDING', 'EXPIRED', 'FAILED'].includes(payment.status) || !payment.providerSessionId) return
   const provider = service.defaultProvider
@@ -57,7 +63,8 @@ export async function reconcilePayment(prisma: PrismaClient, service: Service, u
     snap = await provider.getSession({ providerSessionId: payment.providerSessionId, providerBusinessId: businessId === master ? undefined : businessId })
   } catch (e) {
     console.error('[payments] reconcile lookup failed', { paymentId: payment.id, code: e instanceof XenditError ? e.code : 'UNKNOWN' })
-    throw new TRPCError({ code: 'BAD_GATEWAY', message: 'Status pembayaran belum dapat diperiksa. Coba lagi nanti.' })
+    if (strict) throw new TRPCError({ code: 'BAD_GATEWAY', message: 'Status pembayaran belum dapat diperiksa. Coba lagi nanti.' })
+    return
   }
 
   if (snap.referenceId !== payment.id || snap.providerSessionId !== payment.providerSessionId || (snap.amount !== null && snap.amount !== payment.amount) || (snap.currency !== null && snap.currency !== 'IDR')) {
@@ -66,4 +73,60 @@ export async function reconcilePayment(prisma: PrismaClient, service: Service, u
   }
   const event = eventFromSnapshot(snap, payment, businessId)
   if (event) await applyPaymentEventTx(prisma, { provider: 'XENDIT', expectedBusinessId: master, now }, event)
+}
+
+export const SWEEP_LIVE_AFTER_MS = 10 * 60_000
+export const SWEEP_CLOSED_RECHECK_MS = 60 * 60_000
+export const SWEEP_CLOSED_WINDOW_MS = 24 * 3600_000
+
+/**
+ * Safety net for lost callbacks (outage, every retry failed, an unverifiable payload): asks Xendit about attempts that
+ * are still open past a grace period, or that closed within the last day, so money that arrived is credited or
+ * refunded without anyone clicking. Provider errors are logged and retried on the next pass.
+ */
+export async function sweepStalePayments(prisma: PrismaClient, service: Service, opts: { limit?: number; now?: Date } = {}): Promise<{ checked: number }> {
+  const now = opts.now ?? new Date()
+  const rows = await prisma.payment.findMany({
+    where: {
+      provider: 'XENDIT',
+      providerSessionId: { not: null },
+      createdAt: { lt: new Date(now.getTime() - SWEEP_LIVE_AFTER_MS) },
+      OR: [
+        { status: 'PENDING', OR: [{ lastReconciledAt: null }, { lastReconciledAt: { lt: new Date(now.getTime() - SWEEP_LIVE_AFTER_MS) } }] },
+        {
+          status: { in: ['EXPIRED', 'FAILED'] },
+          expiresAt: { gt: new Date(now.getTime() - SWEEP_CLOSED_WINDOW_MS) },
+          OR: [{ lastReconciledAt: null }, { lastReconciledAt: { lt: new Date(now.getTime() - SWEEP_CLOSED_RECHECK_MS) } }],
+        },
+      ],
+    },
+    orderBy: { createdAt: 'asc' },
+    take: opts.limit ?? 20,
+  })
+  for (const payment of rows) {
+    try {
+      await reconcileAttempt(prisma, service, payment, now, false)
+    } catch (e) {
+      console.error('[payments] sweep failed', { paymentId: payment.id, code: (e as { code?: string }).code ?? 'UNKNOWN' })
+    }
+  }
+  return { checked: rows.length }
+}
+
+/** Not started from createApp: tests call sweepStalePayments() directly. Returns a stop function. */
+export function startPaymentSweep(prisma: PrismaClient, service: Service, intervalMs = 5 * 60_000): () => void {
+  let running = false
+  const tick = async () => {
+    if (running) return
+    running = true
+    try {
+      await sweepStalePayments(prisma, service)
+    } catch (err) {
+      console.error('[payments] sweep failed:', err instanceof Error ? err.message : err)
+    } finally {
+      running = false
+    }
+  }
+  const timer = setInterval(() => void tick(), intervalMs)
+  return () => clearInterval(timer)
 }

@@ -101,3 +101,19 @@ test('an expired attempt explains itself and offers a fresh Bayar Sekarang', asy
   await expect(page.getByText('Sesi pembayaran sebelumnya berakhir')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Bayar Sekarang' })).toBeVisible()
 })
+
+for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 650 }]) {
+  test(`payment actions do not overflow the page at ${viewport.width}px`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    await loginAs(page, 'student')
+    await stub(page, {
+      'booking.mine': (r) => r.fulfill(trpc(tenancy({ canPay: true, latestPayment: payment({ status: 'EXPIRED' }) }))),
+    })
+    await page.goto('/my-kos')
+    await expect(page.getByRole('button', { name: 'Bayar Sekarang' })).toBeVisible()
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    expect(overflow).toBeLessThanOrEqual(0)
+    const box = await page.getByRole('button', { name: 'Bayar Sekarang' }).boundingBox()
+    expect(box!.x + box!.width).toBeLessThanOrEqual(viewport.width)
+  })
+}

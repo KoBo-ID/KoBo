@@ -56,7 +56,7 @@ export const paymentRouter = router({
   simulate: authedProcedure.input(paymentIdInput).mutation(async ({ ctx, input }): Promise<{ status: 'PAID' }> => {
     if (!ctx.user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Simulasi pembayaran hanya tersedia untuk akun demo.' })
     const payment = await ctx.prisma.payment.findFirst({
-      where: { id: input.paymentId, provider: 'MOCK', status: 'PENDING', invoice: { tenancy: { userId: ctx.user.id } } },
+      where: { id: input.paymentId, provider: 'MOCK', status: 'PENDING', OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }], invoice: { tenancy: { userId: ctx.user.id } } },
       select: { id: true, amount: true, providerSessionId: true, providerBusinessId: true },
     })
     if (!payment) throw new TRPCError({ code: 'NOT_FOUND', message: 'Pembayaran tidak ditemukan atau sudah diproses.' })

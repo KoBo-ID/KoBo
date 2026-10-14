@@ -5,6 +5,7 @@ import { createPrisma } from './db/client.ts'
 import { startDemoReset } from './demoSchedule.ts'
 import { requireEnv } from './env.ts'
 import { startOutboxWorker, transportFromEnv } from './outbox.ts'
+import { startPaymentSweep } from './payment/reconcile.ts'
 import { startRefundWorker } from './payment/refunds.ts'
 import { paymentServiceFromEnv } from './payment/service.ts'
 import { startWaitlistWorker } from './waitlist.ts'
@@ -27,6 +28,9 @@ const stopOutbox = startOutboxWorker(prisma, transportFromEnv(), 15_000)
 // Also not started from createApp: tests call drainPaymentRefunds() directly.
 const stopRefunds = startRefundWorker(prisma, paymentService, 15_000)
 
+// Also not started from createApp: tests call sweepStalePayments() directly. Recovers payments whose callbacks were lost.
+const stopPaymentSweep = startPaymentSweep(prisma, paymentService)
+
 // Also not started from createApp: tests call advanceAllWaitlists() directly.
 const stopWaitlist = startWaitlistWorker(prisma)
 
@@ -36,6 +40,7 @@ const stopDemoReset = startDemoReset(prisma)
 const shutdown = () => {
   stopOutbox()
   stopRefunds()
+  stopPaymentSweep()
   stopWaitlist()
   stopDemoReset()
   server.close(() => void prisma.$disconnect().finally(() => process.exit(0)))

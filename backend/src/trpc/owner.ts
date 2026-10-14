@@ -265,6 +265,7 @@ export const ownerRouter = router({
       if (busy > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kos ini masih memiliki sewa atau booking aktif. Akhiri sewa tersebut terlebih dahulu.' })
       if ((await ctx.prisma.rentalApplication.count({ where: { room: { kosId: input.kosId }, status: 'PENDING' } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kos ini masih memiliki pengajuan sewa yang perlu diputuskan.' })
       if ((await ctx.prisma.waitlistEntry.count({ where: { kosId: input.kosId, ...liveOffer(new Date()) } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: OFFER_ACTIVE })
+      if ((await ctx.prisma.paymentRefund.count({ where: { payment: { invoice: { tenancy: { room: { kosId: input.kosId } } } } } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kos ini memiliki riwayat pengembalian dana yang harus tetap tersimpan, sehingga tidak dapat dihapus.' })
       await ctx.prisma.kos.delete({ where: { id: input.kosId } })
       return { id: input.kosId }
     }),
@@ -311,6 +312,7 @@ export const ownerRouter = router({
       if (busy > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kamar ini masih memiliki sewa atau booking aktif. Akhiri sewa tersebut terlebih dahulu.' })
       if ((await ctx.prisma.rentalApplication.count({ where: { roomId: room.id, status: 'PENDING' } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kamar ini masih memiliki pengajuan sewa yang perlu diputuskan.' })
       if ((await ctx.prisma.waitlistEntry.count({ where: { offeredRoomId: room.id, ...liveOffer(new Date()) } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: OFFER_ACTIVE })
+      if ((await ctx.prisma.paymentRefund.count({ where: { payment: { invoice: { tenancy: { roomId: room.id } } } } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kamar ini memiliki riwayat pengembalian dana yang harus tetap tersimpan, sehingga tidak dapat dihapus.' })
       await ctx.prisma.room.delete({ where: { id: room.id } })
       return { id: room.id }
     }),

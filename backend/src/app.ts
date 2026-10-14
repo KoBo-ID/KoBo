@@ -2,13 +2,14 @@ import { readFile, stat } from 'node:fs/promises'
 import { extname, join, normalize, sep } from 'node:path'
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
 import { Hono } from 'hono'
+import { bodyLimit } from 'hono/body-limit'
 import { createAuth } from './auth.ts'
 import type { Auth } from './auth.ts'
 import type { PrismaClient } from './db/client.ts'
 import { authEnv } from './env.ts'
 import { paymentServiceFromEnv } from './payment/service.ts'
 import type { PaymentService } from './payment/service.ts'
-import { handleXenditWebhook } from './payment/webhook.ts'
+import { handleXenditWebhook, MAX_WEBHOOK_BYTES } from './payment/webhook.ts'
 import { DEV_UPLOAD_PREFIX, storageFromEnv } from './storage.ts'
 import type { FakeStorage, Storage } from './storage.ts'
 import { appRouter } from './trpc/router.ts'
@@ -78,12 +79,17 @@ export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...auth
   })
 
   // Xendit callback: authenticated by x-callback-token; the raw body is read once and never logged.
-  app.post('/api/webhooks/xendit', async (c) => {
+  app.post(
+    '/api/webhooks/xendit',
+    // Rejects an oversized body from its Content-Length / stream BEFORE it is buffered, and before any authentication.
+    bodyLimit({ maxSize: MAX_WEBHOOK_BYTES, onError: (c) => c.json({ ok: false, error: 'Body terlalu besar.' }, 413) }),
+    async (c) => {
     const cfg = paymentService.xenditWebhook
     if (!cfg) return c.json({ error: 'Not found' }, 404)
     const res = await handleXenditWebhook(prisma, cfg, { rawBody: await c.req.text(), token: c.req.header('x-callback-token') })
     return c.json(res.body, res.status)
-  })
+    },
+  )
 
   // Dev/e2e only: the fake storage's presigned URLs point here. Never mounted when R2 is configured.
   if (storage.kind === 'fake') mountDevUploads(app, storage as FakeStorage)

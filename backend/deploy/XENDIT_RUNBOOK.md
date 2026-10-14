@@ -20,6 +20,8 @@ Approved application, then `Bayar Sekarang`, then pay on the hosted page with a 
 - An attempt lives at most 30 minutes and never past the tenancy hold; Xendit needs at least 11 minutes, so a hold under that gives "Sisa waktu pembayaran terlalu singkat".
 - A `CREATING` row older than 2 minutes is failed (`STALE_CREATING`). If money later arrives for it, settlement still honours it or refunds it.
 - `Periksa Status` (reconcile) is throttled to one provider lookup per attempt per 30 seconds.
+- A background sweep (every 5 min) asks Xendit about attempts still open after 10 minutes, and about attempts that closed in the last 24 h, so a payment whose callbacks were lost is credited or refunded without anyone clicking. Callbacks it cannot verify (missing amount or payment ids) are audited as `REJECTED` and left to the sweep.
+- A payment that completed before the hold ended is honoured even if its callback is processed a little later, unless the room was offered to someone else; otherwise it is refunded.
 - Refund worker: every 15 s, lease 120 s, 8 attempts with 1, 2, 4... minute backoff capped at 6 h.
 
 ## 4. Rotating keys
@@ -46,7 +48,11 @@ SELECT "invoiceId", count(*) FROM "Payment" WHERE status = 'PAID' GROUP BY 1 HAV
 
 ## 6. Refund intervention
 
-A `REFUND_FAILED` row carries `lastError` (a Xendit failure code such as `INSUFFICIENT_BALANCE`). Fix the cause (top up balance, correct the channel), then ask the engineering lead to re-queue it; do not edit money rows by hand. A refund stuck in `SUBMITTED` for more than a day has no callback: look the refund up in the Xendit dashboard by its `referenceId` (`refund_<paymentId>`) and reconcile from there. Never create a second refund for the same payment.
+`npm run refunds:admin -w backend -- list` shows refunds that automation cannot finish: `FAILED` ones (with `lastError`, e.g. `INSUFFICIENT_BALANCE`) and ones `SUBMITTED` for over a day with no callback.
+
+- **Submitted, no callback:** look the refund up in the Xendit dashboard by its `referenceId` (`refund_<paymentId>`). If it shows the final outcome, record it: `refunds:admin -- resolve <refundId> succeeded|failed`.
+- **Failed:** fix the cause (top up balance, correct the channel). Then confirm in the dashboard that **no refund exists** for that payment and run `refunds:admin -- requeue <refundId> --confirm-not-refunded`. It re-queues under a fresh reference id (the old one may replay the old failure) and refuses without the flag. Never requeue when the dashboard shows a refund, or the tenant is refunded twice.
+- Do not edit money rows by hand.
 
 ## 7. Rollback (non-live environments only)
 
