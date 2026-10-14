@@ -60,7 +60,7 @@ Demo data resets every night at 03:30 WIB, or on demand with **Reset data demo**
      |                                              |- GET  /*          SPA with index.html fallback
      |                                              |- ALL  /api/trpc/* tRPC (domain API)
      |                                              |- ALL  /api/auth/* better-auth (email + password, demo logins)
-     |                                              |- POST /api/webhooks/payment (HMAC, idempotent)
+     |                                              |- POST /api/webhooks/xendit (x-callback-token, idempotent)
      |                                              |- GET  /health     SELECT 1
      |                                              |- outbox drain (15 s) + demo reset (03:30 WIB)
      |                                              '- postgres 18
@@ -109,7 +109,7 @@ npm install            # installs all workspaces from the single root lockfile
 cp backend/.env.example backend/.env
 ```
 
-`backend/.env` is git-ignored. The defaults work for the Docker setup below; set a real `BETTER_AUTH_SECRET` (`openssl rand -base64 32`) and `PAYMENT_WEBHOOK_SECRET` (`openssl rand -hex 32`) for anything shared. Resend and R2 settings can stay empty in development (see [Configuration](#configuration)).
+`backend/.env` is git-ignored. The defaults work for the Docker setup below; set a real `BETTER_AUTH_SECRET` (`openssl rand -base64 32`) for anything shared (payments default to the in-app mock; see the `XENDIT_*` variables to use Xendit Test Mode). Resend and R2 settings can stay empty in development (see [Configuration](#configuration)).
 
 ### 2. Start Postgres
 
@@ -199,7 +199,7 @@ All variables live in `backend/.env` (development) or `/opt/kobo/backend/.env` (
 | `AUTH_IP_HEADERS` | no | comma-separated client-IP headers for auth rate limiting (production default `cf-connecting-ip`; Vercel -> Railway: `x-forwarded-for`) |
 | `EMAIL_REPLY_TO` | no | Reply-To for outgoing email |
 | `BETTER_AUTH_SECRET` | yes | signing secret, `openssl rand -base64 32` |
-| `PAYMENT_WEBHOOK_SECRET` | yes | HMAC key for `POST /api/webhooks/payment`; the in-app simulator signs with it too. The server refuses to start without it |
+| `XENDIT_CALLBACK_TOKEN` | with `PAYMENT_PROVIDER=xendit` | Verification token Xendit sends as `x-callback-token` to `POST /api/webhooks/xendit`. Also needs `XENDIT_SECRET_API_KEY` and `XENDIT_BUSINESS_ID` |
 | `RESEND_API_KEY`, `EMAIL_FROM` | production | transactional email. If the key is unset, emails are logged to the console |
 | `R2_ENDPOINT`, `R2_PUBLIC_BUCKET`, `R2_PUBLIC_ACCESS_KEY_ID`, `R2_PUBLIC_SECRET_ACCESS_KEY`, `R2_PUBLIC_BASE_URL` | production | photo storage. Leave **all five** unset in development to use an in-memory fake (uploads are lost on restart). In production the server refuses to start unless all five are set |
 | `E2E_DATABASE_URL`, `E2E_PORT` | no | override the e2e database and port (defaults `localhost:5433/kobo_e2e`, `3100`) |
@@ -277,7 +277,7 @@ Server setup, rollback, restore, token rotation, Cloudflare and GitHub settings 
 | Verification email never arrives | In development nothing is sent: look for the link in the API terminal, or use a demo login. |
 | `Invalid origin` when signing in | You opened the API port directly or a different host. Use `http://localhost:5173` in development. |
 | Server exits at startup with an `R2_*` message | Running in production mode without all five `R2_PUBLIC_*` variables. Set them (or, for e2e only, `ALLOW_FAKE_STORAGE=1`). |
-| Server exits at startup about `PAYMENT_WEBHOOK_SECRET` | Add it to `backend/.env` (`openssl rand -hex 32`). |
+| Server exits at startup about `XENDIT_*` | `PAYMENT_PROVIDER=xendit` needs `XENDIT_SECRET_API_KEY`, `XENDIT_CALLBACK_TOKEN` and `XENDIT_BUSINESS_ID` in `backend/.env`. |
 | e2e tests time out or fail to start | Run `npm run build` first, make sure `kobo_e2e` exists, and check `E2E_DATABASE_URL`. Do not run it against a database you care about: it is wiped. |
 | `docker compose` cannot connect to the daemon (Windows) | Docker Desktop is not running or WSL2 is missing: `wsl --install`, reboot, start Docker Desktop. |
 | `Kamar baru saja dibooking orang lain` | Working as intended: someone, possibly you in another tab, already holds that room for 24 hours. |

@@ -93,6 +93,21 @@ async function invoiceForGatewaySchema() {
 }
 
 describe('payment gateway schema', () => {
+  it('rejects an invoice writer that omits the allocation snapshot', async () => {
+    const { room, user } = await freeRoom()
+    const lease = await tenancy(room.id, user.id, 'ENDED')
+    await expect(
+      prisma.invoice.create({
+        data: {
+          tenancyId: lease.id,
+          periodStart: new Date('2026-10-01T00:00:00Z'),
+          dueDate: new Date('2026-10-05T00:00:00Z'),
+          amount: 1_000_000,
+        } as never,
+      }),
+    ).rejects.toThrow()
+  })
+
   it('persists the immutable invoice allocation snapshot', async () => {
     const invoice = await invoiceForGatewaySchema()
 

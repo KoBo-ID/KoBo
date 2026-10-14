@@ -24,6 +24,7 @@ const room = (
   invoice: null,
   daysOverdue: 0,
   lastReceipt: null,
+  payment: null,
   ...extra,
 });
 

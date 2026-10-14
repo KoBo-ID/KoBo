@@ -11,27 +11,34 @@ const settle = (p: Promise<unknown>) => p.then(() => null, (e: unknown) => e as 
 const startDate = () => addDays(todayWIB(new Date()), 3)
 
 describe('booking race', () => {
-  it('two simultaneous bookings of one room: exactly one wins, the other gets CONFLICT', async () => {
+  const apply = (userId: string, roomId: string) => callerFor(userId).application.create({ roomId, startDate: startDate(), durationMonths: 6, occupation: 'Mahasiswa' })
+  const ownerFor = async (room: Awaited<ReturnType<typeof vacantRoom>>) => {
+    const owner = await prisma.ownerProfile.findUniqueOrThrow({ where: { id: room.kos.ownerId }, select: { userId: true } })
+    return callerFor(owner.userId)
+  }
+
+  it('two simultaneous approvals for one room: exactly one wins', async () => {
     for (let round = 0; round < 3; round++) {
       const room = await vacantRoom(round)
-      const input = { roomId: room.id, startDate: startDate(), durationMonths: 6 }
+      const applications = await Promise.all([apply(DEMO_STUDENT_ID, room.id), apply('user-student-1', room.id)])
+      const owner = await ownerFor(room)
       const results = await Promise.all([
-        settle(callerFor(DEMO_STUDENT_ID).booking.create(input)),
-        settle(callerFor('user-student-1').booking.create(input)),
+        settle(owner.application.decide({ kosId: room.kosId, applicationId: applications[0].id, decision: 'APPROVE' })),
+        settle(owner.application.decide({ kosId: room.kosId, applicationId: applications[1].id, decision: 'APPROVE' })),
       ])
       const losers = results.filter((r) => r !== null)
       expect(losers).toHaveLength(1)
       expect(losers[0]!.code).toBe('CONFLICT')
-      expect(losers[0]!.message).toBe('Kamar baru saja dibooking orang lain.')
       expect(await prisma.tenancy.count({ where: { roomId: room.id, status: { in: ['PENDING', 'ACTIVE'] } } })).toBe(1)
       expect(await prisma.invoice.count({ where: { tenancy: { roomId: room.id } } })).toBe(1)
     }
   })
 
-  it('many simultaneous bookings still produce one winner', async () => {
+  it('many simultaneous approvals still produce one winner', async () => {
     const room = await vacantRoom()
-    const input = { roomId: room.id, startDate: startDate(), durationMonths: 6 }
-    const results = await Promise.all([1, 2, 3, 4, 5].map((i) => settle(callerFor(`user-student-${i}`).booking.create(input))))
+    const applications = await Promise.all([1, 2, 3, 4, 5].map((i) => apply(`user-student-${i}`, room.id)))
+    const owner = await ownerFor(room)
+    const results = await Promise.all(applications.map((application) => settle(owner.application.decide({ kosId: room.kosId, applicationId: application.id, decision: 'APPROVE' }))))
     expect(results.filter((r) => r === null)).toHaveLength(1)
     expect(results.filter((r) => r?.code === 'CONFLICT')).toHaveLength(4)
   })
@@ -41,7 +48,8 @@ describe('booking race', () => {
     await prisma.tenancy.create({
       data: { roomId: room.id, userId: 'user-student-2', status: 'PENDING', startDate: new Date(), durationMonths: 6, expiresAt: new Date(Date.now() - 1000) },
     })
-    const res = await callerFor(DEMO_STUDENT_ID).booking.create({ roomId: room.id, startDate: startDate(), durationMonths: 6 })
+    const application = await apply(DEMO_STUDENT_ID, room.id)
+    const res = await (await ownerFor(room)).application.decide({ kosId: room.kosId, applicationId: application.id, decision: 'APPROVE' })
     expect(res.tenancyId).toBeTruthy()
   })
 })

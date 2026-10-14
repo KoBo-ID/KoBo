@@ -11,7 +11,6 @@ export default defineConfig({
     env: {
       BETTER_AUTH_URL: 'http://localhost:3000',
       BETTER_AUTH_SECRET: 'test-secret-test-secret-test-secret-0123456789',
-      PAYMENT_WEBHOOK_SECRET: 'test-webhook-secret-0123456789',
     },
   },
 })

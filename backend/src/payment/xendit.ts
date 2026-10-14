@@ -58,16 +58,21 @@ const refundSchema = z.object({
 const errorSchema = z.object({ error_code: z.string().optional() })
 
 export class XenditError extends Error {
-  constructor(
-    readonly operation: XenditOperation,
-    readonly status: number | null,
-    readonly code: string,
-    readonly retryable: boolean,
-    readonly outcomeUnknown: boolean,
-    message: string,
-  ) {
+  // Explicit fields, not parameter properties: Node's strip-only TypeScript mode (the production runtime) rejects those.
+  readonly operation: XenditOperation
+  readonly status: number | null
+  readonly code: string
+  readonly retryable: boolean
+  readonly outcomeUnknown: boolean
+
+  constructor(operation: XenditOperation, status: number | null, code: string, retryable: boolean, outcomeUnknown: boolean, message: string) {
     super(message.slice(0, 200))
     this.name = 'XenditError'
+    this.operation = operation
+    this.status = status
+    this.code = code
+    this.retryable = retryable
+    this.outcomeUnknown = outcomeUnknown
   }
 }
 
@@ -112,7 +117,10 @@ export class XenditPaymentProvider implements PaymentProvider {
   private readonly doFetch: typeof globalThis.fetch
   private readonly now: () => Date
 
-  constructor(private readonly options: XenditPaymentProviderOptions) {
+  private readonly options: XenditPaymentProviderOptions
+
+  constructor(options: XenditPaymentProviderOptions) {
+    this.options = options
     if (!options.secretApiKey || !options.businessId) throw new Error('Xendit credentials are required')
     const apiBaseUrl = new URL(options.apiBaseUrl ?? 'https://api.xendit.co')
     if (
@@ -221,6 +229,8 @@ export class XenditPaymentProvider implements PaymentProvider {
       operation,
       method: 'POST',
       providerBusinessId: input.providerBusinessId,
+      // Stable per refund row, so a retry after a crash or timeout cannot create a second refund.
+      idempotencyKey: input.referenceId,
       body: {
         reference_id: input.referenceId,
         payment_request_id: input.providerPaymentRequestId,
@@ -263,7 +273,7 @@ export class XenditPaymentProvider implements PaymentProvider {
 
   private async request(
     path: string,
-    input: { operation: XenditOperation; method: 'GET' | 'POST'; providerBusinessId?: string; splitRuleId?: string; body?: Record<string, unknown> },
+    input: { operation: XenditOperation; method: 'GET' | 'POST'; providerBusinessId?: string; splitRuleId?: string; idempotencyKey?: string; body?: Record<string, unknown> },
   ): Promise<unknown> {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
@@ -274,6 +284,7 @@ export class XenditPaymentProvider implements PaymentProvider {
     if (input.body) headers.set('Content-Type', 'application/json')
     if (input.providerBusinessId) headers.set('for-user-id', input.providerBusinessId)
     if (input.splitRuleId) headers.set('with-split-rule', input.splitRuleId)
+    if (input.idempotencyKey) headers.set('Idempotency-key', input.idempotencyKey)
 
     try {
       const response = await this.doFetch(`${this.apiBaseUrl}${path}`, {

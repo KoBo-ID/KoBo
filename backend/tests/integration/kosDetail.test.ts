@@ -123,6 +123,11 @@ describe('kos.detail', () => {
         periodStart: new Date(`${addDays(today, -40)}T00:00:00Z`),
         dueDate: new Date(`${addDays(today, -10)}T00:00:00Z`),
         amount: 1,
+        rentAmount: 1,
+        discountAmount: 0,
+        applicationFeeAmount: 0,
+        ownerReceivableAmount: 1,
+        gatewayFeeBearer: 'PLATFORM',
         status: 'UNPAID',
       },
     })

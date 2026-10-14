@@ -30,6 +30,16 @@ interface RoomOccupancyBoardProps {
   onFilterStatusChange?: (status: RoomStatus | 'all') => void;
 }
 
+/** Owner-safe payment labels. Xendit collection is "terverifikasi"; nothing here claims funds were paid out. */
+const PAYMENT_LABEL: Record<string, string | null> = {
+  AWAITING_ONLINE: 'Menunggu pembayaran',
+  VERIFIED: 'Pembayaran terverifikasi',
+  MANUAL: 'Dicatat manual',
+  REFUND: 'Dana dikembalikan ke penyewa',
+  NEEDS_REVIEW: 'Perlu ditinjau',
+  NONE: null,
+};
+
 export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
   kosName,
   rooms,
@@ -246,6 +256,11 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             <span className="kobo-status__dot" aria-hidden="true" />
                             {STATUS_META[room.status].label}
                           </span>
+                          {PAYMENT_LABEL[room.payment?.state ?? 'NONE'] && (
+                            <div className="kobo-table__muted" style={{ fontSize: '0.75rem', marginTop: '0.2rem' }} data-testid="payment-label">
+                              {PAYMENT_LABEL[room.payment?.state ?? 'NONE']}
+                            </div>
+                          )}
                         </td>
                         <td>
                           <div className="kobo-table__actions">

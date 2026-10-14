@@ -51,6 +51,19 @@ test('owner marks a booked room paid and opens its kuitansi', async ({ page, bro
   await expect(row.getByText('Booking', { exact: true })).toBeVisible()
 
   await row.getByRole('button', { name: `Tandai Lunas Kamar ${room!.roomNumber}` }).click()
+  const modal = page.getByRole('dialog')
+  const submit = modal.getByRole('button', { name: 'Catat Lunas' })
+  await expect(submit).toBeDisabled()
+  // The owner re-types the exact amount shown in the label; a transfer also needs a reference.
+  const label = (await modal.getByText(/Ketik jumlah yang diterima/).first().textContent()) ?? ''
+  const amount = label.match(/Rp\s*([\d.]+)/)![1].replace(/\./g, '')
+  await modal.getByLabel(/Ketik jumlah yang diterima/).fill(amount)
+  await expect(submit).toBeEnabled()
+  await modal.getByLabel('Transfer bank').check()
+  await expect(submit).toBeDisabled()
+  await modal.getByLabel('Nomor referensi transfer').fill('TRF-E2E-001')
+  await expect(submit).toBeEnabled()
+  await submit.click()
   await expect(row.getByText('Lunas', { exact: true })).toBeVisible()
 
   const link = row.getByRole('link', { name: `Lihat kuitansi Kamar ${room!.roomNumber}` })

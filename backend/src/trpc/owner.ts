@@ -325,10 +325,16 @@ export const ownerRouter = router({
       return ctx.prisma.$transaction(async (tx) => {
         const t = await tx.tenancy.findFirst({ where: { id: input.tenancyId, room: { kosId: input.kosId } }, select: { id: true, roomId: true } })
         if (!t) throw new TRPCError({ code: 'NOT_FOUND', message: 'Sewa tidak ditemukan.' })
+        // Same lock order as settlement and recordManual: Invoices, then their attempts, then the Tenancy.
+        await tx.$queryRaw`SELECT id FROM "Invoice" WHERE "tenancyId" = ${t.id} ORDER BY id FOR UPDATE`
+        await tx.payment.updateMany({
+          where: { invoice: { tenancyId: t.id }, provider: { in: ['MOCK', 'XENDIT'] }, status: { in: ['CREATING', 'PENDING'] } },
+          data: { status: 'FAILED', failureCode: 'TENANCY_ENDED' },
+        })
+        await tx.$queryRaw`SELECT id FROM "Tenancy" WHERE id = ${t.id} FOR UPDATE`
         const ended = await tx.tenancy.updateMany({ where: { id: t.id, status: { in: ['ACTIVE', 'PENDING'] } }, data: { status: 'ENDED', endedAt: new Date() } })
         if (ended.count === 0) throw new TRPCError({ code: 'CONFLICT', message: 'Sewa ini sudah berakhir.' })
         await tx.room.update({ where: { id: t.roomId }, data: { occupancy: 'VACANT' } })
-        await tx.payment.updateMany({ where: { invoice: { tenancyId: t.id }, status: 'PENDING' }, data: { status: 'FAILED' } })
         await advanceWaitlist(tx, input.kosId, new Date())
         return { id: t.id }
       })

@@ -72,9 +72,10 @@ describe('application owner decisions', () => {
     expect(await prisma.tenancy.count()).toBe(before)
   })
 
-  it('approves into the existing 24-hour payment hold and rejects competitors', async () => {
+  it('approves into a 24-hour payment hold with an immutable invoice and no payment attempt', async () => {
     const room = await vacantRoom()
     const winner = await newStudent()
+    await prisma.user.update({ where: { id: winner.id }, data: { campusEmailVerifiedAt: new Date() } })
     const loser = await newStudent()
     const a = await callerFor(winner.id).application.create(inputFor(room.id))
     const b = await callerFor(loser.id).application.create({ ...inputFor(room.id), occupation: 'Karyawan' })
@@ -88,7 +89,17 @@ describe('application owner decisions', () => {
     expect(tenancy).toMatchObject({ roomId: room.id, userId: winner.id, status: 'PENDING', durationMonths: 6 })
     expect(tenancy.expiresAt!.getTime()).toBeGreaterThan(Date.now() + 23 * 3600_000)
     expect(tenancy.invoices).toHaveLength(1)
-    expect(tenancy.invoices[0].payments[0]).toMatchObject({ provider: 'MOCK', status: 'PENDING' })
+    const discount = Math.min(room.kos.studentDiscountAmount, room.priceMonthly + room.kos.applicationFee)
+    expect(tenancy.invoices[0]).toMatchObject({
+      rentAmount: room.priceMonthly,
+      discountAmount: discount,
+      applicationFeeAmount: room.kos.applicationFee,
+      ownerReceivableAmount: room.priceMonthly - discount,
+      amount: room.priceMonthly + room.kos.applicationFee - discount,
+      gatewayFeeBearer: 'PLATFORM',
+      status: 'UNPAID',
+      payments: [],
+    })
     expect((await callerFor(loser.id).application.mine()).find((x) => x.id === b.id)?.status).toBe('REJECTED')
   })
 

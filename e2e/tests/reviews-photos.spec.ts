@@ -57,19 +57,36 @@ test('a paying tenant reviews their kos, it appears on Detail, and the owner rep
   const kos = kosList.find((k) => k.rooms.some((r) => r.status === 'vacant'))
   expect(kos, 'an owner kos with a vacant room').toBeTruthy()
 
-  // Demo student books one of those rooms and pays through the simulator (API), so the tenancy is ACTIVE.
+  // Demo student applies; the owner approves, then the student starts and simulates the demo payment.
   await loginAs(page, 'student')
   const startDate = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
-  let paymentId = ''
+  let invoiceId = ''
   for (const room of kos!.rooms.filter((r) => r.status === 'vacant').sort(() => Math.random() - 0.5)) {
-    const res = await page.request.post('/api/trpc/booking.create', { data: { roomId: room.id, startDate, durationMonths: 3 }, headers: { origin } })
-    if (res.ok()) {
-      paymentId = (await trpcData<{ payment: { id: string } }>(res)).payment.id
+    const submitted = await page.request.post('/api/trpc/application.create', {
+      data: { roomId: room.id, startDate, durationMonths: 3, occupation: 'Mahasiswa' },
+      headers: { origin },
+    })
+    if (submitted.ok()) {
+      const application = await trpcData<{ id: string }>(submitted)
+      const approved = await ownerPage.request.post('/api/trpc/application.decide', {
+        data: { kosId: kos!.id, applicationId: application.id, decision: 'APPROVE' },
+        headers: { origin },
+      })
+      if (!approved.ok()) {
+        expect(approved.status(), 'only a lost approval race may fail').toBe(409)
+        continue
+      }
+      const tenancyId = (await trpcData<{ tenancyId: string }>(approved)).tenancyId
+      const mine = await trpcData<{ id: string; invoices: { id: string }[] }[]>(await page.request.get('/api/trpc/booking.mine'))
+      invoiceId = mine.find((tenancy) => tenancy.id === tenancyId)!.invoices[0].id
       break
     }
-    expect(res.status(), 'only a lost race may fail').toBe(409)
+    expect(submitted.status(), 'only a lost race may fail').toBe(409)
   }
-  expect(paymentId, 'student booked a room').toBeTruthy()
+  expect(invoiceId, 'student application was approved').toBeTruthy()
+  const started = await page.request.post('/api/trpc/payment.start', { data: { invoiceId }, headers: { origin } })
+  expect(started.ok(), 'demo payment attempt started').toBe(true)
+  const paymentId = (await trpcData<{ paymentId: string }>(started)).paymentId
   const paid = await page.request.post('/api/trpc/payment.simulate', { data: { paymentId }, headers: { origin } })
   expect(paid.ok(), 'simulated payment').toBe(true)
 

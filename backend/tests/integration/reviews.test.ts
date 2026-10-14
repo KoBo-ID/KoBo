@@ -29,7 +29,18 @@ async function tenancyFor(userId: string, kind: Kind, nth = 0) {
   })
   const paid = kind === 'active' || kind === 'ended-paid'
   await prisma.invoice.create({
-    data: { tenancyId: t.id, periodStart: new Date(now), dueDate: new Date(now), amount: 1_000_000, status: paid ? 'PAID' : 'UNPAID' },
+    data: {
+      tenancyId: t.id,
+      periodStart: new Date(now),
+      dueDate: new Date(now),
+      amount: 1_000_000,
+      rentAmount: 1_000_000,
+      discountAmount: 0,
+      applicationFeeAmount: 0,
+      ownerReceivableAmount: 1_000_000,
+      gatewayFeeBearer: 'PLATFORM',
+      status: paid ? 'PAID' : 'UNPAID',
+    },
   })
   return { tenancy: t, room }
 }

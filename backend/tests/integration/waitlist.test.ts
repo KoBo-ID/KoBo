@@ -6,7 +6,7 @@ import { resetDemo } from '../../src/demoReset.ts'
 import { resetDb } from '../../src/db/seed.ts'
 import { renderEmail } from '../../src/emailTemplates.ts'
 import { advanceAllWaitlists } from '../../src/waitlist.ts'
-import { callerFor, newStudent, prisma } from '../helpers.ts'
+import { approveApplication, callerFor, newStudent, prisma } from '../helpers.ts'
 
 beforeEach(() => resetDb(prisma))
 
@@ -245,8 +245,8 @@ describe('releasing a room', () => {
     await f.owner.tenancy.end({ kosId: f.kos.id, tenancyId: f.tenancies.S1 })
     expect((await entryRow(deluxe.entry.id)).status).toBe('WAITING')
     const stranger = await newStudent()
-    const res = await callerFor(stranger.id).booking.create({ roomId: f.room('S1').id, startDate: startDate(), durationMonths: 3 })
-    expect(res.roomId).toBe(f.room('S1').id)
+    const res = await approveApplication(stranger.id, f.room('S1').id, { startDate: startDate(), durationMonths: 3 })
+    expect(res.room.id).toBe(f.room('S1').id)
     // The waiting Deluxe student is not in the stranger's way, and keeps their place.
     expect((await entryRow(deluxe.entry.id)).status).toBe('WAITING')
   })
@@ -278,7 +278,7 @@ describe('booking guard', () => {
   it("refuses another student's booking of the offered room, including the next in line", async () => {
     const { a, b, roomId } = await offered()
     for (const who of [b.c, callerFor((await newStudent()).id)]) {
-      const e = await err(who.booking.create({ roomId, startDate: startDate(), durationMonths: 3 }))
+      const e = await err(who.application.create({ roomId, startDate: startDate(), durationMonths: 3, occupation: 'Mahasiswa' }))
       expect(e?.code).toBe('CONFLICT')
       expect(e?.message).toBe('Kamar ini sedang ditawarkan ke pengantre lain.')
     }
@@ -288,8 +288,8 @@ describe('booking guard', () => {
 
   it('lets the offeree book it and marks the entry FULFILLED', async () => {
     const { a, b, roomId } = await offered()
-    const res = await a.c.booking.create({ roomId, startDate: startDate(), durationMonths: 3 })
-    expect(res.roomId).toBe(roomId)
+    const res = await approveApplication(a.s.id, roomId, { startDate: startDate(), durationMonths: 3 })
+    expect(res.room.id).toBe(roomId)
     expect(await entryRow(a.entry.id)).toMatchObject({ status: 'FULFILLED' })
     expect((await entryRow(a.entry.id)).resolvedAt).not.toBeNull()
     expect((await entryRow(b.entry.id)).status).toBe('WAITING')
@@ -304,7 +304,7 @@ describe('booking guard', () => {
     expect((await entryRow(a.entry.id)).status).toBe('WAITING')
 
     const stranger = await newStudent()
-    const e = await err(callerFor(stranger.id).booking.create({ roomId: f.room('S1').id, startDate: startDate(), durationMonths: 3 }))
+    const e = await err(callerFor(stranger.id).application.create({ roomId: f.room('S1').id, startDate: startDate(), durationMonths: 3, occupation: 'Mahasiswa' }))
     expect(e?.code).toBe('CONFLICT')
     expect(e?.message).toBe('Kamar ini sedang ditawarkan ke pengantre lain.')
     // The advance committed even though the booking was refused: #1 now holds the offer and the email is queued.
@@ -319,12 +319,12 @@ describe('booking guard', () => {
     await f.owner.tenancy.end({ kosId: f.kos.id, tenancyId: f.tenancies.S1 })
     expect((await entryRow(behind.entry.id)).status).toBe('OFFERED')
     // The Deluxe waiter takes the Standar room that was nobody's... it is offered to `behind`, so they cannot.
-    expect(await code(deluxe.c.booking.create({ roomId: f.room('S1').id, startDate: startDate(), durationMonths: 3 }))).toBe('CONFLICT')
+    expect(await code(deluxe.c.application.create({ roomId: f.room('S1').id, startDate: startDate(), durationMonths: 3, occupation: 'Mahasiswa' }))).toBe('CONFLICT')
 
     const g = await fullKos([{ n: 'S1', type: 'Standar' }, { n: 'D1', type: 'Deluxe' }])
     const wantsDeluxe = await join(g.kos.id, 'Deluxe')
     await g.owner.tenancy.end({ kosId: g.kos.id, tenancyId: g.tenancies.S1 }) // matches nobody: stays open
-    await wantsDeluxe.c.booking.create({ roomId: g.room('S1').id, startDate: startDate(), durationMonths: 3 })
+    await approveApplication(wantsDeluxe.s.id, g.room('S1').id, { startDate: startDate(), durationMonths: 3 })
     expect((await entryRow(wantsDeluxe.entry.id)).status).toBe('FULFILLED')
   })
 })
@@ -389,7 +389,7 @@ describe('lapse, decline and leave', () => {
   it('an unpaid hold from a waitlist booking lapses and the next tick offers the room to the next entry', async () => {
     const { f, a, b } = await offered()
     const roomId = f.room('S1').id
-    const booked = await a.c.booking.create({ roomId, startDate: startDate(), durationMonths: 3 })
+    const booked = await approveApplication(a.s.id, roomId, { startDate: startDate(), durationMonths: 3 })
     expect((await entryRow(a.entry.id)).status).toBe('FULFILLED')
     expect((await entryRow(b.entry.id)).status).toBe('WAITING')
 

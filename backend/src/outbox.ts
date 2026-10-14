@@ -28,7 +28,7 @@ export const backoffSeconds = (attempts: number) => Math.min(BACKOFF_CAP_SECONDS
 
 export function enqueueEmail(
   db: Pick<PrismaClient, 'emailOutbox'>,
-  email: { to: string; template: string; payload: Record<string, string> },
+  email: { to: string; template: string; payload: Record<string, string | number> },
 ) {
   return db.emailOutbox.create({ data: { to: email.to, template: email.template, payload: email.payload } })
 }

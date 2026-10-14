@@ -39,14 +39,26 @@ test('demo student queues for a full kos, gets the room when the owner frees it,
   const { id: kosId } = await trpcData<{ id: string }>(created)
   const kos = (await trpcData<{ id: string; rooms: { id: string; roomNumber: string }[] }[]>(await page.request.get('/api/trpc/owner.myKos'))).find((k) => k.id === kosId)!
 
-  // 2. A second account books both rooms (a parallel test that grabbed one first just means it is already taken).
+  // 2. A second account applies for both rooms and the owner approves them.
   const tenantCtx = await browser.newContext({ baseURL })
   const tenant = await tenantCtx.newPage()
   await signUpVerified(tenant, 'penyewa-antre')
   const startDate = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
   for (const room of kos.rooms) {
-    const res = await tenantCtx.request.post('/api/trpc/booking.create', { data: { roomId: room.id, startDate, durationMonths: 3 }, headers: origin })
-    if (!res.ok()) expect(res.status(), 'only a lost race may fail').toBe(409)
+    const submitted = await tenantCtx.request.post('/api/trpc/application.create', {
+      data: { roomId: room.id, startDate, durationMonths: 3, occupation: 'Mahasiswa' },
+      headers: origin,
+    })
+    if (!submitted.ok()) {
+      expect(submitted.status(), 'only a lost race may fail').toBe(409)
+      continue
+    }
+    const application = await trpcData<{ id: string }>(submitted)
+    const approved = await page.request.post('/api/trpc/application.decide', {
+      data: { kosId, applicationId: application.id, decision: 'APPROVE' },
+      headers: origin,
+    })
+    if (!approved.ok()) expect(approved.status(), 'only a lost approval race may fail').toBe(409)
   }
   await tenantCtx.close()
 

@@ -61,9 +61,6 @@ export function authEnv(env: NodeJS.ProcessEnv = process.env) {
   }
 }
 
-/** HMAC secret shared by POST /api/webhooks/payment and the in-app payment simulator. */
-export const paymentWebhookSecret = () => requireEnv('PAYMENT_WEBHOOK_SECRET')
-
 type XenditBaseConfig = {
   mode: 'test' | 'live'
   apiBaseUrl: string

@@ -46,13 +46,30 @@ export const rentalApplicationDecisionInput = z.object({
 })
 
 export const paymentIdInput = z.object({ paymentId: z.string().min(1).max(64) })
+export const invoiceIdInput = z.object({ invoiceId: z.string().min(1).max(64) })
 
 /** `kosId` is required by ownerProcedure (the authorization root); the invoice must belong to that kos. */
-export const recordManualInput = z.object({ kosId: z.string().min(1).max(64), invoiceId: z.string().min(1).max(64) })
-
-/** Body of POST /api/webhooks/payment. */
-export const paymentEventSchema = z.object({ externalId: z.string().min(1).max(128), status: z.literal('PAID') })
-export type PaymentEvent = z.infer<typeof paymentEventSchema>
+export const manualPaymentMethod = z.enum(['CASH', 'BANK_TRANSFER'])
+export const recordManualInput = z
+  .object({
+    kosId: z.string().min(1).max(64),
+    invoiceId: z.string().min(1).max(64),
+    method: manualPaymentMethod,
+    /** The owner re-types what they received; the server compares it with the invoice after locking it. */
+    confirmedAmount: z.number().int().min(1),
+    reference: z
+      .string()
+      .trim()
+      .min(3)
+      .max(64)
+      .regex(/^[A-Za-z0-9 ./_-]+$/, 'Nomor referensi hanya boleh huruf, angka, spasi, titik, garis miring, garis bawah, atau tanda hubung.')
+      .optional(),
+    note: z.string().trim().max(500).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.method === 'BANK_TRANSFER' && !v.reference) ctx.addIssue({ code: 'custom', path: ['reference'], message: 'Nomor referensi transfer wajib diisi.' })
+    if (v.method === 'CASH' && v.reference) ctx.addIssue({ code: 'custom', path: ['reference'], message: 'Pembayaran tunai tidak memakai nomor referensi.' })
+  })
 
 // ---------------------------------------------------------------------------
 // Owner workspace (spec sections 3 and 5). Every owner write carries `kosId`, the authorization root.

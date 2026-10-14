@@ -1,20 +1,26 @@
 import '../src/env.ts'
+import { randomUUID } from 'node:crypto'
+import { addDays, todayWIB } from '@kobo/shared/domain'
 import { createApp } from '../src/app.ts'
 import { createAuth } from '../src/auth.ts'
 import { createPrisma } from '../src/db/client.ts'
-import { MockPaymentProvider } from '../src/payment/mock.ts'
+import { MOCK_BUSINESS_ID, mockCompletedEvent, MockPaymentProvider } from '../src/payment/mock.ts'
 import { PaymentService } from '../src/payment/service.ts'
+import { applyPaymentEventTx } from '../src/payment/settlement.ts'
 import { createFakeStorage } from '../src/storage.ts'
 import { createCallerFactory } from '../src/trpc/trpc.ts'
 import type { Context } from '../src/trpc/trpc.ts'
 import { appRouter } from '../src/trpc/router.ts'
+
+export const TEST_CALLBACK_TOKEN = 'test-callback-token-0123456789'
+export const TEST_BUSINESS_ID = 'biz_test'
 
 export const prisma = createPrisma(process.env.TEST_DATABASE_URL ?? '')
 export const baseURL = process.env.BETTER_AUTH_URL ?? 'http://localhost:3000'
 export const secret = process.env.BETTER_AUTH_SECRET ?? ''
 export const auth = createAuth({ prisma, baseURL, secret })
 export const storage = createFakeStorage()
-export const paymentService = new PaymentService({ defaultProvider: new MockPaymentProvider() })
+export const paymentService = new PaymentService({ defaultProvider: new MockPaymentProvider(), xenditWebhook: { callbackToken: TEST_CALLBACK_TOKEN, businessId: TEST_BUSINESS_ID } })
 export const app = createApp({ prisma, auth, storage, paymentService })
 
 const makeCaller = createCallerFactory(appRouter)
@@ -108,16 +114,43 @@ export async function me(cookie?: string) {
   }
 }
 
-export const webhookSecret = process.env.PAYMENT_WEBHOOK_SECRET ?? ''
-
-/** POST a signed (or deliberately mis-signed) payment webhook straight into the app. */
-export async function postWebhook(body: unknown, opts: { signature?: string | null; secret?: string } = {}): Promise<Response> {
+/** POST a Xendit callback straight into the app; `token: null` omits the x-callback-token header. */
+export async function postXenditWebhook(body: unknown, opts: { token?: string | null } = {}): Promise<Response> {
   const raw = typeof body === 'string' ? body : JSON.stringify(body)
-  const { createHmac } = await import('node:crypto')
-  const sig = opts.signature === undefined ? createHmac('sha256', opts.secret ?? webhookSecret).update(raw).digest('hex') : opts.signature
   const headers: Record<string, string> = { 'content-type': 'application/json' }
-  if (sig !== null) headers['x-signature'] = sig
-  return Promise.resolve(app.request('/api/webhooks/payment', { method: 'POST', headers, body: raw }))
+  const token = opts.token === undefined ? TEST_CALLBACK_TOKEN : opts.token
+  if (token !== null) headers['x-callback-token'] = token
+  return Promise.resolve(app.request('/api/webhooks/xendit', { method: 'POST', headers, body: raw }))
+}
+
+/** A payment_session.completed/expired callback body for an attempt row. */
+export function sessionWebhook(
+  type: 'completed' | 'expired',
+  p: { id: string; amount: number; providerSessionId: string | null },
+  over: { data?: Record<string, unknown>; businessId?: string; updated?: string } = {},
+) {
+  const updated = over.updated ?? '2026-10-14T03:00:00.000Z'
+  return {
+    event: `payment_session.${type}`,
+    business_id: over.businessId ?? TEST_BUSINESS_ID,
+    created: updated,
+    data: {
+      payment_session_id: p.providerSessionId ?? `ps_${p.id}`,
+      reference_id: p.id,
+      amount: p.amount,
+      currency: 'IDR',
+      status: type === 'completed' ? 'COMPLETED' : 'EXPIRED',
+      updated,
+      ...(type === 'completed' ? { payment_request_id: `pr_${p.id}`, payment_id: `py_${p.id}` } : {}),
+      ...over.data,
+    },
+  }
+}
+
+/** Settle a MOCK attempt the way the in-app simulator does (normalized event straight into settlement). */
+export const settleMock = async (paymentId: string) => {
+  const payment = await prisma.payment.findUniqueOrThrow({ where: { id: paymentId } })
+  return applyPaymentEventTx(prisma, { provider: 'MOCK', expectedBusinessId: MOCK_BUSINESS_ID }, mockCompletedEvent(payment, new Date()))
 }
 
 export const DEMO_STUDENT_ID = 'user-demo-student'
@@ -140,3 +173,58 @@ export async function newStudent() {
   const n = ++userSeq
   return prisma.user.create({ data: { id: `test-student-${n}`, name: `Tester ${n}`, email: `tester-${n}@kobo.test`, emailVerified: true } })
 }
+
+interface ApprovalFixtureOptions {
+  startDate?: string
+  durationMonths?: number
+  occupation?: string
+  note?: string
+}
+
+/** Exercise the real application workflow; direct booking is intentionally not part of the public API. */
+export async function approveApplication(userId: string, roomId: string, options: ApprovalFixtureOptions = {}) {
+  const room = await prisma.room.findUniqueOrThrow({
+    where: { id: roomId },
+    include: { kos: { include: { owner: { select: { userId: true } } } } },
+  })
+  const renter = callerFor(userId)
+  const application = await renter.application.create({
+    roomId,
+    startDate: options.startDate ?? addDays(todayWIB(new Date()), 3),
+    durationMonths: options.durationMonths ?? 3,
+    occupation: options.occupation ?? 'Mahasiswa',
+    note: options.note,
+  })
+  const decision = await callerFor(room.kos.owner.userId).application.decide({
+    kosId: room.kosId,
+    applicationId: application.id,
+    decision: 'APPROVE',
+  })
+  if (!decision.tenancyId) throw new Error('application approval did not create a tenancy')
+  const tenancy = await prisma.tenancy.findUniqueOrThrow({
+    where: { id: decision.tenancyId },
+    include: { invoices: { orderBy: [{ dueDate: 'asc' }, { id: 'asc' }] } },
+  })
+  const invoice = tenancy.invoices[0]
+  if (!invoice) throw new Error('application approval did not create an invoice')
+  return { applicationId: application.id, tenancyId: tenancy.id, invoiceId: invoice.id, tenancy, invoice, room }
+}
+
+/** Transitional fixture for settlement tests until payment.start owns attempt creation in Task 5. */
+export async function createPendingMockPayment(invoiceId: string) {
+  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, select: { amount: true } })
+  const sessionId = `mock_session_${randomUUID()}`
+  return prisma.payment.create({
+    data: { invoiceId, provider: 'MOCK', providerSessionId: sessionId, providerBusinessId: MOCK_BUSINESS_ID, amount: invoice.amount, status: 'PENDING' },
+  })
+}
+
+/** A valid CASH recordManual input for an invoice (amount read from the database, as the owner would re-type it). */
+export async function cash(kosId: string, invoiceId: string, over: Record<string, unknown> = {}) {
+  const invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: invoiceId }, select: { amount: true } })
+  return { kosId, invoiceId, method: 'CASH' as const, confirmedAmount: invoice.amount, ...over }
+}
+
+/** Let any online attempt on the invoice lapse so an owner can record a manual payment. */
+export const lapseAttempts = (invoiceId: string) =>
+  prisma.payment.updateMany({ where: { invoiceId, status: { in: ['CREATING', 'PENDING'] } }, data: { expiresAt: new Date(Date.now() - 1000) } })

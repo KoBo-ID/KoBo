@@ -12,6 +12,8 @@ export interface KuitansiView {
   paidAt: string
   amount: number
   method: 'MOCK' | 'MANUAL' | 'XENDIT'
+  /** Owner-recorded cash/transfer details. The private note is never part of the receipt. */
+  manual: { method: 'CASH' | 'BANK_TRANSFER'; reference: string | null } | null
   payer: { name: string; campus: string | null }
   kos: { id: string; name: string; address: string }
   room: { roomNumber: string; floor: number; type: string }
@@ -52,6 +54,7 @@ export const kuitansiRouter = router({
       paidAt: p.paidAt.toISOString(),
       amount: p.amount,
       method: p.provider,
+      manual: p.provider === 'MANUAL' && p.manualMethod ? { method: p.manualMethod, reference: p.manualReference } : null,
       payer: { name: tenancy.user.name, campus: tenancy.user.campus },
       kos: { id: kos.id, name: kos.name, address: kos.address },
       room: { roomNumber: tenancy.room.roomNumber, floor: tenancy.room.floor, type: tenancy.room.type },

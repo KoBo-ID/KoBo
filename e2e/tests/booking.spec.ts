@@ -32,6 +32,8 @@ test('demo student applies, gets owner approval, pays and sees an active rental'
 
   await page.reload()
   await expect(page.getByTestId('application-card').filter({ hasText: kos!.name })).toContainText('Diterima')
+  // Approval only creates the obligation; the attempt is opened on demand, then the labelled demo simulator completes it.
+  await page.getByRole('button', { name: 'Bayar Sekarang' }).click()
   await page.getByRole('button', { name: 'Simulasikan Pembayaran' }).click()
   await expect(page).toHaveURL(/\/my-kos/)
   const card = page.getByTestId('tenancy-card').filter({ hasText: kos!.name }).first()

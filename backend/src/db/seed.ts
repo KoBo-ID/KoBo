@@ -274,7 +274,20 @@ export function buildSeed(now: Date): SeedRows {
       const due = addMonths(firstDue, m)
       const invId = `inv-${id}-${m + 1}`
       const paid = m === 0
-      invoiceRows.push({ id: invId, tenancyId: id, periodStart: dateOnly(due), dueDate: dateOnly(due), amount: room.priceMonthly, status: paid ? 'PAID' : 'UNPAID' })
+      const applicationFeeAmount = m === 0 ? kosFee : 0
+      invoiceRows.push({
+        id: invId,
+        tenancyId: id,
+        periodStart: dateOnly(due),
+        dueDate: dateOnly(due),
+        amount: room.priceMonthly + applicationFeeAmount,
+        rentAmount: room.priceMonthly,
+        discountAmount: 0,
+        applicationFeeAmount,
+        ownerReceivableAmount: room.priceMonthly,
+        gatewayFeeBearer: 'PLATFORM',
+        status: paid ? 'PAID' : 'UNPAID',
+      })
       if (paid) {
         paymentRows.push({
           id: `pay-${invId}`,
@@ -304,8 +317,19 @@ export function buildSeed(now: Date): SeedRows {
       createdAt: created,
     })
     const invId = `inv-${id}-1`
-    invoiceRows.push({ id: invId, tenancyId: id, periodStart: dateOnly(addDays(today, 7)), dueDate: dateOnly(addDays(today, 7)), amount: room.priceMonthly, status: 'UNPAID' })
-    paymentRows.push({ id: `pay-${invId}`, invoiceId: invId, provider: 'MOCK', externalId: `seed-${invId}`, amount: room.priceMonthly + kosFee, status: 'PENDING' })
+    invoiceRows.push({
+      id: invId,
+      tenancyId: id,
+      periodStart: dateOnly(addDays(today, 7)),
+      dueDate: dateOnly(addDays(today, 7)),
+      amount: room.priceMonthly + kosFee,
+      rentAmount: room.priceMonthly,
+      discountAmount: 0,
+      applicationFeeAmount: kosFee,
+      ownerReceivableAmount: room.priceMonthly,
+      gatewayFeeBearer: 'PLATFORM',
+      status: 'UNPAID',
+    })
     room.occupancy = 'BOOKED'
   }
 

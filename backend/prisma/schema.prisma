@@ -330,12 +330,11 @@ model Invoice {
   periodStart           DateTime         @db.Date
   dueDate               DateTime         @db.Date
   amount                Int
-  // TODO(Task 4): remove these compatibility defaults after every invoice writer persists an explicit allocation snapshot.
-  rentAmount            Int              @default(0)
-  discountAmount        Int              @default(0)
-  applicationFeeAmount  Int              @default(0)
-  ownerReceivableAmount Int              @default(0)
-  gatewayFeeBearer      GatewayFeeBearer @default(PLATFORM)
+  rentAmount            Int
+  discountAmount        Int
+  applicationFeeAmount  Int
+  ownerReceivableAmount Int
+  gatewayFeeBearer      GatewayFeeBearer
   status                InvoiceStatus    @default(UNPAID)
 
   payments Payment[]
@@ -368,6 +367,8 @@ model Payment {
   status                   PaymentStatus        @default(PENDING)
   paidAt                   DateTime?            @db.Timestamptz(3)
   refundedAt               DateTime?            @db.Timestamptz(3)
+  /** Throttle for payment.reconcile: one provider lookup per attempt per 30 seconds. */
+  lastReconciledAt         DateTime?            @db.Timestamptz(3)
   createdAt                DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt                DateTime             @updatedAt @db.Timestamptz(3)
 

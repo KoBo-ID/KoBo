@@ -3,14 +3,30 @@ import type {
   CreateCheckoutInput,
   CreateRefundInput,
   GetSessionInput,
+  NormalizedPaymentEvent,
   PaymentProvider,
   PaymentSessionSnapshot,
   RefundSnapshot,
 } from './provider.ts'
 
-const MOCK_BUSINESS_ID = 'kobo-mock'
+export const MOCK_BUSINESS_ID = 'kobo-mock'
 
 /** Deterministic, network-free adapter for automated tests and explicitly demo users. */
+/** The normalized completed event the in-app simulator feeds to settlement (there is no mock gateway to call back). */
+export function mockCompletedEvent(payment: { id: string; amount: number; providerSessionId: string | null; providerBusinessId: string | null }, now: Date): NormalizedPaymentEvent {
+  return {
+    kind: 'SESSION_COMPLETED',
+    referenceId: payment.id,
+    providerBusinessId: payment.providerBusinessId ?? MOCK_BUSINESS_ID,
+    amount: payment.amount,
+    currency: 'IDR',
+    occurredAt: now,
+    providerSessionId: payment.providerSessionId ?? `mock_session_${payment.id}`,
+    providerPaymentRequestId: `mock_pr_${payment.id}`,
+    providerPaymentId: `mock_pay_${payment.id}`,
+  }
+}
+
 export class MockPaymentProvider implements PaymentProvider {
   readonly kind = 'MOCK' as const
 

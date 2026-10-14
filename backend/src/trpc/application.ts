@@ -2,7 +2,7 @@ import { addDays, todayWIB } from '@kobo/shared/domain'
 import { rentalApplicationCreateInput, rentalApplicationDecisionInput, kosIdOnly } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
 import { advanceWaitlist, liveOffer } from '../waitlist.ts'
-import { CONFLICT_MESSAGE, createPendingBooking, isRoomTakenError, OFFERED_ELSEWHERE, OFFERED_ELSEWHERE_MESSAGE } from './booking.ts'
+import { CONFLICT_MESSAGE, createApprovedTenancyObligation, isRoomTakenError, OFFERED_ELSEWHERE, OFFERED_ELSEWHERE_MESSAGE } from './booking.ts'
 import { authedProcedure, ownerProcedure, router } from './trpc.ts'
 
 const MAX_START_AHEAD_DAYS = 120
@@ -66,7 +66,7 @@ export const applicationRouter = router({
         })
         await advanceWaitlist(tx, room.kosId, now)
         const offer = await tx.waitlistEntry.findFirst({ where: { offeredRoomId: room.id, ...liveOffer(now) }, select: { userId: true } })
-        if (offer && offer.userId !== ctx.user.id) return ROOM_UNAVAILABLE
+        if (offer && offer.userId !== ctx.user.id) return OFFERED_ELSEWHERE
         const liveTenancy = await tx.tenancy.count({
           where: { roomId: room.id, OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gte: now } }] },
         })
@@ -84,6 +84,7 @@ export const applicationRouter = router({
         })
         return { id: application.id, status: 'PENDING' as const }
       })
+      if (created === OFFERED_ELSEWHERE) throw new TRPCError({ code: 'CONFLICT', message: OFFERED_ELSEWHERE_MESSAGE })
       if (created === ROOM_UNAVAILABLE) throw new TRPCError({ code: 'CONFLICT', message: 'Kamar ini sudah tidak tersedia untuk pengajuan.' })
       return created
     } catch (e) {
@@ -151,7 +152,7 @@ export const applicationRouter = router({
           return { id: application.id, status: 'REJECTED' as const, tenancyId: null }
         }
 
-        const booked = await createPendingBooking(tx, {
+        const booked = await createApprovedTenancyObligation(tx, {
           userId: application.userId,
           startDate: dateOnly(application.startDate),
           durationMonths: application.durationMonths,

@@ -17,6 +17,7 @@ const longDate = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', mo
 
 const METHOD_LABEL = {
   MOCK: 'Pembayaran online KoBo (simulasi)',
+  XENDIT: 'Pembayaran online terverifikasi (Xendit)',
   MANUAL: 'Dicatat manual oleh pemilik (tunai / transfer)',
 } as const;
 
@@ -129,7 +130,10 @@ export const Kuitansi: React.FC = () => {
           <Row label="Nama Pengelola / Pemilik:">
             <strong>{k.owner.name}</strong>
           </Row>
-          <Row label="Metode Transaksi:">{METHOD_LABEL[k.method]}</Row>
+          <Row label="Metode Transaksi:">
+            {k.manual ? `${k.manual.method === 'CASH' ? 'Tunai' : 'Transfer bank'}, dicatat oleh pemilik` : METHOD_LABEL[k.method]}
+          </Row>
+          {k.manual?.reference && <Row label="No. Referensi:">{k.manual.reference}</Row>}
           <div
             style={{
               marginTop: '1rem',

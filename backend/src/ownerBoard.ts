@@ -25,6 +25,11 @@ export interface BoardRoom {
   daysOverdue: number
   /** The newest paid receipt of that tenancy, for the kuitansi link. */
   lastReceipt: { receiptNumber: number; receiptNo: string } | null
+  /**
+   * Safe payment label for the live tenancy's open invoice. Never carries a checkout URL or tenant-only controls.
+   * AWAITING_ONLINE: the tenant is mid online payment (manual entry is blocked). REFUND: a late payment is being refunded.
+   */
+  payment: { state: 'AWAITING_ONLINE' | 'VERIFIED' | 'MANUAL' | 'REFUND' | 'NEEDS_REVIEW'; expiresAt: string | null } | null
 }
 
 export interface BoardSummary {
@@ -53,7 +58,15 @@ export async function loadBoardRooms(prisma: PrismaClient, kosIds: string[], now
         where: { status: { in: ['ACTIVE', 'PENDING'] } },
         include: {
           user: { select: { name: true, phone: true, campus: true } },
-          invoices: { orderBy: [{ dueDate: 'asc' }, { id: 'asc' }], include: { payments: { where: { status: 'PAID' }, orderBy: { paidAt: 'desc' } } } },
+          invoices: { orderBy: [{ dueDate: 'asc' }, { id: 'asc' }], include: {
+              payments: {
+                where: { status: { in: ['PAID', 'CREATING', 'PENDING', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED'] } },
+                // Explicit select: checkoutUrl and provider ids are never loaded for the owner.
+                select: { id: true, provider: true, status: true, expiresAt: true, paidAt: true, receiptNo: true, createdAt: true },
+                orderBy: { paidAt: 'desc' },
+              },
+            },
+          },
         },
       },
     },
@@ -70,7 +83,8 @@ export async function loadBoardRooms(prisma: PrismaClient, kosIds: string[], now
     })
     const live = t && status !== 'vacant' ? t : null
     const unpaid = live?.invoices.find((i) => i.status === 'UNPAID') ?? null
-    const receipts = live ? live.invoices.flatMap((i) => i.payments).filter((p) => p.paidAt) : []
+    const allPayments = live ? live.invoices.flatMap((i) => i.payments) : []
+    const receipts = allPayments.filter((p) => p.status === 'PAID' && p.paidAt)
     receipts.sort((a, b) => b.paidAt!.getTime() - a.paidAt!.getTime())
     const last = receipts[0]
     out.get(r.kosId)!.push({
@@ -87,6 +101,7 @@ export async function loadBoardRooms(prisma: PrismaClient, kosIds: string[], now
       invoice: unpaid ? { id: unpaid.id, dueDate: dateOnly(unpaid.dueDate), amount: unpaid.amount } : null,
       daysOverdue: unpaid ? daysOverdue(dateOnly(unpaid.dueDate), now) : 0,
       lastReceipt: last ? { receiptNumber: last.receiptNo, receiptNo: formatReceiptNo(last.receiptNo, last.paidAt!) } : null,
+      payment: boardPayment(live?.invoices.find((i) => i.status === 'UNPAID')?.payments ?? [], last?.provider, now),
     })
   }
   return out
@@ -122,4 +137,19 @@ export async function loadBoardSummary(prisma: PrismaClient, kosId: string, room
     overdueAmount: overdue._sum.amount ?? 0,
     waitlistCount,
   }
+}
+
+type BoardPayment = BoardRoom['payment']
+
+/** Label for the open invoice's attempts only (a paid invoice shows its receipt instead). */
+function boardPayment(payments: { provider: 'XENDIT' | 'MOCK' | 'MANUAL'; status: string; expiresAt: Date | null; createdAt: Date }[], lastPaidBy: 'XENDIT' | 'MOCK' | 'MANUAL' | undefined, now: Date): BoardPayment {
+  const live = payments.find((p) => p.provider !== 'MANUAL' && (p.status === 'CREATING' || p.status === 'PENDING') && (!p.expiresAt || p.expiresAt > now))
+  if (live) return { state: 'AWAITING_ONLINE', expiresAt: live.expiresAt?.toISOString() ?? null }
+  const refunding = payments.find((p) => p.status === 'REFUND_PENDING' || p.status === 'REFUNDED')
+  if (refunding) return { state: 'REFUND', expiresAt: null }
+  if (payments.some((p) => p.status === 'REFUND_FAILED')) return { state: 'NEEDS_REVIEW', expiresAt: null }
+  // Nothing open: say how the newest receipt was verified. Collected by Xendit is verified; a MOCK demo payment shows nothing.
+  if (lastPaidBy === 'XENDIT') return { state: 'VERIFIED', expiresAt: null }
+  if (lastPaidBy === 'MANUAL') return { state: 'MANUAL', expiresAt: null }
+  return null
 }

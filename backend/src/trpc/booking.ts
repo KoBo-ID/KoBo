@@ -1,19 +1,14 @@
-import { randomUUID } from 'node:crypto'
-import { addDays, computeCheckoutTotal, deriveRoomStatus, formatReceiptNo, todayWIB } from '@kobo/shared/domain'
-import { bookingCreateInput } from '@kobo/shared/schemas'
+import { computeCheckoutTotal, deriveRoomStatus, formatReceiptNo, todayWIB } from '@kobo/shared/domain'
 import type { RoomStatus } from '@kobo/shared/types'
-import { TRPCError } from '@trpc/server'
 import type { Prisma } from '../generated/prisma/client.ts'
-import { mockInstructions } from '../payments.ts'
+import { isLiveAttempt, toPaymentSummary } from '../payment/summary.ts'
+import type { PaymentSummary } from '../payment/summary.ts'
 import { advanceWaitlist, liveOffer } from '../waitlist.ts'
 import { reviewEditable, reviewEligible } from './review.ts'
 import { authedProcedure, router } from './trpc.ts'
 
 /** A PENDING tenancy holds its room for this long (spec section 6). */
 export const HOLD_HOURS = 24
-/** How far ahead a move-in date may be. */
-const MAX_START_AHEAD_DAYS = 120
-
 export const CONFLICT_MESSAGE = 'Kamar baru saja dibooking orang lain.'
 export const OFFERED_ELSEWHERE_MESSAGE = 'Kamar ini sedang ditawarkan ke pengantre lain.'
 
@@ -24,16 +19,7 @@ export interface BookingBreakdown {
   total: number
 }
 
-export interface PaymentSummary {
-  id: string
-  externalId: string
-  provider: 'MOCK' | 'MANUAL'
-  status: 'PENDING' | 'PAID' | 'FAILED'
-  amount: number
-  instructions: { bcaVa: string; mandiriVa: string; qris: string }
-}
-
-export interface BookingCreated {
+export interface ApprovedTenancyObligation {
   tenancyId: string
   roomId: string
   kosId: string
@@ -44,7 +30,6 @@ export interface BookingCreated {
   durationMonths: number
   invoiceId: string
   breakdown: BookingBreakdown
-  payment: PaymentSummary
 }
 
 export interface MyInvoice {
@@ -57,6 +42,12 @@ export interface MyInvoice {
   receiptNo: string | null
   /** The raw Payment.receiptNo used in /kuitansi/:receiptNo. */
   receiptNumber: number | null
+  /** The open online attempt (CREATING/PENDING, not lapsed), if any. */
+  activePayment: PaymentSummary | null
+  /** The newest attempt of any provider, so a failed or refunded outcome stays visible. */
+  latestPayment: PaymentSummary | null
+  /** Unpaid, no open attempt, and the tenancy can still be paid (ACTIVE, or a live PENDING hold). */
+  canPay: boolean
 }
 
 export interface MyReview {
@@ -80,8 +71,6 @@ export interface MyTenancy {
   kos: { id: string; name: string; address: string; image: string | null; ownerName: string; ownerPhone: string | null }
   room: { id: string; roomNumber: string; floor: number; type: string; priceMonthly: number }
   invoices: MyInvoice[]
-  /** The unpaid mock payment of a live hold, so checkout can be resumed. */
-  pendingPaymentId: string | null
   /** Activated (ACTIVE, or ENDED after a paid invoice) and not yet reviewed. */
   canReview: boolean
   review: MyReview | null
@@ -100,7 +89,7 @@ export function isRoomTakenError(e: unknown): boolean {
   return text.includes('tenancy_one_active_per_room') || text.includes('23505')
 }
 
-interface PendingBookingInput {
+interface ApprovedTenancyInput {
   userId: string
   startDate: string
   durationMonths: number
@@ -114,8 +103,11 @@ interface PendingBookingInput {
   now: Date
 }
 
-/** Creates the existing timed payment hold inside the caller's transaction. */
-export async function createPendingBooking(tx: Prisma.TransactionClient, input: PendingBookingInput): Promise<BookingCreated | typeof OFFERED_ELSEWHERE> {
+/** Creates a timed tenancy hold and its first invoice after an owner approves an application. */
+export async function createApprovedTenancyObligation(
+  tx: Prisma.TransactionClient,
+  input: ApprovedTenancyInput,
+): Promise<ApprovedTenancyObligation | typeof OFFERED_ELSEWHERE> {
   const { room, now } = input
   const breakdown = computeCheckoutTotal({
     monthlyRent: room.priceMonthly,
@@ -124,7 +116,6 @@ export async function createPendingBooking(tx: Prisma.TransactionClient, input: 
     campusEmailVerified: input.campusEmailVerified,
   })
   const dueDate = new Date(`${input.startDate}T00:00:00Z`)
-  const externalId = `mock_${randomUUID()}`
 
   await tx.tenancy.updateMany({
     where: { roomId: room.id, status: 'PENDING', expiresAt: { lt: now } },
@@ -145,10 +136,18 @@ export async function createPendingBooking(tx: Prisma.TransactionClient, input: 
     },
   })
   const invoice = await tx.invoice.create({
-    data: { tenancyId: tenancy.id, periodStart: dueDate, dueDate, amount: breakdown.total, status: 'UNPAID' },
-  })
-  const payment = await tx.payment.create({
-    data: { invoiceId: invoice.id, provider: 'MOCK', externalId, amount: breakdown.total, status: 'PENDING' },
+    data: {
+      tenancyId: tenancy.id,
+      periodStart: dueDate,
+      dueDate,
+      amount: breakdown.total,
+      rentAmount: breakdown.rent,
+      discountAmount: breakdown.discount,
+      applicationFeeAmount: breakdown.applicationFee,
+      ownerReceivableAmount: breakdown.rent - breakdown.discount,
+      gatewayFeeBearer: 'PLATFORM',
+      status: 'UNPAID',
+    },
   })
 
   const queued = await tx.waitlistEntry.findMany({
@@ -169,49 +168,10 @@ export async function createPendingBooking(tx: Prisma.TransactionClient, input: 
     durationMonths: input.durationMonths,
     invoiceId: invoice.id,
     breakdown,
-    payment: { id: payment.id, externalId, provider: 'MOCK', status: 'PENDING', amount: payment.amount, instructions: mockInstructions(externalId) },
   }
 }
 
 export const bookingRouter = router({
-  /**
-   * Self-healing booking transaction (spec section 6): expire this room's lapsed holds, then insert. The partial
-   * unique index decides a race: the loser gets CONFLICT. The server is the only price authority; the input has no price.
-   */
-  create: authedProcedure.input(bookingCreateInput).mutation(async ({ ctx, input }): Promise<BookingCreated> => {
-    const { prisma } = ctx
-    const now = new Date()
-    const today = todayWIB(now)
-    if (input.startDate < today) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tanggal mulai tidak boleh di masa lalu.' })
-    if (input.startDate > addDays(today, MAX_START_AHEAD_DAYS)) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tanggal mulai terlalu jauh dari hari ini.' })
-    if (Number.isNaN(new Date(`${input.startDate}T00:00:00Z`).getTime())) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tanggal mulai tidak valid.' })
-
-    const [room, user] = await Promise.all([
-      prisma.room.findUnique({ where: { id: input.roomId }, include: { kos: true } }),
-      prisma.user.findUnique({ where: { id: ctx.user.id }, select: { campusEmailVerifiedAt: true } }),
-    ])
-    if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kamar tidak ditemukan.' })
-    if (!user) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Silakan masuk terlebih dahulu.' })
-
-    try {
-      const booked = await prisma.$transaction(async (tx): Promise<BookingCreated | typeof OFFERED_ELSEWHERE> => {
-        return createPendingBooking(tx, {
-          userId: ctx.user.id,
-          startDate: input.startDate,
-          durationMonths: input.durationMonths,
-          campusEmailVerified: user.campusEmailVerifiedAt !== null,
-          room,
-          now,
-        })
-      })
-      if (booked === OFFERED_ELSEWHERE) throw new TRPCError({ code: 'CONFLICT', message: OFFERED_ELSEWHERE_MESSAGE })
-      return booked
-    } catch (e) {
-      if (isRoomTakenError(e)) throw new TRPCError({ code: 'CONFLICT', message: CONFLICT_MESSAGE })
-      throw e
-    }
-  }),
-
   /** The signed-in student's tenancies, newest first. Receipt numbers are formatted only once an invoice is paid. */
   mine: authedProcedure.query(async ({ ctx }): Promise<MyTenancy[]> => {
     const now = new Date()
@@ -227,7 +187,6 @@ export const bookingRouter = router({
     return rows.map((t): MyTenancy => {
       const oldestUnpaid = t.invoices.find((i) => i.status === 'UNPAID')
       const live = t.status === 'PENDING' && t.expiresAt !== null && t.expiresAt.getTime() >= now.getTime()
-      const pending = live ? t.invoices.flatMap((i) => i.payments).find((p) => p.status === 'PENDING' && p.provider === 'MOCK') : undefined
       const img = t.room.kos.images[0]
       return {
         id: t.id,
@@ -252,6 +211,8 @@ export const bookingRouter = router({
         room: { id: t.room.id, roomNumber: t.room.roomNumber, floor: t.room.floor, type: t.room.type, priceMonthly: t.room.priceMonthly },
         invoices: t.invoices.map((i) => {
           const paid = i.payments.find((p) => p.status === 'PAID')
+          const active = i.payments.find((p) => isLiveAttempt(p, now))
+          const latest = i.payments.at(-1)
           return {
             id: i.id,
             status: i.status,
@@ -259,9 +220,11 @@ export const bookingRouter = router({
             amount: i.amount,
             receiptNo: paid?.paidAt ? formatReceiptNo(paid.receiptNo, paid.paidAt) : null,
             receiptNumber: paid ? paid.receiptNo : null,
+            activePayment: active ? toPaymentSummary(active, now) : null,
+            latestPayment: latest ? toPaymentSummary(latest, now) : null,
+            canPay: i.status === 'UNPAID' && !active && (t.status === 'ACTIVE' || live),
           }
         }),
-        pendingPaymentId: pending?.id ?? null,
         canReview: !t.review && reviewEligible(t),
         review: t.review
           ? {

@@ -2,7 +2,7 @@ import type { TRPCError } from '@trpc/server'
 import { addDays, haversineMeters, todayWIB } from '@kobo/shared/domain'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetDb } from '../../src/db/seed.ts'
-import { callerFor, DEMO_STUDENT_ID, newStudent, postWebhook, prisma } from '../helpers.ts'
+import { approveApplication, callerFor, createPendingMockPayment, DEMO_STUDENT_ID, newStudent, prisma, settleMock, cash } from '../helpers.ts'
 
 beforeEach(() => resetDb(prisma))
 
@@ -176,7 +176,7 @@ describe('owner.kos.create / update / delete', () => {
     const owner = callerFor(b.userId)
     const k = await owner.owner.kos.create(kosInput({ initialRooms: { count: 1, priceMonthly: 1_000_000 } }))
     const room = await prisma.room.findFirstOrThrow({ where: { kosId: k.id } })
-    const res = await callerFor(DEMO_STUDENT_ID).booking.create({ roomId: room.id, startDate: addDays(todayWIB(new Date()), 2), durationMonths: 3 })
+    const res = await approveApplication(DEMO_STUDENT_ID, room.id, { startDate: addDays(todayWIB(new Date()), 2), durationMonths: 3 })
     expect(await code(owner.owner.kos.delete({ kosId: k.id }))).toBe('CONFLICT')
     await prisma.tenancy.update({ where: { id: res.tenancyId }, data: { expiresAt: new Date(Date.now() - 1000) } })
     await owner.owner.kos.delete({ kosId: k.id })
@@ -249,17 +249,20 @@ describe('owner.tenancy.end', () => {
     expect((await owner.owner.board({ kosId: 'kos-1' })).rooms.find((r) => r.id === room.id)!.status).toBe('vacant')
     expect(await code(owner.owner.tenancy.end({ kosId: 'kos-1', tenancyId: room.tenancyId! }))).toBe('CONFLICT')
     const s = await newStudent()
-    await callerFor(s.id).booking.create({ roomId: room.id, startDate: addDays(todayWIB(new Date()), 2), durationMonths: 2 })
+    await approveApplication(s.id, room.id, { startDate: addDays(todayWIB(new Date()), 2), durationMonths: 2 })
   })
 
   it('cancels a booking hold and neutralises its pending payment', async () => {
     const { a } = await twoOwners()
     const owner = callerFor(a.userId)
     const room = (await owner.owner.board({ kosId: 'kos-1' })).rooms.find((r) => r.status === 'booking')!
-    const pay = await prisma.payment.findFirstOrThrow({ where: { invoice: { tenancyId: room.tenancyId! }, status: 'PENDING' } })
+    const invoice = await prisma.invoice.findFirstOrThrow({ where: { tenancyId: room.tenancyId! } })
+    const pay = await createPendingMockPayment(invoice.id)
     await owner.owner.tenancy.end({ kosId: 'kos-1', tenancyId: room.tenancyId! })
     expect((await prisma.payment.findUniqueOrThrow({ where: { id: pay.id } })).status).toBe('FAILED')
-    expect((await postWebhook({ externalId: pay.externalId, status: 'PAID' })).status).toBe(200)
+    // A late payment must never revive the ended hold: it is queued for refund instead.
+    expect((await settleMock(pay.id)).outcome).toBe('REFUND_QUEUED')
+    expect(await prisma.paymentRefund.count({ where: { paymentId: pay.id } })).toBe(1)
     expect((await prisma.tenancy.findUniqueOrThrow({ where: { id: room.tenancyId! } })).status).toBe('ENDED')
     expect((await prisma.invoice.findFirstOrThrow({ where: { tenancyId: room.tenancyId! } })).status).toBe('UNPAID')
   })
@@ -278,7 +281,7 @@ describe('Tandai Lunas through the board', () => {
     const { a } = await twoOwners()
     const owner = callerFor(a.userId)
     const room = (await owner.owner.board({ kosId: 'kos-1' })).rooms.find((r) => r.status === 'overdue')!
-    const out = await owner.payment.recordManual({ kosId: 'kos-1', invoiceId: room.invoice!.id })
+    const out = await owner.payment.recordManual(await cash('kos-1', room.invoice!.id))
     const after = (await owner.owner.board({ kosId: 'kos-1' })).rooms.find((r) => r.id === room.id)!
     expect(after.status).toBe('paid')
     expect(after.lastReceipt).toEqual({ receiptNumber: out.receiptNumber, receiptNo: out.receiptNo })

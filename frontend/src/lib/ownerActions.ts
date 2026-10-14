@@ -38,8 +38,16 @@ export function useRoomActions(kosId: string | undefined) {
 
   return {
     busyRoomId,
-    markPaid: (roomId: string, invoiceId: string) =>
-      kosId ? run(roomId, () => recordManual.mutateAsync({ kosId, invoiceId }), 'Pembayaran dicatat lunas. Kuitansi sudah terbit.') : Promise.resolve(),
+    /** Records a MANUAL payment from the confirmation modal. Resolves true on success so the modal can close. */
+    markPaid: async (
+      roomId: string,
+      input: { invoiceId: string; method: 'CASH' | 'BANK_TRANSFER'; confirmedAmount: number; reference?: string; note?: string },
+    ): Promise<boolean> => {
+      if (!kosId) return false;
+      let ok = false;
+      await run(roomId, async () => { await recordManual.mutateAsync({ kosId, ...input }); ok = true; }, 'Pembayaran dicatat lunas. Kuitansi sudah terbit.');
+      return ok;
+    },
     endTenancy: (roomId: string, tenancyId: string) =>
       kosId ? run(roomId, () => endTenancy.mutateAsync({ kosId, tenancyId }), 'Sewa diakhiri. Kamar kembali kosong.') : Promise.resolve(),
   };

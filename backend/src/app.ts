@@ -5,10 +5,10 @@ import { Hono } from 'hono'
 import { createAuth } from './auth.ts'
 import type { Auth } from './auth.ts'
 import type { PrismaClient } from './db/client.ts'
-import { authEnv, paymentWebhookSecret } from './env.ts'
-import { handlePaymentWebhook } from './payments.ts'
+import { authEnv } from './env.ts'
 import { paymentServiceFromEnv } from './payment/service.ts'
 import type { PaymentService } from './payment/service.ts'
+import { handleXenditWebhook } from './payment/webhook.ts'
 import { DEV_UPLOAD_PREFIX, storageFromEnv } from './storage.ts'
 import type { FakeStorage, Storage } from './storage.ts'
 import { appRouter } from './trpc/router.ts'
@@ -77,10 +77,11 @@ export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...auth
     return res.status === 404 && !res.headers.get('content-type')?.includes('json') ? c.json({ error: 'Not found' }, 404) : res
   })
 
-  // Payment gateway callback: HMAC over the raw body (never a re-serialised one), idempotent on externalId.
-  app.post('/api/webhooks/payment', async (c) => {
-    const rawBody = await c.req.text()
-    const res = await handlePaymentWebhook(prisma, { rawBody, signature: c.req.header('x-signature'), secret: paymentWebhookSecret() })
+  // Xendit callback: authenticated by x-callback-token; the raw body is read once and never logged.
+  app.post('/api/webhooks/xendit', async (c) => {
+    const cfg = paymentService.xenditWebhook
+    if (!cfg) return c.json({ error: 'Not found' }, 404)
+    const res = await handleXenditWebhook(prisma, cfg, { rawBody: await c.req.text(), token: c.req.header('x-callback-token') })
     return c.json(res.body, res.status)
   })
 

@@ -76,9 +76,29 @@ function offerCopy(p: Partial<OfferPayload>): Copy | null {
   }
 }
 
+interface OwnerPaymentPayload extends LinkPayload {
+  tenantName: string
+  kosName: string
+  roomNumber: string
+  amount: number
+}
+
+const rupiah = (n: number) => `Rp ${n.toLocaleString('id-ID')}`
+
+/** Tells the owner a rent payment was verified. It deliberately says nothing about payout timing. */
+function ownerPaymentCopy(p: Partial<OwnerPaymentPayload>): Copy | null {
+  if (typeof p.tenantName !== 'string' || typeof p.kosName !== 'string' || typeof p.roomNumber !== 'string' || typeof p.amount !== 'number') return null
+  return {
+    subject: `Pembayaran terverifikasi - Kamar ${p.roomNumber}`,
+    intro: `${p.tenantName} membayar ${rupiah(p.amount)} untuk kamar ${p.roomNumber} di ${p.kosName}, dan pembayaran ini sudah terverifikasi oleh KoBo. Kamar kini berstatus terisi.`,
+    action: 'Lihat Kuitansi',
+    outro: 'Email ini hanya memastikan pembayaran penyewa terverifikasi. Ini bukan pemberitahuan pencairan dana ke rekening Anda.',
+  }
+}
+
 export function renderEmail(template: string, payload: unknown): RenderedEmail | null {
-  const p = payload as Partial<OfferPayload> | null
-  const copy = template === 'waitlist-offer' ? (p ? offerCopy(p) : null) : COPY[template]
+  const p = payload as (Partial<OfferPayload> & Partial<OwnerPaymentPayload>) | null
+  const copy = template === 'waitlist-offer' ? (p ? offerCopy(p) : null) : template === 'payment-received-owner' ? (p ? ownerPaymentCopy(p) : null) : COPY[template]
   if (!copy || !p || typeof p.url !== 'string') return null
   const name = typeof p.name === 'string' && p.name.trim() ? p.name.trim() : 'Pengguna KoBo'
   const text = `Halo ${name},\n\n${copy.intro}\n\n${copy.action}: ${p.url}\n\n${copy.outro}\n\nTim KoBo`

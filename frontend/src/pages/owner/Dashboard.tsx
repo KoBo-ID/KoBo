@@ -7,6 +7,7 @@ import type { BoardRoom } from '../../../../backend/src/trpc/router';
 import { RoomOccupancyBoard } from '../../components/owner/RoomOccupancyBoard';
 import { ApplicationsPanel } from '../../components/owner/ApplicationsPanel';
 import { VisitsPanel } from '../../components/owner/VisitsPanel';
+import { ManualPaymentModal } from '../../components/owner/ManualPaymentModal';
 import { WhatsAppModal } from '../../components/owner/WhatsAppModal';
 import { OwnerPageHeader } from '../../components/owner/OwnerPageHeader';
 import { RoomStatus } from '../../types';
@@ -51,13 +52,18 @@ const DashboardSkeleton: React.FC = () => (
 export const OwnerDashboard: React.FC = () => {
   const { selectedKos } = useOwnerWorkspace();
   const trpc = useTRPC();
-  const board = useQuery({ ...trpc.owner.board.queryOptions({ kosId: selectedKos?.id ?? '' }), enabled: !!selectedKos });
+  const board = useQuery({ ...trpc.owner.board.queryOptions({ kosId: selectedKos?.id ?? '' }), enabled: !!selectedKos,
+    // Online payments settle by webhook: refresh while the tab is visible (React Query pauses hidden tabs by default).
+    refetchInterval: 45_000,
+    refetchIntervalInBackground: false,
+  });
   const visits = useOwnerVisits(selectedKos?.id);
   const { busyRoomId, markPaid, endTenancy } = useRoomActions(selectedKos?.id);
 
   const [whatsAppTargetRoom, setWhatsAppTargetRoom] = useState<BoardRoom | null>(null);
   const [statusFilter, setStatusFilter] = useState<RoomStatus | 'all'>('all');
   const [confirmingRoom, setConfirmingRoom] = useState<BoardRoom | null>(null);
+  const [payingRoom, setPayingRoom] = useState<BoardRoom | null>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
   const lastTrigger = useRef<HTMLElement | null>(null);
 
@@ -145,7 +151,7 @@ export const OwnerDashboard: React.FC = () => {
     setConfirmingRoom(null);
   };
   const pay = (room: BoardRoom) => {
-    if (room.invoice) void markPaid(room.id, room.invoice.id);
+    if (room.invoice) setPayingRoom(room);
   };
 
   const hasAttention = attentionRooms.length > 0;
@@ -264,6 +270,18 @@ export const OwnerDashboard: React.FC = () => {
         onMarkPaid={pay}
         onEndTenancy={askEnd}
       />
+
+      {payingRoom?.invoice && (
+        <ManualPaymentModal
+          room={payingRoom}
+          invoice={payingRoom.invoice}
+          busy={busyRoomId === payingRoom.id}
+          onClose={() => setPayingRoom(null)}
+          onSubmit={async (input) => {
+            if (await markPaid(payingRoom.id, { invoiceId: payingRoom.invoice!.id, ...input })) setPayingRoom(null);
+          }}
+        />
+      )}
 
       {whatsAppTargetRoom && (
         <WhatsAppModal isOpen onClose={() => setWhatsAppTargetRoom(null)} room={whatsAppTargetRoom} kosName={selectedKos.name} />

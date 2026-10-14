@@ -29,7 +29,11 @@ DATABASE_URL=postgresql://kobo:<same password>@postgres:5432/kobo
 PORT=3000
 BETTER_AUTH_URL=https://<domain>
 BETTER_AUTH_SECRET=<openssl rand -base64 32>
-PAYMENT_WEBHOOK_SECRET=<openssl rand -hex 32>
+# Payments (PAYMENT_PROVIDER=xendit): callback token from Xendit dashboard > Webhooks; callbacks go to POST /api/webhooks/xendit
+PAYMENT_PROVIDER=xendit
+XENDIT_SECRET_API_KEY=<xnd_development_... in test mode>
+XENDIT_CALLBACK_TOKEN=<Xendit webhook verification token>
+XENDIT_BUSINESS_ID=<Xendit business id>
 # Email (unset RESEND_API_KEY and links are only logged, so set both in production)
 RESEND_API_KEY=<resend key>
 EMAIL_FROM=KoBo <no-reply@<domain>>
@@ -130,7 +134,7 @@ The test deletes its own object; add a lifecycle rule on `kobo-test` (delete aft
 
 The SPA is on Vercel; `vercel.json` rewrites `/api/*` to the Railway service, so the browser only ever talks to the Vercel origin. That origin, not the Railway URL, is `BETTER_AUTH_URL`: email links are built from it, and sign-in/up POSTs whose `Origin` is not it (or in `TRUSTED_ORIGINS`) get `403 INVALID_ORIGIN`. In production the server refuses to start with an `http://` or localhost value.
 
-Railway service variables (in addition to `DATABASE_URL`, `BETTER_AUTH_SECRET`, `PAYMENT_WEBHOOK_SECRET`, `R2_*`):
+Railway service variables (in addition to `DATABASE_URL`, `BETTER_AUTH_SECRET`, `XENDIT_*`, `R2_*`):
 
 | Variable | Value |
 |---|---|

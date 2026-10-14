@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Home, Calendar, FileText, FlaskConical, MessageSquare, ShieldCheck, Star, ClipboardList } from 'lucide-react';
+import { Home, Calendar, FileText, MessageSquare, ShieldCheck, Star, ClipboardList } from 'lucide-react';
 import type { MyReview } from '../../../backend/src/trpc/router';
 import { ReviewFormModal } from '../components/kos/ReviewFormModal';
+import { InvoicePaymentActions } from '../components/booking/InvoicePaymentActions';
 import { WaitlistSection } from '../components/booking/WaitlistSection';
 import { useAppStore } from '../store/AppContext';
 import { Button } from '../components/ui/Button';
@@ -49,6 +50,9 @@ export const MyKos: React.FC = () => {
   const trpc = useTRPC();
   const qc = useQueryClient();
   const { me, isLoading: sessionLoading } = useSession();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // From the gateway return URL. Only used to start a short wait; the server decides what actually happened.
+  const returnedPayment = searchParams.get('payment');
   const [activeTab, setActiveTab] = useState<'rentals' | 'visits'>('rentals');
   const [reviewing, setReviewing] = useState<{ tenancyId: string; kosName: string; existing: MyReview | null } | null>(null);
 
@@ -62,14 +66,6 @@ export const MyKos: React.FC = () => {
       onSuccess: () => {
         void qc.invalidateQueries({ queryKey: trpc.visit.mine.queryKey() });
         addToast('Jadwal survey telah dibatalkan.', 'info');
-      },
-    }),
-  );
-  const simulate = useMutation(
-    trpc.payment.simulate.mutationOptions({
-      onSuccess: () => {
-        void qc.invalidateQueries({ queryKey: trpc.booking.mine.queryKey() });
-        void qc.invalidateQueries({ queryKey: trpc.kos.detail.queryKey() });
       },
     }),
   );
@@ -136,7 +132,6 @@ export const MyKos: React.FC = () => {
           {me && mine.isPending && <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat kamar Anda…</p>}
           {me && mine.isError && <ErrorState message="Gagal memuat daftar sewa Anda." onRetry={() => void mine.refetch()} minHeight="10rem" />}
           {me && applicationQuery.isError && <ErrorState message="Gagal memuat pengajuan sewa Anda." onRetry={() => void applicationQuery.refetch()} minHeight="8rem" />}
-          {simulate.isError && <Notice tone="error">{messageForError(simulate.error)}</Notice>}
           {me && <WaitlistSection />}
 
           {applications.length > 0 && (
@@ -211,6 +206,11 @@ export const MyKos: React.FC = () => {
                       <span role="cell" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                         <strong>{formatRupiah(inv.amount)}</strong>
                         <span style={{ color: inv.status === 'PAID' ? 'var(--status-paid)' : 'var(--text-muted)', fontWeight: 600 }}>{inv.status === 'PAID' ? 'Lunas' : 'Belum dibayar'}</span>
+                        <InvoicePaymentActions
+                          invoice={inv}
+                          returnedPaymentId={returnedPayment && (inv.activePayment?.id === returnedPayment || inv.latestPayment?.id === returnedPayment) ? returnedPayment : undefined}
+                          onResolved={() => setSearchParams({}, { replace: true })}
+                        />
                         {inv.receiptNumber !== null && (
                           <Link to={`/kuitansi/${inv.receiptNumber}`} style={{ color: 'var(--primary)', fontWeight: 600 }}>{inv.receiptNo}</Link>
                         )}
@@ -229,11 +229,6 @@ export const MyKos: React.FC = () => {
                     </span>
                   </div>
                   <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    {t.pendingPaymentId && (
-                      <Button variant="accent" size="sm" isLoading={simulate.isPending} onClick={() => simulate.mutate({ paymentId: t.pendingPaymentId! })} icon={<FlaskConical size={15} />}>
-                        Simulasikan Pembayaran
-                      </Button>
-                    )}
                     {t.canReview && (
                       <Button variant="outline" size="sm" icon={<Star size={15} />} onClick={() => setReviewing({ tenancyId: t.id, kosName: t.kos.name, existing: null })}>
                         Tulis Ulasan

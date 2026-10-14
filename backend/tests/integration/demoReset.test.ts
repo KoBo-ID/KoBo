@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { DEMO_EMAILS } from '../../src/demo.ts'
 import { resetDemo } from '../../src/demoReset.ts'
 import { resetDb } from '../../src/db/seed.ts'
-import { callerFor, caller, DEMO_STUDENT_ID, newStudent, prisma, vacantRoom } from '../helpers.ts'
+import { approveApplication, callerFor, caller, DEMO_STUDENT_ID, newStudent, prisma, vacantRoom } from '../helpers.ts'
 
 beforeEach(() => resetDb(prisma))
 
@@ -31,11 +31,11 @@ async function vacantRoomWhere(kosIds: string[], inside: boolean) {
 describe('resetDemo', () => {
   it("removes the demo student's booking and frees the room again", async () => {
     const room = await vacantRoom()
-    const res = await callerFor(DEMO_STUDENT_ID).booking.create({ roomId: room.id, startDate: startDate(), durationMonths: 6 })
+    const res = await approveApplication(DEMO_STUDENT_ID, room.id, { startDate: startDate(), durationMonths: 6 })
     await resetDemo(prisma, new Date())
     expect(await prisma.tenancy.findUnique({ where: { id: res.tenancyId } })).toBeNull()
     expect(await prisma.invoice.count({ where: { id: res.invoiceId } })).toBe(0)
-    expect(await prisma.payment.count({ where: { id: res.payment.id } })).toBe(0)
+    expect(await prisma.payment.count({ where: { invoiceId: res.invoiceId } })).toBe(0)
     expect((await prisma.room.findUniqueOrThrow({ where: { id: room.id } })).occupancy).toBe('VACANT')
   })
 
@@ -44,13 +44,13 @@ describe('resetDemo', () => {
     const real = await newStudent()
     const inDemo = await vacantRoomWhere(demo.kos.map((k) => k.id), true)
     const elsewhere = await vacantRoomWhere(demo.kos.map((k) => k.id), false)
-    const a = await callerFor(real.id).booking.create({ roomId: inDemo.id, startDate: startDate(), durationMonths: 3 })
-    const b = await callerFor(real.id).booking.create({ roomId: elsewhere.id, startDate: startDate(), durationMonths: 3 })
+    const a = await approveApplication(real.id, inDemo.id, { startDate: startDate(), durationMonths: 3 })
+    const b = await approveApplication(real.id, elsewhere.id, { startDate: startDate(), durationMonths: 3 })
     await resetDemo(prisma, new Date())
     for (const t of [a, b]) {
       const row = await prisma.tenancy.findUnique({ where: { id: t.tenancyId }, include: { invoices: { include: { payments: true } } } })
       expect(row?.status).toBe('PENDING')
-      expect(row?.invoices[0].payments).toHaveLength(1)
+      expect(row?.invoices[0].payments).toHaveLength(0)
     }
   })
 
@@ -121,7 +121,7 @@ describe('resetDemo', () => {
     const active = await prisma.tenancy.findFirstOrThrow({ where: { status: 'ACTIVE', room: { kosId } } })
     await callerFor(demo.userId).owner.tenancy.end({ kosId, tenancyId: active.id })
     const real = await newStudent()
-    const booked = await callerFor(real.id).booking.create({ roomId: active.roomId, startDate: startDate(), durationMonths: 3 })
+    const booked = await approveApplication(real.id, active.roomId, { startDate: startDate(), durationMonths: 3 })
     await resetDemo(prisma, new Date())
     expect((await prisma.tenancy.findUniqueOrThrow({ where: { id: booked.tenancyId } })).status).toBe('PENDING')
     // The seeded tenant cannot come back into a room that a real user now holds.
@@ -153,7 +153,7 @@ describe('resetDemo', () => {
 describe('demo.reset (the on-demand action)', () => {
   it('runs for a demo user', async () => {
     const room = await vacantRoom()
-    const res = await callerFor(DEMO_STUDENT_ID).booking.create({ roomId: room.id, startDate: startDate(), durationMonths: 6 })
+    const res = await approveApplication(DEMO_STUDENT_ID, room.id, { startDate: startDate(), durationMonths: 6 })
     await callerFor(DEMO_STUDENT_ID).demo.reset()
     expect(await prisma.tenancy.findUnique({ where: { id: res.tenancyId } })).toBeNull()
   })
