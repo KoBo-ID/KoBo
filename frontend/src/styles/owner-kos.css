@@ -101,6 +101,7 @@
   align-items: center;
   justify-content: center;
   width: 40px;
+  flex-shrink: 0;
   height: 40px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-btn);
@@ -282,9 +283,15 @@
   }
 }
 
+@media (max-width: 760px) {
+  /* The room table becomes label/value cards (kobo-table--labels): rows size to their content. */
+  .owner-kos .kobo-table--labels tbody td { height: auto; }
+  .owner-kos .kobo-table--labels td.owner-kos__actioncell { width: auto; padding-right: 0; }
+}
+
 @media (max-width: 640px) {
   /* Keep rows one line tall; the table scrolls inside its own wrapper */
-  .owner-kos .kobo-table td,
+  .owner-kos .kobo-table:not(.kobo-table--labels) td,
   .owner-kos .kobo-table th {
     white-space: nowrap;
   }

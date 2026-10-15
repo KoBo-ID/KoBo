@@ -154,10 +154,10 @@ export const KosPhotosModal: React.FC<KosPhotosModalProps> = ({ kosId, kosName, 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.4rem 0.5rem', gap: '0.25rem' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: i === 0 ? 'var(--primary)' : 'var(--text-muted)' }}>{i === 0 ? 'Utama' : `#${i + 1}`}</span>
                 <span style={{ display: 'flex', gap: '0.15rem' }}>
-                  <button type="button" aria-label={`Naikkan foto ${i + 1}`} disabled={busy || i === 0} onClick={() => move(i, -1)} style={{ padding: '0.25rem', cursor: 'pointer' }}>
+                  <button type="button" aria-label={`Naikkan foto ${i + 1}`} disabled={busy || i === 0} onClick={() => move(i, -1)} className="kobo-icon-btn kobo-icon-btn--sm kobo-icon-btn--ghost">
                     <ArrowUp size={14} />
                   </button>
-                  <button type="button" aria-label={`Turunkan foto ${i + 1}`} disabled={busy || i === list.length - 1} onClick={() => move(i, 1)} style={{ padding: '0.25rem', cursor: 'pointer' }}>
+                  <button type="button" aria-label={`Turunkan foto ${i + 1}`} disabled={busy || i === list.length - 1} onClick={() => move(i, 1)} className="kobo-icon-btn kobo-icon-btn--sm kobo-icon-btn--ghost">
                     <ArrowDown size={14} />
                   </button>
                   <button
@@ -165,7 +165,8 @@ export const KosPhotosModal: React.FC<KosPhotosModalProps> = ({ kosId, kosName, 
                     aria-label={`Hapus foto ${i + 1}`}
                     disabled={busy}
                     onClick={() => setDeleting(img.id)}
-                    style={{ padding: '0.25rem', cursor: 'pointer', color: 'var(--status-overdue-text)' }}
+                    className="kobo-icon-btn kobo-icon-btn--sm kobo-icon-btn--ghost"
+                    style={{ color: 'var(--status-overdue-text)' }}
                   >
                     <Trash2 size={14} />
                   </button>

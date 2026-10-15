@@ -115,8 +115,8 @@ Mohon kabari kami setelah pembayaran dilakukan. Terima kasih atas perhatian dan 
         </div>
 
         {/* Tone Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', flexBasis: '100%' }}>
             Gaya Bahasa Pesan:
           </span>
           <button
@@ -178,12 +178,12 @@ Mohon kabari kami setelah pembayaran dilakukan. Terima kasih atas perhatian dan 
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.5rem' }}>
           <Button variant="outline" size="sm" onClick={handleCopy} icon={<Copy size={15} />}>
             {copied ? 'Tersalin!' : 'Salin Teks Pesan'}
           </Button>
 
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
             <Button variant="ghost" size="sm" onClick={onClose}>
               Tutup
             </Button>

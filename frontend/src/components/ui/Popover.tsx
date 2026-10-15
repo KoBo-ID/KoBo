@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 
 interface TriggerProps {
   ref: React.Ref<HTMLButtonElement>;
@@ -55,6 +55,20 @@ export const Popover: React.FC<PopoverProps> = ({
     // Return focus to the trigger so keyboard users do not lose their place.
     triggerRef.current?.focus();
   }, []);
+
+  // A panel wider than the room beside its trigger (a narrow phone) is nudged back inside the viewport.
+  // `translate` is separate from the entrance animation's `transform`, so the two do not fight.
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (!open || !panel) return;
+    const margin = 8;
+    const rect = panel.getBoundingClientRect();
+    const viewport = document.documentElement.clientWidth;
+    let shift = 0;
+    if (rect.left < margin) shift = margin - rect.left;
+    else if (rect.right > viewport - margin) shift = viewport - margin - rect.right;
+    panel.style.translate = shift ? `${shift}px 0` : '';
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;

@@ -57,25 +57,25 @@ export const WaitlistPanel: React.FC<{ kosId: string; kosName: string }> = ({ ko
       )}
       {rows.length > 0 && (
         <div className="kobo-table-wrap">
-          <table className="kobo-table">
+          <table className="kobo-table kobo-table--labels" role="table">
             <caption className="owner-kos__sr">Daftar tunggu {kosName}</caption>
-            <thead>
-              <tr>
-                <th scope="col">Antrean</th>
-                <th scope="col">Pengantre</th>
-                <th scope="col">Tipe</th>
-                <th scope="col">Bergabung</th>
-                <th scope="col">Status</th>
-                <th scope="col" className="kobo-table__right">Aksi</th>
+            <thead role="rowgroup">
+              <tr role="row">
+                <th role="columnheader" scope="col">Antrean</th>
+                <th role="columnheader" scope="col">Pengantre</th>
+                <th role="columnheader" scope="col">Tipe</th>
+                <th role="columnheader" scope="col">Bergabung</th>
+                <th role="columnheader" scope="col">Status</th>
+                <th role="columnheader" scope="col" className="kobo-table__right">Aksi</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {rows.map((e) => {
                 const isLive = e.status === 'WAITING' || e.status === 'OFFERED';
                 return (
-                  <tr key={e.id} data-testid="owner-waitlist-row">
-                    <td className="kobo-table__strong kobo-table__num">{e.position !== null ? `#${e.position}` : '-'}</td>
-                    <td>
+                  <tr role="row" key={e.id} data-testid="owner-waitlist-row">
+                    <td role="cell" data-label="Antrean" className="kobo-table__strong kobo-table__num">{e.position !== null ? `#${e.position}` : '-'}</td>
+                    <td role="cell" data-label="Pengantre">
                       <span className="kobo-table__strong">{e.user.name}</span>
                       {e.user.campus ? <span className="kobo-table__muted">, {e.user.campus}</span> : null}
                       {e.user.campusVerified && (
@@ -84,16 +84,16 @@ export const WaitlistPanel: React.FC<{ kosId: string; kosName: string }> = ({ ko
                         </span>
                       )}
                     </td>
-                    <td>{roomTypeLabel(e.roomType)}</td>
-                    <td className="kobo-table__muted">{formatLongDate(e.createdAt)}</td>
-                    <td>
+                    <td role="cell" data-label="Tipe">{roomTypeLabel(e.roomType)}</td>
+                    <td role="cell" data-label="Bergabung" className="kobo-table__muted">{formatLongDate(e.createdAt)}</td>
+                    <td role="cell" data-label="Status">
                       <span className="kobo-status" style={{ ['--dot' as string]: DOT[e.status] }}>
                         <span className="kobo-status__dot" aria-hidden="true" />
                         {WAITLIST_STATUS_LABEL[e.status]}
                         {e.offer ? `, Kamar ${e.offer.roomNumber}` : ''}
                       </span>
                     </td>
-                    <td>
+                    <td role="cell">
                       <div className="kobo-table__actions" style={{ opacity: 1 }}>
                         {isLive && confirmId === e.id ? (
                           <>

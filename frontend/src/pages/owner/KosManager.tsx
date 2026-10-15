@@ -254,24 +254,24 @@ export const KosManager: React.FC = () => {
               <p className="owner-kos__section-hint">Belum ada kamar. Tambahkan kamar pertama agar kos ini bisa dipesan.</p>
             ) : (
               <div className="kobo-table-wrap">
-                <table className="kobo-table">
+                <table className="kobo-table kobo-table--labels" role="table">
                   <caption className="owner-kos__sr">Daftar kamar {kos.name}</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Kamar</th>
-                      <th scope="col">Lantai</th>
-                      <th scope="col">Tipe &amp; ukuran</th>
-                      <th scope="col" className="kobo-table__right">Harga sewa</th>
-                      <th scope="col">Status</th>
-                      <th scope="col">Penghuni</th>
-                      <th scope="col"><span className="owner-kos__sr">Aksi</span></th>
+                  <thead role="rowgroup">
+                    <tr role="row">
+                      <th role="columnheader" scope="col">Kamar</th>
+                      <th role="columnheader" scope="col">Lantai</th>
+                      <th role="columnheader" scope="col">Tipe &amp; ukuran</th>
+                      <th role="columnheader" scope="col" className="kobo-table__right">Harga sewa</th>
+                      <th role="columnheader" scope="col">Status</th>
+                      <th role="columnheader" scope="col">Penghuni</th>
+                      <th role="columnheader" scope="col"><span className="owner-kos__sr">Aksi</span></th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody role="rowgroup">
                     {kos.rooms.map((room) =>
                       confirmRoomId === room.id ? (
-                        <tr key={room.id}>
-                          <td colSpan={7} className="owner-kos__confirmcell">
+                        <tr role="row" key={room.id}>
+                          <td role="cell" colSpan={7} className="owner-kos__confirmcell">
                             <div className="owner-kos__confirm" role="alert">
                               <span>Hapus Kamar {room.roomNumber}?</span>
                               <div className="owner-kos__confirm-actions">
@@ -296,14 +296,14 @@ export const KosManager: React.FC = () => {
                           </td>
                         </tr>
                       ) : (
-                        <tr key={room.id}>
-                          <td className="kobo-table__strong">{room.roomNumber}</td>
-                          <td>Lt. {room.floor}</td>
-                          <td>
+                        <tr role="row" key={room.id}>
+                          <td role="cell" data-label="Kamar" className="kobo-table__strong">{room.roomNumber}</td>
+                          <td role="cell" data-label="Lantai">Lt. {room.floor}</td>
+                          <td role="cell" data-label="Tipe &amp; ukuran">
                             {room.type} <span className="kobo-table__muted">({room.size})</span>
                           </td>
-                          <td className="kobo-table__num kobo-table__right">{formatRupiah(room.priceMonthly)}</td>
-                          <td>
+                          <td role="cell" data-label="Harga sewa" className="kobo-table__num kobo-table__right">{formatRupiah(room.priceMonthly)}</td>
+                          <td role="cell" data-label="Status">
                             <span
                               className={room.status === 'vacant' ? 'kobo-status kobo-status--hollow' : 'kobo-status'}
                               style={{ ['--dot' as string]: STATUS_META[room.status].dot }}
@@ -312,8 +312,8 @@ export const KosManager: React.FC = () => {
                               {STATUS_META[room.status].label}
                             </span>
                           </td>
-                          <td className="kobo-table__muted">{room.tenant?.name || '-'}</td>
-                          <td className="owner-kos__actioncell">
+                          <td role="cell" data-label="Penghuni" className="kobo-table__muted">{room.tenant?.name || '-'}</td>
+                          <td role="cell" className="owner-kos__actioncell">
                             <Popover
                               role="menu"
                               label={`Aksi Kamar ${room.roomNumber}`}

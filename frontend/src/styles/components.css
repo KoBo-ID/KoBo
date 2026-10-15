@@ -1009,3 +1009,17 @@
 @media (min-width: 820px) {
   .kuitansi-stamp { position: absolute; right: 13.5rem; bottom: 1.75rem; margin: 0; }
 }
+
+/* Tables that become label/value cards on phones (data-label on each td). */
+.kobo-segmented--wrap { flex-wrap: wrap; overflow: visible; }
+@media (max-width: 760px) {
+  .kobo-table-wrap:has(.kobo-table--labels) { overflow: visible; }
+  .kobo-table--labels, .kobo-table--labels caption, .kobo-table--labels tbody { display: block; }
+  .kobo-table--labels thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .kobo-table--labels tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-subtle); }
+  .kobo-table--labels tbody tr:last-child { border-bottom: none; }
+  .kobo-table--labels tbody td { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; min-width: 0; padding: 0; border-bottom: none; }
+  .kobo-table--labels tbody td[data-label]::before { content: attr(data-label); color: var(--text-muted); font-size: 0.75rem; font-weight: 600; }
+  .kobo-table--labels tbody td:not([data-label]) { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
+  .kobo-table--labels tbody td[colspan] { display: block; grid-column: 1 / -1; padding: 0; text-align: left; }
+}

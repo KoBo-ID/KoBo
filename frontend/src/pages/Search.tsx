@@ -483,7 +483,7 @@ export const Search: React.FC = () => {
               gap: '0.75rem',
             }}
           >
-            <div className="kobo-segmented" role="group" aria-label="Tipe kos">
+            <div className="kobo-segmented kobo-segmented--wrap" role="group" aria-label="Tipe kos">
               {(
                 [
                   { id: 'all', label: 'Semua Tipe' },

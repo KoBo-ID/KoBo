@@ -155,6 +155,32 @@ test.describe('phone-only layout', () => {
     expect(m.x + m.width).toBeLessThanOrEqual(390)
   })
 
+  test('search filter popover stays inside the viewport', async ({ page }) => {
+    await loginAs(page, 'student')
+    await settle(page, '/search')
+    await page.getByRole('button', { name: /^Filter/ }).click()
+    const panel = page.locator('.kobo-popover').first()
+    await expect(panel).toBeVisible()
+    const b = (await panel.boundingBox())!
+    expect(b.x).toBeGreaterThanOrEqual(0)
+    expect(b.x + b.width).toBeLessThanOrEqual(390)
+  })
+
+  test('owner room list becomes label/value cards on a phone', async ({ page }) => {
+    await loginAs(page, 'owner')
+    await settle(page, '/owner/kos')
+    const row = page.getByRole('row').filter({ hasText: 'Lt. 1' }).first()
+    await expect(row).toBeVisible()
+    const b = (await row.boundingBox())!
+    expect(b.x + b.width).toBeLessThanOrEqual(390)
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0)
+    // The room action button keeps its full tap size inside the card.
+    const action = row.getByRole('button', { name: /Aksi Kamar/ })
+    const a = (await action.boundingBox())!
+    expect(a.width).toBeGreaterThanOrEqual(40)
+    expect(a.height).toBeGreaterThanOrEqual(40)
+  })
+
   test('toasts sit above the dock, full width', async ({ page }) => {
     await loginAs(page, 'student')
     await settle(page, '/profile')
