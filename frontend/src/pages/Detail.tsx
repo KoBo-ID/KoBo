@@ -142,19 +142,9 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
               {kos.studentDiscountLabel}
             </Badge>
           )}
-          <span
-            style={{
-              fontSize: '0.8rem',
-              color: 'var(--primary)',
-              fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.3rem',
-            }}
-          >
-            <Footprints size={14} />
-            <span>{kos.campusProximity.campusName ? `${kos.campusProximity.distanceMeters}m ke ${kos.campusProximity.campusName}` : 'Jarak ke kampus belum tersedia'}</span>
-          </span>
+          <Badge variant="primary" icon={<Footprints size={12} />}>
+            {kos.campusProximity.campusName ? `${kos.campusProximity.distanceMeters}m ke ${kos.campusProximity.campusName}` : 'Jarak ke kampus belum tersedia'}
+          </Badge>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
@@ -257,7 +247,7 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
 
           <hr className="section-divider" />
 
-          {/* Segregated Amenities Section */}
+          {/* Private and shared amenities */}
           <AmenitiesSection
             privateAmenities={kos.privateAmenities}
             sharedAmenities={kos.sharedAmenities}

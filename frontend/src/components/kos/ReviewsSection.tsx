@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Star, MessageSquare, ShieldCheck, CornerDownRight } from 'lucide-react';
 import { Review } from '../../types';
@@ -14,7 +14,7 @@ interface ReviewsSectionProps {
   reviewCount: number;
   /** Kos-level means of each aspect (1 decimal); null when nobody rated it. */
   subRatings: { cleanliness: number | null; wifi: number | null; owner: number | null; quietness: number | null };
-  /** Server reviews, newest first. */
+  /** Server reviews, newest first. The section shows the highest rated first (stable, so newest first among equals). */
   reviews: Review[];
 }
 
@@ -25,6 +25,45 @@ const SUB_RATING_ROWS = [
   { key: 'quietness', label: 'Ketenangan Jam Belajar' },
 ] as const;
 
+const ReviewItem: React.FC<{ review: Review }> = ({ review }) => (
+  <div className="kos-reviews__item">
+    <div className="kos-reviews__review-header">
+      <div className="kos-reviews__author">
+        <Avatar src={review.authorAvatar} name={review.authorName} size={38} />
+        <div>
+          <div className="kos-reviews__author-name">
+            <h5>{review.authorName}</h5>
+            {review.verifiedStudent && (
+              <span className="kos-reviews__verified" title="Email kampus telah diverifikasi saat ulasan ditulis.">
+                <ShieldCheck size={12} aria-hidden="true" />
+                Email kampus terverifikasi
+              </span>
+            )}
+          </div>
+          <p>{[review.authorCampus, review.date].filter(Boolean).join(' · ')}</p>
+        </div>
+      </div>
+      <div className="kos-reviews__rating">
+        <Star size={13} fill="currentColor" aria-hidden="true" />
+        <span>{review.ratingOverall}</span>
+      </div>
+    </div>
+    <p className="kos-reviews__comment">{review.comment}</p>
+    {review.ownerReply && (
+      <div className="kos-reviews__reply">
+        <CornerDownRight size={16} color="var(--primary)" aria-hidden="true" />
+        <div>
+          <div className="kos-reviews__reply-title">
+            <strong>Tanggapan Pemilik Kos</strong>
+            <span>· {review.ownerReply.date}</span>
+          </div>
+          <p>{review.ownerReply.text}</p>
+        </div>
+      </div>
+    )}
+  </div>
+);
+
 export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   kosId,
   ratingOverall,
@@ -34,16 +73,31 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
 }) => {
   const trpc = useTRPC();
   const { me } = useSession();
-  const kosReviews = serverReviews;
+  const kosReviews = useMemo(() => [...serverReviews].sort((a, b) => b.ratingOverall - a.ratingOverall), [serverReviews]);
   // Only a tenant who has actually lived (or lives) here can review, once per tenancy.
   const mine = useQuery({ ...trpc.booking.mine.queryOptions(), enabled: !!me });
   const tenancies = (mine.data ?? []).filter((t) => t.kos.id === kosId);
   const writable = tenancies.find((t) => t.canReview);
   const editable = tenancies.find((t) => t.review?.editable);
   const [formFor, setFormFor] = useState<'create' | 'edit' | null>(null);
+  const [showAllReviews, setShowAllReviews] = useState(false);
+  const moreReviewsButton = useRef<HTMLButtonElement>(null);
+  const extraReviewsId = `kos-extra-reviews-${kosId}`;
+
+  const toggleReviews = () => {
+    const collapsing = showAllReviews;
+    setShowAllReviews(!showAllReviews);
+    if (collapsing) requestAnimationFrame(() => {
+      const button = moreReviewsButton.current;
+      if (!button) return;
+      const rect = button.getBoundingClientRect();
+      if (rect.top < 0 || rect.bottom > window.innerHeight) button.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    });
+  };
 
   return (
-    <div
+    <section
+      className="kos-reviews"
       style={{
         backgroundColor: 'var(--bg-surface)',
         borderRadius: 'var(--radius-lg)',
@@ -52,84 +106,63 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
         boxShadow: 'var(--shadow-sm)',
       }}
     >
-      {/* Header with overall rating */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          paddingBottom: '1.5rem',
-          borderBottom: '1px solid var(--border-subtle)',
-          marginBottom: '1.5rem',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          <div
-            style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'var(--primary-light)',
-              color: 'var(--primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Star size={22} fill="currentColor" />
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem' }}>
-              <span style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                {ratingOverall ?? '-'}
-              </span>
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>/ 5.0</span>
-            </div>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Berdasarkan {reviewCount} ulasan
-            </p>
-          </div>
-        </div>
-
-        {(writable || editable) && (
+      {(writable || editable) && (
+        <div className="section-head" style={{ justifyContent: 'flex-end' }}>
           <Button
             variant="outline"
             size="sm"
             icon={<MessageSquare size={15} />}
             onClick={() => setFormFor(writable ? 'create' : 'edit')}
           >
-            {writable ? 'Tulis Ulasan Kos' : 'Ubah Ulasan Saya'}
+            {writable ? 'Tulis ulasan kos' : 'Ubah ulasan saya'}
           </Button>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* 4 Sub-Ratings Score Bars */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: '0.75rem 1rem',
-          paddingBottom: '1.5rem',
-          borderBottom: '1px solid var(--border-subtle)',
-          marginBottom: '1.5rem',
-        }}
-      >
-        {SUB_RATING_ROWS.map(({ key, label }) => {
-          const value = subRatings[key];
-          return (
-            <div key={key}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.75rem', lineHeight: 1.3, marginBottom: '0.3rem' }}>
-                <span style={{ minWidth: 0 }}>{label}</span>
-                <span style={{ fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>{value === null ? '-' : value.toFixed(1)} / 5</span>
+      <div className="kos-reviews__summary">
+        <div className="kos-reviews__score">
+          <div>
+            <strong>{ratingOverall ?? '-'}</strong>
+            <span>/ 5.0</span>
+          </div>
+          <p>Berdasarkan {reviewCount} ulasan</p>
+        </div>
+
+        {/* Read-only aspect ratings: label and stars share one row. */}
+        <div className="kos-reviews__aspects">
+          {SUB_RATING_ROWS.map(({ key, label }) => {
+            const value = subRatings[key];
+            return (
+              <div key={key} className="kos-reviews__aspect">
+                <span className="kos-reviews__aspect-label">{label}</span>
+                {value === null ? (
+                  <span className="kos-reviews__unrated">Belum dinilai</span>
+                ) : (
+                  <div
+                    className="kos-reviews__star-meter"
+                    role="img"
+                    aria-label={`${label}: ${value.toFixed(1).replace('.', ',')} dari 5 bintang`}
+                  >
+                    <span className="kos-reviews__stars" aria-hidden="true">
+                      {[0, 1, 2, 3, 4].map((index) => {
+                        const fill = Math.max(0, Math.min(10, Math.round(value * 10) - index * 10)) * 10;
+                        return (
+                          <span className="kos-reviews__star" key={index}>
+                            <Star size={16} className="kos-reviews__star-outline" />
+                            <span className="kos-reviews__star-fill" style={{ width: `${fill}%` }}>
+                              <Star size={16} fill="currentColor" />
+                            </span>
+                          </span>
+                        );
+                      })}
+                    </span>
+                    <span className="kos-reviews__aspect-score" aria-hidden="true">{value.toFixed(1)} / 5</span>
+                  </div>
+                )}
               </div>
-              <div style={{ height: '5px', backgroundColor: 'var(--bg-muted)', borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{ width: `${((value ?? 0) / 5) * 100}%`, height: '100%', backgroundColor: 'var(--primary)', borderRadius: '3px' }} />
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {formFor && (writable || editable) && (
@@ -141,106 +174,14 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
         />
       )}
 
-      {/* Review List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {kosReviews.map((review) => (
-          <div
-            key={review.id}
-            style={{
-              padding: '1.25rem',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'var(--bg-page)',
-              border: '1px solid var(--border-subtle)',
-            }}
-          >
-            {/* Reviewer Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <Avatar src={review.authorAvatar} name={review.authorName} size={38} />
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <h5 style={{ fontSize: '0.925rem', fontWeight: 700 }}>{review.authorName}</h5>
-                    {review.verifiedStudent && (
-                      <span
-                        style={{
-                          fontSize: '0.7rem',
-                          color: 'var(--primary)',
-                          backgroundColor: 'var(--primary-light)',
-                          padding: '0.15rem 0.45rem',
-                          borderRadius: 'var(--radius-badge)',
-                          fontWeight: 600,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.2rem',
-                        }}
-                      >
-                        <ShieldCheck size={12} />
-                        <span>Penyewa Terverifikasi</span>
-                      </span>
-                    )}
-                  </div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {review.authorCampus} · {review.date}
-                  </p>
-                </div>
-              </div>
-
-              {/* Star Rating Badge */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem',
-                  backgroundColor: 'var(--accent-light)',
-                  color: 'var(--accent)',
-                  padding: '0.25rem 0.5rem',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '0.8125rem',
-                  fontWeight: 800,
-                }}
-              >
-                <Star size={13} fill="var(--accent)" />
-                <span>{review.ratingOverall}</span>
-              </div>
-            </div>
-
-            {/* Comment */}
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-main)', lineHeight: 1.6 }}>
-              {review.comment}
-            </p>
-
-            {/* Owner Reply Thread */}
-            {review.ownerReply && (
-              <div
-                style={{
-                  marginTop: '0.85rem',
-                  padding: '0.85rem 1rem',
-                  backgroundColor: 'var(--bg-surface)',
-                  borderRadius: 'var(--radius-sm)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  gap: '0.65rem',
-                }}
-              >
-                <CornerDownRight size={16} color="var(--primary)" style={{ flexShrink: 0, marginTop: '0.15rem' }} />
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>
-                      Tanggapan Pemilik Kos
-                    </span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      · {review.ownerReply.date}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                    {review.ownerReply.text}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+      {/* The same renderer keeps initial and expanded reviews consistent. */}
+      <div className="kos-reviews__list">
+        {kosReviews.slice(0, 5).map((review) => <ReviewItem key={review.id} review={review} />)}
+        <div id={extraReviewsId} hidden={!showAllReviews} className="kos-reviews__extra">
+          {kosReviews.slice(5).map((review) => <ReviewItem key={review.id} review={review} />)}
+        </div>
       </div>
-    </div>
+      {kosReviews.length > 5 && <button ref={moreReviewsButton} type="button" className="kos-reviews__more" aria-expanded={showAllReviews} aria-controls={extraReviewsId} onClick={toggleReviews}>{showAllReviews ? 'Lihat lebih sedikit ulasan' : `Lihat ulasan lainnya (${kosReviews.length - 5})`}</button>}
+    </section>
   );
 };

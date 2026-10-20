@@ -175,7 +175,6 @@ export const InvoicePaymentActions: React.FC<{ invoice: Invoice; returnedPayment
           </Button>
         )}
       </span>
-      {demoAttempt && <span className="invoice-pay__hint">Mode demo, pembayaran ini tidak nyata.</span>}
       <span role="status" aria-live="polite" className="invoice-pay__hint">{message}</span>
       {error && <Notice tone="error">{error}</Notice>}
     </span>

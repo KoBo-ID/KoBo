@@ -44,7 +44,7 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
   };
 
   return (
-    <div
+    <section className="kos-poi"
       style={{
         backgroundColor: 'var(--bg-surface)',
         borderRadius: 'var(--radius-lg)',
@@ -53,51 +53,24 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
         boxShadow: 'var(--shadow-sm)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
+      <div className="section-head">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <MapPin size={22} color="var(--accent)" />
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-              Radar Sekitar Kos
-            </h3>
-          </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-            Akses fasilitas esensial mahasiswa sekitar {campusName} dengan estimasi jarak jalan kaki riil.
-          </p>
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            color: 'var(--primary)',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-          }}
-        >
-          <Footprints size={14} />
-          <span>Bebas Macet & Hemat Ongkos</span>
+          <h3 className="section-title">Radar sekitar kos</h3>
+          <p className="section-sub">Lokasi di sekitar {campusName} yang tercatat untuk kos ini.</p>
         </div>
       </div>
 
       {/* Category Filter Chips */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '0.5rem',
-          overflowX: 'auto',
-          paddingBottom: '0.75rem',
-          marginBottom: '1rem',
-        }}
-      >
+      <div className="kos-poi__categories" aria-label="Filter kategori lokasi">
         {categories.map((cat) => {
           const isActive = activeCategory === cat.id;
           return (
             <button
               key={cat.id}
+              type="button"
               onClick={() => setActiveCategory(cat.id)}
-              className="interactive-tap"
+              className={`kos-poi__category${isActive ? ' is-selected' : ''}`}
+              aria-pressed={isActive}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -110,7 +83,7 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
                 color: isActive ? 'white' : 'var(--text-muted)',
                 border: '1px solid transparent',
                 whiteSpace: 'nowrap',
-                transition: 'background-color var(--duration-fast) var(--ease-out-spring), border-color var(--duration-fast) var(--ease-out-spring), color var(--duration-fast) var(--ease-out-spring), box-shadow var(--duration-fast) var(--ease-out-spring), transform var(--duration-fast) var(--ease-out-spring), opacity var(--duration-fast) var(--ease-out-spring)',
+                transition: 'background-color var(--duration-fast) var(--ease-out-spring), border-color var(--duration-fast) var(--ease-out-spring), color var(--duration-fast) var(--ease-out-spring)',
               }}
             >
               {cat.icon}
@@ -121,7 +94,7 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
       </div>
 
       {/* POI Listing Cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {filteredPois.map((poi) => (
           <div
             key={poi.id}
@@ -130,7 +103,7 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
               alignItems: 'flex-start',
               justifyContent: 'space-between',
               gap: '1rem',
-              padding: '0.875rem 1rem',
+              padding: '0.7rem 0.9rem',
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--border-subtle)',
               backgroundColor: 'var(--bg-page)',
@@ -138,22 +111,9 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: 'var(--bg-surface)',
-                  border: '1px solid var(--border-subtle)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  marginTop: '0.1rem',
-                }}
-              >
+              <span style={{ display: 'flex', flexShrink: 0, marginTop: '0.1rem' }}>
                 {getCategoryIcon(poi.category)}
-              </div>
+              </span>
               <div>
                 <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
                   {poi.name}
@@ -177,7 +137,7 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
               }}
             >
               <Footprints size={14} />
-              {poi.distanceMeters} meter
+              Jarak {poi.distanceMeters} m
             </span>
           </div>
         ))}
@@ -188,6 +148,6 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 };

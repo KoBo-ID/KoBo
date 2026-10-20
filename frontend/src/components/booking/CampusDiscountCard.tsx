@@ -98,7 +98,7 @@ export const CampusDiscountCard: React.FC<CampusDiscountCardProps> = ({ studentD
   } else if (me.user.isDemo) {
     body = (
       <div style={panel}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Akun demo hanya-baca; verifikasi email kampus tidak tersedia.</span>
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Verifikasi email kampus tidak tersedia untuk akun ini.</span>
       </div>
     );
   } else if (sentTo) {

@@ -52,6 +52,58 @@ for (const vp of VIEWPORTS) {
       }
     })
 
+    test('kos detail sections wrap, stay in page flow, and remain reachable', async ({ page }) => {
+      await page.goto('/kos/kos-1')
+      const poi = page.locator('.kos-poi')
+      const categories = poi.locator('.kos-poi__categories button')
+      await expect(categories).toHaveCount(7)
+      const poiBox = (await poi.boundingBox())!
+      const poiColumns = await poi.locator('.kos-poi__categories').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length)
+      expect(poiColumns).toBe(vp.width <= 390 ? 2 : 4)
+      for (const button of await categories.all()) {
+        const box = (await button.boundingBox())!
+        expect(box.x).toBeGreaterThanOrEqual(poiBox.x)
+        expect(box.x + box.width).toBeLessThanOrEqual(poiBox.x + poiBox.width + 1)
+        if (vp.width <= 390) expect(box.height).toBeGreaterThanOrEqual(40)
+      }
+      await page.screenshot({ path: test.info().outputPath('poi.png') })
+
+      const amenities = page.locator('.kos-amenities')
+      const amenityColumns = await amenities.locator('.kos-amenities__grid').first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length)
+      const amenityWidth = await amenities.locator('.kos-amenities__group').first().evaluate((el) => el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft) - parseFloat(getComputedStyle(el).paddingRight))
+      expect(amenityColumns).toBe(amenityWidth >= 700 ? 3 : amenityWidth >= 440 ? 2 : 1)
+      await page.screenshot({ path: test.info().outputPath('amenities.png') })
+
+      const ruleButtons = page.locator('.kos-rules__toggle')
+      await expect(ruleButtons).not.toHaveCount(0)
+      await expect(ruleButtons.first()).toHaveAttribute('aria-expanded', 'true')
+      for (let i = 0; i < await ruleButtons.count(); i++) {
+        const button = ruleButtons.nth(i)
+        if (i > 0) await expect(button).toHaveAttribute('aria-expanded', 'false')
+        const panel = page.locator(`#${await button.getAttribute('aria-controls')}`)
+        if (i > 0) await button.click()
+        await expect(panel).toBeVisible()
+        expect(await panel.evaluate((el) => getComputedStyle(el).overflowY)).toBe('visible')
+        await panel.scrollIntoViewIfNeeded()
+        const clause = panel.locator('.kos-rules__clause')
+        if (await clause.count()) {
+          await clause.scrollIntoViewIfNeeded()
+          const bounds = (await clause.boundingBox())!
+          expect(bounds.x).toBeGreaterThanOrEqual(0)
+          expect(bounds.x + bounds.width).toBeLessThanOrEqual(vp.width)
+        }
+      }
+      if (vp.width === 1280) expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeGreaterThan(vp.height)
+      await page.screenshot({ path: test.info().outputPath('rules.png') })
+
+      const reviews = page.locator('.kos-reviews')
+      const aspectColumns = await reviews.locator('.kos-reviews__aspects').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length)
+      const reviewWidth = (await reviews.boundingBox())!.width
+      expect(aspectColumns).toBe(reviewWidth >= 600 ? 2 : 1)
+      await reviews.scrollIntoViewIfNeeded()
+      await page.screenshot({ path: test.info().outputPath('reviews.png') })
+    })
+
     test('owner routes do not scroll sideways', async ({ page }) => {
       await loginAs(page, 'owner')
       for (const url of OWNER_ROUTES) {

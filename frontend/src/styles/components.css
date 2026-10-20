@@ -921,6 +921,121 @@
   .detail-sidebar { grid-column: 2; grid-row: 1 / span 2; }
 }
 
+/* Room selection: names, availability and prices have separate, consistent positions. */
+.room-picker { container: room-picker / inline-size; padding: 1.5rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-card); background: var(--bg-surface); }
+.room-picker__heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 1rem; margin-bottom: 1rem; }
+.room-picker__heading h3 { margin: 0; }
+.room-picker__heading > span { color: var(--text-muted); font-size: 0.8rem; white-space: nowrap; }
+.room-picker__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; align-items: stretch; }
+.room-picker__option { display: flex; flex-direction: column; align-items: stretch; gap: 0.3rem; min-width: 0; min-height: 40px; padding: 0.8rem 1rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-page); color: var(--text-main); font: inherit; text-align: left; cursor: pointer; }
+.room-picker__option.is-selected { border-color: var(--primary); background: var(--primary-subtle); }
+.room-picker__option:focus-visible { outline: 3px solid var(--border-focus); outline-offset: 3px; }
+.room-picker__option:disabled { cursor: not-allowed; }
+.room-picker__title { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; font-size: 1rem; font-weight: 700; line-height: 1.45; }
+.room-picker__title > span { min-width: 0; overflow-wrap: anywhere; }
+.room-picker__title svg { flex-shrink: 0; margin-top: 0.15rem; color: var(--primary); }
+.room-picker__availability { color: var(--status-paid-text); font-size: 0.8125rem; font-weight: 600; line-height: 1.4; }
+.room-picker__availability > span { white-space: nowrap; }
+.room-picker__option.is-full .room-picker__availability { color: var(--text-muted); }
+.room-picker__details { display: flex; flex-direction: column; gap: 0.1rem; margin: 0.1rem 0 0.3rem; color: var(--text-muted); font-size: 0.8125rem; line-height: 1.5; overflow-wrap: anywhere; }
+.room-picker__reserved { color: var(--status-booking-text); font-size: 0.75rem; line-height: 1.5; }
+.room-picker__footer { display: flex; flex-direction: column; gap: 0.25rem; margin-top: auto; padding-top: 0.55rem; border-top: 1px solid var(--border-subtle); }
+.room-picker__price { color: var(--primary); font-size: 1rem; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.room-picker__price > span { color: var(--text-muted); font-size: 0.75rem; font-weight: 400; white-space: nowrap; }
+.room-picker__waitlist { color: var(--primary); font-size: 0.8125rem; font-weight: 600; text-decoration: underline; text-underline-offset: 0.2em; }
+@container room-picker (min-width: 520px) {
+  .room-picker__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container room-picker (min-width: 800px) {
+  .room-picker__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Kos detail section layouts. Container queries follow the available column, not the viewport. */
+.kos-poi { container-type: inline-size; }
+.kos-poi__categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; margin-bottom: 1rem; }
+.kos-poi__category { justify-content: center; width: 100%; min-height: 44px; border: 1px solid var(--border-subtle) !important; white-space: normal !important; text-align: center; line-height: 1.35; }
+.kos-poi__category.is-selected { border-color: var(--primary) !important; box-shadow: inset 0 0 0 1px var(--primary); }
+.kos-poi__category:focus-visible, .kos-rules__toggle:focus-visible, .kos-reviews__more:focus-visible { outline: 3px solid var(--border-focus); outline-offset: 2px; }
+.kos-amenities { container: amenities / inline-size; }
+.kos-amenities__groups { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; align-items: start; }
+.kos-amenities__group { min-width: 0; container: amenity-group / inline-size; }
+.kos-amenities__heading { margin-bottom: 0.75rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border-subtle); text-align: center; }
+.kos-amenities__heading h3 { margin: 0; }
+.kos-amenities__list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.kos-amenities__item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; min-width: 0; min-height: 72px; padding: 0.5rem 0.75rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-card); background: var(--bg-surface); color: var(--text-main); font-size: 0.925rem; line-height: 1.4; text-align: center; }
+.kos-amenities__icon { display: inline-flex; flex-shrink: 0; color: var(--primary); }
+.kos-amenities__icon svg { width: 24px; height: 24px; stroke-width: 1.5; }
+.kos-amenities__label { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+@container amenities (min-width: 620px) {
+  .kos-amenities__groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kos-amenities__group:only-child { grid-column: 1 / -1; }
+}
+@container amenity-group (min-width: 280px) {
+  .kos-amenities__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* An odd count would leave one empty cell: the last tile takes the full row instead. */
+  .kos-amenities__item:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+.kos-rules__groups { display: flex; flex-direction: column; gap: 0.5rem; }
+.kos-rules__group { overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-page); transition: border-color var(--duration-fast) var(--ease-out-spring); }
+.kos-rules__group:hover, .kos-rules__group:focus-within { border-color: var(--border-strong); }
+.kos-rules__heading { margin: 0; font-size: inherit; }
+.kos-rules__toggle { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; min-height: 56px; padding: 0.65rem 1rem; background: transparent; color: var(--text-main); text-align: left; cursor: pointer; }
+.kos-rules__toggle > div:first-child { min-width: 0; }
+.kos-rules__title { font-size: 0.95rem; font-weight: 700; }
+.kos-rules__panel { padding: 0.85rem 1rem 1rem; border-top: 1px solid var(--border-subtle); background: var(--bg-surface); }
+.kos-rules__panel[hidden], .kos-reviews__extra[hidden] { display: none; }
+.kos-rules__panel ul { padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.4rem; margin: 0; }
+.kos-rules__panel li { font-size: 0.875rem; color: var(--text-main); line-height: 1.5; overflow-wrap: anywhere; }
+.kos-rules__clause { display: flex; align-items: flex-start; gap: 0.6rem; margin-top: 0.85rem; padding: 0.6rem 0.8rem; border: 1px solid var(--status-overdue-border); border-radius: var(--radius-sm); background: var(--status-overdue-bg); color: var(--status-overdue-text); font-size: 0.8125rem; font-weight: 600; line-height: 1.5; }
+.kos-reviews { container-type: inline-size; }
+.kos-reviews__summary { display: flex; flex-direction: column; gap: 1rem; padding: 0.5rem 0 1.25rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); }
+.kos-reviews__score > div { display: flex; align-items: baseline; gap: 0.35rem; }
+.kos-reviews__score strong { color: var(--text-main); font-size: 2.25rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+.kos-reviews__score span { color: var(--text-muted); font-size: 0.9rem; }
+.kos-reviews__score p { margin: 0.35rem 0 0; color: var(--text-muted); font-size: 0.85rem; }
+.kos-reviews__aspects { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle); }
+.kos-reviews__aspect { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-width: 0; padding: 0.7rem 1rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-page); }
+.kos-reviews__aspect-label { min-width: 0; color: var(--text-main); font-size: 0.875rem; line-height: 1.4; overflow-wrap: anywhere; }
+.kos-reviews__star-meter { display: flex; flex-shrink: 0; align-items: center; gap: 0.5rem; }
+.kos-reviews__stars { display: inline-flex; gap: 0.2rem; }
+.kos-reviews__star { position: relative; display: inline-flex; width: 16px; height: 16px; }
+.kos-reviews__star-outline { color: var(--text-muted); }
+.kos-reviews__star-fill { position: absolute; inset: 0 auto 0 0; overflow: hidden; color: var(--primary); }
+.kos-reviews__star-fill svg { display: block; width: 16px; height: 16px; max-width: none; }
+.kos-reviews__aspect-score { color: var(--text-main); font-size: 0.875rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kos-reviews__unrated { color: var(--text-muted); font-size: 0.875rem; line-height: 1.5; }
+.kos-reviews__list, .kos-reviews__extra { display: flex; flex-direction: column; gap: 0.75rem; }
+.kos-reviews__item { padding: 1rem 1.1rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-page); }
+.kos-reviews__review-header, .kos-reviews__author, .kos-reviews__author-name, .kos-reviews__rating, .kos-reviews__reply { display: flex; align-items: center; }
+.kos-reviews__review-header { justify-content: space-between; gap: 0.75rem; margin-bottom: 0.5rem; }
+.kos-reviews__author { min-width: 0; gap: 0.75rem; }
+.kos-reviews__author-name { flex-wrap: wrap; gap: 0.4rem; }
+.kos-reviews__author-name h5, .kos-reviews__author p, .kos-reviews__reply p { margin: 0; }
+.kos-reviews__author-name h5 { font-size: 0.925rem; font-weight: 700; }
+.kos-reviews__author p, .kos-reviews__reply-title span { color: var(--text-muted); font-size: 0.75rem; }
+.kos-reviews__verified { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.15rem 0.45rem; border-radius: var(--radius-badge); background: var(--primary-light); color: var(--primary); font-size: 0.7rem; font-weight: 600; }
+.kos-reviews__verified svg { flex-shrink: 0; }
+.kos-reviews__author > div { min-width: 0; }
+.kos-reviews__author-name h5 { overflow-wrap: anywhere; }
+.kos-reviews__rating { flex-shrink: 0; gap: 0.25rem; color: var(--accent-strong); font-size: 0.8125rem; font-weight: 800; }
+.kos-reviews__comment { color: var(--text-main); font-size: 0.875rem; line-height: 1.6; }
+.kos-reviews__reply { align-items: flex-start; gap: 0.65rem; margin-top: 0.6rem; padding: 0.65rem 0; border-top: 1px solid var(--border-subtle); }
+.kos-reviews__reply > svg { flex-shrink: 0; margin-top: 0.15rem; }
+.kos-reviews__reply-title { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; color: var(--primary); font-size: 0.8rem; }
+.kos-reviews__reply p { color: var(--text-muted); font-size: 0.825rem; line-height: 1.5; }
+.kos-reviews__more { min-height: 40px; margin-top: 0.75rem; padding: 0.5rem 0; color: var(--primary); font: inherit; font-weight: 700; text-align: left; text-decoration: underline; text-underline-offset: 0.2em; }
+@container (min-width: 560px) {
+  .kos-reviews__aspects { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (min-width: 600px) {
+  .kos-poi__categories { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .kos-poi__category:nth-child(-n + 4) { grid-column: span 3; }
+  .kos-poi__category:nth-child(n + 5) { grid-column: span 4; }
+}
+@media (max-width: 767px), (pointer: coarse) {
+  .kos-poi__category { min-height: 44px; }
+}
+
 /* /checkout/:id */
 .checkout-split-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; align-items: start; }
 .application-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
@@ -994,7 +1109,7 @@
 .kobo-carousel-btn { position: relative; }
 .kobo-carousel-btn::after { content: ''; position: absolute; inset: -8px; }
 @media (max-width: 767px), (pointer: coarse) {
-  header a[href='/my-kos'], .os-brand, .kobo-btn, .kobo-back, .demo-notice__btn, .interactive-tap:not(.kobo-carousel-btn):is(button, a) { min-height: var(--control-height); }
+  header a[href='/my-kos'], .os-brand, .kobo-btn, .kobo-back, .interactive-tap:not(.kobo-carousel-btn):is(button, a) { min-height: var(--control-height); }
   .kobo-segmented button { height: var(--control-height); }
   .kobo-icon-btn--sm { width: var(--control-height); height: var(--control-height); }
 }
@@ -1059,3 +1174,14 @@
   .kobo-table--labels tbody td:not([data-label]) { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
   .kobo-table--labels tbody td[colspan] { display: block; grid-column: 1 / -1; padding: 0; text-align: left; }
 }
+
+/* One heading system for every card on /kos/:id (room types, amenities, radar, rules, reviews). */
+.section-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.5rem 1rem; margin-bottom: 1rem; }
+.section-title { margin: 0; color: var(--text-main); font-size: 1.25rem; font-weight: 700; line-height: 1.3; letter-spacing: -0.01em; }
+.section-sub { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; }
+.room-picker__heading { align-items: baseline; }
+.kos-rules__all { min-height: 40px; padding: 0 0.25rem; color: var(--primary); font: inherit; font-size: 0.85rem; font-weight: 600; text-decoration: underline; text-underline-offset: 0.2em; }
+.kos-rules__label { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; text-align: left; }
+.kos-rules__count { color: var(--text-muted); font-size: 0.78rem; font-weight: 500; }
+.kos-rules__aside { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+.kos-rules__fine { padding: 0.2rem 0.55rem; border: 1px solid var(--status-overdue-border); border-radius: var(--radius-badge); background: var(--status-overdue-bg); color: var(--status-overdue-text); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }

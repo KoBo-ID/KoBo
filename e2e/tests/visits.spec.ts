@@ -7,7 +7,6 @@ import { test, expect, loginAs } from './fixtures'
 test('demo student schedules a survey, the demo owner sees it and marks it done', async ({ page }) => {
   await loginAs(page, 'student')
   await page.goto('/kos/kos-1')
-  await expect(page.getByTestId('demo-notice')).toContainText('Akun demo')
   await page.getByRole('button', { name: 'Jadwalkan Survey Gratis' }).first().click()
   await page.getByLabel('Nomor WhatsApp').fill('081234567890')
   await page.getByRole('button', { name: 'Konfirmasi Jadwal Survey Gratis' }).click()
@@ -37,7 +36,3 @@ test('a signed-out visitor is asked to sign in before scheduling a survey', asyn
   await expect(page.getByRole('button', { name: 'Masuk' }).last()).toBeVisible()
 })
 
-test('a real (non-demo) user does not see the demo notice', async ({ page }) => {
-  await page.goto('/')
-  await expect(page.getByTestId('demo-notice')).toHaveCount(0)
-})

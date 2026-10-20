@@ -82,6 +82,68 @@ test('detail renders from kos.detail', async ({ page }) => {
   await expect(page.getByText(/tipe kamar tersedia/)).toBeVisible()
 })
 
+test('detail sections expose accessible filters, complete rules, and the loaded review remainder', async ({ page }) => {
+  let loadedReviews = 7
+  await page.route('**/api/trpc/kos.detail*', async (route) => {
+    const response = await route.fetch()
+    const body = await response.json() as { result: { data: { json?: Record<string, any> } & Record<string, any> } }
+    const data = body.result.data.json ?? body.result.data
+    data.pois = data.pois.filter((poi: { category: string }) => poi.category === 'campus').slice(0, 1)
+    data.rules = [...data.rules, {
+      id: 'e2e-long-rule', tier: 4, categoryTitle: 'Klausul panjang untuk pengujian', rules: ['Aturan utuh yang harus tetap tersedia setelah panel dibuka.'],
+      penaltyAmount: 125000, penaltyClause: 'Klausul akhir tetap terlihat setelah halaman digulir sampai bagian paling bawah tanpa pemotongan teks.',
+    }]
+    data.reviews = Array.from({ length: loadedReviews }, (_, i) => ({
+      id: `e2e-review-${i}`, rating: 4, comment: `Ulasan uji ${i + 1}`, createdAt: new Date(Date.now() - i * 86_400_000).toISOString(),
+      authorName: `Penyewa ${i + 1}`, authorCampus: 'Kampus Uji', authorAvatar: null, verified: i === 0,
+      ownerReply: i === 6 ? { text: 'Balasan pemilik untuk ulasan ketujuh.', at: new Date().toISOString() } : null,
+    }))
+    await route.fulfill({ response, body: JSON.stringify(body) })
+  })
+
+  await page.goto('/kos/kos-1')
+  const categories = page.locator('.kos-poi__categories button')
+  await expect(categories).toHaveCount(7)
+  await expect(categories.first()).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Makan & Warung' }).click()
+  await expect(page.getByRole('button', { name: 'Makan & Warung' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByText('Belum ada data lokasi untuk kategori ini.')).toBeVisible()
+  await expect(page.getByText(/estimasi jarak jalan kaki riil|Bebas Macet & Hemat Ongkos/)).toHaveCount(0)
+
+  const ruleButtons = page.locator('.kos-rules__toggle')
+  await expect(ruleButtons.first()).toHaveAttribute('aria-expanded', 'true')
+  await expect(ruleButtons.nth(1)).toHaveAttribute('aria-expanded', 'false')
+  const ruleButton = page.getByRole('button', { name: /Klausul panjang untuk pengujian/ })
+  await expect(ruleButton).toHaveAttribute('aria-expanded', 'false')
+  const rulePanel = page.locator(`#${await ruleButton.getAttribute('aria-controls')}`)
+  await ruleButton.focus()
+  await page.keyboard.press('Space')
+  await expect(ruleButton).toHaveAttribute('aria-expanded', 'true')
+  await expect(rulePanel).toContainText('Aturan utuh yang harus tetap tersedia setelah panel dibuka.')
+  await expect(rulePanel).toContainText('Klausul akhir tetap terlihat setelah halaman digulir sampai bagian paling bawah tanpa pemotongan teks.')
+  await page.keyboard.press('Enter')
+  await expect(ruleButton).toHaveAttribute('aria-expanded', 'false')
+  await expect(rulePanel).toBeHidden()
+  await page.keyboard.press('Space')
+  await expect(ruleButton).toHaveAttribute('aria-expanded', 'true')
+  await expect(rulePanel).toBeVisible()
+
+  await expect(page.getByText(/^Ulasan uji [1-5]$/)).toHaveCount(5)
+  const more = page.getByRole('button', { name: 'Lihat ulasan lainnya (2)' })
+  await expect(more).toHaveAttribute('aria-expanded', 'false')
+  await more.click()
+  await expect(page.getByText(/^Ulasan uji [1-7]$/)).toHaveCount(7)
+  await expect(page.getByText('Balasan pemilik untuk ulasan ketujuh.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Lihat lebih sedikit ulasan' })).toBeFocused()
+  await page.getByRole('button', { name: 'Lihat lebih sedikit ulasan' }).click()
+  await expect(page.getByText(/^Ulasan uji [1-7]$/)).toHaveCount(5)
+  await expect(page.getByRole('button', { name: 'Lihat ulasan lainnya (2)' })).toBeFocused()
+  loadedReviews = 5
+  await page.reload()
+  await expect(page.getByText(/^Ulasan uji [1-5]$/)).toHaveCount(5)
+  await expect(page.getByRole('button', { name: /Lihat ulasan lainnya/ })).toHaveCount(0)
+})
+
 test('an unknown kos id shows the not-found state', async ({ page, problems }) => {
   await page.goto('/kos/tidak-ada-kos-ini')
   await expect(page.getByRole('heading', { name: 'Kos tidak ditemukan' })).toBeVisible()

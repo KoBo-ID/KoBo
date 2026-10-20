@@ -1,4 +1,5 @@
 import React from 'react';
+import { Check } from 'lucide-react';
 import { Room } from '../../../types';
 import { formatRupiah } from '../../../lib/format';
 
@@ -21,39 +22,19 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
     acc[room.roomType].push(room);
     return acc;
   }, {} as Record<string, Room[]>);
-
   const groupEntries = Object.entries(grouped);
+  const headingId = React.useId();
 
   return (
-    <div
-      style={{
-        backgroundColor: 'var(--bg-surface)',
-        borderRadius: 'var(--radius-card)',
-        border: '1px solid var(--border-subtle)',
-        padding: '1.5rem',
-        boxShadow: 'var(--shadow-xs)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-          Pilihan Tipe Kamar & Ketersediaan
-        </h3>
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          {groupEntries.length} tipe kamar tersedia
-        </span>
+    <section className="room-picker" aria-labelledby={headingId}>
+      <div className="room-picker__heading">
+        <h3 id={headingId} className="section-title">Pilihan tipe kamar & ketersediaan</h3>
+        <span>{groupEntries.length} tipe kamar</span>
       </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: '1rem',
-          alignItems: 'stretch',
-        }}
-      >
+      <div className="room-picker__grid">
         {groupEntries.map(([roomType, groupRooms]) => {
           const firstRoom = groupRooms[0];
-          // A room under a live daftar tunggu offer to someone else reads vacant but cannot be booked; mine comes first.
+          // A live offer to someone else is not bookable; the viewer's own offer comes first.
           const vacantRooms = groupRooms
             .filter((r) => r.status === 'vacant' && !r.reservedForWaitlist)
             .sort((a, b) => Number(!!b.offeredToMe) - Number(!!a.offeredToMe));
@@ -63,72 +44,45 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
           const isSelected = isAvailable && selectedRoom.roomType === roomType;
 
           return (
-            <div
+            <button
               key={roomType}
+              type="button"
+              className={`room-picker__option${isSelected ? ' is-selected' : ''}${!isAvailable ? ' is-full' : ''}`}
+              aria-pressed={isAvailable ? isSelected : undefined}
+              disabled={!isAvailable && !onSelectFullType}
               onClick={() => {
-                if (isAvailable) {
-                  onSelectRoom(vacantRooms[0]);
-                } else {
-                  onSelectFullType?.(roomType);
-                }
-              }}
-              className="interactive-tap"
-              style={{
-                border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border-subtle)'}`,
-                borderRadius: 'var(--radius-sm)',
-                padding: '1rem',
-                backgroundColor: isSelected ? 'var(--primary-light)' : 'var(--bg-page)',
-                cursor: isAvailable || onSelectFullType ? 'pointer' : 'not-allowed',
-                opacity: isAvailable ? 1 : 0.6,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.4rem',
-                transition: 'background-color var(--duration-fast), border-color var(--duration-fast), color var(--duration-fast), box-shadow var(--duration-fast), transform var(--duration-fast), opacity var(--duration-fast)',
+                if (isAvailable) onSelectRoom(vacantRooms[0]);
+                else onSelectFullType?.(roomType);
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)' }}>
-                  {roomType}
-                </span>
-                <span
-                  style={{
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    padding: '0.15rem 0.5rem',
-                    borderRadius: 'var(--radius-badge)',
-                    backgroundColor: isAvailable ? 'var(--status-paid-bg)' : 'var(--status-overdue-bg)',
-                    color: isAvailable ? 'var(--status-paid)' : 'var(--status-overdue)',
-                  }}
-                >
-                  {vacantCount} tersedia / {groupRooms.length} total
-                </span>
-              </div>
-
+              <span className="room-picker__title">
+                <span>{roomType}</span>
+                {isSelected && <Check size={18} aria-hidden="true" />}
+              </span>
+              <span className="room-picker__availability">
+                <span>{vacantCount} dari {groupRooms.length}</span> kamar tersedia
+              </span>
+              <span className="room-picker__details">
+                <span>Ukuran: {firstRoom.size}</span>
+                <span>Kasur: {firstRoom.bedType}</span>
+              </span>
               {reservedCount > 0 && (
-                <span
-                  style={{ alignSelf: 'flex-start', fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-badge)', backgroundColor: 'var(--status-booking-bg)', color: 'var(--status-booking-text)' }}
-                >
+                <span className="room-picker__reserved">
                   Dipesan antrean{reservedCount > 1 ? ` (${reservedCount})` : ''}
                 </span>
               )}
-              {!isAvailable && onSelectFullType && (
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>Ikut daftar tunggu</span>
-              )}
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Ukuran: {firstRoom.size}
+              <span className="room-picker__footer">
+                <span className="room-picker__price">
+                  {formatRupiah(firstRoom.priceMonthly)} <span>/bln</span>
+                </span>
+                {!isAvailable && onSelectFullType && (
+                  <span className="room-picker__waitlist">Ikut daftar tunggu</span>
+                )}
               </span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Kasur: {firstRoom.bedType}
-              </span>
-
-              <div style={{ marginTop: 'auto', paddingTop: '0.35rem', fontWeight: 800, color: 'var(--primary)', fontSize: '0.95rem' }}>
-                {formatRupiah(firstRoom.priceMonthly)}{' '}
-                <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>/bln</span>
-              </div>
-            </div>
+            </button>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 };

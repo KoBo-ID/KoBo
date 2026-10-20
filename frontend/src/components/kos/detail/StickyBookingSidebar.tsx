@@ -98,7 +98,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
               flexWrap: 'nowrap',
             }}
           >
-            <span style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: '1.65rem', fontWeight: 800, lineHeight: 1, color: 'var(--text-main)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
               {formatRupiah(selectedRoom.priceMonthly)}
             </span>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>/ bulan</span>
@@ -221,7 +221,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           }}
         >
           <ShieldCheck size={14} color="var(--primary)" />
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: '0.72rem', lineHeight: 1, color: 'var(--text-muted)' }}>
             Survey fisik gratis · Tanpa biaya tersembunyi
           </span>
         </div>

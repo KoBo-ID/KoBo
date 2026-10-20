@@ -54,8 +54,8 @@ export const Badge: React.FC<BadgeProps> = ({
       case 'discount':
         return {
           backgroundColor: 'var(--accent-light)',
-          color: 'var(--accent)',
-          border: '1px solid hsla(24, 95%, 53%, 0.25)',
+          color: 'var(--accent-strong)',
+          border: '1px solid var(--accent-glow)',
         };
       case 'paid':
         return {
@@ -91,7 +91,7 @@ export const Badge: React.FC<BadgeProps> = ({
         return {
           backgroundColor: 'var(--primary-light)',
           color: 'var(--primary)',
-          border: '1px solid hsla(158, 64%, 32%, 0.2)',
+          border: '1px solid var(--primary-glow)',
         };
       default:
         return {

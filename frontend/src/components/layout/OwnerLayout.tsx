@@ -16,7 +16,6 @@ import { pickKos } from '../../lib/ownerWorkspace';
 import type { OwnerWorkspace } from '../../lib/ownerWorkspace';
 import { ErrorState } from '../ui/QueryState';
 import { MobileNav } from './MobileNav';
-import { DemoNotice } from './DemoNotice';
 import { Popover } from '../ui/Popover';
 import '../../styles/owner-shell.css';
 
@@ -181,7 +180,6 @@ export const OwnerLayout: React.FC = () => {
           </Link>
         </div>
 
-        <DemoNotice />
         <main className="os-main-content">
           {kosQuery.isPending ? (
             <div role="status" aria-live="polite" className="os-status">
