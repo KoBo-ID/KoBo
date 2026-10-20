@@ -1,4 +1,5 @@
 import { createFakeStorage } from '../../src/storage.ts'
+import { NoGeocoder } from '../../src/geocode.ts'
 import type { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { beforeEach, describe, expect, it } from 'vitest'
@@ -22,6 +23,7 @@ const probeFor = (userId: string | null) =>
     auth,
     storage: createFakeStorage(),
     paymentService,
+    geocoder: new NoGeocoder(),
     headers: new Headers(),
     resHeaders: new Headers(),
     getSession: async () => (userId ? ({ user: { id: userId } } as never) : null),

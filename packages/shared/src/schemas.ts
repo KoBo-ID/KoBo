@@ -1,7 +1,7 @@
 // Zod schemas. Server and lazy routes only (never import from the landing chunk).
 import { z } from 'zod'
 import { MAX_LEASE_MONTHS } from './domain/pricing.ts'
-import { GENDER_FILTERS, PRICE_MAX, SORT_KEYS } from './search.ts'
+import { GENDER_FILTERS, PRICE_MAX, SEARCH_RADIUS_MAX, SEARCH_RADIUS_MIN, SORT_KEYS } from './search.ts'
 
 export const kosListInput = z.object({ limit: z.number().int().min(1).max(200).optional() }).optional()
 export type KosListInput = z.infer<typeof kosListInput>
@@ -12,6 +12,8 @@ export const kosSearchInput = z
     q: z.string().trim().max(100).default(''),
     lat: z.number().min(-90).max(90).optional(),
     lng: z.number().min(-180).max(180).optional(),
+    /** Search radius around lat/lng in metres; omitted means SEARCH_RADIUS_METERS. Ignored without lat/lng. */
+    radius: z.number().int().min(SEARCH_RADIUS_MIN).max(SEARCH_RADIUS_MAX).optional(),
     /** Display label of the reference point. Not used for filtering. */
     locationLabel: z.string().max(80).optional(),
     gender: z.enum(GENDER_FILTERS).default('all'),

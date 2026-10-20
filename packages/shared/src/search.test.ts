@@ -5,6 +5,8 @@ import {
   GENDER_FILTERS,
   PRICE_MAX,
   PRICE_MIN,
+  SEARCH_RADIUS_MAX,
+  SEARCH_RADIUS_MIN,
   SORT_KEYS,
   parseSearchParams,
   serializeSearchParams,
@@ -28,8 +30,11 @@ describe('parseSearchParams', () => {
     expect(parse('q=anggrek&loc=loc-dago&gender=putri&maxPrice=2000000&discount=1&survey=1&sort=price_asc')).toEqual({
       q: 'anggrek',
       loc: 'loc-dago',
+      campus: null,
       lat: null,
       lng: null,
+      place: null,
+      radius: null,
       gender: 'putri',
       maxPrice: 2_000_000,
       discountOnly: true,
@@ -40,6 +45,12 @@ describe('parseSearchParams', () => {
 
   it('lets a geolocation pin win over a preset id', () => {
     expect(parse('loc=loc-dago&lat=-6.2&lng=106.8')).toMatchObject({ loc: null, lat: -6.2, lng: 106.8 })
+  })
+
+  it('gives campus precedence over loc while coordinates still win over campus', () => {
+    expect(parse('loc=loc-dago&campus=itb-ganesha')).toMatchObject({ loc: null, campus: 'itb-ganesha' })
+    expect(parse('campus=itb-ganesha&lat=-6.9&lng=107.6')).toMatchObject({ campus: null, lat: -6.9, lng: 107.6 })
+    expect(serializeSearchParams({ ...DEFAULT_FILTERS, campus: 'itb-ganesha' }).get('campus')).toBe('itb-ganesha')
   })
 
   it('falls back to defaults for malformed values', () => {
@@ -66,8 +77,11 @@ describe('serializeSearchParams', () => {
   const filters = fc.record({
     q: fc.string({ maxLength: 40 }).map((s) => s.trim()),
     loc: fc.option(fc.stringMatching(/^[a-z][a-z0-9-]{0,20}$/), { nil: null }),
+    campus: fc.option(fc.stringMatching(/^[a-z][a-z0-9-]{0,30}$/), { nil: null }),
     lat: fc.option(fc.double({ min: -90, max: 90, noNaN: true }).map((n) => n + 0), { nil: null }),
     lng: fc.option(fc.double({ min: -180, max: 180, noNaN: true }).map((n) => n + 0), { nil: null }),
+    place: fc.option(fc.string({ minLength: 1, maxLength: 30 }).map((s) => s.trim()).filter((s) => s.length > 0), { nil: null }),
+    radius: fc.option(fc.integer({ min: SEARCH_RADIUS_MIN, max: SEARCH_RADIUS_MAX }), { nil: null }),
     gender: fc.constantFrom(...GENDER_FILTERS),
     maxPrice: fc.integer({ min: PRICE_MIN, max: PRICE_MAX }),
     discountOnly: fc.boolean(),
@@ -79,7 +93,7 @@ describe('serializeSearchParams', () => {
     fc.assert(
       fc.property(filters, (f: SearchFilters) => {
         const geo = f.lat !== null && f.lng !== null
-        const expected: SearchFilters = { ...f, lat: geo ? f.lat : null, lng: geo ? f.lng : null, loc: geo ? null : f.loc }
+        const expected: SearchFilters = { ...f, lat: geo ? f.lat : null, lng: geo ? f.lng : null, loc: geo || f.campus ? null : f.loc, campus: geo ? null : f.campus, place: geo ? f.place : null, radius: geo ? f.radius : null }
         expect(parseSearchParams(serializeSearchParams(f))).toEqual(expected)
       }),
     )
@@ -98,6 +112,14 @@ describe('kosSearchInput', () => {
     })
   })
 
+  it('keeps a place name and radius only with a map point, and clamps the radius', () => {
+    expect(parse('lat=-6.2&lng=106.8&place=Banten&r=80000')).toMatchObject({ lat: -6.2, place: 'Banten', radius: 80000 })
+    expect(parse('place=Banten&r=80000')).toMatchObject({ place: null, radius: null })
+    expect(parse('lat=-6.2&lng=106.8&r=5')).toMatchObject({ radius: SEARCH_RADIUS_MIN })
+    expect(parse('lat=-6.2&lng=106.8&r=9999999')).toMatchObject({ radius: SEARCH_RADIUS_MAX })
+    expect(parse('lat=-6.2&lng=106.8&place=%20%20')).toMatchObject({ place: null })
+  })
+
   it('requires lat and lng together', () => {
     expect(kosSearchInput.safeParse({ lat: -6.2 }).success).toBe(false)
     expect(kosSearchInput.safeParse({ lat: -6.2, lng: 106.8, locationLabel: 'Kemanggisan' }).success).toBe(true)
@@ -105,6 +127,8 @@ describe('kosSearchInput', () => {
 
   it('rejects out-of-range values', () => {
     expect(kosSearchInput.safeParse({ lat: 100, lng: 0 }).success).toBe(false)
+    expect(kosSearchInput.safeParse({ lat: 0, lng: 0, radius: 10 }).success).toBe(false)
+    expect(kosSearchInput.safeParse({ lat: 0, lng: 0, radius: 50_000 }).success).toBe(true)
     expect(kosSearchInput.safeParse({ sort: 'newest' }).success).toBe(false)
     expect(kosSearchInput.safeParse({ maxPrice: -1 }).success).toBe(false)
   })

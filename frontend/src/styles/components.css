@@ -250,6 +250,42 @@
   background-color: var(--bg-muted);
 }
 
+/* CAMPUS SEARCH */
+.campus-search { position: relative; flex: 1; min-width: 0; }
+.campus-search .kobo-searchfield__clear { width: var(--control-height); height: var(--control-height); }
+.campus-search__list {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  width: 100%;
+  max-height: 60dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  z-index: var(--z-dropdown);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+  padding: 0.25rem;
+  animation: campus-search-open 150ms ease-out;
+}
+.campus-search__heading { padding: 0.45rem 0.65rem 0.2rem; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; }
+.campus-search__option {
+  display: flex;
+  min-height: var(--control-height);
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+.campus-search__option small { color: var(--text-muted); font-size: 0.75rem; }
+.campus-search__option[aria-selected="true"], .campus-search__option:hover { background: var(--primary-subtle); }
+@keyframes campus-search-open { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .campus-search__list { animation: none; } }
+
 /* Removable active-filter token */
 .kobo-token {
   display: inline-flex;

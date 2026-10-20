@@ -1,6 +1,7 @@
 import { initTRPC, TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import type { Auth } from '../auth.ts'
+import type { Geocoder } from '../geocode.ts'
 import type { PrismaClient } from '../db/client.ts'
 import type { PaymentService } from '../payment/service.ts'
 import type { Storage } from '../storage.ts'
@@ -12,6 +13,7 @@ export interface Context {
   auth: Auth
   storage: Storage
   paymentService: PaymentService
+  geocoder: Geocoder
   /** Request headers (for forwarding to better-auth). */
   headers: Headers
   /** Response headers the tRPC adapter will send (Set-Cookie from auth-changing procedures). */

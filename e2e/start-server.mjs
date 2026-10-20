@@ -21,6 +21,8 @@ const env = {
   // Never hit the real email service from e2e: backend/.env may hold a Resend key, and loadEnvFile
   // does not override keys that already exist, so an empty value forces the console transport.
   RESEND_API_KEY: '',
+  // Never reach a public geocoder from e2e; specs stub place.search where they need a hit.
+  GEOCODER: 'off',
 }
 const tsxCli = fileURLToPath(new URL('../node_modules/tsx/dist/cli.mjs', import.meta.url))
 const prismaCli = fileURLToPath(new URL('../node_modules/prisma/build/index.js', import.meta.url))

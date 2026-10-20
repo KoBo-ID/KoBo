@@ -89,23 +89,21 @@ export const kosRouter = router({
    * No pagination and no bbox (spec section 10): the list and the map render the same array.
    */
   search: publicProcedure.input(kosSearchInput).query(({ ctx, input }): Promise<KosSearchCard[]> => {
-    const { q, lat, lng, gender, maxPrice, discountOnly, surveyOnly, sort } = input
+    const { q, lat, lng, radius, gender, maxPrice, discountOnly, surveyOnly, sort } = input
     const geo = lat !== undefined && lng !== undefined
     const dist = geo ? haversineSql(lat, lng) : null
     const conds: Prisma.Sql[] = []
-    if (dist) conds.push(Prisma.sql`${dist} <= ${SEARCH_RADIUS_METERS}`)
+    if (dist) conds.push(Prisma.sql`${dist} <= ${radius ?? SEARCH_RADIUS_METERS}`)
     if (gender !== 'all') conds.push(Prisma.sql`k.gender = ${gender.toUpperCase()}::"KosGender"`)
     // At PRICE_MAX the slider is "off": do not hide kos that cost more than the slider range.
     if (maxPrice < PRICE_MAX) conds.push(Prisma.sql`rm."priceMonthlyStart" <= ${maxPrice}`)
     if (discountOnly) conds.push(Prisma.sql`k."studentDiscountAmount" > 0`)
     if (surveyOnly) conds.push(Prisma.sql`COALESCE(rm.available, 0) > 0`)
     if (q) {
-      // position() instead of ILIKE so %, _ and \ in the query are literal.
+      // The search box is location-only: the text matches where a kos is (address, district, city), never its name
+      // or amenities. position() instead of ILIKE so %, _ and \ in the query are literal.
       const has = (col: Prisma.Sql) => Prisma.sql`position(lower(${q}::text) in lower(${col})) > 0`
-      conds.push(Prisma.sql`(
-        ${has(Prisma.sql`k.name`)} OR ${has(Prisma.sql`k.address`)} OR ${has(Prisma.sql`k.district`)}
-        OR EXISTS (SELECT 1 FROM unnest(k."privateAmenities" || k."sharedAmenities") AS a(name) WHERE ${has(Prisma.sql`a.name`)})
-      )`)
+      conds.push(Prisma.sql`(${has(Prisma.sql`k.address`)} OR ${has(Prisma.sql`k.district`)} OR ${has(Prisma.sql`k.city`)})`)
     }
     const orderBy =
       sort === 'price_asc'

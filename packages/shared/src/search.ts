@@ -7,6 +7,9 @@ export const PRICE_MAX = 3_500_000
 export const PRICE_STEP = 100_000
 /** Radius around a reference point (a preset area or "Lokasi Saya"). */
 export const SEARCH_RADIUS_METERS = 5000
+/** A resolved region (a province, a regency) widens the radius up to this, never beyond. */
+export const SEARCH_RADIUS_MIN = 1000
+export const SEARCH_RADIUS_MAX = 100_000
 /** Hard cap on kos.search rows (spec section 10: no pagination at this scale). */
 export const SEARCH_LIMIT = 200
 
@@ -19,9 +22,15 @@ export interface SearchFilters {
   q: string
   /** Preset location id (`loc-*`) or a kos-derived area id (`area-*`); resolved to coordinates by the caller. */
   loc: string | null
+  /** Stable campus branch id, resolved to coordinates by the Search page. */
+  campus: string | null
   /** "Lokasi Saya": both or neither. */
   lat: number | null
   lng: number | null
+  /** Name of a geocoded reference point (lat/lng), shown instead of "Lokasi Saya". Only with lat/lng. */
+  place: string | null
+  /** Search radius in metres around lat/lng; null means the default. Only with lat/lng. */
+  radius: number | null
   gender: GenderFilter
   maxPrice: number
   discountOnly: boolean
@@ -32,8 +41,11 @@ export interface SearchFilters {
 export const DEFAULT_FILTERS: SearchFilters = {
   q: '',
   loc: null,
+  campus: null,
   lat: null,
   lng: null,
+  place: null,
+  radius: null,
   gender: 'all',
   maxPrice: PRICE_MAX,
   discountOnly: false,
@@ -55,12 +67,18 @@ export function parseSearchParams(params: URLSearchParams): SearchFilters {
   const gender = params.get('gender') as GenderFilter | null
   const sort = params.get('sort') as SortKey | null
   const price = num(params.get('maxPrice'))
+  const campus = (params.get('campus') ?? '').trim().slice(0, 100) || null
+  const place = (params.get('place') ?? '').trim().slice(0, 80)
+  const radius = num(params.get('r'))
   return {
     q: (params.get('q') ?? '').trim().slice(0, 100),
-    // A geolocation pin wins over a preset id when both are present.
-    loc: geo ? null : params.get('loc') || null,
+    // A geolocation pin wins over campus, which wins over a preset id.
+    loc: geo || campus ? null : params.get('loc') || null,
+    campus: geo ? null : campus,
     lat: geo ? lat : null,
     lng: geo ? lng : null,
+    place: geo && place ? place : null,
+    radius: geo && radius !== null ? Math.min(SEARCH_RADIUS_MAX, Math.max(SEARCH_RADIUS_MIN, Math.round(radius))) : null,
     gender: gender && GENDER_FILTERS.includes(gender) ? gender : DEFAULT_FILTERS.gender,
     maxPrice: price === null ? PRICE_MAX : Math.min(PRICE_MAX, Math.max(PRICE_MIN, Math.round(price))),
     discountOnly: params.get('discount') === '1',
@@ -77,6 +95,11 @@ export function serializeSearchParams(filters: SearchFilters): URLSearchParams {
   if (filters.lat !== null && filters.lng !== null) {
     p.set('lat', String(filters.lat))
     p.set('lng', String(filters.lng))
+    const place = filters.place?.trim()
+    if (place) p.set('place', place)
+    if (filters.radius !== null) p.set('r', String(filters.radius))
+  } else if (filters.campus) {
+    p.set('campus', filters.campus)
   } else if (filters.loc) {
     p.set('loc', filters.loc)
   }

@@ -23,6 +23,8 @@ interface LeafletMapProps {
 
 const PIN_ZOOM = 15;
 const RADIUS_METERS = 500;
+/** Above the default search radius a pin is a region and the map fits its whole extent. */
+const REGION_RADIUS_METERS = 5000;
 const NEARBY_CAMPUS_METERS = 3000;
 
 const gradCapSvg = `
@@ -64,7 +66,8 @@ const MapViewportController: React.FC<{
 
   const pinLat = pin?.coordinates.lat ?? null;
   const pinLng = pin?.coordinates.lng ?? null;
-  const pinKey = pinLat !== null && pinLng !== null ? `${pinLat},${pinLng}` : 'none';
+  const pinRadius = pin?.radiusMeters ?? 0;
+  const pinKey = pinLat !== null && pinLng !== null ? `${pinLat},${pinLng},${pinRadius}` : 'none';
 
   // Re-run fit only when the container transitions from hidden/zero-size to visible
   useEffect(() => {
@@ -89,6 +92,12 @@ const MapViewportController: React.FC<{
 
     map.invalidateSize();
 
+    if (pinLat !== null && pinLng !== null && pinRadius > REGION_RADIUS_METERS) {
+      // A region (province, regency): show all of it instead of zooming onto its centre point.
+      map.fitBounds(L.latLng(pinLat, pinLng).toBounds(pinRadius * 2), { padding: [24, 24], animate: true });
+      return;
+    }
+
     if (pinLat !== null && pinLng !== null) {
       map.flyTo([pinLat, pinLng], PIN_ZOOM, {
         duration: 1,
@@ -104,7 +113,7 @@ const MapViewportController: React.FC<{
     if (points.length > 0) {
       map.fitBounds(L.latLngBounds(points), { padding: [36, 36], maxZoom: 13 });
     }
-  }, [pinKey, pinLat, pinLng, map, viewportVersion]);
+  }, [pinKey, pinLat, pinLng, pinRadius, map, viewportVersion]);
 
   return null;
 };
@@ -167,7 +176,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           <>
             <Circle
               center={[activeLocation.coordinates.lat, activeLocation.coordinates.lng]}
-              radius={RADIUS_METERS}
+              radius={activeLocation.radiusMeters ?? RADIUS_METERS}
               pathOptions={{
                 color: 'hsl(190, 95%, 42%)',
                 weight: 1.5,

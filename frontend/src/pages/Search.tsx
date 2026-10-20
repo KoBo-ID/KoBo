@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
-  Search as SearchIcon,
   MapPin,
   GraduationCap,
   CalendarCheck,
@@ -10,12 +9,12 @@ import {
   Map as MapIcon,
   List,
   LocateFixed,
-  Building2,
   SlidersHorizontal,
   ChevronDown,
 } from 'lucide-react';
 import { useAppStore } from '../store/AppContext';
 import { CAMPUSES } from '../data/campuses';
+import { branchById, groupOfBranch } from '@kobo/shared/campuses';
 import { PRESET_LOCATIONS } from '../data/locations';
 import { useTRPC } from '../lib/trpc';
 import { kosCardToKos } from '../utils/kosCard';
@@ -23,6 +22,7 @@ import {
   PRICE_MAX,
   PRICE_MIN,
   PRICE_STEP,
+  SEARCH_RADIUS_METERS,
   parseSearchParams,
   serializeSearchParams,
   type GenderFilter,
@@ -32,6 +32,7 @@ import {
 import type { KosSearchInput } from '@kobo/shared/schemas';
 import { ListingCard } from '../components/kos/ListingCard';
 import { KosCardSkeleton } from '../components/kos/KosCardSkeleton';
+import { CampusSearchField } from '../components/search/CampusSearchField';
 import { ErrorState } from '../components/ui/QueryState';
 import { LeafletMap } from '../components/kos/LeafletMap';
 import { Button } from '../components/ui/Button';
@@ -41,10 +42,6 @@ import { Kos, LocationPin } from '../types';
 import { averageLatLng, formatDistance, haversineMeters } from '../utils/geo';
 
 const NEARBY_CAMPUS_METERS = 3000;
-
-type Suggestion =
-  | { type: 'location'; location: LocationPin }
-  | { type: 'kos'; kos: Kos };
 
 const formatJuta = (value: number) => {
   const juta = value / 1000000;
@@ -56,7 +53,6 @@ const priceFillPercent = (value: number) =>
   `${((value - PRICE_MIN) / (PRICE_MAX - PRICE_MIN)) * 100}%`;
 
 export const Search: React.FC = () => {
-  const navigate = useNavigate();
   const trpc = useTRPC();
   const [searchParams, setSearchParams] = useSearchParams();
   const { hoveredKosId, setHoveredKosId } = useAppStore();
@@ -64,7 +60,6 @@ export const Search: React.FC = () => {
   const [mobileViewMode, setMobileViewMode] = useState<'list' | 'map'>('list');
   // What the user has typed into the search field; null means "show the active location's label".
   const [typedInput, setTypedInput] = useState<string | null>(null);
-  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [priceDraft, setPriceDraft] = useState<number | null>(null);
   const priceTimer = useRef<number | undefined>(undefined);
@@ -76,6 +71,12 @@ export const Search: React.FC = () => {
   const filters = useMemo(() => parseSearchParams(searchParams), [searchParams]);
   const updateFilters = (patch: Partial<SearchFilters>) =>
     setSearchParams((prev) => serializeSearchParams({ ...parseSearchParams(prev), ...patch }), { replace: true });
+
+  useEffect(() => {
+    if (filters.campus && !searchParams.has('sort')) updateFilters({ sort: 'distance_asc' });
+    // The URL is the authority; this only fills the campus-specific missing default once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.campus, searchParams]);
 
   useEffect(() => () => window.clearTimeout(priceTimer.current), []);
 
@@ -140,27 +141,73 @@ export const Search: React.FC = () => {
   // The reference point is derived from the URL: a geolocation pair, or a preset / kos-area id.
   const activeLocation = useMemo<LocationPin | null>(() => {
     if (filters.lat !== null && filters.lng !== null) {
+      const named = filters.place;
       return {
-        id: 'geo-me',
-        label: 'Lokasi Saya',
-        area: 'Sekitar Anda',
-        city: 'Radius 5 km',
+        id: named ? 'geo-place' : 'geo-me',
+        label: named ?? 'Lokasi Saya',
+        area: named ?? 'Sekitar Anda',
+        city: `Radius ${Math.round((filters.radius ?? SEARCH_RADIUS_METERS) / 1000)} km`,
         coordinates: { lat: filters.lat, lng: filters.lng },
         source: 'geolocation',
+        ...(filters.radius ? { radiusMeters: filters.radius } : {}),
       };
     }
+    if (filters.campus) {
+      const branch = branchById(filters.campus)
+      const group = groupOfBranch(filters.campus)
+      if (branch && group) return {
+        id: `campus-${branch.id}`,
+        label: group.branches.length === 1 ? group.shortName : `${group.shortName} ${branch.label}`,
+        area: branch.label,
+        city: branch.city,
+        coordinates: { lat: branch.lat, lng: branch.lng },
+        source: 'preset',
+      }
+    }
     return filters.loc ? (allLocations.find((loc) => loc.id === filters.loc) ?? null) : null;
-  }, [filters.lat, filters.lng, filters.loc, allLocations]);
+  }, [filters.lat, filters.lng, filters.place, filters.radius, filters.campus, filters.loc, allLocations]);
 
-  const locationInput = typedInput ?? activeLocation?.label ?? '';
+  // What the user typed wins; otherwise the active place, otherwise the text being searched (e.g. arriving from the home page).
+  const locationInput = typedInput ?? (activeLocation ? activeLocation.label : filters.q);
   const setLocationInput = (value: string) => setTypedInput(value);
+  const clearLocationInput = () => {
+    setTypedInput('');
+    updateFilters({ q: '', loc: null, campus: null, lat: null, lng: null, place: null, radius: null });
+  };
 
   // A kos-area id (area-*) can only be resolved once kos.list has loaded; do not search unfiltered meanwhile.
   const locationPending = !!filters.loc && !activeLocation && universe.isPending;
+
+  // Free text ("banten") is looked up on the map once, when it arrives in the URL (a submit, never as-you-type). A
+  // hit becomes the reference point; a miss or an outage falls back to matching the text against kos addresses.
+  const resolvePlace = filters.q.length >= 2 && filters.lat === null && !filters.loc && !filters.campus;
+  const placeQuery = useQuery({
+    ...trpc.place.search.queryOptions({ q: filters.q }),
+    enabled: resolvePlace,
+    staleTime: Infinity,
+    retry: false,
+  });
+  const placeResolving = resolvePlace && placeQuery.isPending;
+  const place = placeQuery.data;
+  useEffect(() => {
+    if (!resolvePlace || !place) return;
+    setTypedInput((current) => current ?? filters.q);
+    updateFilters({ q: '', loc: null, campus: null, lat: place.lat, lng: place.lng, place: place.label, radius: place.radiusMeters });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvePlace, place]);
+  const placeNotice = !resolvePlace
+    ? null
+    : placeQuery.isError
+      ? 'Pencarian lokasi sedang tidak tersedia, jadi kata ini dicari di alamat kos.'
+      : place === null
+        ? `Lokasi "${filters.q}" tidak ditemukan di peta, jadi kata ini dicari di alamat kos.`
+        : null;
   const searchInput = useMemo<KosSearchInput>(
     () => ({
       q: filters.q,
-      ...(activeLocation ? { lat: activeLocation.coordinates.lat, lng: activeLocation.coordinates.lng } : {}),
+      ...(activeLocation
+        ? { lat: activeLocation.coordinates.lat, lng: activeLocation.coordinates.lng, ...(filters.radius ? { radius: filters.radius } : {}) }
+        : {}),
       gender: filters.gender,
       maxPrice: filters.maxPrice,
       discountOnly: filters.discountOnly,
@@ -172,7 +219,7 @@ export const Search: React.FC = () => {
   const search = useQuery({
     ...trpc.kos.search.queryOptions(searchInput),
     placeholderData: keepPreviousData,
-    enabled: !locationPending,
+    enabled: !locationPending && !placeResolving,
   });
   const searchPending = search.isPending;
   const searchFailed = search.isError && !search.data;
@@ -186,12 +233,14 @@ export const Search: React.FC = () => {
 
   const applyLocation = (location: LocationPin | null, clearQuery = false) => {
     setTypedInput(null);
-    setSuggestionsOpen(false);
     const geo = location?.source === 'geolocation';
     updateFilters({
       loc: location && !geo ? location.id : null,
+      campus: null,
       lat: location && geo ? location.coordinates.lat : null,
       lng: location && geo ? location.coordinates.lng : null,
+      place: null,
+      radius: null,
       ...(clearQuery ? { q: '' } : {}),
     });
   };
@@ -225,44 +274,13 @@ export const Search: React.FC = () => {
     );
   };
 
-  const suggestions = useMemo<Suggestion[]>(() => {
-    const q = locationInput.trim().toLowerCase();
-    if (!q) {
-      return allLocations.slice(0, 5).map((location) => ({ type: 'location', location }));
-    }
-    const locationMatches = allLocations
-      .filter(
-        (loc) =>
-          loc.label.toLowerCase().includes(q) ||
-          loc.city.toLowerCase().includes(q) ||
-          loc.aliases?.some((alias) => alias.includes(q))
-      )
-      .slice(0, 5)
-      .map((location) => ({ type: 'location' as const, location }));
-
-    const kosMatches = kosList
-      .filter(
-        (kos) =>
-          kos.name.toLowerCase().includes(q) ||
-          kos.district.toLowerCase().includes(q) ||
-          kos.city.toLowerCase().includes(q)
-      )
-      .slice(0, 4)
-      .map((kos) => ({ type: 'kos' as const, kos }));
-
-    return [...locationMatches, ...kosMatches];
-  }, [locationInput, allLocations, kosList]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSuggestionsOpen(false);
 
     const q = locationInput.trim();
-    const exactLocation = allLocations.find(
-      (loc) =>
-        loc.label.toLowerCase() === q.toLowerCase() ||
-        loc.aliases?.some((alias) => alias === q.toLowerCase())
-    );
+    // Only a full, exact place name becomes the map's reference point. Anything else is searched as typed, so
+    // the box never rewrites what the user wrote into a different place (no alias or fuzzy matching).
+    const exactLocation = allLocations.find((loc) => loc.label.toLowerCase() === q.toLowerCase());
 
     if (exactLocation) {
       applyLocation(exactLocation, true);
@@ -270,7 +288,22 @@ export const Search: React.FC = () => {
     }
 
     // A text search replaces the reference point, so the URL says exactly what is applied.
-    updateFilters({ q, loc: null, lat: null, lng: null });
+    updateFilters({ q, loc: null, campus: null, lat: null, lng: null, place: null, radius: null });
+  };
+
+  const handlePickCampus = (campusId: string) => {
+    setTypedInput(null);
+    updateFilters({
+      q: '', loc: null, campus: campusId, lat: null, lng: null, place: null, radius: null,
+      sort: searchParams.has('sort') ? filters.sort : 'distance_asc',
+    });
+  };
+
+  const handleSearchText = (text: string) => {
+    const q = text.trim();
+    const exactLocation = allLocations.find((loc) => loc.label.toLowerCase() === q.toLowerCase());
+    if (exactLocation) { applyLocation(exactLocation, true); return; }
+    updateFilters({ q, loc: null, campus: null, lat: null, lng: null, place: null, radius: null });
   };
 
   const nearbyCampuses = activeLocation
@@ -294,7 +327,6 @@ export const Search: React.FC = () => {
     window.clearTimeout(priceTimer.current);
     setPriceDraft(null);
     setTypedInput(null);
-    setSuggestionsOpen(false);
     setSearchParams({}, { replace: true });
   };
 
@@ -326,40 +358,18 @@ export const Search: React.FC = () => {
       >
         <div className="app-container" style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
           {/* Row 1: Full-width location search */}
-          <div
-            style={{ position: 'relative' }}
-            onBlur={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) setSuggestionsOpen(false);
-            }}
-          >
+          <div style={{ position: 'relative' }}>
             <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <div className="kobo-searchfield" style={{ flex: 1, minWidth: 0 }}>
-                <SearchIcon size={17} />
-                <input
-                  type="text"
-                  value={locationInput}
-                  onChange={(e) => {
-                    setLocationInput(e.target.value);
-                    setSuggestionsOpen(true);
-                  }}
-                  onFocus={() => setSuggestionsOpen(true)}
-                  placeholder="Cari area, lokasi, atau nama kos..."
-                  aria-label="Cari lokasi atau kos"
-                />
-                {locationInput && (
-                  <button
-                    type="button"
-                    className="kobo-searchfield__clear"
-                    onClick={() => {
-                      setLocationInput('');
-                      setSuggestionsOpen(true);
-                    }}
-                    aria-label="Bersihkan pencarian"
-                  >
-                    <X size={15} />
-                  </button>
-                )}
-              </div>
+              <CampusSearchField
+                value={locationInput}
+                label="Cari lokasi"
+                placeholder="Cari area atau lokasi..."
+                onChange={setLocationInput}
+                onClear={clearLocationInput}
+                onSubmitText={handleSearchText}
+                onPickCampus={(branch) => handlePickCampus(branch.id)}
+                style={{ flex: 1, minWidth: 0 }}
+              />
               <button
                 type="button"
                 className="kobo-icon-btn"
@@ -392,85 +402,12 @@ export const Search: React.FC = () => {
               </div>
             )}
 
-            {/* Autocomplete Dropdown */}
-            {suggestionsOpen && suggestions.length > 0 && (
-              <div
-                className="animate-slide-up"
-                style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 6px)',
-                  left: 0,
-                  right: 0,
-                  backgroundColor: 'var(--bg-surface)',
-                  borderRadius: 'var(--radius-md)',
-                  overflow: 'hidden',
-                  boxShadow: 'var(--shadow-xl)',
-                  border: '1px solid var(--border-subtle)',
-                  padding: '0.35rem 0',
-                  zIndex: 'var(--z-dropdown)',
-                }}
-              >
-                {suggestions.map((suggestion) =>
-                  suggestion.type === 'location' ? (
-                    <button
-                      key={suggestion.location.id}
-                      type="button"
-                      onClick={() => applyLocation(suggestion.location, true)}
-                      className="interactive-tap"
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.7rem',
-                        padding: '0.6rem 1rem',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <MapPin size={16} color="var(--primary)" style={{ flexShrink: 0 }} />
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-main)', display: 'block' }}>
-                          {suggestion.location.label}
-                        </span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {suggestion.location.area === suggestion.location.label
-                            ? suggestion.location.city
-                            : `${suggestion.location.area}, ${suggestion.location.city}`}{' '}
-                          · Jadikan titik acuan peta
-                        </span>
-                      </span>
-                    </button>
-                  ) : (
-                    <button
-                      key={suggestion.kos.id}
-                      type="button"
-                      onClick={() => {
-                        setSuggestionsOpen(false);
-                        navigate(`/kos/${suggestion.kos.id}`);
-                      }}
-                      className="interactive-tap"
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.7rem',
-                        padding: '0.6rem 1rem',
-                        textAlign: 'left',
-                      }}
-                    >
-                      <Building2 size={16} color="var(--text-subtle)" style={{ flexShrink: 0 }} />
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span className="truncate-1" style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-main)', display: 'block' }}>
-                          {suggestion.kos.name}
-                        </span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {suggestion.kos.district}, {suggestion.kos.city} · {formatJuta(suggestion.kos.priceMonthlyStart)}/bln
-                        </span>
-                      </span>
-                    </button>
-                  )
-                )}
-              </div>
+            {placeNotice && (
+              <p role="status" style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                {placeNotice}
+              </p>
             )}
+
           </div>
 
           {/* Row 2: gender segmented (left) + Filter / Urutkan popovers (right) */}
@@ -673,7 +610,7 @@ export const Search: React.FC = () => {
               </>
             )}
             <div style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              <strong style={{ color: 'var(--text-main)' }}>{sortedKos.length}</strong> kos dalam radius 5 km
+              <strong style={{ color: 'var(--text-main)' }}>{sortedKos.length}</strong> kos dalam radius {Math.round((filters.radius ?? SEARCH_RADIUS_METERS) / 1000)} km
             </div>
           </div>
         )}

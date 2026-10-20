@@ -117,15 +117,33 @@ describe('kos.search', () => {
     expect(res.length).toBe(all.filter((k) => k.id !== full.id && k.availableRooms > 0).length)
   })
 
-  it('q matches name, district, address and amenities case-insensitively', async () => {
+  it('q is a location match: district, city and address, case-insensitively', async () => {
     const k = await prisma.kos.findFirstOrThrow({ orderBy: { createdAt: 'asc' } })
     const ids = async (q: string) => (await caller.kos.search({ q })).map((r) => r.id)
-    expect(await ids(k.name.toUpperCase())).toContain(k.id)
     expect(await ids(k.district.toLowerCase())).toContain(k.id)
+    expect(await ids(k.city.toUpperCase())).toContain(k.id)
     expect(await ids(k.address.slice(4, 18))).toContain(k.id)
-    expect(await ids(k.privateAmenities[0].toLowerCase())).toContain(k.id)
-    expect(await ids(k.sharedAmenities[0])).toContain(k.id)
     expect(await ids('zzz-tidak-ada')).toEqual([])
+  })
+
+  it('q does not match a kos name or its amenities (the search box is location-only)', async () => {
+    const k = await prisma.kos.findFirstOrThrow({ orderBy: { createdAt: 'asc' } })
+    const ids = async (q: string) => (await caller.kos.search({ q })).map((r) => r.id)
+    const nameOnly = k.name.split(' ').find((w) => w.length > 4 && !`${k.address} ${k.district} ${k.city}`.toLowerCase().includes(w.toLowerCase()))
+    if (nameOnly) expect(await ids(nameOnly)).not.toContain(k.id)
+    const amenity = [...k.privateAmenities, ...k.sharedAmenities].find((a) => !`${k.address} ${k.district} ${k.city}`.toLowerCase().includes(a.toLowerCase()))
+    expect(amenity).toBeDefined()
+    expect(await ids(amenity!)).not.toContain(k.id)
+  })
+
+  it('radius widens a point search beyond the default 5 km', async () => {
+    const near = await caller.kos.search({ lat: -6.1993, lng: 106.7878 })
+    const far = await caller.kos.search({ lat: -6.1993, lng: 106.7878, radius: 100_000 })
+    expect(far.length).toBeGreaterThanOrEqual(near.length)
+    expect(far.every((k) => (k.distanceMeters ?? Infinity) <= 100_000)).toBe(true)
+    expect(near.every((k) => (k.distanceMeters ?? Infinity) <= 5000)).toBe(true)
+    const tiny = await caller.kos.search({ lat: -6.1993, lng: 106.7878, radius: 1000 })
+    expect(tiny.every((k) => (k.distanceMeters ?? Infinity) <= 1000)).toBe(true)
   })
 
   it('treats LIKE wildcards in q literally', async () => {

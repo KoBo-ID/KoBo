@@ -143,4 +143,6 @@ export interface LocationPin {
   };
   source: LocationSource;
   aliases?: string[];
+  /** Set for a geocoded region: how far the search reaches and how wide the map should look. */
+  radiusMeters?: number;
 }

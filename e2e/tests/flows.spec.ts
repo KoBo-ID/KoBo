@@ -64,7 +64,7 @@ test('location filter via URL survives reload', async ({ page }) => {
   const first = page.waitForResponse((r) => isSearch(r.url()) && r.status() === 200)
   await page.goto('/search?loc=loc-kemanggisan')
   expect(decodeURIComponent((await first).url())).toMatch(/"lat":-6\.1993/)
-  const input = page.getByRole('textbox', { name: 'Cari lokasi atau kos' })
+  const input = page.getByRole('combobox', { name: 'Cari lokasi' })
   await expect(input).toHaveValue(/Kemanggisan/i)
   await page.reload()
   await expect(page).toHaveURL(/loc=loc-kemanggisan/)
@@ -112,4 +112,64 @@ test('detail to checkout navigation', async ({ page }) => {
   await page.getByRole('button', { name: 'Ajukan Sewa' }).click()
   await expect(page).toHaveURL(/\/checkout\/kos-1/)
   await expect(page.getByRole('heading').first()).toBeVisible()
+})
+
+test('unknown search text stays unchanged and continues through place search', async ({ page }) => {
+  await page.goto('/search')
+  const input = page.getByRole('combobox', { name: 'Cari lokasi' })
+  await expect(input).toHaveAttribute('autocomplete', 'off')
+  // Focusing an empty box lists nothing, and typing never offers locations or kos to jump to.
+  await input.focus()
+  await expect(page.getByRole('listbox')).toHaveCount(0)
+  await expect(page.getByText('Jadikan titik acuan peta')).toHaveCount(0)
+  await input.fill('ban')
+  await expect(page.getByText('Jadikan titik acuan peta')).toHaveCount(0)
+  await input.fill('banten')
+  await expect(input).toHaveValue('banten')
+  await expect(page.getByRole('listbox')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Cari', exact: true }).click()
+  await expect(page).toHaveURL(/q=banten/)
+  await expect(input).toHaveValue('banten')
+})
+
+test('the home search box submits unknown text as typed', async ({ page }) => {
+  await page.goto('/')
+  const input = page.getByRole('combobox', { name: 'Cari area atau lokasi' })
+  await input.fill('banten')
+  await expect(page.getByText('Jadikan titik acuan peta')).toHaveCount(0)
+  await input.press('Enter')
+  await expect(page).toHaveURL(/\/search\?q=banten/)
+})
+
+test('a place the map knows becomes the reference point, and the text stays as typed', async ({ page }) => {
+  const place = { label: 'Banten', lat: -6.4, lng: 106.0, radiusMeters: 80_000 }
+  await page.route('**/api/trpc/place.search*', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ result: { data: place } }) }))
+  await page.goto('/search')
+  const input = page.getByRole('combobox', { name: 'Cari lokasi' })
+  const searched = page.waitForResponse((r) => isSearch(r.url()) && /"radius":80000/.test(decodeURIComponent(r.url())) && r.status() === 200)
+  await input.fill('banten')
+  await page.getByRole('button', { name: 'Cari', exact: true }).click()
+  await searched
+  await expect(page).toHaveURL(/lat=-6\.4/)
+  await expect(page).toHaveURL(/place=Banten/)
+  await expect(page).toHaveURL(/r=80000/)
+  await expect(page).not.toHaveURL(/q=/)
+  await expect(input).toHaveValue('banten')
+  await expect(page.getByRole('heading', { name: /Kos di Sekitar Banten/i })).toBeVisible()
+  // The place survives a reload; the box then shows the resolved place.
+  await page.reload()
+  await expect(input).toHaveValue('Banten')
+})
+
+test('an unknown place or a geocoder outage falls back to a text search and says so', async ({ page, problems }) => {
+  await page.route('**/api/trpc/place.search*', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ result: { data: null } }) }))
+  await page.goto('/search?q=zzzz')
+  await expect(page.getByText('tidak ditemukan di peta')).toBeVisible()
+  await page.unroute('**/api/trpc/place.search*')
+  await page.route('**/api/trpc/place.search*', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Pencarian lokasi sedang tidak tersedia. Coba lagi sebentar.', code: -32603, data: { code: 'SERVICE_UNAVAILABLE', httpStatus: 503 } } }) }))
+  await page.goto('/search?q=yyyy')
+  await expect(page.getByText('Pencarian lokasi sedang tidak tersedia')).toBeVisible()
+  // The browser logs the 503 as a console error; that is the only problem allowed here.
+  expect(problems.every((p) => p.includes('503'))).toBe(true)
+  problems.length = 0
 })
