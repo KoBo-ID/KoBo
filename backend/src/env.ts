@@ -141,3 +141,19 @@ export function paymentEnv(env: NodeJS.ProcessEnv = process.env): PaymentConfig 
   }
   return { provider, xendit }
 }
+
+/**
+ * Test/e2e hooks (backend/src/e2eHooks.ts): extra /api/__e2e/* routes and a network-free fake Xendit provider.
+ * Off unless ALLOW_E2E_HOOKS=1, and then refused unless every guard holds, so a stray flag cannot reach a real deployment.
+ */
+export function e2eHooksEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.ALLOW_E2E_HOOKS !== '1') return false
+  if (paymentEnv(env).provider !== 'mock') throw new Error('ALLOW_E2E_HOOKS=1 requires PAYMENT_PROVIDER=mock (test/e2e only)')
+  // Mirrors ALLOW_MOCK_PAYMENTS: production mode must opt in twice.
+  if (env.NODE_ENV === 'production' && env.ALLOW_MOCK_PAYMENTS !== '1') {
+    throw new Error('ALLOW_E2E_HOOKS=1 in production requires ALLOW_MOCK_PAYMENTS=1 (e2e only)')
+  }
+  const host = new URL(requireEnv('DATABASE_URL', env)).hostname
+  if (!LOCAL_HOSTS.has(host)) throw new Error('ALLOW_E2E_HOOKS=1 requires a loopback DATABASE_URL')
+  return true
+}

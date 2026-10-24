@@ -6,6 +6,8 @@ import { bodyLimit } from 'hono/body-limit'
 import { createAuth } from './auth.ts'
 import type { Auth } from './auth.ts'
 import type { PrismaClient } from './db/client.ts'
+import type { E2eHooks } from './e2eHooks.ts'
+import { mountE2eHooks } from './e2eHooks.ts'
 import { authEnv } from './env.ts'
 import { geocoderFromEnv, type Geocoder } from './geocode.ts'
 import { paymentServiceFromEnv } from './payment/service.ts'
@@ -27,6 +29,8 @@ export interface AppOptions {
   /** Defaults to the provider selected by PAYMENT_PROVIDER. Tests inject a network-free service explicitly. */
   paymentService?: PaymentService
   geocoder?: Geocoder
+  /** Test/e2e only (ALLOW_E2E_HOOKS=1, see e2eHooks.ts). Mounts /api/__e2e/*; absent in every real deployment. */
+  e2eHooks?: E2eHooks | null
 }
 
 const IMMUTABLE = 'public, max-age=31536000, immutable'
@@ -61,7 +65,7 @@ async function readIfFile(root: string, urlPath: string): Promise<Uint8Array<Arr
   }
 }
 
-export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...authEnv() }), storage = storageFromEnv(), paymentService = paymentServiceFromEnv(), geocoder = geocoderFromEnv() }: AppOptions) {
+export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...authEnv() }), storage = storageFromEnv(), paymentService = paymentServiceFromEnv(), geocoder = geocoderFromEnv(), e2eHooks = null }: AppOptions) {
   const app = new Hono()
 
   app.get('/health', async (c) => {
@@ -118,6 +122,8 @@ export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...auth
       },
     }),
   )
+
+  if (e2eHooks) mountE2eHooks(app, prisma, e2eHooks)
 
   // Anything else under /api is JSON, never the SPA shell.
   app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404))

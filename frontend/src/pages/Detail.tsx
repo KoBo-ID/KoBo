@@ -201,8 +201,6 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
             <p style={{ color: 'var(--text-muted)' }}>Belum ada kamar yang terdaftar untuk kos ini.</p>
           )}
 
-          <hr className="section-divider" />
-
           {/* Owner Profile Card */}
           <div
             style={{
@@ -245,8 +243,6 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
             </Link>
           </div>
 
-          <hr className="section-divider" />
-
           {/* Private and shared amenities */}
           <AmenitiesSection
             privateAmenities={kos.privateAmenities}
@@ -254,12 +250,12 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
             electricityType={kos.electricityType}
           />
 
-          <hr className="section-divider" />
+
 
           {/* POI Radar (Di Sekitar Kos) */}
           <PoiRadar pois={kos.pois} campusName={kos.campusProximity.campusName} />
 
-          <hr className="section-divider" />
+
 
           {/* Tata Tertib & Denda Accordion */}
           <RulesAccordion rules={kos.rules} />
@@ -280,15 +276,15 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
         {/* Right Column: Sticky Booking Widget (35% on Desktop) */}
         {selectedRoom && (
           <div className="detail-sidebar">
-          <StickyBookingSidebar
-            kos={kos}
-            selectedRoom={selectedRoom}
-            leaseMonths={leaseMonths}
-            onSelectLeaseMonths={setLeaseMonths}
-            onGoToCheckout={handleGoToCheckout}
-            onOpenSurveyModal={() => setSurveyModalOpen(true)}
-            waitlist={{ status: waitlist.data, joinType, onBookOffer: handleBookOffer, onBackToBooking: () => setJoinType(undefined) }}
-          />
+            <StickyBookingSidebar
+              kos={kos}
+              selectedRoom={selectedRoom}
+              leaseMonths={leaseMonths}
+              onSelectLeaseMonths={setLeaseMonths}
+              onGoToCheckout={handleGoToCheckout}
+              onOpenSurveyModal={() => setSurveyModalOpen(true)}
+              waitlist={{ status: waitlist.data, joinType, onBookOffer: handleBookOffer, onBackToBooking: () => setJoinType(undefined) }}
+            />
           </div>
         )}
       </div>

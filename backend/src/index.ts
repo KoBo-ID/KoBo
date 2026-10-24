@@ -3,7 +3,8 @@ import { fileURLToPath } from 'node:url'
 import { createApp } from './app.ts'
 import { createPrisma } from './db/client.ts'
 import { startDemoReset } from './demoSchedule.ts'
-import { requireEnv } from './env.ts'
+import { createE2eHooks } from './e2eHooks.ts'
+import { e2eHooksEnabled, requireEnv } from './env.ts'
 import { startOutboxWorker, transportFromEnv } from './outbox.ts'
 import { startPaymentSweep } from './payment/reconcile.ts'
 import { startRefundWorker } from './payment/refunds.ts'
@@ -17,8 +18,10 @@ const distDir =
     ? (process.env.FRONTEND_DIST ?? fileURLToPath(new URL('../../frontend/dist', import.meta.url)))
     : undefined
 
-const paymentService = paymentServiceFromEnv()
-const server = serve({ fetch: createApp({ prisma, distDir, paymentService }).fetch, port }, (info) => {
+// Test/e2e only (ALLOW_E2E_HOOKS=1, guarded in env.ts): swaps in a fake Xendit provider and mounts /api/__e2e/*.
+const e2eHooks = e2eHooksEnabled() ? createE2eHooks(prisma) : null
+const paymentService = e2eHooks?.paymentService ?? paymentServiceFromEnv()
+const server = serve({ fetch: createApp({ prisma, distDir, paymentService, e2eHooks }).fetch, port }, (info) => {
   console.log(`KoBo server listening on :${info.port}${distDir ? ` (serving ${distDir})` : ''}`)
 })
 
@@ -35,7 +38,8 @@ const stopPaymentSweep = startPaymentSweep(prisma, paymentService)
 const stopWaitlist = startWaitlistWorker(prisma)
 
 // Also not started from createApp. Restores demo-owned rows only (demoReset.ts).
-const stopDemoReset = startDemoReset(prisma)
+// e2e: a 03:30 reset would wipe rows mid-suite.
+const stopDemoReset = e2eHooks ? () => {} : startDemoReset(prisma)
 
 const shutdown = () => {
   stopOutbox()

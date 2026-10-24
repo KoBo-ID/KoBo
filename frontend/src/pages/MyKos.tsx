@@ -50,7 +50,7 @@ export const MyKos: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   // From the gateway return URL. Only used to start a short wait; the server decides what actually happened.
   const returnedPayment = searchParams.get('payment');
-  const [activeTab, setActiveTab] = useState<'rentals' | 'visits'>('rentals');
+  const [chosenTab, setActiveTab] = useState<'rentals' | 'applications' | 'visits' | null>(null);
   const [reviewing, setReviewing] = useState<{ tenancyId: string; kosName: string; existing: MyReview | null } | null>(null);
 
   const mine = useQuery({ ...trpc.booking.mine.queryOptions(), enabled: !!me });
@@ -75,6 +75,17 @@ export const MyKos: React.FC = () => {
   const liveCardFor = (a: { kos: { id: string }; room: { roomNumber: string } }) =>
     rentals.some((t) => t.kos.id === a.kos.id && t.room.roomNumber === a.room.roomNumber && (t.status === 'ACTIVE' || t.derivedStatus === 'booking'));
   const applications = me ? (applicationQuery.data ?? []) : [];
+  // What an approved application says depends on what became of its tenancy: still waiting for payment, paid and
+  // later ended, or never paid within the 24 hours (the room is released and the tenancy is no longer live).
+  const approvedNote = (a: { kos: { id: string }; room: { roomNumber: string } }) => {
+    if (liveCardFor(a)) return 'Pengajuan diterima. Bayar tagihan pertama di tab Kamar yang Disewa sebelum batas waktunya.';
+    const ended = rentals.some((t) => t.kos.id === a.kos.id && t.room.roomNumber === a.room.roomNumber && t.status === 'ENDED');
+    return ended
+      ? 'Pengajuan diterima dan sewanya sudah berakhir.'
+      : 'Pengajuan diterima, tetapi tagihan pertama tidak dibayar dalam 24 jam, jadi kamar dilepas. Ajukan lagi bila kamar masih tersedia.';
+  };
+  // Until the user picks a tab, a student who only has pending applications lands on Pengajuan sewa.
+  const activeTab = chosenTab ?? (rentals.length === 0 && applications.length > 0 ? 'applications' : 'rentals');
 
   // A return link that matches no invoice, or an invoice that is already settled, must not linger in the URL.
   useEffect(() => {
@@ -100,40 +111,30 @@ export const MyKos: React.FC = () => {
         </p>
       </div>
 
-      <div role="tablist" aria-label="Kos Saya" style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '2rem' }}>
-        <button
-          role="tab"
-          aria-selected={activeTab === 'rentals'}
-          onClick={() => setActiveTab('rentals')}
-          className="interactive-tap"
-          style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 0.5rem', fontSize: '1rem',
-            fontWeight: activeTab === 'rentals' ? 700 : 500,
-            color: activeTab === 'rentals' ? 'var(--primary)' : 'var(--text-muted)',
-            borderBottom: `2.5px solid ${activeTab === 'rentals' ? 'var(--primary)' : 'transparent'}`,
-            marginBottom: '-1px',
-          }}
-        >
-          <Home size={18} />
-          <span>Kamar yang Disewa ({rentals.length})</span>
-        </button>
-
-        <button
-          role="tab"
-          aria-selected={activeTab === 'visits'}
-          onClick={() => setActiveTab('visits')}
-          className="interactive-tap"
-          style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 0.5rem', fontSize: '1rem',
-            fontWeight: activeTab === 'visits' ? 700 : 500,
-            color: activeTab === 'visits' ? 'var(--primary)' : 'var(--text-muted)',
-            borderBottom: `2.5px solid ${activeTab === 'visits' ? 'var(--primary)' : 'transparent'}`,
-            marginBottom: '-1px',
-          }}
-        >
-          <Calendar size={18} />
-          <span>Jadwal Survey Gratis ({scheduledCount})</span>
-        </button>
+      <div role="tablist" aria-label="Kos Saya" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '2rem' }}>
+        {([
+          { id: 'rentals', icon: <Home size={18} />, label: `Kamar yang Disewa (${rentals.length})` },
+          { id: 'applications', icon: <ClipboardList size={18} />, label: `Pengajuan Sewa (${applications.length})` },
+          { id: 'visits', icon: <Calendar size={18} />, label: `Jadwal Survey Gratis (${scheduledCount})` },
+        ] as const).map((tab) => (
+          <button
+            key={tab.id}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className="interactive-tap"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 0.5rem', fontSize: '1rem',
+              fontWeight: activeTab === tab.id ? 700 : 500,
+              color: activeTab === tab.id ? 'var(--primary)' : 'var(--text-muted)',
+              borderBottom: `2.5px solid ${activeTab === tab.id ? 'var(--primary)' : 'transparent'}`,
+              marginBottom: '-1px',
+            }}
+          >
+            {tab.icon}
+            <span>{tab.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Tab 1: tenancies from the server (booking.mine) */}
@@ -151,34 +152,8 @@ export const MyKos: React.FC = () => {
           )}
           {me && mine.isPending && <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat kamar Anda…</p>}
           {me && mine.isError && <ErrorState message="Gagal memuat daftar sewa Anda." onRetry={() => void mine.refetch()} minHeight="10rem" />}
-          {me && applicationQuery.isError && <ErrorState message="Gagal memuat pengajuan sewa Anda." onRetry={() => void applicationQuery.refetch()} minHeight="8rem" />}
           {me && <WaitlistSection />}
 
-          {applications.length > 0 && (
-            <section aria-labelledby="applications-title" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <h2 id="applications-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem', fontWeight: 700 }}><ClipboardList size={18} /> Pengajuan Sewa</h2>
-              {applications.map((application) => {
-                const badge = APPLICATION_BADGE[application.status];
-                return (
-                  <div key={application.id} data-testid="application-card" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
-                      {application.kos.image ? <SafeImage src={application.kos.image} alt="" iconSize={20} style={{ width: '52px', height: '52px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }} /> : <ClipboardList size={24} color="var(--text-subtle)" />}
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <strong>{application.kos.name}</strong>
-                          <span style={{ backgroundColor: badge.bg, color: badge.color, fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-xs)' }}>{badge.label}</span>
-                        </div>
-                        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Kamar {application.room.roomNumber} · mulai {formatDate(application.startDate)} · {application.durationMonths} bulan</p>
-                        {application.status === 'PENDING' && <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Kamar belum ditahan. Pemilik sedang meninjau pengajuan.</p>}
-                        {application.status === 'APPROVED' && <p style={{ fontSize: '0.76rem', color: 'var(--status-paid-text)', marginTop: '0.15rem' }}>{liveCardFor(application) ? 'Pengajuan diterima. Selesaikan pembayaran pada kartu kamar di bawah.' : 'Pengajuan diterima, tetapi masa tahan kamar sudah berakhir. Ajukan lagi bila kamar masih tersedia.'}</p>}
-                      </div>
-                    </div>
-                    <Link to={`/kos/${application.kos.id}`}><Button variant="outline" size="sm">Lihat Kos</Button></Link>
-                  </div>
-                );
-              })}
-            </section>
-          )}
 
           {rentals.map((t) => {
             const badge = TENANCY_BADGE[t.derivedStatus] ?? TENANCY_BADGE.paid;
@@ -284,7 +259,7 @@ export const MyKos: React.FC = () => {
             );
           })}
 
-          {me && mine.isSuccess && applicationQuery.isSuccess && rentals.length === 0 && applications.length === 0 && (
+          {me && mine.isSuccess && rentals.length === 0 && (
             <div style={{ textAlign: 'center', padding: '4rem 1rem', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
               <Home size={40} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>Belum Ada Kamar Kos yang Disewa</h3>
@@ -300,7 +275,55 @@ export const MyKos: React.FC = () => {
 
       {reviewing && <ReviewFormModal onClose={() => setReviewing(null)} {...reviewing} />}
 
-      {/* Tab 2: free visits from the server (visit.mine) */}
+      {/* Tab 2: rental applications (application.mine) */}
+      {activeTab === 'applications' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {!me && !sessionLoading && (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
+              <ClipboardList size={40} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>Masuk untuk melihat pengajuan Anda</h3>
+              <Button variant="primary" size="md" onClick={openAuthModal} style={{ marginTop: '1rem' }}>Masuk</Button>
+            </div>
+          )}
+          {me && applicationQuery.isPending && <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat pengajuan Anda…</p>}
+          {me && applicationQuery.isError && <ErrorState message="Gagal memuat pengajuan sewa Anda." onRetry={() => void applicationQuery.refetch()} minHeight="8rem" />}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {applications.map((application) => {
+                const badge = APPLICATION_BADGE[application.status];
+                return (
+                  <div key={application.id} data-testid="application-card" className="application-card">
+                    <div className="application-card__main">
+                      {application.kos.image ? <SafeImage src={application.kos.image} alt="" iconSize={20} style={{ width: '52px', height: '52px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }} /> : <ClipboardList size={24} color="var(--text-subtle)" />}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <strong>{application.kos.name}</strong>
+                          <span style={{ backgroundColor: badge.bg, color: badge.color, fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-xs)' }}>{badge.label}</span>
+                        </div>
+                        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Kamar {application.room.roomNumber} · mulai {formatDate(application.startDate)} · {application.durationMonths} bulan</p>
+                        {application.status === 'PENDING' && <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>Kamar belum ditahan. Pemilik sedang meninjau pengajuan.</p>}
+                        {application.status === 'APPROVED' && <p style={{ fontSize: '0.76rem', color: liveCardFor(application) ? 'var(--status-paid-text)' : 'var(--text-muted)', marginTop: '0.15rem' }}>{approvedNote(application)}</p>}
+                      </div>
+                    </div>
+                    <Link to={`/kos/${application.kos.id}`} className="application-card__action"><Button variant="outline" size="sm">Lihat Kos</Button></Link>
+                  </div>
+                );
+              })}
+            </div>
+          {me && applicationQuery.isSuccess && applications.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-subtle)' }}>
+              <ClipboardList size={40} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>Belum ada pengajuan sewa</h3>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.3rem auto 1.25rem', maxWidth: '360px' }}>
+                Pilih kamar di halaman kos, lalu kirim pengajuan. Statusnya muncul di sini sampai pemilik memutuskan.</p>
+              <Link to="/search">
+                <Button variant="primary" size="md">Cari kos</Button>
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 3: free visits from the server (visit.mine) */}
       {activeTab === 'visits' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {cancelVisit.isError && <Notice tone="error">{messageForError(cancelVisit.error)}</Notice>}

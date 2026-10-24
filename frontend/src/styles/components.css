@@ -1185,3 +1185,12 @@
 .kos-rules__count { color: var(--text-muted); font-size: 0.78rem; font-weight: 500; }
 .kos-rules__aside { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
 .kos-rules__fine { padding: 0.2rem 0.55rem; border: 1px solid var(--status-overdue-border); border-radius: var(--radius-badge); background: var(--status-overdue-bg); color: var(--status-overdue-text); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* /my-kos application card: details on the left, the action always on the side; stacked under 560px. */
+.application-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--bg-surface); }
+.application-card__main { display: flex; flex: 1 1 auto; align-items: center; gap: 0.85rem; min-width: 0; }
+.application-card__action { flex-shrink: 0; }
+@media (max-width: 560px) {
+  .application-card { flex-direction: column; align-items: stretch; }
+  .application-card__action > button { width: 100%; }
+}

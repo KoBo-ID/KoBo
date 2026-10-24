@@ -19,6 +19,7 @@ test('demo student applies, gets owner approval, pays and sees an active rental'
   await page.getByRole('button', { name: 'Kirim Pengajuan' }).click()
   await expect(page.getByRole('heading', { name: 'Pengajuan Terkirim' })).toBeVisible()
   await page.getByRole('link', { name: 'Pantau Pengajuan' }).click()
+  await page.getByRole('tab', { name: /Pengajuan Sewa/ }).click()
   await expect(page.getByTestId('application-card').filter({ hasText: kos!.name })).toContainText('Menunggu Pemilik')
 
   const ownerContext = await browser.newContext({ baseURL: test.info().project.use.baseURL })
@@ -31,7 +32,9 @@ test('demo student applies, gets owner approval, pays and sees an active rental'
   await ownerContext.close()
 
   await page.reload()
+  await page.getByRole('tab', { name: /Pengajuan Sewa/ }).click()
   await expect(page.getByTestId('application-card').filter({ hasText: kos!.name })).toContainText('Diterima')
+  await page.getByRole('tab', { name: /Kamar yang Disewa/ }).click()
   // Approval only creates the obligation; the attempt is opened on demand, then the labelled demo simulator completes it.
   await page.getByRole('button', { name: 'Bayar Sekarang' }).click()
   await page.getByRole('button', { name: 'Simulasikan Pembayaran' }).click()

@@ -101,7 +101,7 @@ test('a paying tenant reviews their kos, it appears on Detail, and the owner rep
   await expect(page.getByText(comment)).toBeVisible()
 
   // Demo student is campus-verified, so the snapshot badge shows.
-  await expect(page.getByText('Penyewa Terverifikasi').first()).toBeVisible()
+  await expect(page.getByText('Email kampus terverifikasi').first()).toBeVisible()
 
   // The owner sees it in Ulasan and replies.
   await ownerPage.goto(`/owner/reviews?kos=${kos!.id}`)
@@ -115,6 +115,10 @@ test('a paying tenant reviews their kos, it appears on Detail, and the owner rep
 
   // ...and the tenant sees the reply on Detail.
   await page.reload()
+  // Reviews past the fifth sit behind "Lihat ulasan lainnya"; open it when the list is long.
+  await expect(page.locator('.kos-reviews__item').first()).toBeVisible()
+  const moreReviews = page.getByRole('button', { name: /Lihat ulasan lainnya/ })
+  if (await moreReviews.count()) await moreReviews.click()
   await expect(page.getByText(reply)).toBeVisible()
   await ownerCtx.close()
 })
