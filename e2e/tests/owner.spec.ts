@@ -89,3 +89,27 @@ test('a signed-out visitor is not shown a kuitansi', async ({ page }) => {
   await page.goto('/kuitansi/1')
   await expect(page.getByRole('heading', { name: 'Masuk untuk Melihat Kuitansi' })).toBeVisible()
 })
+
+test('the room board keeps its column geometry across every status and floor tab', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await loginAs(page, 'owner')
+  await page.goto('/owner/dashboard')
+  const tabs = page.locator('[aria-label="Filter status kamar"] button, [aria-label="Filter lantai"] button')
+  await expect(tabs.first()).toBeVisible()
+  const geometry = () =>
+    page.locator('.od-board thead th').evaluateAll((els) => els.map((e) => `${Math.round(e.getBoundingClientRect().x)}:${Math.round(e.getBoundingClientRect().width)}`).join('|'))
+  const baseline = await geometry()
+  for (let i = 0; i < (await tabs.count()); i++) {
+    await tabs.nth(i).click()
+    expect(await geometry(), `tab ${i}`).toBe(baseline)
+  }
+})
+
+test('the Hunian status counts jump to the matching room filter', async ({ page }) => {
+  await loginAs(page, 'owner')
+  await page.goto('/owner/dashboard')
+  const stat = page.locator('.od-stat').first()
+  const label = (await stat.textContent())!.replace(/\d+$/, '').trim()
+  await stat.click()
+  await expect(page.locator('[aria-label="Filter status kamar"] [aria-pressed="true"]')).toContainText(label)
+})
