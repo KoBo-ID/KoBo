@@ -16,6 +16,8 @@ export const STATUS_META: Record<RoomStatus, { label: string; dot: string }> = {
 
 const STATUS_ORDER: RoomStatus[] = ['paid', 'due', 'overdue', 'vacant', 'booking'];
 const COLUMN_COUNT = 6;
+/** Kamar, Harga, Penghuni, Jatuh tempo, Status, Aksi: fixed tracks (see .od-col-*), Penghuni absorbs spare width. */
+const COLUMN_CLASSES = ['room', 'price', 'tenant', 'due', 'status', 'actions'];
 
 interface RoomOccupancyBoardProps {
   kosName: string;
@@ -149,7 +151,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
           </h2>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <div className="od-board__filters" style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
           {floors.length > 1 && (
             <div className="kobo-segmented" role="group" aria-label="Filter lantai">
               <button type="button" aria-pressed={selectedFloor === 'all'} onClick={() => setSelectedFloor('all')}>
@@ -179,8 +181,11 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
         </div>
       </div>
 
-      <div className="kobo-table-wrap">
+      <div className="kobo-table-wrap" style={{ ['--od-board-min' as string]: `${5 + Math.min(rooms.length, 6) * 4}rem` }}>
         <table className="kobo-table kobo-table--stack" role="table">
+          <colgroup>
+            {COLUMN_CLASSES.map((c) => <col key={c} className={`od-col-${c}`} />)}
+          </colgroup>
           <caption className="od-sr">
             Daftar kamar {kosName} per lantai beserta penghuni, jatuh tempo, dan status pembayaran.
           </caption>
@@ -216,8 +221,8 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                     return (
                       <tr role="row" key={room.id}>
                         <td role="cell" data-cell="room">
-                          <div className="kobo-table__strong">Kamar {room.roomNumber}</div>
-                          <div className="kobo-table__muted" style={{ fontSize: '0.75rem' }}>
+                          <div className="kobo-table__strong od-trunc" title={`Kamar ${room.roomNumber}`}>Kamar {room.roomNumber}</div>
+                          <div className="kobo-table__muted od-trunc" style={{ fontSize: '0.75rem' }}>
                             {room.type} · {room.size}
                           </div>
                         </td>
@@ -227,9 +232,9 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             <span className="kobo-table__muted" aria-label="Belum ada penghuni">&mdash;</span>
                           ) : (
                             <>
-                              <div className="kobo-table__strong">{room.tenant?.name || 'Penghuni aktif'}</div>
+                              <div className="kobo-table__strong od-trunc" title={room.tenant?.name}>{room.tenant?.name || 'Penghuni aktif'}</div>
                               {room.tenant?.campus && (
-                                <div className="kobo-table__muted" style={{ fontSize: '0.75rem' }}>
+                                <div className="kobo-table__muted od-trunc" style={{ fontSize: '0.75rem' }} title={room.tenant.campus}>
                                   {room.tenant.campus}
                                 </div>
                               )}

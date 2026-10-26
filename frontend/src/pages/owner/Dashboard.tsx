@@ -39,7 +39,8 @@ const DashboardSkeleton: React.FC = () => (
       <div className="od-building">
         <Skeleton width="45%" height="0.8rem" />
         <Skeleton width="70%" height="1.4rem" />
-        <Skeleton width="100%" height="6rem" />
+        <Skeleton width="100%" height="1.25rem" />
+        <Skeleton width="80%" height="1.5rem" />
       </div>
     </div>
     <div className="od-skel-list" aria-hidden="true">
@@ -130,9 +131,11 @@ export const OwnerDashboard: React.FC = () => {
   const hasVisitAttention = (visits.data ?? []).some((v) => v.status === 'SCHEDULED');
   const hasApplications = (applications.data?.length ?? 0) > 0;
   const allClear = !hasAttention && !hasVisitAttention && !hasApplications;
-  const showOverdue = () => {
-    setStatusFilter('overdue');
+  const showStatus = (status: RoomStatus) => {
+    setStatusFilter(status);
     document.getElementById('room-board-title')?.scrollIntoView({ block: 'start' });
+    // Land keyboard focus on the filter that is now applied.
+    requestAnimationFrame(() => document.querySelector<HTMLElement>('[aria-label="Filter status kamar"] [aria-pressed="true"]')?.focus({ preventScroll: true }));
   };
   const confirmVerb = confirmingRoom?.status === 'booking' ? 'Batalkan booking' : 'Akhiri sewa';
 
@@ -140,7 +143,7 @@ export const OwnerDashboard: React.FC = () => {
     <div className="app-container owner-page">
       <OwnerPageHeader title="Papan okupansi" actions={<span className="od-date">{todayLabel()}</span>} />
 
-      <OwnerOverview rooms={rooms} summary={summary} onShowOverdue={showOverdue} />
+      <OwnerOverview summary={summary} onShowStatus={showStatus} />
 
       {confirmingRoom && (
         <div

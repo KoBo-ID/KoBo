@@ -31,28 +31,26 @@
 
 .od-building__value { margin: 0; color: var(--text-main); font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .od-building__value span { font-size: 0.875rem; font-weight: 500; letter-spacing: 0; color: var(--text-muted); }
-.od-map { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem; }
-.od-map__floor { display: flex; align-items: center; gap: 0.75rem; }
-.od-map__label { flex: none; width: 2.25rem; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
-.od-map__rooms { display: flex; flex-wrap: wrap; gap: 0.4rem; list-style: none; margin: 0; padding: 0; }
-.od-tile {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 2.75rem; height: 2.25rem; padding: 0 0.4rem;
-  border: 1px solid transparent; border-radius: var(--radius-sm);
-  font-size: 0.8125rem; font-weight: 700; font-variant-numeric: tabular-nums;
-}
-/* Text and fill pairs use the text-safe status tokens; vacant is hollow and dashed so it never relies on colour alone. */
-.od-tile--paid { background: var(--status-paid-bg); border-color: var(--status-paid-border); color: var(--status-paid-text); }
-.od-tile--due { background: var(--status-due-bg); border-color: var(--status-due-border); color: var(--status-due-text); }
-.od-tile--overdue { background: var(--status-overdue-text); border-color: var(--status-overdue-text); color: #fff; }
-.od-tile--booking { background: var(--status-booking-bg); border-color: var(--status-booking-border); color: var(--status-booking-text); }
-.od-tile--vacant { background: transparent; border: 1px dashed var(--border-strong); color: var(--text-muted); }
-.od-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; list-style: none; margin: 0.25rem 0 0; padding: 0; font-size: 0.8125rem; color: var(--text-muted); }
-.od-legend li { display: inline-flex; align-items: center; gap: 0.4rem; }
-.od-swatch.od-tile--paid { border-color: var(--status-paid); }
-.od-swatch.od-tile--due { border-color: var(--status-due); }
-.od-swatch.od-tile--booking { border-color: var(--status-booking); }
-.od-swatch { display: inline-block; width: 0.75rem; height: 0.75rem; min-width: 0; padding: 0; border-radius: 3px; }
+/* Occupancy: one proportional bar (size never depends on room count) + status counts that filter the room board. */
+.od-split { display: flex; gap: 2px; height: 1.25rem; margin-top: 0.25rem; }
+.od-split__seg { flex-basis: 0; min-width: 6px; border-radius: 3px; }
+.od-split__seg--paid { background: var(--status-paid); }
+.od-split__seg--due { background: var(--status-due); }
+.od-split__seg--overdue { background: var(--status-overdue); }
+.od-split__seg--booking { background: var(--status-booking); }
+.od-split__seg--vacant { background: repeating-linear-gradient(135deg, var(--bg-muted) 0 4px, var(--border-strong) 4px 5px); border: 1px dashed var(--text-muted); }
+.od-legend { display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; list-style: none; margin: 0; padding: 0; }
+.od-stat { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.25rem; padding: 0 0.6rem; background: none; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font: inherit; font-size: 0.8125rem; color: var(--text-main); cursor: pointer; }
+.od-stat strong { font-variant-numeric: tabular-nums; }
+.od-stat:hover { background: var(--bg-muted); }
+.od-stat:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media (max-width: 767px), (pointer: coarse) { .od-stat { min-height: 44px; } }
+.od-swatch { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 3px; }
+.od-swatch--paid { background: var(--status-paid); }
+.od-swatch--due { background: var(--status-due); }
+.od-swatch--overdue { background: var(--status-overdue); }
+.od-swatch--booking { background: var(--status-booking); }
+.od-swatch--vacant { border: 1px dashed var(--text-muted); }
 
 /* ---- Sections: open regions on one left edge, 1px rules, no boxes ---- */
 .od-section { margin-bottom: 2rem; }
@@ -146,3 +144,39 @@
 @media (prefers-reduced-motion: reduce) {
   .od-bar > span { animation: none; }
 }
+
+/* ---- Room board table: fixed tracks so columns never shift between status/floor tabs; Penghuni absorbs spare width ---- */
+@media (min-width: 761px) {
+  .od-board .kobo-table-wrap { min-height: var(--od-board-min, 0); }
+  .od-board .kobo-table { table-layout: fixed; }
+  .od-col-room { width: 12rem; }
+  .od-col-price { width: 9.5rem; }
+  .od-col-due { width: 8rem; }
+  .od-col-status { width: 9rem; }
+  .od-col-actions { width: 6rem; }
+  .od-board .kobo-table thead th, .od-board .kobo-table tbody td { padding-left: 1rem; padding-right: 1rem; overflow: hidden; }
+  .od-board .kobo-table thead th.kobo-table__right { text-align: right; }
+  .od-board .kobo-table tbody td[data-cell='price'] { padding-right: 1.5rem; }
+  .od-board .kobo-table thead th:nth-child(2) { padding-right: 1.5rem; }
+  .od-board .kobo-table tbody tr:not(.kobo-table__group) td { height: 4rem; }
+  .od-board .kobo-table tbody td.kobo-table__empty { height: 8rem; }
+  .od-board .kobo-table tbody td[data-cell='actions'] { overflow: visible; }
+}
+@media (min-width: 1500px) {
+  .od-col-room { width: 20%; }
+  .od-col-price { width: 11rem; }
+  .od-col-due { width: 9.5rem; }
+  .od-col-status { width: 10rem; }
+  .od-col-actions { width: 7rem; }
+}
+@media (min-width: 761px) and (max-width: 1199px) {
+  .od-board .kobo-table { min-width: 44rem; }
+  .od-col-room { width: 9.5rem; }
+  .od-col-price { width: 8.5rem; }
+  .od-col-due { width: 6.5rem; }
+  .od-col-status { width: 7.5rem; }
+  .od-col-actions { width: 5.5rem; }
+}
+.od-board .od-trunc { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Many floors: the filter groups scroll sideways inside the column instead of widening the page. */
+.od-board__filters { min-width: 0; max-width: 100%; }
