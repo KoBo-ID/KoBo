@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Home, Calendar, FileText, MessageSquare, ShieldCheck, Star, ClipboardList } from 'lucide-react';
@@ -11,11 +12,21 @@ import { Button } from '../components/ui/Button';
 import { Notice } from '../components/ui/Notice';
 import { ErrorState } from '../components/ui/QueryState';
 import { SafeImage } from '../components/ui/SafeImage';
+import { Skeleton } from '../components/ui/Skeleton';
 import { useSession } from '../lib/session';
 import { useTRPC } from '../lib/trpc';
 import { messageForError } from '../lib/errors';
 import { formatVisitDate, VISIT_SLOT_LABEL } from '../lib/visits';
 import { formatRupiah } from '../lib/format';
+
+const ListSkeleton: React.FC<{ label: string; rows?: number }> = ({ label, rows = 2 }) => (
+  <div role="status" aria-busy="true" aria-label={label} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+    {Array.from({ length: rows }, (_, i) => (
+      <Skeleton key={i} height="6.5rem" borderRadius="var(--radius-card)" />
+    ))}
+  </div>
+);
+
 /** 'YYYY-MM-DD' (a WIB calendar day) as "5 Oktober 2026". */
 const formatDate = (d: string) =>
   new Date(`${d}T00:00:00+07:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
@@ -38,11 +49,12 @@ const APPLICATION_BADGE = {
 const Fact: React.FC<{ label: string; value: string; strong?: boolean }> = ({ label, value, strong }) => (
   <div>
     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>{label}</span>
-    <span style={{ fontSize: '0.9rem', fontWeight: strong ? 800 : 700, color: strong ? 'var(--status-due)' : 'var(--text-main)' }}>{value}</span>
+    <span style={{ fontSize: '0.9rem', fontWeight: strong ? 800 : 700, color: strong ? 'var(--status-due-text)' : 'var(--text-main)' }}>{value}</span>
   </div>
 );
 
 export const MyKos: React.FC = () => {
+  useDocumentTitle('Kos Saya');
   const { addToast, openAuthModal } = useAppStore();
   const trpc = useTRPC();
   const qc = useQueryClient();
@@ -150,7 +162,7 @@ export const MyKos: React.FC = () => {
               <Button variant="primary" size="md" onClick={openAuthModal}>Masuk</Button>
             </div>
           )}
-          {me && mine.isPending && <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat kamar Anda…</p>}
+          {me && mine.isPending && <ListSkeleton label="Memuat kamar Anda" />}
           {me && mine.isError && <ErrorState message="Gagal memuat daftar sewa Anda." onRetry={() => void mine.refetch()} minHeight="10rem" />}
           {me && <WaitlistSection />}
 
@@ -200,7 +212,7 @@ export const MyKos: React.FC = () => {
                       <span role="cell">Bulan {i + 1} · jatuh tempo {formatDate(inv.dueDate)}</span>
                       <span role="cell" className="invoice-row__meta">
                         <strong>{formatRupiah(inv.amount)}</strong>
-                        <span style={{ color: inv.status === 'PAID' ? 'var(--status-paid)' : 'var(--text-muted)', fontWeight: 600 }}>{inv.status === 'PAID' ? 'Lunas' : t.status === 'ENDED' ? 'Tidak ditagih, sewa berakhir' : 'Belum dibayar'}</span>
+                        <span style={{ color: inv.status === 'PAID' ? 'var(--status-paid-text)' : 'var(--text-muted)', fontWeight: 600 }}>{inv.status === 'PAID' ? 'Lunas' : t.status === 'ENDED' ? 'Tidak ditagih, sewa berakhir' : 'Belum dibayar'}</span>
                         <InvoicePaymentActions
                           invoice={inv}
                           returnedPaymentId={returnedPayment && (inv.activePayment?.id === returnedPayment || inv.latestPayment?.id === returnedPayment) ? returnedPayment : undefined}
@@ -285,7 +297,7 @@ export const MyKos: React.FC = () => {
               <Button variant="primary" size="md" onClick={openAuthModal} style={{ marginTop: '1rem' }}>Masuk</Button>
             </div>
           )}
-          {me && applicationQuery.isPending && <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat pengajuan Anda…</p>}
+          {me && applicationQuery.isPending && <ListSkeleton label="Memuat pengajuan Anda" rows={1} />}
           {me && applicationQuery.isError && <ErrorState message="Gagal memuat pengajuan sewa Anda." onRetry={() => void applicationQuery.refetch()} minHeight="8rem" />}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {applications.map((application) => {
@@ -327,7 +339,7 @@ export const MyKos: React.FC = () => {
       {activeTab === 'visits' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {cancelVisit.isError && <Notice tone="error">{messageForError(cancelVisit.error)}</Notice>}
-          {me && visitsQuery.isPending && <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat jadwal survey…</p>}
+          {me && visitsQuery.isPending && <ListSkeleton label="Memuat jadwal survey" rows={1} />}
           {me && visitsQuery.isError && <ErrorState message="Gagal memuat jadwal survey Anda." onRetry={() => void visitsQuery.refetch()} minHeight="8rem" />}
           {visits.map((vis) => (
             <div

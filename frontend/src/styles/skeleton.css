@@ -1,0 +1,62 @@
+/* Skeleton system: one token set, one gradient sweep, shared by every loading
+   placeholder (Skeleton.tsx, KosCardSkeleton, Detail/Checkout/MyKos/owner).
+   - Base is itself a static two-stop gradient in KoBo's cool teal-grey, dark enough
+     to separate from white cards (#FFF) and the page tint (#F8FAFC).
+   - A soft highlight band sweeps across on ::after via transform (compositor only).
+     Every block shares the keyframes and mounts in the same commit, so they stay
+     in phase; the band rests briefly at the end of each loop.
+   - Blocks fade in after a short delay, so data that arrives in ~120ms never
+     flashes a placeholder (space is reserved the whole time: no layout shift).
+   - prefers-reduced-motion: the sweep is removed, the static gradient stays. */
+:root {
+  --skel-base: hsl(198, 24%, 88%);
+  --skel-base-end: hsl(194, 28%, 91%);
+  --skel-highlight: hsla(180, 70%, 99%, 0.82);
+  --skel-duration: 1.6s;
+  --skel-delay: 120ms;
+}
+
+@keyframes skel-sweep {
+  0% { transform: translateX(-100%); }
+  72%, 100% { transform: translateX(100%); }
+}
+
+@keyframes skel-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate; /* keeps the rounded clip stable in Safari while ::after animates */
+  background: linear-gradient(100deg, var(--skel-base) 0%, var(--skel-base-end) 100%);
+  animation: skel-appear 240ms ease-out var(--skel-delay) backwards;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 22%,
+    var(--skel-highlight) 50%,
+    transparent 78%
+  );
+  transform: translateX(-100%);
+  animation: skel-sweep var(--skel-duration) cubic-bezier(0.4, 0, 0.2, 1) var(--skel-delay) infinite;
+  pointer-events: none;
+}
+
+/* Structural wrapper (e.g. the card shell) that should not pop in before its blocks. */
+.skeleton-shell {
+  animation: skel-appear 240ms ease-out var(--skel-delay) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+    display: none;
+  }
+}

@@ -1,6 +1,7 @@
 import React from 'react';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useParams } from 'react-router-dom';
-import { ShieldCheck, MessageSquare } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { ListingCard } from '../components/kos/ListingCard';
 import { KosCardSkeleton } from '../components/kos/KosCardSkeleton';
@@ -17,6 +18,7 @@ export const OwnerProfile: React.FC = () => {
   const trpc = useTRPC();
   const { data, isPending, error, refetch } = useQuery(trpc.owner.publicProfile.queryOptions({ id }));
   const ownerKosList = React.useMemo(() => (data?.kos ?? []).map(kosCardToKos), [data]);
+  useDocumentTitle(data ? data.owner.name : null);
 
   if (isPending) {
     return (
@@ -81,22 +83,6 @@ export const OwnerProfile: React.FC = () => {
                 <h1 style={{ fontSize: 'clamp(1.4rem, 1.1rem + 1.2vw, 1.75rem)', fontWeight: 800, color: 'var(--text-main)' }}>
                   {owner.name}
                 </h1>
-                {owner.verified && <div
-                  style={{
-                    backgroundColor: 'var(--primary-light)',
-                    color: 'var(--primary)',
-                    padding: '0.2rem 0.6rem',
-                    borderRadius: 'var(--radius-badge)',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.3rem',
-                  }}
-                >
-                  <ShieldCheck size={14} />
-                  <span>Pemilik Kos Terverifikasi KoBo</span>
-                </div>}
               </div>
 
               <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.35rem', maxWidth: '640px', lineHeight: 1.5 }}>
@@ -133,15 +119,6 @@ export const OwnerProfile: React.FC = () => {
             borderTop: '1px solid var(--border-subtle)',
           }}
         >
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
-              Kecepatan Respon:
-            </span>
-            <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              {owner.responseRate ?? '-'}
-            </span>
-          </div>
-
           <div>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
               Anggota Sejak:

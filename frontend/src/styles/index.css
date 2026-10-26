@@ -1,5 +1,6 @@
 @import './tokens.css';
 @import './animations.css';
+@import './skeleton.css';
 /* Must follow tokens.css: its media queries re-declare :root tokens. */
 @import './components.css';
 @import './landing.css';
