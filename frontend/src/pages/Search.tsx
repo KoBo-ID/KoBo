@@ -4,7 +4,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   MapPin,
   GraduationCap,
-  CalendarCheck,
+  BedDouble,
   X,
   Map as MapIcon,
   List,
@@ -38,6 +38,7 @@ import { LeafletMap } from '../components/kos/LeafletMap';
 import { Button } from '../components/ui/Button';
 import { Popover } from '../components/ui/Popover';
 import { useResizeObserver } from '../hooks/useResizeObserver';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Kos, LocationPin } from '../types';
 import { averageLatLng, formatDistance, haversineMeters } from '../utils/geo';
 
@@ -166,6 +167,8 @@ export const Search: React.FC = () => {
     }
     return filters.loc ? (allLocations.find((loc) => loc.id === filters.loc) ?? null) : null;
   }, [filters.lat, filters.lng, filters.place, filters.radius, filters.campus, filters.loc, allLocations]);
+
+  useDocumentTitle(filters.campus && activeLocation?.id.startsWith('campus-') ? `Kos dekat ${activeLocation.label}` : 'Cari kos');
 
   // What the user typed wins; otherwise the active place, otherwise the text being searched (e.g. arriving from the home page).
   const locationInput = typedInput ?? (activeLocation ? activeLocation.label : filters.q);
@@ -473,14 +476,15 @@ export const Search: React.FC = () => {
                       <GraduationCap size={16} />
                       <span>Diskon Mahasiswa</span>
                     </button>
+                    {/* URL/API name stays "surveyOnly"; it filters kos that have a bookable room. */}
                     <button
                       type="button"
                       className="kobo-optionrow"
                       aria-pressed={filterSurveyOnly}
                       onClick={() => setFilterSurveyOnly(!filterSurveyOnly)}
                     >
-                      <CalendarCheck size={16} />
-                      <span>Bisa Survey Gratis</span>
+                      <BedDouble size={16} />
+                      <span>Kamar tersedia</span>
                     </button>
 
                     <div style={{ padding: '0.75rem 0.25rem 0.25rem' }}>

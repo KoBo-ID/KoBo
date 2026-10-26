@@ -53,6 +53,15 @@ const Kuitansi = lazyWithReload(() =>
 const NotFound = lazyWithReload(() =>
   import('./pages/NotFound').then((m) => ({ default: m.NotFound }))
 );
+const Contact = lazyWithReload(() =>
+  import('./pages/Contact').then((m) => ({ default: m.Contact }))
+);
+const Terms = lazyWithReload(() =>
+  import('./pages/Terms').then((m) => ({ default: m.Terms }))
+);
+const Privacy = lazyWithReload(() =>
+  import('./pages/Privacy').then((m) => ({ default: m.Privacy }))
+);
 
 // The sign-in dialog (and, further down the chain, the better-auth client) loads on first open.
 const AuthModal = lazyWithReload(() =>
@@ -136,6 +145,9 @@ export function App() {
               <Route path="/owner/login" element={<OwnerLogin />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/verifikasi-email" element={<VerifyEmail />} />
+              <Route path="/kontak" element={<Contact />} />
+              <Route path="/syarat" element={<Terms />} />
+              <Route path="/privasi" element={<Privacy />} />
               <Route path="*" element={<NotFound />} />
             </Route>
 

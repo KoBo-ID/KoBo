@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Building2 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,6 +18,7 @@ import { messageForError } from '../lib/errors';
 /** Headline student discount shown on the verification card (the per-kos amount applies at checkout). */
 
 export const Profile: React.FC = () => {
+  useDocumentTitle('Profil');
   const { addToast, openAuthModal } = useAppStore();
   const { me, isLoading } = useSession();
   const { becomeOwner, isPending, error: ownerError } = useBecomeOwner();
