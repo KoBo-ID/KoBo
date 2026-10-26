@@ -6,7 +6,7 @@ import { useLiveTenancyCount } from '../../lib/booking';
 
 const OWNER_WORKSPACE = ['/owner/dashboard', '/owner/kos', '/owner/reviews'];
 
-export const MobileNav: React.FC = () => {
+export const MobileNav: React.FC<{ ownerBadges?: { dashboard: number; reviews: number } }> = ({ ownerBadges }) => {
   const location = useLocation();
   const rentalsCount = useLiveTenancyCount();
   // Persona follows the route: the owner workspace gets the owner dock. Access to it is enforced by OwnerGuard.
@@ -135,7 +135,10 @@ export const MobileNav: React.FC = () => {
               fontWeight: location.pathname === '/owner/dashboard' ? 700 : 500,
             }}
           >
-            <Building2 size={20} />
+            <span className="os-dock-icon">
+              <Building2 size={20} />
+              {!!ownerBadges?.dashboard && <span className="os-dock-count">{ownerBadges.dashboard}<span className="os-sr"> perlu tindakan</span></span>}
+            </span>
             <span>Okupansi</span>
           </Link>
 
@@ -167,7 +170,10 @@ export const MobileNav: React.FC = () => {
               fontWeight: location.pathname === '/owner/reviews' ? 700 : 500,
             }}
           >
-            <User size={20} />
+            <span className="os-dock-icon">
+              <User size={20} />
+              {!!ownerBadges?.reviews && <span className="os-dock-count">{ownerBadges.reviews}<span className="os-sr"> belum dibalas</span></span>}
+            </span>
             <span>Ulasan</span>
           </Link>
         </>

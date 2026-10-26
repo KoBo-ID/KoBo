@@ -2,8 +2,9 @@ import '../../styles/owner-dashboard.css';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Users, Wallet, AlertCircle, AlertTriangle, MessageSquare, CheckCircle2, Hourglass } from 'lucide-react';
+import { MessageSquare, CheckCircle2 } from 'lucide-react';
 import type { BoardRoom } from '../../../../backend/src/trpc/router';
+import { OwnerOverview } from '../../components/owner/OwnerOverview';
 import { RoomOccupancyBoard } from '../../components/owner/RoomOccupancyBoard';
 import { ApplicationsPanel } from '../../components/owner/ApplicationsPanel';
 import { VisitsPanel } from '../../components/owner/VisitsPanel';
@@ -20,26 +21,29 @@ import { useRoomActions } from '../../lib/ownerActions';
 import { useOwnerVisits } from '../../lib/visits';
 import { useTRPC } from '../../lib/trpc';
 
-const START_STEPS = [
-  { title: 'Daftarkan kos', hint: 'Isi nama, alamat, fasilitas, dan foto.' },
-  { title: 'Tambah kamar', hint: 'Atur tipe, ukuran, dan harga per bulan.' },
-  { title: 'Terima pengajuan', hint: 'Calon penghuni mengajukan sewa, Anda yang memutuskan.' },
-];
+const START_STEPS = ['Daftarkan kos', 'Tambah kamar dan harga', 'Terima pengajuan sewa'];
+
+const todayLabel = () =>
+  new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jakarta' });
 
 const DashboardSkeleton: React.FC = () => (
   <div className="app-container owner-page" role="status" aria-live="polite" aria-label="Memuat papan okupansi">
     <OwnerPageHeader title="Papan okupansi" />
-    <div className="od-stats" aria-hidden="true">
-      {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="od-stat" style={{ cursor: 'default' }}>
-          <Skeleton width="60%" height="0.8rem" />
-          <Skeleton width="80%" height="1.4rem" />
-          <Skeleton width="70%" height="0.8rem" />
-        </div>
-      ))}
+    <div className="od-hero" aria-hidden="true">
+      <div className="od-money">
+        <Skeleton width="40%" height="0.8rem" />
+        <Skeleton width="65%" height="2.2rem" />
+        <Skeleton width="100%" height="0.5rem" />
+        <Skeleton width="55%" height="0.8rem" />
+      </div>
+      <div className="od-building">
+        <Skeleton width="45%" height="0.8rem" />
+        <Skeleton width="70%" height="1.4rem" />
+        <Skeleton width="100%" height="6rem" />
+      </div>
     </div>
     <div className="od-skel-list" aria-hidden="true">
-      {[0, 1, 2, 3, 4].map((i) => (
+      {[0, 1, 2, 3].map((i) => (
         <div key={i} className="od-skel-row">
           <Skeleton width="70%" height="1rem" />
           <Skeleton width="50%" height="1rem" />
@@ -59,6 +63,7 @@ export const OwnerDashboard: React.FC = () => {
     refetchIntervalInBackground: false,
   });
   const visits = useOwnerVisits(selectedKos?.id);
+  const applications = useQuery({ ...trpc.application.ownerList.queryOptions({ kosId: selectedKos?.id ?? '' }), enabled: !!selectedKos });
   const { busyRoomId, markPaid, endTenancy } = useRoomActions(selectedKos?.id);
 
   const [whatsAppTargetRoom, setWhatsAppTargetRoom] = useState<BoardRoom | null>(null);
@@ -83,19 +88,13 @@ export const OwnerDashboard: React.FC = () => {
         <OwnerPageHeader title="Papan okupansi" />
         <div className="od-start">
           <h2>Belum ada kos</h2>
-          <p>Papan okupansi akan muncul di sini setelah Anda mendaftarkan kos pertama.</p>
           <ol className="od-steps">
-            {START_STEPS.map((s) => (
-              <li key={s.title}>
-                <div>
-                  <strong>{s.title}</strong>
-                  <span>{s.hint}</span>
-                </div>
-              </li>
+            {START_STEPS.map((title) => (
+              <li key={title}>{title}</li>
             ))}
           </ol>
           <Link to="/owner/kos">
-            <Button variant="primary" size="md">Kelola properti</Button>
+            <Button variant="primary" size="md">Daftarkan kos</Button>
           </Link>
         </div>
       </div>
@@ -105,44 +104,14 @@ export const OwnerDashboard: React.FC = () => {
     return <ErrorState message="Gagal memuat papan kamar." onRetry={() => void board.refetch()} />;
   }
   // Wait for the visits too so the page lands in its final layout. A failed visits query does not block it.
-  if (!board.data || visits.isPending) return <DashboardSkeleton />;
+  if (!board.data || visits.isPending || applications.isPending) return <DashboardSkeleton />;
 
   const { rooms, summary } = board.data;
-  const occupancyPercentage = Math.round((summary.occupiedRooms / summary.totalRooms) * 100) || 0;
   const attentionRooms = rooms
     .filter((r) => r.status === 'overdue' || r.status === 'due')
     .sort((a, b) => b.daysOverdue - a.daysOverdue);
 
   const needsReview = rooms.filter((r) => r.payment?.state === 'NEEDS_REVIEW');
-
-  const kpiTiles: { filter: RoomStatus | 'all'; label: string; icon: React.ReactNode; value: React.ReactNode; meta: string }[] = [
-    {
-      filter: 'all',
-      label: 'Okupansi',
-      icon: <Users size={14} aria-hidden="true" />,
-      value: (
-        <>
-          {summary.occupiedRooms} dari {summary.totalRooms}
-          <span className="od-stat__unit">{occupancyPercentage}%</span>
-        </>
-      ),
-      meta: `${summary.counts.vacant} kamar kosong`,
-    },
-    {
-      filter: 'paid',
-      label: 'Terkumpul bulan ini',
-      icon: <Wallet size={14} aria-hidden="true" />,
-      value: formatRupiah(summary.collectedThisMonth),
-      meta: `Target ${formatRupiah(summary.expectedThisMonth)}`,
-    },
-    {
-      filter: 'overdue',
-      label: 'Belum dibayar',
-      icon: <AlertCircle size={14} aria-hidden="true" />,
-      value: formatRupiah(summary.overdueAmount),
-      meta: `${summary.counts.overdue} kamar terlambat`,
-    },
-  ];
 
   const askEnd = (room: BoardRoom) => {
     if (!room.tenancyId) return;
@@ -159,34 +128,19 @@ export const OwnerDashboard: React.FC = () => {
 
   const hasAttention = attentionRooms.length > 0;
   const hasVisitAttention = (visits.data ?? []).some((v) => v.status === 'SCHEDULED');
+  const hasApplications = (applications.data?.length ?? 0) > 0;
+  const allClear = !hasAttention && !hasVisitAttention && !hasApplications;
+  const showOverdue = () => {
+    setStatusFilter('overdue');
+    document.getElementById('room-board-title')?.scrollIntoView({ block: 'start' });
+  };
   const confirmVerb = confirmingRoom?.status === 'booking' ? 'Batalkan booking' : 'Akhiri sewa';
 
   return (
     <div className="app-container owner-page">
-      <OwnerPageHeader title="Papan okupansi" subtitle={selectedKos.name} />
+      <OwnerPageHeader title="Papan okupansi" actions={<span className="od-date">{todayLabel()}</span>} />
 
-      {/* Summary tiles: each one also filters the room table below */}
-      <div className="od-stats">
-        {kpiTiles.map((tile) => (
-          <button
-            key={tile.filter}
-            type="button"
-            className="od-stat"
-            aria-pressed={statusFilter === tile.filter}
-            onClick={() => setStatusFilter(tile.filter)}
-          >
-            <span className="od-stat__label">{tile.icon}{tile.label}</span>
-            <span className="od-stat__value">{tile.value}</span>
-            <span className="od-stat__meta">{tile.meta}</span>
-          </button>
-        ))}
-        {/* Not a room filter: the queue lives in the property manager, so this tile links there. */}
-        <Link to="/owner/kos" className="od-stat">
-          <span className="od-stat__label"><Hourglass size={14} aria-hidden="true" />Daftar tunggu</span>
-          <span className="od-stat__value">{summary.waitlistCount}<span className="od-stat__unit">pengantre</span></span>
-          <span className="od-stat__meta">{summary.waitlistCount > 0 ? 'Dapat email saat kamar kosong' : 'Belum ada yang mengantre'}</span>
-        </Link>
-      </div>
+      <OwnerOverview rooms={rooms} summary={summary} onShowOverdue={showOverdue} />
 
       {confirmingRoom && (
         <div
@@ -214,18 +168,21 @@ export const OwnerDashboard: React.FC = () => {
         </div>
       )}
 
-      <section aria-labelledby="attention-title" className="od-section">
-        <h2 id="attention-title" className="od-section__title">
-          {hasAttention && (
-            // Amber while invoices are only due; red once any is actually late (same escalation as "Telat N hari").
-            <AlertTriangle size={18} aria-hidden="true" color={attentionRooms.some((r) => r.daysOverdue > 0) ? 'var(--status-overdue)' : 'var(--status-due)'} />
-          )}
-          Perlu perhatian
-          {hasAttention && <span className="od-count">{attentionRooms.length}</span>}
-        </h2>
-        {!hasAttention ? (
-          <p className="od-empty">Semua kamar terbayar. Tagihan yang jatuh tempo atau terlambat akan muncul di sini.</p>
-        ) : (
+      {allClear && (
+        <p className="od-clear">
+          <CheckCircle2 size={18} aria-hidden="true" />
+          Tidak ada tagihan, pengajuan, atau survey yang menunggu.
+        </p>
+      )}
+
+      <ApplicationsPanel kosId={selectedKos.id} />
+
+      {hasAttention && (
+        <section aria-labelledby="attention-title" className="od-section">
+          <h2 id="attention-title" className="od-section__title">
+            Tagihan belum lunas
+            <span className="od-count">{attentionRooms.length}</span>
+          </h2>
           <ul className="od-list">
             {attentionRooms.map((room) => (
               <li key={room.id} className="od-row od-row--attention">
@@ -236,7 +193,7 @@ export const OwnerDashboard: React.FC = () => {
                 <span className="od-row__amount">{formatRupiah(room.invoice?.amount ?? room.priceMonthly)}</span>
                 <div className="od-row__due">
                   <span>Jatuh tempo {formatDueDate(room.invoice?.dueDate)}</span>
-                  {room.daysOverdue > 0 ? <span className="od-row__late">Telat {room.daysOverdue} hari</span> : null}
+                  {room.daysOverdue > 0 ? <span className="od-chip od-chip--late">Telat {room.daysOverdue} hari</span> : null}
                 </div>
                 <div className="od-row__actions">
                   <Button variant="outline" size="sm" icon={<MessageSquare size={14} />} onClick={() => setWhatsAppTargetRoom(room)}>
@@ -256,12 +213,10 @@ export const OwnerDashboard: React.FC = () => {
               </li>
             ))}
           </ul>
-        )}
-      </section>
+        </section>
+      )}
 
       <VisitsPanel kosId={selectedKos.id} promoted={hasVisitAttention} />
-
-      <ApplicationsPanel kosId={selectedKos.id} />
 
       {needsReview.length > 0 && (
         <Notice tone="error">

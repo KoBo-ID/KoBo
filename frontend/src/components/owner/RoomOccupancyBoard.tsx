@@ -76,7 +76,8 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
   ];
 
   const countStyle: React.CSSProperties = {
-    color: 'var(--text-muted)',
+    // Darker than --text-muted: the segmented buttons sit on --bg-muted, where muted measures 4.2:1.
+    color: 'hsl(215, 19%, 36%)',
     fontVariantNumeric: 'tabular-nums',
     fontWeight: 600,
   };
@@ -132,7 +133,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
   };
 
   return (
-    <section aria-labelledby="room-board-title" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <section aria-labelledby="room-board-title" className="od-board" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div
         style={{
           display: 'flex',
@@ -144,11 +145,8 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
       >
         <div>
           <h2 id="room-board-title" style={{ fontSize: '1.15rem', fontWeight: 700 }}>
-            Status Kamar
+            Status Kamar <span style={{ ...countStyle, fontSize: '0.875rem', marginLeft: '0.25rem' }}>{rooms.length}</span>
           </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-            {rooms.length} kamar. Pantau pembayaran, kirim tagihan, dan terbitkan kuitansi.
-          </p>
         </div>
 
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -183,7 +181,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
 
       <div className="kobo-table-wrap">
         <table className="kobo-table kobo-table--stack" role="table">
-          <caption style={{ captionSide: 'top', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+          <caption className="od-sr">
             Daftar kamar {kosName} per lantai beserta penghuni, jatuh tempo, dan status pembayaran.
           </caption>
           <thead role="rowgroup">

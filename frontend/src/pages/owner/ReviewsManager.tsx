@@ -196,7 +196,7 @@ export const ReviewsManager: React.FC = () => {
 
   return (
     <div className="app-container owner-page rv-page">
-      <OwnerPageHeader title="Ulasan" subtitle={selectedKos?.name} />
+      <OwnerPageHeader title="Ulasan" />
 
       {!selectedKos && <p className="rv-empty">Belum ada properti. Daftarkan kos pertama Anda di menu Kelola Kos.</p>}
 

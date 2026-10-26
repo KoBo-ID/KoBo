@@ -97,19 +97,11 @@
   background-color: var(--primary-light); color: var(--primary);
   padding: 0.2rem 0.55rem; border-radius: var(--radius-badge);
 }
-.os-site-link {
-  display: none; align-items: center; gap: 0.4rem; flex-shrink: 0;
-  min-height: 40px; padding: 0 0.75rem; border-radius: var(--radius-sm);
-  font-size: 0.85rem; font-weight: 600; color: var(--text-muted);
-  transition: background-color 150ms ease, color 150ms ease;
-}
-.os-site-link:hover { background-color: var(--bg-muted); color: var(--text-main); }
-
 .os-main-content { flex: 1; }
 .os-status { min-height: 40vh; display: flex; align-items: center; justify-content: center; }
 .os-status span { font-size: 0.85rem; color: var(--text-muted); }
 
-.os-nav__link:focus-visible, .os-logout:focus-visible, .os-site-link:focus-visible, .os-brand:focus-visible {
+.os-nav__link:focus-visible, .os-logout:focus-visible, .os-brand:focus-visible {
   outline: 2px solid var(--primary); outline-offset: 2px;
 }
 
@@ -119,8 +111,21 @@
   .os-mobile-header { display: none; }
   .os-topbar { top: 0; padding: 0 1.5rem; height: var(--header-height); }
   .os-topbar__picker { display: none; }
-  .os-site-link { display: inline-flex; }
 }
 @media (max-width: 899px) {
   .os-topbar__name { display: none; }
 }
+
+/* Nav counts: what is waiting on the active kos. Dark text on a status tint, both pass 4.5:1. */
+.os-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.os-nav__count, .os-dock-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.35rem; height: 1.35rem; padding: 0 0.4rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+  background: var(--status-overdue-bg); color: var(--status-overdue-text);
+  border: 1px solid var(--status-overdue-border);
+}
+.os-nav__count { margin-left: auto; }
+.os-dock-icon { position: relative; display: inline-flex; }
+.os-dock-count { position: absolute; top: -0.45rem; left: 55%; min-width: 1.15rem; height: 1.15rem; font-size: 0.6875rem; }

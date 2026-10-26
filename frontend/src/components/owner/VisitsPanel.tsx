@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { diffDays, todayWIB } from '@kobo/shared/domain';
 import { Button } from '../ui/Button';
@@ -33,25 +33,17 @@ export const VisitsPanel: React.FC<{ kosId: string; promoted: boolean }> = ({ ko
   const all = visits.data ?? [];
   const rows = promoted ? all.filter((v) => v.status === 'SCHEDULED') : all.filter((v) => v.status === 'COMPLETED');
 
+  // Nothing scheduled and no history: no section at all (errors still show).
+  if (rows.length === 0 && !visits.isError && !complete.isError) return null;
+
   return (
     <section aria-labelledby="visits-title" className="od-section">
       <h2 id="visits-title" className="od-section__title">
-        {promoted && (
-          // Amber while surveys are waiting; red once any survey's day has passed without being marked done.
-          <AlertTriangle size={18} aria-hidden="true" color={rows.some((v) => diffDays(v.date, today) > 0) ? 'var(--status-overdue)' : 'var(--status-due)'} />
-        )}
         Jadwal survey
-        {promoted && rows.length > 0 && <span className="od-count">{rows.length}</span>}
+        {promoted && <span className="od-count">{rows.length}</span>}
       </h2>
       {visits.isError && <Notice tone="error">Gagal memuat jadwal survey.</Notice>}
       {complete.isError && <Notice tone="error">{messageForError(complete.error)}</Notice>}
-      {!promoted && visits.isSuccess && (
-        <p className="od-empty" style={{ marginBottom: rows.length > 0 ? '0.75rem' : 0 }}>
-          {all.some((v) => v.status !== 'CANCELLED')
-            ? 'Tidak ada survey yang menunggu. Survey yang sudah selesai ada di bawah.'
-            : 'Belum ada survey. Calon penghuni yang menjadwalkan kunjungan akan muncul di sini, lengkap dengan tombol untuk menandainya selesai.'}
-        </p>
-      )}
       {rows.length > 0 && (
         <ul className="od-list">
           {rows.map((v) => {

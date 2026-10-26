@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { STATUS_META } from '../../components/owner/RoomOccupancyBoard';
 import '../../styles/owner-kos.css';
-import { Plus, Edit, Trash2, Eye, MapPin, CheckCircle2, Footprints, Images, MoreHorizontal } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, MapPin, CheckCircle2, Footprints, Images, MoreHorizontal, ScrollText } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { BoardRoom, OwnerKos } from '../../../../backend/src/trpc/router';
 import { useAppStore } from '../../store/AppContext';
@@ -10,6 +10,7 @@ import { messageForError } from '../../lib/errors';
 import { formatRupiah, useOwnerWorkspace } from '../../lib/ownerWorkspace';
 import { KosFormModal } from '../../components/owner/KosFormModal';
 import { KosPhotosModal } from '../../components/owner/KosPhotosModal';
+import { KosRulesModal } from '../../components/owner/KosRulesModal';
 import { WaitlistPanel } from '../../components/owner/WaitlistPanel';
 import { Button } from '../../components/ui/Button';
 import { Popover } from '../../components/ui/Popover';
@@ -51,6 +52,7 @@ export const KosManager: React.FC = () => {
   const [roomModalKosId, setRoomModalKosId] = useState<string | null>(null);
   const [editingRoom, setEditingRoom] = useState<BoardRoom | null>(null);
   const [photosKos, setPhotosKos] = useState<OwnerKos | null>(null);
+  const [rulesKos, setRulesKos] = useState<OwnerKos | null>(null);
   const [confirmKosDelete, setConfirmKosDelete] = useState(false);
   const [confirmRoomId, setConfirmRoomId] = useState<string | null>(null);
 
@@ -111,7 +113,6 @@ export const KosManager: React.FC = () => {
     <div className="app-container owner-page owner-kos">
       <OwnerPageHeader
         title="Kelola properti"
-        subtitle={kos?.name}
         actions={
           <Button variant="primary" size="md" onClick={openCreate} icon={<Plus size={16} />} style={{ minHeight: 40 }}>
             Tambah kos
@@ -194,6 +195,16 @@ export const KosManager: React.FC = () => {
                       }}
                     >
                       <Images size={15} /> Kelola foto
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        close();
+                        setRulesKos(kos);
+                      }}
+                    >
+                      <ScrollText size={15} /> Tata tertib
                     </button>
                     <Link to={`/kos/${kos.id}`} role="menuitem" className="kobo-menu__link" onClick={close}>
                       <Eye size={15} /> Lihat halaman publik
@@ -382,6 +393,7 @@ export const KosManager: React.FC = () => {
       )}
 
       {photosKos && <KosPhotosModal kosId={photosKos.id} kosName={photosKos.name} onClose={() => setPhotosKos(null)} />}
+      {rulesKos && <KosRulesModal kosId={rulesKos.id} kosName={rulesKos.name} onClose={() => setRulesKos(null)} />}
 
       {/* Add / Edit Room Modal */}
       {roomModalKosId && (

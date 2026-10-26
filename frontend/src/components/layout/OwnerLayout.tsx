@@ -7,12 +7,12 @@ import {
   Star,
   LogOut,
   ChevronDown,
-  ExternalLink,
 } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
 import { useAuthActions, useSession } from '../../lib/session';
 import { useTRPC } from '../../lib/trpc';
 import { pickKos } from '../../lib/ownerWorkspace';
+import { useOwnerBadges } from '../../lib/ownerBadges';
 import type { OwnerWorkspace } from '../../lib/ownerWorkspace';
 import { ErrorState } from '../ui/QueryState';
 import { MobileNav } from './MobileNav';
@@ -34,6 +34,7 @@ export const OwnerLayout: React.FC = () => {
   };
   const navSearch = selectedKos ? `?kos=${encodeURIComponent(selectedKos.id)}` : '';
   const workspace: OwnerWorkspace = { kosList, selectedKos, selectKos };
+  const badges = useOwnerBadges(selectedKos?.id);
   const { me } = useSession();
   const { logout } = useAuthActions();
   const navigate = useNavigate();
@@ -114,9 +115,9 @@ export const OwnerLayout: React.FC = () => {
   );
 
   const navItems = [
-    { to: '/owner/dashboard', label: 'Papan okupansi', icon: <LayoutDashboard size={18} /> },
-    { to: '/owner/kos', label: 'Kelola properti', icon: <Home size={18} /> },
-    { to: '/owner/reviews', label: 'Ulasan', icon: <Star size={18} /> },
+    { to: '/owner/dashboard', label: 'Papan okupansi', icon: <LayoutDashboard size={18} />, count: badges.dashboard, hint: 'perlu tindakan' },
+    { to: '/owner/kos', label: 'Kelola properti', icon: <Home size={18} />, count: 0, hint: '' },
+    { to: '/owner/reviews', label: 'Ulasan', icon: <Star size={18} />, count: badges.reviews, hint: 'belum dibalas' },
   ];
 
   return (
@@ -138,6 +139,12 @@ export const OwnerLayout: React.FC = () => {
             >
               {item.icon}
               <span>{item.label}</span>
+              {item.count > 0 && (
+                <span className="os-nav__count">
+                  {item.count}
+                  <span className="os-sr"> {item.hint}</span>
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -174,10 +181,6 @@ export const OwnerLayout: React.FC = () => {
               </span>
             )}
           </div>
-          <Link to="/" className="os-site-link">
-            Lihat situs
-            <ExternalLink size={15} aria-hidden="true" />
-          </Link>
         </div>
 
         <main className="os-main-content">
@@ -193,7 +196,7 @@ export const OwnerLayout: React.FC = () => {
         </main>
       </div>
 
-      <MobileNav />
+      <MobileNav ownerBadges={badges} />
     </div>
   );
 };

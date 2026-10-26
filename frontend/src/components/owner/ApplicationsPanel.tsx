@@ -28,6 +28,8 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
   const act = (applicationId: string, decision: 'APPROVE' | 'REJECT', applicantName: string) => setConfirming({ applicationId, decision, name: applicantName });
 
   const count = applications.data?.length ?? 0;
+  // Nothing waiting: the dashboard shows one all-clear line instead of an empty section.
+  if (applications.isSuccess && count === 0) return null;
 
   return (
     <section aria-labelledby="owner-applications-title" className="od-section">
@@ -61,9 +63,6 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
       )}
       {applications.isError && <Notice tone="error">Gagal memuat pengajuan sewa.</Notice>}
       {decide.isError && <div style={{ marginBottom: '0.75rem' }}><Notice tone="error">{messageForError(decide.error)}</Notice></div>}
-      {applications.isSuccess && count === 0 && (
-        <p className="od-empty">Belum ada pengajuan. Saat calon penghuni mengajukan sewa, Anda bisa menerima atau menolaknya di sini.</p>
-      )}
       {applications.isSuccess && count > 0 && (
         <ul className="od-list">
           {applications.data.map((application) => (

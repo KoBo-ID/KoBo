@@ -52,7 +52,7 @@ export const WaitlistPanel: React.FC<{ kosId: string; kosName: string }> = ({ ko
       {remove.isError && <Notice tone="error">{messageForError(remove.error)}</Notice>}
       {list.isSuccess && rows.length === 0 && (
         <p className="owner-kos__section-hint">
-          Belum ada yang mengantre. Calon penghuni masuk ke daftar tunggu saat semua kamar terisi, dan Anda bisa melihat urutannya di sini.
+          Belum ada yang mengantre. Pengantre muncul di sini saat semua kamar terisi.
         </p>
       )}
       {rows.length > 0 && (
