@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   LayoutDashboard,
-  Users,
+  MessageCircle,
   FileText,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
@@ -20,7 +20,7 @@ export const OwnerLogin: React.FC = () => {
   const isDemo = !!me?.user.isDemo;
 
   // One CTA, three meanings: sign in, open the workspace, or self-register as an owner.
-  const ctaLabel = !me ? 'Masuk untuk Mendaftar sebagai Pemilik' : me.isOwner ? 'Lanjut ke Dasbor Pemilik' : 'Daftarkan diri sebagai pemilik';
+  const ctaLabel = !me ? 'Masuk untuk mendaftar' : me.isOwner ? 'Lanjut ke dasbor pemilik' : 'Daftarkan diri sebagai pemilik';
   const onCta = () => {
     if (!me) openAuthModal();
     else if (me.isOwner) navigate('/owner/dashboard');
@@ -28,57 +28,35 @@ export const OwnerLogin: React.FC = () => {
   };
 
   const features = [
-    { icon: <LayoutDashboard size={16} />, text: 'Papan Okupansi 5 Status Kamar' },
-    { icon: <Users size={16} />, text: 'Tagihan WhatsApp Sekali Klik' },
-    { icon: <FileText size={16} />, text: 'Kuitansi Resmi Digital 1 Klik' },
+    { icon: <LayoutDashboard size={16} />, text: 'Papan okupansi dengan 5 status kamar' },
+    { icon: <MessageCircle size={16} />, text: 'Tagihan WhatsApp sekali klik' },
+    { icon: <FileText size={16} />, text: 'Kuitansi digital sekali klik' },
   ];
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: 'var(--bg-page)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem 1.25rem',
-      }}
-    >
-      <div style={{ width: '100%', maxWidth: '480px' }}>
-        {/* Brand Header */}
-        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <div style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.025em', marginBottom: '0.25rem' }}>
-            Ko<span style={{ color: 'var(--primary)' }}>Bo</span> <span style={{ color: 'var(--primary)' }}>Mitra</span>
-          </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-            Portal Pengelola Kos
-          </p>
-        </div>
-
-        {/* Login Card */}
+    <div className="app-container" style={{ paddingTop: '3rem', paddingBottom: '3rem' }}>
+      {/* Top-anchored: the navbar and footer already frame the page, and a fixed
+          top offset keeps the heading in the same place at 650px and 900px tall. */}
+      <div style={{ width: '100%', maxWidth: '28rem', marginInline: 'auto' }}>
         <div
           style={{
             backgroundColor: 'var(--bg-surface)',
             borderRadius: 'var(--radius-card)',
             border: '1px solid var(--border-subtle)',
             boxShadow: 'var(--shadow-sm)',
-            padding: '2.5rem',
+            padding: 'clamp(1.5rem, 5vw, 2rem)',
           }}
         >
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.025em', marginBottom: '0.5rem' }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.25, marginBottom: '1.5rem' }}>
             Masuk ke Portal Pemilik Kos
           </h1>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '2rem' }}>
-            Daftarkan akun Anda sebagai pemilik, lalu kelola kamar, tagihan, dan kuitansi kos Anda dari satu dashboard. Gratis.
-          </p>
-
           {/* Feature highlights */}
           <div
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.6rem',
-              marginBottom: '2rem',
+              gap: '0.75rem',
+              marginBottom: '1.5rem',
             }}
           >
             {features.map((f, i) => (
@@ -113,16 +91,14 @@ export const OwnerLogin: React.FC = () => {
 
           <p
             style={{
-              textAlign: 'center',
-              fontSize: '0.75rem',
+              fontSize: '0.8125rem',
               color: 'var(--text-muted)',
               marginTop: '1rem',
             }}
           >
-            {isDemo && !me?.isOwner ? 'Akun demo tidak dapat didaftarkan. Masuk dengan akun Anda sendiri.' : 'Akun Anda tetap sama untuk mencari kos dan mengelola kos.'}
+            {isDemo && !me?.isOwner ? 'Akun ini tidak dapat didaftarkan. Masuk dengan akun Anda sendiri.' : 'Akun Anda tetap sama untuk mencari kos dan mengelola kos.'}
           </p>
         </div>
-
       </div>
     </div>
   );
