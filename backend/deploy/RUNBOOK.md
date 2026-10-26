@@ -141,6 +141,7 @@ Railway service variables (in addition to `DATABASE_URL`, `BETTER_AUTH_SECRET`, 
 | `BETTER_AUTH_URL` | `https://<vercel-domain>` (the production domain or its custom domain; no trailing slash, no `/api`) |
 | `AUTH_IP_HEADERS` | `x-forwarded-for` (no Cloudflare in front, so the default `cf-connecting-ip` never resolves and all clients share one rate-limit bucket, e.g. 3 verification resends per minute for everyone) |
 | `TRUSTED_ORIGINS` | optional, comma-separated, e.g. `https://kobo-git-main-<team>.vercel.app`; only needed to sign in on preview domains |
+| `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` | optional, both or neither. Google Cloud OAuth client (Web application), Authorized redirect URI `https://<vercel-domain>/api/auth/callback/google` and the same origin as Authorized JavaScript origin |
 | `RESEND_API_KEY` | Resend API key (sending access is enough) |
 | `EMAIL_FROM` | `KoBo <no-reply@<verified domain>>`. Never `onboarding@resend.dev`: Resend delivers it only to the account owner (others fail with 403 and the outbox row ends `FAILED`) and it lands in spam |
 | `EMAIL_REPLY_TO` | optional, a mailbox someone reads |

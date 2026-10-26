@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { authEnv, paymentEnv } from '../../src/env.ts'
+import { authEnv, googleEnv, paymentEnv } from '../../src/env.ts'
 
 const secret = 'test-secret-test-secret-test-secret-0123456789'
 const prod = (extra: Record<string, string>) => ({ NODE_ENV: 'production', BETTER_AUTH_SECRET: secret, ...extra })
@@ -145,5 +145,21 @@ describe('paymentEnv', () => {
     expect(() => paymentEnv({ NODE_ENV: 'production', PAYMENT_PROVIDER: 'mock', ALLOW_MOCK_PAYMENTS: '1', XENDIT_API_BASE_URL: 'https://proxy.example.com' })).toThrow(
       /XENDIT_API_BASE_URL/,
     )
+  })
+})
+
+describe('googleEnv', () => {
+  it('is off when neither variable is set (blank counts as unset)', () => {
+    expect(googleEnv({})).toBeNull()
+    expect(googleEnv({ GOOGLE_CLIENT_ID: ' ', GOOGLE_CLIENT_SECRET: '' })).toBeNull()
+  })
+
+  it('returns the config when both are set', () => {
+    expect(googleEnv({ GOOGLE_CLIENT_ID: ' id.apps.googleusercontent.com ', GOOGLE_CLIENT_SECRET: 'GOCSPX-x' })).toEqual({ clientId: 'id.apps.googleusercontent.com', clientSecret: 'GOCSPX-x' })
+  })
+
+  it('fails fast when exactly one is set, naming the one that is present', () => {
+    expect(() => googleEnv({ GOOGLE_CLIENT_ID: 'id' })).toThrow(/only GOOGLE_CLIENT_ID is set/)
+    expect(() => googleEnv({ GOOGLE_CLIENT_SECRET: 'secret' })).toThrow(/only GOOGLE_CLIENT_SECRET is set/)
   })
 })

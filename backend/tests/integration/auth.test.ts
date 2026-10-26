@@ -182,7 +182,7 @@ describe('demo login', () => {
     expect(res.status).toBe(200)
     expect(cookieFrom(res)).toContain('session_token=')
     const session = await me(cookieFrom(res))
-    expect(session?.user.email).toBe('demo-owner@kobo.test')
+    expect(session?.user.email).toBe('ratna.hendrawan@kobo.test')
     expect(session?.user.isDemo).toBe(true)
     expect(session?.isOwner).toBe(true)
     expect(session?.ownerProfileId).toBeTruthy()
@@ -191,7 +191,7 @@ describe('demo login', () => {
 
   it('signs in the campus-verified demo student, who is not an owner', async () => {
     const session = await me(await demoCookie('student'))
-    expect(session?.user.email).toBe('demo-student@kobo.test')
+    expect(session?.user.email).toBe('dimas.pratama@kobo.test')
     expect(session?.isOwner).toBe(false)
     expect(session?.ownerProfileId).toBeNull()
     expect(session?.campusVerified).toBe(true)
@@ -219,7 +219,7 @@ describe('demo guards', () => {
     })
     expect(res.status).toBe(403)
     expect(((await res.json()) as { code: string }).code).toBe('DEMO_ACCOUNT_READONLY')
-    const accounts = await prisma.account.count({ where: { user: { email: 'demo-owner@kobo.test' } } })
+    const accounts = await prisma.account.count({ where: { user: { email: 'ratna.hendrawan@kobo.test' } } })
     expect(accounts).toBe(0) // still no way to sign in with a password
   })
 
@@ -234,11 +234,11 @@ describe('demo guards', () => {
       expect(res.status, path).toBe(403)
       expect(((await res.json()) as { code: string }).code, path).toBe('DEMO_ACCOUNT_READONLY')
     }
-    expect(await prisma.user.count({ where: { email: 'demo-student@kobo.test' } })).toBe(1)
+    expect(await prisma.user.count({ where: { email: 'dimas.pratama@kobo.test' } })).toBe(1)
   })
 
   it('does not email password-reset links for demo accounts', async () => {
-    const res = await request('/api/auth/request-password-reset', { body: { email: 'demo-owner@kobo.test', redirectTo: '/' } })
+    const res = await request('/api/auth/request-password-reset', { body: { email: 'ratna.hendrawan@kobo.test', redirectTo: '/' } })
     expect(res.status).toBe(403)
     expect(await prisma.emailOutbox.count()).toBe(0)
   })

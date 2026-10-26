@@ -58,7 +58,23 @@ export function authEnv(env: NodeJS.ProcessEnv = process.env) {
     trustedOrigins: [...new Set([...(production ? [] : ['http://localhost:5173']), ...parseList(env.TRUSTED_ORIGINS).map((o) => o.replace(/\/+$/, ''))])],
     // Unset: createAuth's default (cf-connecting-ip in production). Behind Vercel -> Railway use x-forwarded-for.
     ipAddressHeaders: ipHeaders.length > 0 ? ipHeaders : undefined,
+    // Optional Google sign-in; throws when only one of the two variables is set, so a half-configured deploy fails at boot.
+    google: googleEnv(env) ?? undefined,
   }
+}
+
+/**
+ * Google sign-in is optional. Both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET set -> enabled; neither -> off (null);
+ * exactly one -> refuse to start, because that is always a half-finished deployment.
+ */
+export function googleEnv(env: NodeJS.ProcessEnv = process.env): { clientId: string; clientSecret: string } | null {
+  const clientId = env.GOOGLE_CLIENT_ID?.trim() ?? ''
+  const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim() ?? ''
+  if (!clientId && !clientSecret) return null
+  if (!clientId || !clientSecret) {
+    throw new Error(`[auth] Google sign-in needs both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET; only ${clientId ? 'GOOGLE_CLIENT_ID' : 'GOOGLE_CLIENT_SECRET'} is set.`)
+  }
+  return { clientId, clientSecret }
 }
 
 type XenditBaseConfig = {

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { User, Lock, Mail, Phone, Building2, GraduationCap, CheckCircle2, MailCheck } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Notice } from '../components/ui/Notice';
 import { useAppStore } from '../store/AppContext';
-import { useAuthActions } from '../lib/session';
+import { GOOGLE_RETURN_FLAG, takeGoogleReturnError, useAuthActions } from '../lib/session';
 import { useTRPC } from '../lib/trpc';
 import { messageForError } from '../lib/errors';
 
@@ -31,6 +31,15 @@ const TITLES: Record<View, string> = {
   'forgot-sent': 'Cek email Anda',
 };
 
+const GoogleMark: React.FC = () => (
+  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+    <path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.01 24.01 0 0 0 0 21.56l7.98-6.19z" />
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+  </svg>
+);
+
 const linkButton: React.CSSProperties = { color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' };
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
@@ -41,8 +50,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const trpc = useTRPC();
 
   const [view, setView] = useState<View>('login');
-  const [busy, setBusy] = useState<'form' | 'student' | 'owner' | 'resend' | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<'form' | 'student' | 'owner' | 'resend' | 'google' | null>(null);
+  const [error, setError] = useState<string | null>(takeGoogleReturnError);
+  const providers = useQuery({ ...trpc.auth.providers.queryOptions(), staleTime: Infinity });
   const [notice, setNotice] = useState<string | null>(null);
 
   const [name, setName] = useState('');
@@ -61,6 +71,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     if (me?.isOwner) navigate('/owner/dashboard');
   };
 
+  /** Full-page round trip to Google and back to this page. better-auth stays out of the initial chunk. */
+  const handleGoogle = async () => {
+    setError(null);
+    setBusy('google');
+    try {
+      const { authClient } = await import('../lib/authClient');
+      const here = new URL(window.location.href);
+      for (const key of [GOOGLE_RETURN_FLAG, 'error', 'error_description']) here.searchParams.delete(key);
+      const failed = new URL(here);
+      failed.searchParams.set(GOOGLE_RETURN_FLAG, 'gagal');
+      const res = await authClient.signIn.social({ provider: 'google', callbackURL: here.href, errorCallbackURL: failed.href });
+      if (res.error) throw new Error(res.error.message);
+    } catch {
+      setError('Masuk dengan Google belum berhasil. Silakan coba lagi.');
+      setBusy(null);
+    }
+  };
+
   const handleDemo = async (as: 'student' | 'owner') => {
     setBusy(as);
     setError(null);
@@ -70,7 +98,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       setBusy(null);
       return;
     }
-    await finish(as === 'owner' ? 'Masuk sebagai Demo Pemilik.' : 'Masuk sebagai Demo Mahasiswa.');
+    await finish(as === 'owner' ? 'Masuk sebagai Pemilik.' : 'Masuk sebagai Mahasiswa.');
     setBusy(null);
   };
 
@@ -217,7 +245,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {errorBanner}
 
-          {/* One-click demo accounts: reviewers should never need to register or open an inbox. */}
+          {/* One-click sign-in with the seeded accounts: no registration or inbox needed. */}
           <div
             style={{
               display: 'flex',
@@ -237,7 +265,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               disabled={busy !== null}
               onClick={() => handleDemo('student')}
             >
-              Masuk sebagai Demo Mahasiswa
+              Masuk sebagai Mahasiswa
             </Button>
             <Button
               variant="outline"
@@ -248,13 +276,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               style={{ backgroundColor: 'var(--bg-surface)' }}
               onClick={() => handleDemo('owner')}
             >
-              Masuk sebagai Demo Pemilik
+              Masuk sebagai Pemilik
             </Button>
           </div>
 
+          {providers.data?.google && (
+            <Button
+              variant="outline"
+              fullWidth
+              icon={<GoogleMark />}
+              isLoading={busy === 'google'}
+              disabled={busy !== null}
+              style={{ minHeight: '44px', backgroundColor: 'var(--bg-surface)' }}
+              onClick={handleGoogle}
+            >
+              Lanjutkan dengan Google
+            </Button>
+          )}
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
             <span style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
-            <span>atau dengan email</span>
+            <span>atau</span>
             <span style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
           </div>
 

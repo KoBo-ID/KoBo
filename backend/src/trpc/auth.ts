@@ -9,7 +9,14 @@ export interface MeResult {
   campusVerified: boolean
 }
 
+export interface ProvidersResult {
+  google: boolean
+}
+
 export const authRouter = router({
+  /** Which social sign-in buttons the UI may show. Booleans only, never client ids or secrets. */
+  providers: publicProcedure.query(({ ctx }): ProvidersResult => ({ google: Boolean(ctx.auth.options.socialProviders?.google) })),
+
   /** The signed-in user, or null. The frontend derives persona and route guards from this. */
   me: publicProcedure.query(async ({ ctx }): Promise<MeResult | null> => {
     const session = await ctx.getSession()

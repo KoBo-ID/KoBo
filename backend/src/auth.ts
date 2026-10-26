@@ -30,18 +30,20 @@ export interface AuthOptions {
   trustedOrigins?: string[]
   /** Headers the client IP is read from, in order. Defaults to defaultIpHeaders() for the current NODE_ENV. */
   ipAddressHeaders?: string[]
+  /** Google sign-in. Omitted: the provider is not registered at all. Built by googleEnv(). */
+  google?: { clientId: string; clientSecret: string }
 }
 
 /** Production trusts only Cloudflare's header. X-Forwarded-For is client-controlled unless a proxy overwrites it, so by default it is accepted in dev only. */
 const defaultIpHeaders = () => (process.env.NODE_ENV === 'production' ? ['cf-connecting-ip'] : ['cf-connecting-ip', 'x-forwarded-for'])
 
 /** Paths a demo account may never use. Session-based; checked against the caller's user. */
-const DEMO_BLOCKED_PATHS = new Set(['/change-password', '/set-password', '/change-email', '/delete-user', '/campus-email/request'])
+const DEMO_BLOCKED_PATHS = new Set(['/change-password', '/set-password', '/change-email', '/delete-user', '/campus-email/request', '/link-social', '/unlink-account'])
 /** Paths that act on an account identified by an email in the body rather than by session. */
 const DEMO_BLOCKED_BY_EMAIL = new Set(['/request-password-reset', '/send-verification-email'])
 
 const demoForbidden = () =>
-  new APIError('FORBIDDEN', { message: 'Akun demo bersifat hanya-baca: kata sandi, email, dan penghapusan akun tidak dapat diubah.', code: 'DEMO_ACCOUNT_READONLY' })
+  new APIError('FORBIDDEN', { message: 'Akun ini bersifat hanya-baca: kata sandi, email, dan penghapusan akun tidak dapat diubah.', code: 'DEMO_ACCOUNT_READONLY' })
 
 const invalidCampusEmail = () =>
   new APIError('BAD_REQUEST', { message: 'Gunakan email kampus yang berakhiran .ac.id.', code: 'INVALID_CAMPUS_EMAIL' })
@@ -57,7 +59,7 @@ function koboPlugin(prisma: PrismaClient, secret: string): BetterAuthPlugin {
       demoLogin: createAuthEndpoint('/demo-login', { method: 'POST', body: z.object({ as: z.enum(['student', 'owner']) }) }, async (ctx) => {
         const found = await ctx.context.internalAdapter.findUserByEmail(DEMO_EMAILS[ctx.body.as])
         const user = found?.user
-        if (!user || !(user as { isDemo?: boolean }).isDemo) throw new APIError('NOT_FOUND', { message: 'Akun demo belum tersedia.', code: 'DEMO_NOT_SEEDED' })
+        if (!user || !(user as { isDemo?: boolean }).isDemo) throw new APIError('NOT_FOUND', { message: 'Masuk cepat belum tersedia.', code: 'DEMO_NOT_SEEDED' })
         const session = await ctx.context.internalAdapter.createSession(user.id)
         await setSessionCookie(ctx, { session, user })
         return ctx.json({ ok: true })
@@ -105,7 +107,7 @@ function koboPlugin(prisma: PrismaClient, secret: string): BetterAuthPlugin {
   }
 }
 
-export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAddressHeaders = defaultIpHeaders() }: AuthOptions) {
+export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAddressHeaders = defaultIpHeaders(), google }: AuthOptions) {
   return betterAuth({
     baseURL,
     secret,
@@ -139,6 +141,13 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAdd
       },
     },
 
+    // Google verifies the address, so a student who first registered with email + password is linked, not duplicated.
+    // better-auth >= 1.6.11 (requireLocalEmailVerified defaults to true) refuses to link into a local account whose email
+    // is still unverified (GHSA-g38m-r43w-p2q7), so a squatted unverified signup cannot absorb a victim's Google login.
+    // Linking never touches campusEmail: the .ac.id discount stays its own explicit step.
+    ...(google ? { socialProviders: { google: { clientId: google.clientId, clientSecret: google.clientSecret, prompt: 'select_account' as const } } } : {}),
+    account: { accountLinking: { enabled: true, trustedProviders: ['google'], requireLocalEmailVerified: true } },
+
     advanced: {
       ipAddress: { ipAddressHeaders },
     },
@@ -152,6 +161,18 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAdd
         '/send-verification-email': { window: 60, max: 3 },
         '/campus-email/request': { window: 60, max: 3 },
         '/demo-login': { window: 60, max: 60 },
+      },
+    },
+
+    databaseHooks: {
+      account: {
+        create: {
+          // Implicit linking at the OAuth callback bypasses the path guards above, so refuse the insert itself for a demo user.
+          before: async (account) => {
+            const target = await prisma.user.findUnique({ where: { id: account.userId }, select: { isDemo: true } })
+            if (target?.isDemo) throw demoForbidden()
+          },
+        },
       },
     },
 
