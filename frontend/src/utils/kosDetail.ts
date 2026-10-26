@@ -19,6 +19,7 @@ export function kosDetailToKos(d: KosDetail): Kos {
   return {
     ...base,
     address: d.address,
+    applicationFee: d.applicationFee,
     privateAmenities: d.privateAmenities,
     sharedAmenities: d.sharedAmenities,
     campusProximity: {

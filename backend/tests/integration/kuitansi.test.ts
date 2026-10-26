@@ -28,7 +28,7 @@ describe('kuitansi.get', () => {
       receiptNo: formatReceiptNo(paid.receiptNumber, pay.paidAt!),
       method: 'MANUAL',
       amount: booked.invoice.amount,
-      payer: { name: 'Demo Mahasiswa' },
+      payer: { name: 'Dimas Pratama' },
       kos: { id: room.kosId, name: room.kos.name },
       room: { roomNumber: room.roomNumber },
     })

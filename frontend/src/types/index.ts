@@ -106,6 +106,7 @@ export interface Kos {
   priceMonthlyStart: number;
   studentDiscountAmount: number;
   studentDiscountLabel: string;
+  applicationFee: number;
   images: string[];
   privateAmenities: string[];
   sharedAmenities: string[];

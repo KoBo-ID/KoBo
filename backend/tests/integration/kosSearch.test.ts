@@ -2,7 +2,7 @@ import { haversineMeters } from '@kobo/shared/domain'
 import { PRICE_MAX, SEARCH_LIMIT } from '@kobo/shared/search'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetDb } from '../../src/db/seed.ts'
-import { caller, prisma } from '../helpers.ts'
+import { caller, newStudent, prisma } from '../helpers.ts'
 
 beforeEach(() => resetDb(prisma))
 
@@ -115,6 +115,23 @@ describe('kos.search', () => {
     expect(res.every((k) => k.availableRooms > 0)).toBe(true)
     expect(res.map((k) => k.id)).not.toContain(full.id)
     expect(res.length).toBe(all.filter((k) => k.id !== full.id && k.availableRooms > 0).length)
+  })
+
+  it('surveyOnly excludes a kos whose bookable rooms all have live offers', async () => {
+    const target = (await caller.kos.search({})).find((k) => k.availableRooms > 0)!
+    const detail = await caller.kos.detail({ id: target.id })
+    const rooms = detail.rooms.filter((r) => r.status === 'vacant' && !r.reservedForWaitlist)
+    expect(rooms).toHaveLength(target.availableRooms)
+    for (const room of rooms) {
+      const student = await newStudent()
+      await prisma.waitlistEntry.create({
+        data: { kosId: target.id, userId: student.id, status: 'OFFERED', offeredRoomId: room.id, offerExpiresAt: new Date(Date.now() + 3600_000) },
+      })
+    }
+    expect((await caller.kos.search({ surveyOnly: true })).map((k) => k.id)).not.toContain(target.id)
+    expect((await caller.kos.search({})).find((k) => k.id === target.id)?.availableRooms).toBe(0)
+    await prisma.waitlistEntry.updateMany({ where: { kosId: target.id, status: 'OFFERED' }, data: { offerExpiresAt: new Date(Date.now() - 1000) } })
+    expect((await caller.kos.search({ surveyOnly: true })).map((k) => k.id)).toContain(target.id)
   })
 
   it('q is a location match: district, city and address, case-insensitively', async () => {

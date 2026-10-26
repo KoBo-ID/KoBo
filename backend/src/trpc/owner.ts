@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { haversineMeters } from '@kobo/shared/domain'
-import { idInput, kosCreateInput, kosIdOnly, kosUpdateInput, roomCreateInput, roomDeleteInput, roomUpdateInput, tenancyEndInput } from '@kobo/shared/schemas'
+import { idInput, kosCreateInput, kosIdOnly, kosUpdateInput, roomCreateInput, roomDeleteInput, roomUpdateInput, rulesSetInput, tenancyEndInput } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
 import type { PrismaClient } from '../db/client.ts'
 import { Prisma } from '../generated/prisma/client.ts'
@@ -106,7 +106,7 @@ export const ownerRouter = router({
   becomeOwner: authedProcedure.mutation(async ({ ctx }): Promise<{ ownerProfileId: string }> => {
     const user = await ctx.prisma.user.findUnique({ where: { id: ctx.user.id }, select: { isDemo: true } })
     if (!user) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Silakan masuk terlebih dahulu.' })
-    if (user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Akun demo bersifat hanya-baca dan tidak dapat didaftarkan sebagai pemilik.' })
+    if (user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Akun ini bersifat hanya-baca dan tidak dapat didaftarkan sebagai pemilik.' })
     const profile = await ctx.prisma.ownerProfile.upsert({ where: { userId: ctx.user.id }, update: {}, create: { userId: ctx.user.id }, select: { id: true } })
     return { ownerProfileId: profile.id }
   }),
@@ -260,7 +260,7 @@ export const ownerRouter = router({
     /** Refused while any live tenancy exists; demo accounts never delete (spec section 5). */
     delete: ownerProcedure.input(kosIdOnly).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
       const user = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id }, select: { isDemo: true } })
-      if (user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Akun demo bersifat hanya-baca dan tidak dapat menghapus kos.' })
+      if (user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Akun ini bersifat hanya-baca dan tidak dapat menghapus kos.' })
       const busy = await ctx.prisma.tenancy.count({ where: { room: { kosId: input.kosId }, ...live(new Date()) } })
       if (busy > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kos ini masih memiliki sewa atau booking aktif. Akhiri sewa tersebut terlebih dahulu.' })
       if ((await ctx.prisma.rentalApplication.count({ where: { room: { kosId: input.kosId }, status: 'PENDING' } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kos ini masih memiliki pengajuan sewa yang perlu diputuskan.' })
@@ -315,6 +315,27 @@ export const ownerRouter = router({
       if ((await ctx.prisma.paymentRefund.count({ where: { payment: { invoice: { tenancy: { roomId: room.id } } } } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kamar ini memiliki riwayat pengembalian dana yang harus tetap tersimpan, sehingga tidak dapat dihapus.' })
       await ctx.prisma.room.delete({ where: { id: room.id } })
       return { id: room.id }
+    }),
+  }),
+
+  rules: router({
+    /** Replaces the kos' house rules. Ids are cuids, so `tier` carries the order shown on the public page. */
+    set: ownerProcedure.input(rulesSetInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
+      const { kosId, groups } = input
+      await ctx.prisma.$transaction([
+        ctx.prisma.houseRule.deleteMany({ where: { kosId } }),
+        ctx.prisma.houseRule.createMany({
+          data: groups.map((g, i) => ({
+            kosId,
+            tier: i + 1,
+            categoryTitle: g.categoryTitle,
+            rules: g.rules,
+            penaltyAmount: g.penaltyAmount ?? null,
+            penaltyClause: g.penaltyClause || null,
+          })),
+        }),
+      ])
+      return { id: kosId }
     }),
   }),
 

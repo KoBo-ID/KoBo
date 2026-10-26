@@ -1,8 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import { CAMPUS_CATALOG, normalizeCampusText, searchCampuses } from './campuses.ts'
+import { CAMPUS_CATALOG, branchById, groupOfBranch, normalizeCampusText, searchCampuses } from './campuses.ts'
+import { FEATURED_CAMPUSES } from './featuredCampuses.ts'
+
+const TRUSTED_CAMPUS_IDS = [
+  'binus-syahdan', 'binus-anggrek', 'binus-kijang', 'ui-depok', 'itb-ganesha', 'ipb-dramaga', 'umn-gading-serpong', 'president-university',
+  'undip-tembalang', 'ugm-bulaksumur', 'uns-kentingan', 'its-sukolilo', 'ub-malang', 'untirta-serang', 'unsil-tasikmalaya', 'unsoed-purwokerto',
+  'uksw-salatiga', 'unej-jember',
+]
 
 const names = (query: string) => searchCampuses(query).map(({ group }) => group.shortName)
 const ids = (query: string) => searchCampuses(query).map(({ branch }) => branch.id)
+
+describe('featured campuses', () => {
+  it('only lists branches that exist and have trusted coordinates', () => {
+    for (const { id, label } of FEATURED_CAMPUSES) {
+      const branch = branchById(id)
+      const group = groupOfBranch(id)
+      expect(branch).toBeDefined()
+      expect(group).toBeDefined()
+      expect(TRUSTED_CAMPUS_IDS).toContain(id)
+      // Chip labels are short on purpose (e.g. "BINUS Syahdan"), so only require the group's short name.
+      expect(label.startsWith(group!.shortName)).toBe(true)
+    }
+  })
+})
 
 describe('campus catalog and matching', () => {
   it('keeps unique ids and valid Java coordinates', () => {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import seedData from '../../src/db/seedData.json' with { type: 'json' }
 import { resetDb } from '../../src/db/seed.ts'
-import { caller, prisma } from '../helpers.ts'
+import { caller, newStudent, prisma } from '../helpers.ts'
 
 beforeEach(() => resetDb(prisma))
 
@@ -10,11 +10,16 @@ async function expectedAggregates(kosId: string) {
   const rooms = await prisma.room.findMany({ where: { kosId }, include: { tenancies: true } })
   const reviews = await prisma.review.findMany({ where: { tenancy: { room: { kosId } } } })
   const now = Date.now()
+  const offers = await prisma.waitlistEntry.findMany({
+    where: { kosId, status: 'OFFERED', offerExpiresAt: { gte: new Date(now) } },
+    select: { offeredRoomId: true },
+  })
+  const offeredRooms = new Set(offers.map((offer) => offer.offeredRoomId))
   const live = (t: { status: string; expiresAt: Date | null }) =>
     t.status === 'ACTIVE' || (t.status === 'PENDING' && t.expiresAt !== null && t.expiresAt.getTime() > now)
   return {
     totalRooms: rooms.length,
-    availableRooms: rooms.filter((r) => !r.tenancies.some(live)).length,
+    availableRooms: rooms.filter((r) => !r.tenancies.some(live) && !offeredRooms.has(r.id)).length,
     priceMonthlyStart: rooms.length ? Math.min(...rooms.map((r) => r.priceMonthly)) : null,
     reviewCount: reviews.length,
     rating: reviews.length ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10 : null,
@@ -73,6 +78,20 @@ describe('kos.list', () => {
     })
     expect((await caller.kos.list()).find((k) => k.id === target.id)!.availableRooms).toBe(target.availableRooms - 1)
     await prisma.tenancy.update({ where: { id: hold.id }, data: { expiresAt: new Date(Date.now() - 1000) } })
+    expect((await caller.kos.list()).find((k) => k.id === target.id)!.availableRooms).toBe(target.availableRooms)
+  })
+
+  it('treats a live waitlist offer as unavailable only until it expires', async () => {
+    const target = (await caller.kos.list()).find((k) => k.availableRooms > 0)!
+    const detail = await caller.kos.detail({ id: target.id })
+    const room = detail.rooms.find((r) => r.status === 'vacant' && !r.reservedForWaitlist)!
+    const student = await newStudent()
+    const offer = await prisma.waitlistEntry.create({
+      data: { kosId: target.id, userId: student.id, status: 'OFFERED', offeredRoomId: room.id, offerExpiresAt: new Date(Date.now() + 3600_000) },
+    })
+    expect((await caller.kos.list()).find((k) => k.id === target.id)!.availableRooms).toBe(target.availableRooms - 1)
+    expect((await expectedAggregates(target.id)).availableRooms).toBe(target.availableRooms - 1)
+    await prisma.waitlistEntry.update({ where: { id: offer.id }, data: { offerExpiresAt: new Date(Date.now() - 1000) } })
     expect((await caller.kos.list()).find((k) => k.id === target.id)!.availableRooms).toBe(target.availableRooms)
   })
 })

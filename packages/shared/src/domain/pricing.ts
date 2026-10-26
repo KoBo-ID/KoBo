@@ -24,3 +24,36 @@ export function computeCheckoutTotal(input: CheckoutInput): CheckoutTotal {
 
 /** Longest lease bookable in one checkout. */
 export const MAX_LEASE_MONTHS = 12
+
+export interface LeaseQuoteInput extends CheckoutInput {
+  months: number
+}
+
+export interface LeaseQuote {
+  rent: number
+  applicationFee: number
+  discount: number
+  /** Invoice #1. Always equals computeCheckoutTotal(...).total. */
+  firstPayment: number
+  /** Months after the first; invoices #2..N carry rent only (no discount, no fee). */
+  laterMonths: number
+  laterTotal: number
+  leaseTotal: number
+}
+
+/** What a lease costs across its invoices. Months are clamped to 1..MAX_LEASE_MONTHS. */
+export function leaseQuote(input: LeaseQuoteInput): LeaseQuote {
+  const first = computeCheckoutTotal(input)
+  const months = Math.min(MAX_LEASE_MONTHS, Math.max(1, Math.trunc(input.months)))
+  const laterMonths = months - 1
+  const laterTotal = laterMonths * first.rent
+  return {
+    rent: first.rent,
+    applicationFee: first.applicationFee,
+    discount: first.discount,
+    firstPayment: first.total,
+    laterMonths,
+    laterTotal,
+    leaseTotal: first.total + laterTotal,
+  }
+}

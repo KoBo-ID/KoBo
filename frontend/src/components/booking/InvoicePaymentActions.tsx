@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FlaskConical } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 import type { MyTenancy } from '../../../../backend/src/trpc/router';
 import { Button } from '../ui/Button';
 import { Notice } from '../ui/Notice';
@@ -92,7 +92,7 @@ export const InvoicePaymentActions: React.FC<{ invoice: Invoice; returnedPayment
         }
         inFlight.current = false;
         if (res.kind === 'PROCESSING') wait(res.paymentId);
-        else refresh(); // DEMO: the labelled simulator appears through activePayment
+        else refresh(); // MOCK provider: the completion button appears through activePayment
       },
       onError: (e) => {
         inFlight.current = false;
@@ -170,8 +170,8 @@ export const InvoicePaymentActions: React.FC<{ invoice: Invoice; returnedPayment
           </Button>
         )}
         {demoAttempt && (
-          <Button variant="accent" size="sm" isLoading={simulate.isPending} onClick={() => simulate.mutate({ paymentId: demoAttempt.id })} icon={<FlaskConical size={15} />}>
-            Simulasikan Pembayaran
+          <Button variant="accent" size="sm" isLoading={simulate.isPending} onClick={() => simulate.mutate({ paymentId: demoAttempt.id })} icon={<CreditCard size={15} />}>
+            Selesaikan Pembayaran
           </Button>
         )}
       </span>

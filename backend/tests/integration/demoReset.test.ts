@@ -132,7 +132,7 @@ describe('resetDemo', () => {
   it('restores the demo accounts own profile fields', async () => {
     await prisma.user.update({ where: { id: DEMO_STUDENT_ID }, data: { name: 'Vandal', phone: '000', campus: 'Lain' } })
     await resetDemo(prisma, new Date())
-    expect(await prisma.user.findUniqueOrThrow({ where: { id: DEMO_STUDENT_ID } })).toMatchObject({ name: 'Demo Mahasiswa', phone: null, campus: 'Binus Syahdan' })
+    expect(await prisma.user.findUniqueOrThrow({ where: { id: DEMO_STUDENT_ID } })).toMatchObject({ name: 'Dimas Pratama', phone: null, campus: 'Binus Syahdan' })
   })
 
   it('is idempotent: a second reset changes nothing', async () => {

@@ -209,6 +209,7 @@ describe('releasing a room', () => {
     expect(mine.offer).toMatchObject({ roomId: f.room('S1').id, roomNumber: 'S1', priceMonthly: 1_500_000 })
     const asA = await a.c.kos.detail({ id: f.kos.id })
     expect(asA.rooms[0]).toMatchObject({ reservedForWaitlist: false, offeredToMe: true })
+    expect((await a.c.kos.list()).find((k) => k.id === f.kos.id)!.availableRooms).toBe(asA.rooms.filter((r) => r.status === 'vacant').length - 1)
     const asB = await b.c.kos.detail({ id: f.kos.id })
     expect(asB.rooms[0]).toMatchObject({ reservedForWaitlist: true, offeredToMe: false })
     const { caller } = await import('../helpers.ts')

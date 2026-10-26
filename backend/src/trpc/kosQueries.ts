@@ -21,7 +21,7 @@ export interface KosCard {
   /** Cheapest room price; null when the kos has no rooms. */
   priceMonthlyStart: number | null
   totalRooms: number
-  /** Rooms without an ACTIVE tenancy or an unexpired PENDING hold. */
+  /** Bookable rooms: no ACTIVE tenancy, no unexpired PENDING hold, no live waitlist offer. */
   availableRooms: number
 }
 
@@ -57,6 +57,11 @@ const cardJoins = (mediaBase: string) => Prisma.sql`
         SELECT 1 FROM "Tenancy" t
         WHERE t."roomId" = ro.id
           AND (t.status = 'ACTIVE' OR (t.status = 'PENDING' AND t."expiresAt" > now()))
+      ) AND NOT EXISTS (
+        SELECT 1 FROM "WaitlistEntry" w
+        WHERE w."offeredRoomId" = ro.id
+          AND w.status = 'OFFERED'
+          AND w."offerExpiresAt" >= now()
       )) AS available
     FROM "Room" ro WHERE ro."kosId" = k.id
   ) rm ON true`

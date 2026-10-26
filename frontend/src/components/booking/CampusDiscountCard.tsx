@@ -10,7 +10,7 @@ import { messageForError } from '../../lib/errors';
 import { formatRupiah } from '../../lib/format';
 
 interface CampusDiscountCardProps {
-  /** The kos's own discount per month, when it offers one. Never a made-up figure. */
+  /** The kos's own first-payment discount, when it offers one. Never a made-up figure. */
   studentDiscountAmount?: number;
   /** Checkout shows status and links to /profile; the profile page holds the actual form. */
   compact?: boolean;
@@ -78,7 +78,7 @@ export const CampusDiscountCard: React.FC<CampusDiscountCardProps> = ({ studentD
               Email kampus terverifikasi{me.user.campusEmail ? ` (${me.user.campusEmail})` : ''}
             </span>
             <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
-              {studentDiscountAmount ? `Potongan sewa sebesar ${formatRupiah(studentDiscountAmount)} / bulan diterapkan otomatis.` : 'Potongan sewa mahasiswa diterapkan otomatis pada kos yang menyediakannya.'}
+              {studentDiscountAmount ? `Potongan sewa sebesar ${formatRupiah(studentDiscountAmount)} diterapkan otomatis pada pembayaran pertama.` : 'Potongan sewa mahasiswa berlaku untuk pembayaran pertama pada kos yang menyediakannya.'}
             </span>
           </div>
         </div>

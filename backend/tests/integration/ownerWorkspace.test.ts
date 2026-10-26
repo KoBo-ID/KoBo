@@ -184,7 +184,7 @@ describe('owner.kos.create / update / delete', () => {
   })
 
   it('blocks demo users from deleting a kos (spec section 5)', async () => {
-    const demo = await prisma.user.findUniqueOrThrow({ where: { email: 'demo-owner@kobo.test' } })
+    const demo = await prisma.user.findUniqueOrThrow({ where: { email: 'ratna.hendrawan@kobo.test' } })
     const owner = callerFor(demo.id)
     const k = await owner.owner.kos.create(kosInput())
     expect(await code(owner.owner.kos.delete({ kosId: k.id }))).toBe('FORBIDDEN')

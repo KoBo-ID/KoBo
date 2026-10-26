@@ -31,11 +31,11 @@ describe('resetDb', () => {
   })
 
   it('seeds a verified demo student and a demo owner who owns the first kos', async () => {
-    const student = await prisma.user.findUniqueOrThrow({ where: { email: 'demo-student@kobo.test' } })
+    const student = await prisma.user.findUniqueOrThrow({ where: { email: 'dimas.pratama@kobo.test' } })
     expect(student.isDemo).toBe(true)
     expect(student.campusEmailVerifiedAt).not.toBeNull()
     const owner = await prisma.user.findUniqueOrThrow({
-      where: { email: 'demo-owner@kobo.test' },
+      where: { email: 'ratna.hendrawan@kobo.test' },
       include: { ownerProfile: { include: { kos: { orderBy: { createdAt: 'asc' } } } } },
     })
     expect(owner.isDemo).toBe(true)

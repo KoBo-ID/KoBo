@@ -214,11 +214,11 @@ export function buildSeed(now: Date): SeedRows {
 
   users.push({
     id: 'user-demo-student',
-    name: 'Demo Mahasiswa',
+    name: 'Dimas Pratama',
     email: DEMO_EMAILS.student,
     emailVerified: true,
     campus: 'Binus Syahdan',
-    campusEmail: 'demo.mahasiswa@student.binus.ac.id',
+    campusEmail: 'dimas.pratama@student.binus.ac.id',
     campusEmailVerifiedAt: baseCreated,
     isDemo: true,
     createdAt: baseCreated,

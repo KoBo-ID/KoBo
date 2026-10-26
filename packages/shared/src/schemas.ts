@@ -127,6 +127,14 @@ export const roomUpdateInput = roomFieldsInput.extend({ kosId: z.string().min(1)
 export const roomDeleteInput = z.object({ kosId: z.string().min(1).max(64), roomId: z.string().min(1).max(64) })
 export type RoomFieldsInput = z.input<typeof roomFieldsInput>
 
+export const houseRuleInput = z.object({
+  categoryTitle: text(60),
+  rules: z.array(text(140)).min(1).max(15),
+  penaltyAmount: z.number().int().min(0).max(10_000_000).optional(),
+  penaltyClause: z.string().trim().max(300).optional(),
+})
+export const rulesSetInput = z.object({ kosId: z.string().min(1).max(64), groups: z.array(houseRuleInput).max(10) })
+
 export const tenancyEndInput = z.object({ kosId: z.string().min(1).max(64), tenancyId: z.string().min(1).max(64) })
 
 /** The number in /kuitansi/:receiptNo (the raw Payment.receiptNo). */

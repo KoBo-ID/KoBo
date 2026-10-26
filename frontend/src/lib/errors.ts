@@ -21,7 +21,7 @@ const AUTH_CODES: Record<string, string> = {
   TOKEN_EXPIRED: 'Tautan sudah kedaluwarsa. Minta tautan baru.',
   INVALID_CAMPUS_EMAIL: 'Gunakan email kampus yang berakhiran .ac.id.',
   CAMPUS_EMAIL_TAKEN: 'Email kampus ini sudah dipakai akun lain.',
-  DEMO_ACCOUNT_READONLY: 'Akun demo bersifat hanya-baca. Buat akun sendiri untuk mengubah data ini.',
+  DEMO_ACCOUNT_READONLY: 'Akun ini bersifat hanya-baca. Buat akun sendiri untuk mengubah data ini.',
 };
 
 /** tRPC codes where the server's own (always Indonesian) message is more useful than a fixed line. */

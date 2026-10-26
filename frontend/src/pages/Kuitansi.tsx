@@ -13,7 +13,7 @@ import { formatRupiah } from '../lib/format';
 const longDate = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
 const METHOD_LABEL = {
-  MOCK: 'Pembayaran online KoBo (simulasi)',
+  MOCK: 'Pembayaran online KoBo',
   XENDIT: 'Pembayaran online terverifikasi (Xendit)',
   MANUAL: 'Dicatat manual oleh pemilik (tunai / transfer)',
 } as const;
