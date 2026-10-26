@@ -68,6 +68,11 @@ const AuthModal = lazyWithReload(() =>
   import('./pages/AuthModal').then((m) => ({ default: m.AuthModal }))
 );
 
+// Full-page sign-in (deep links, the navbar button once adopted). Shares its form with the dialog.
+const AuthPage = lazyWithReload(() =>
+  import('./pages/AuthPage').then((m) => ({ default: m.AuthPage }))
+);
+
 // Owner workspace routes
 const OwnerDashboard = lazyWithReload(() =>
   import('./pages/owner/Dashboard').then((m) => ({ default: m.OwnerDashboard }))
@@ -115,7 +120,8 @@ const ScrollToTop: React.FC = () => {
 
 const AuthModalHost: React.FC = () => {
   const { authModalOpen, closeAuthModal } = useAppStore();
-  if (!authModalOpen) return null;
+  const { pathname } = useLocation();
+  if (!authModalOpen || pathname === '/masuk') return null;
   return (
     <Suspense fallback={null}>
       <AuthModal isOpen onClose={closeAuthModal} />
@@ -150,6 +156,8 @@ export function App() {
               <Route path="/privasi" element={<Privacy />} />
               <Route path="*" element={<NotFound />} />
             </Route>
+
+            <Route path="/masuk" element={<AuthPage />} />
 
             {/* Owner SaaS Workspace Route Tree */}
             <Route element={<OwnerGuard />}>

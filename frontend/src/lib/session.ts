@@ -5,6 +5,8 @@ import { useAppStore } from '../store/AppContext';
 
 /** Query flag put on the errorCallbackURL of a Google round trip; better-auth appends `error=<code>` to it. */
 export const GOOGLE_RETURN_FLAG = 'google';
+/** The full sign-in page. It reads the failed-return flag itself instead of reopening the dialog over it. */
+export const AUTH_PAGE_PATH = '/masuk';
 
 let googleReturnError: string | null = null;
 
@@ -21,6 +23,7 @@ function useGoogleReturn() {
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.get(GOOGLE_RETURN_FLAG) !== 'gagal') return;
+    if (url.pathname === AUTH_PAGE_PATH) return;
     // One generic message for every code: never steer a user towards verifying an email that may be squatted (GHSA-g38m).
     googleReturnError = 'Masuk dengan Google belum berhasil. Silakan coba lagi.';
     for (const key of [GOOGLE_RETURN_FLAG, 'error', 'error_description']) url.searchParams.delete(key);

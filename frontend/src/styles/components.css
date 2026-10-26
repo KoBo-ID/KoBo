@@ -1177,6 +1177,10 @@
   .kobo-modal__header { padding: 1rem; }
   .kobo-modal__body { padding: 1rem; }
 }
+/* Sign-in dialog: compact header, body and height so the whole form fits without an inner scrollbar. */
+.kobo-modal:has(.auth-body) { max-height: 96vh; max-height: 96dvh; }
+.kobo-modal:has(.auth-body) .kobo-modal__header { padding: 0.85rem 1.25rem; }
+.kobo-modal:has(.auth-body) .kobo-modal__body { padding: 1rem 1.25rem 1.1rem; }
 /* Phone landscape and other short windows: use the full height. */
 @media (max-height: 480px) {
   .kobo-modal-backdrop { padding: 0.5rem; }
