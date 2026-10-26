@@ -2,7 +2,7 @@ import type { BrowserContext, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { expectHttpErrors, expireAttempt, heldRoom, latestPayment, sql, staleCreating, trpcPost, watch } from './seams'
 
-// The demo-like student (isDemo, MOCK provider) pays through the labelled "Simulasikan Pembayaran" button.
+// The demo-like student (isDemo, MOCK provider) pays through the labelled "Selesaikan Pembayaran" button.
 // Every test builds its own owner, student and room, so nothing here touches the shared demo accounts.
 
 test.skip(!!process.env.BASE_URL, 'needs the e2e hooks and database, which only the local e2e server provides')
@@ -30,22 +30,22 @@ test('scenario 10: a demo student simulates payment and the rental turns active 
       await expect(student.page.getByTestId('tenancy-card')).toHaveAttribute('data-status', 'PENDING')
       await expect(row).toContainText('Belum dibayar')
       await expect(student.page.getByText(/Kamar ditahan sampai/)).toBeVisible()
-      await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toHaveCount(0)
+      await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toHaveCount(0)
     })
 
     await test.step('Bayar Sekarang opens a labelled simulator instead of a redirect', async () => {
       await row.getByRole('button', { name: 'Bayar Sekarang' }).click()
-      await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toBeVisible()
+      await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
       await expect(student.page).toHaveURL(/\/my-kos$/)
       expect(await latestPayment(held.invoiceId)).toMatchObject({ provider: 'MOCK', status: 'PENDING' })
       await expect(row).not.toContainText('Lunas')
     })
 
     await test.step('simulating settles: Lunas, active rental, receipt link, no pay button', async () => {
-      await row.getByRole('button', { name: 'Simulasikan Pembayaran' }).click()
+      await row.getByRole('button', { name: 'Selesaikan Pembayaran' }).click()
       await expect(row).toContainText('Lunas')
       await expect(row.getByRole('button', { name: 'Bayar Sekarang' })).toHaveCount(0)
-      await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toHaveCount(0)
+      await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toHaveCount(0)
       await expect(row.getByRole('link', { name: RECEIPT })).toBeVisible()
       const card = student.page.getByTestId('tenancy-card')
       await expect(card).toHaveAttribute('data-status', 'ACTIVE')
@@ -87,7 +87,7 @@ test('scenario 12: an expired attempt explains itself and Bayar Sekarang opens a
     await student.page.goto('/my-kos')
     const row = bulan1(student.page)
     await row.getByRole('button', { name: 'Bayar Sekarang' }).click()
-    await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toBeVisible()
+    await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
     const first = await latestPayment(held.invoiceId)
 
     await test.step('the session lapses: hint, pay button, no simulator', async () => {
@@ -95,13 +95,13 @@ test('scenario 12: an expired attempt explains itself and Bayar Sekarang opens a
       await student.page.reload()
       await expect(hint(student.page)).toHaveText('Sesi pembayaran sebelumnya berakhir. Silakan mulai pembayaran baru.')
       await expect(row.getByRole('button', { name: 'Bayar Sekarang' })).toBeVisible()
-      await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toHaveCount(0)
+      await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toHaveCount(0)
       await expect(row).toContainText('Belum dibayar')
     })
 
     await test.step('paying again makes a new attempt, and the old one stays EXPIRED', async () => {
       await row.getByRole('button', { name: 'Bayar Sekarang' }).click()
-      await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toBeVisible()
+      await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
       await expect(row).not.toContainText('Sesi pembayaran sebelumnya berakhir')
       const rows = await attempts(held.invoiceId)
       expect(rows.map((r) => r.status)).toEqual(['EXPIRED', 'PENDING'])
@@ -109,7 +109,7 @@ test('scenario 12: an expired attempt explains itself and Bayar Sekarang opens a
     })
 
     await test.step('the fresh attempt settles the invoice', async () => {
-      await row.getByRole('button', { name: 'Simulasikan Pembayaran' }).click()
+      await row.getByRole('button', { name: 'Selesaikan Pembayaran' }).click()
       await expect(row).toContainText('Lunas')
     })
     expectHttpErrors(problems)
@@ -126,7 +126,7 @@ test('scenario 13: a CREATING attempt whose session lapsed is failed and replace
     await student.page.goto('/my-kos')
     const row = bulan1(student.page)
     await row.getByRole('button', { name: 'Bayar Sekarang' }).click()
-    await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toBeVisible()
+    await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
     const stuck = await latestPayment(held.invoiceId)
     await staleCreating(stuck.id)
     await sql(`UPDATE "Payment" SET "expiresAt" = now() - interval '1 minute' WHERE id = $1`, [stuck.id])
@@ -134,13 +134,13 @@ test('scenario 13: a CREATING attempt whose session lapsed is failed and replace
     await test.step('with no live session the student is offered a fresh payment', async () => {
       await student.page.reload()
       await expect(row).toContainText('Belum dibayar')
-      await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toHaveCount(0)
+      await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toHaveCount(0)
       await expect(row.getByRole('button', { name: 'Bayar Sekarang' })).toBeVisible()
     })
 
     await test.step('paying again fails the stale row and opens a new PENDING one', async () => {
       await row.getByRole('button', { name: 'Bayar Sekarang' }).click()
-      await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toBeVisible()
+      await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
       const rows = await attempts(held.invoiceId)
       expect(rows.map((r) => r.status)).toEqual(['FAILED', 'PENDING'])
       const [{ failureCode }] = await sql<{ failureCode: string }>('SELECT "failureCode" FROM "Payment" WHERE id = $1', [stuck.id])
@@ -160,7 +160,7 @@ test('scenario 13: a stale CREATING row that still has session time leaves only 
     await student.page.goto('/my-kos')
     const row = bulan1(student.page)
     await row.getByRole('button', { name: 'Bayar Sekarang' }).click()
-    await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toBeVisible()
+    await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
     const stuck = await latestPayment(held.invoiceId)
     await staleCreating(stuck.id) // expiresAt is still ~30 minutes away, so the row counts as a live attempt
 
@@ -168,7 +168,7 @@ test('scenario 13: a stale CREATING row that still has session time leaves only 
       await student.page.reload()
       await expect(row.getByRole('button', { name: 'Periksa Status' })).toBeVisible()
       await expect(row.getByRole('button', { name: 'Bayar Sekarang' })).toHaveCount(0)
-      await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toHaveCount(0)
+      await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toHaveCount(0)
       await row.getByRole('button', { name: 'Periksa Status' }).click()
       await expect(row.getByRole('button', { name: /Periksa Status \(\d+ dtk\)/ })).toBeVisible()
       expect((await attempts(held.invoiceId)).map((r) => r.status)).toEqual(['CREATING'])
@@ -178,7 +178,7 @@ test('scenario 13: a stale CREATING row that still has session time leaves only 
       await trpcPost(student.ctx, 'payment.start', { invoiceId: held.invoiceId })
       expect((await attempts(held.invoiceId)).map((r) => r.status)).toEqual(['FAILED', 'PENDING'])
       await student.page.reload()
-      await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toBeVisible()
+      await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
     })
     expectHttpErrors(problems)
   } finally {
@@ -196,18 +196,18 @@ test('scenario 14: two tabs — paying in one leaves the other stale, and its si
   try {
     await tabA.goto('/my-kos')
     await bulan1(tabA).getByRole('button', { name: 'Bayar Sekarang' }).click()
-    await expect(bulan1(tabA).getByRole('button', { name: 'Simulasikan Pembayaran' })).toBeVisible()
+    await expect(bulan1(tabA).getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
     await tabB.goto('/my-kos')
-    await expect(bulan1(tabB).getByRole('button', { name: 'Simulasikan Pembayaran' })).toBeVisible()
+    await expect(bulan1(tabB).getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
 
     await test.step('tab A pays', async () => {
-      await bulan1(tabA).getByRole('button', { name: 'Simulasikan Pembayaran' }).click()
+      await bulan1(tabA).getByRole('button', { name: 'Selesaikan Pembayaran' }).click()
       await expect(bulan1(tabA)).toContainText('Lunas')
     })
 
     await test.step('tab B still shows the simulator; using it is refused in words, not silence', async () => {
       await expect(bulan1(tabB)).toContainText('Belum dibayar')
-      await bulan1(tabB).getByRole('button', { name: 'Simulasikan Pembayaran' }).click()
+      await bulan1(tabB).getByRole('button', { name: 'Selesaikan Pembayaran' }).click()
       await expect(bulan1(tabB).getByRole('alert')).toHaveText('Pembayaran tidak ditemukan atau sudah diproses.')
       expect((await attempts(held.invoiceId)).filter((p) => p.status === 'PAID')).toHaveLength(1)
       expectHttpErrors(problems, 404)
@@ -216,7 +216,7 @@ test('scenario 14: two tabs — paying in one leaves the other stale, and its si
     await test.step('a reload of the stale tab shows the server state', async () => {
       await tabB.reload()
       await expect(bulan1(tabB)).toContainText('Lunas')
-      await expect(bulan1(tabB).getByRole('button', { name: 'Simulasikan Pembayaran' })).toHaveCount(0)
+      await expect(bulan1(tabB).getByRole('button', { name: 'Selesaikan Pembayaran' })).toHaveCount(0)
     })
 
     await test.step('back and forward keep the server state', async () => {
@@ -242,9 +242,9 @@ test('scenario 14: reload mid-payment keeps the live attempt instead of opening 
     await student.page.goto('/my-kos')
     const row = bulan1(student.page)
     await row.getByRole('button', { name: 'Bayar Sekarang' }).click()
-    await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toBeVisible()
+    await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
     await student.page.reload()
-    await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toBeVisible()
+    await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
     expect(await attempts(held.invoiceId)).toHaveLength(1)
     expectHttpErrors(problems)
   } finally {
@@ -264,7 +264,7 @@ test('scenario 28: the pay flow does not scroll sideways at 390x844', async ({ b
     await noHorizontalOverflow(student.page)
 
     await row.getByRole('button', { name: 'Bayar Sekarang' }).click()
-    await expect(row.getByRole('button', { name: 'Simulasikan Pembayaran' })).toBeVisible()
+    await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
     await noHorizontalOverflow(student.page)
 
     await expireAttempt((await latestPayment(held.invoiceId)).id)
@@ -273,7 +273,7 @@ test('scenario 28: the pay flow does not scroll sideways at 390x844', async ({ b
     await noHorizontalOverflow(student.page)
 
     await row.getByRole('button', { name: 'Bayar Sekarang' }).click()
-    await row.getByRole('button', { name: 'Simulasikan Pembayaran' }).click()
+    await row.getByRole('button', { name: 'Selesaikan Pembayaran' }).click()
     await expect(row).toContainText('Lunas')
     await noHorizontalOverflow(student.page)
 

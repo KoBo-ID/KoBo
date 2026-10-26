@@ -237,7 +237,7 @@ export interface Student {
   userId: string
 }
 /**
- * A fresh, email-verified student in its own context. `demo` flags it isDemo (MOCK provider, Simulasikan Pembayaran);
+ * A fresh, email-verified student in its own context. `demo` flags it isDemo (MOCK provider, Selesaikan Pembayaran);
  * without it the account takes the fake-Xendit path. `campus` gives it a verified campus email (student discount).
  */
 export async function newStudent(browser: Browser, opts: { label: string; demo?: boolean; campus?: boolean }): Promise<Student> {

@@ -37,7 +37,7 @@ test('demo student applies, gets owner approval, pays and sees an active rental'
   await page.getByRole('tab', { name: /Kamar yang Disewa/ }).click()
   // Approval only creates the obligation; the attempt is opened on demand, then the labelled demo simulator completes it.
   await page.getByRole('button', { name: 'Bayar Sekarang' }).click()
-  await page.getByRole('button', { name: 'Simulasikan Pembayaran' }).click()
+  await page.getByRole('button', { name: 'Selesaikan Pembayaran' }).click()
   await expect(page).toHaveURL(/\/my-kos/)
   const card = page.getByTestId('tenancy-card').filter({ hasText: kos!.name }).first()
   await expect(card).toHaveAttribute('data-status', 'ACTIVE')

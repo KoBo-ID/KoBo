@@ -8,8 +8,8 @@ test('demo owner button signs in and lands on the owner dashboard @postdeploy', 
   await page.goto('/')
   await page.getByRole('button', { name: 'Masuk', exact: true }).click()
   const dialog = page.getByRole('dialog')
-  await expect(dialog.getByRole('button', { name: 'Masuk sebagai Demo Mahasiswa' })).toBeVisible()
-  await dialog.getByRole('button', { name: 'Masuk sebagai Demo Pemilik' }).click()
+  await expect(dialog.getByRole('button', { name: 'Masuk sebagai Mahasiswa' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Masuk sebagai Pemilik' }).click()
   await expect(page).toHaveURL(/\/owner\/dashboard$/)
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByRole('heading', { level: 1, name: 'Papan okupansi' })).toBeVisible()
@@ -18,11 +18,11 @@ test('demo owner button signs in and lands on the owner dashboard @postdeploy', 
 test('demo student signs in, sees their account in the navbar, and can sign out', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Masuk', exact: true }).click()
-  await page.getByRole('button', { name: 'Masuk sebagai Demo Mahasiswa' }).click()
+  await page.getByRole('button', { name: 'Masuk sebagai Mahasiswa' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Menu Pengguna' }).click()
-  await expect(page.getByText('Demo Mahasiswa', { exact: true })).toBeVisible()
+  await expect(page.getByText('Dimas Pratama', { exact: true })).toBeVisible()
   await expect(page.getByText('Mahasiswa Terverifikasi')).toBeVisible()
   await page.getByRole('button', { name: 'Keluar' }).click()
   await expect(page.getByRole('button', { name: 'Masuk', exact: true })).toBeVisible()
@@ -36,14 +36,14 @@ for (const route of ['/owner/dashboard', '/owner/kos', '/owner/reviews']) {
   test(`${route} redirects home and opens the sign-in dialog when signed out`, async ({ page }) => {
     await page.goto(route)
     await expect(page).toHaveURL(/\/$/)
-    await expect(page.getByRole('dialog').getByRole('button', { name: 'Masuk sebagai Demo Pemilik' })).toBeVisible()
+    await expect(page.getByRole('dialog').getByRole('button', { name: 'Masuk sebagai Pemilik' })).toBeVisible()
   })
 }
 
 test('a student session cannot enter the owner workspace', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Masuk', exact: true }).click()
-  await page.getByRole('button', { name: 'Masuk sebagai Demo Mahasiswa' }).click()
+  await page.getByRole('button', { name: 'Masuk sebagai Mahasiswa' }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.goto('/owner/dashboard')
   await expect(page).toHaveURL(/\/$/)
@@ -62,3 +62,24 @@ test('wrong password shows an inline Indonesian error', async ({ page, problems 
   expect(problems.filter((p) => p.includes('401'))).toHaveLength(1)
   problems.splice(0)
 })
+
+for (const [label, open] of [
+  ['dialog', async (page: import('@playwright/test').Page) => { await page.goto('/'); await page.getByRole('button', { name: 'Masuk', exact: true }).click() }],
+  ['/masuk page', async (page: import('@playwright/test').Page) => { await page.goto('/masuk') }],
+] as const) {
+  test(`${label}: Google button is always there; unconfigured click shows a notice and starts no round trip`, async ({ page }) => {
+    await page.route('**/api/trpc/auth.providers*', async (route) => {
+      const res = await route.fetch()
+      await route.fulfill({ response: res, body: (await res.text()).replace('"google":true', '"google":false') })
+    })
+    await open(page)
+    const google = page.getByRole('button', { name: 'Lanjutkan dengan Google' })
+    await expect(google).toBeVisible()
+    let leftSite = false
+    page.on('framenavigated', (f) => { if (f === page.mainFrame() && !f.url().includes('localhost')) leftSite = true })
+    await google.click()
+    await expect(page.getByRole('alert')).toContainText('Masuk dengan Google belum tersedia saat ini.')
+    await expect(page.getByRole('button', { name: 'Masuk ke Akun' })).toBeVisible()
+    expect(leftSite).toBe(false)
+  })
+}

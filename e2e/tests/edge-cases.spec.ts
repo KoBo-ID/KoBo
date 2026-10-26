@@ -10,8 +10,31 @@ test.skip(!!process.env.BASE_URL, 'needs the e2e hooks and database, which only 
 
 const digits = (text: string | null) => Number((text ?? '').replace(/\D/g, ''))
 const origin = () => ({ origin: new URL(test.info().project.use.baseURL as string).origin })
-const sidebarTotal = (page: Page) => page.getByText('Total Estimasi', { exact: true }).locator('xpath=..')
+const sidebarFirst = (page: Page) => page.getByTestId('sidebar-first-payment')
+const sidebarLease = (page: Page) => page.getByTestId('sidebar-lease-total')
 const checkoutTotal = (page: Page) => page.getByText('Total perkiraan', { exact: true }).locator('xpath=../..')
+
+test('the three-month price box fits the sticky window and phone width', async ({ browser, problems }) => {
+  const owner = await newOwnerWorld(browser, { label: 'price-layout', rooms: 1, price: 1_650_000, discount: 150_000 })
+  const plain = await newStudent(browser, { label: 'layout-plain' })
+  const campus = await newStudent(browser, { label: 'layout-campus', campus: true })
+  try {
+    for (const student of [plain, campus]) {
+      watch(student.page, problems)
+      await student.page.setViewportSize({ width: 1280, height: 650 })
+      await student.page.goto(`/kos/${owner.kosId}`)
+      await expect(sidebarFirst(student.page)).toHaveText(student === campus ? /Rp\s1\.525\.000/ : /Rp\s1\.675\.000/)
+      await student.page.getByRole('button', { name: '3 Bulan' }).click()
+      const sidebar = student.page.locator('.booking-sidebar')
+      const size = await sidebar.evaluate((el) => ({ height: el.getBoundingClientRect().height, scroll: el.scrollHeight, client: el.clientHeight }))
+      expect(size.scroll).toBeLessThanOrEqual(size.client + 1)
+      await student.page.setViewportSize({ width: 390, height: 844 })
+      await expect.poll(() => student.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+    }
+  } finally {
+    await Promise.all([owner.ctx.close(), plain.ctx.close(), campus.ctx.close()])
+  }
+})
 
 test('scenario 27: signed-out visitors are asked to sign in on /my-kos, /checkout and /kuitansi', async ({ browser, problems }) => {
   const owner = await newOwnerWorld(browser, { label: 'out', rooms: 1 })
@@ -86,7 +109,7 @@ test('scenario 27: a demo account cannot change its password or campus e-mail, a
     await test.step('demo: change-password and campus-email are forbidden', async () => {
       const pw = await demo.ctx.request.post('/api/auth/change-password', { data: change, headers })
       expect(pw.status()).toBe(403)
-      expect(await pw.json()).toMatchObject({ code: 'DEMO_ACCOUNT_READONLY', message: 'Akun demo bersifat hanya-baca: kata sandi, email, dan penghapusan akun tidak dapat diubah.' })
+      expect(await pw.json()).toMatchObject({ code: 'DEMO_ACCOUNT_READONLY', message: 'Akun ini bersifat hanya-baca: kata sandi, email, dan penghapusan akun tidak dapat diubah.' })
       const campus = await demo.ctx.request.post('/api/auth/campus-email/request', { data: { email: 'demo@student.binus.ac.id' }, headers })
       expect(campus.status()).toBe(403)
       expect(await campus.json()).toMatchObject({ code: 'DEMO_ACCOUNT_READONLY' })
@@ -157,7 +180,7 @@ test('scenario 27: an unverified e-mail cannot sign in, can ask for a new link, 
   }
 })
 
-test('scenario 27: the checkout total and the first invoice agree; the detail sidebar estimate does not for discounted kos', async ({ browser, problems }) => {
+test('scenario 27: the detail sidebar, checkout total and first invoice agree', async ({ browser, problems }) => {
   const owner = await newOwnerWorld(browser, { label: 'prices', rooms: 3, price: 1_500_000, discount: 100_000 })
   const plain = await newStudent(browser, { label: 'prices-plain' })
   const campus = await newStudent(browser, { label: 'prices-campus', campus: true })
@@ -166,9 +189,8 @@ test('scenario 27: the checkout total and the first invoice agree; the detail si
   try {
     await test.step('one month, no verified campus e-mail', async () => {
       await plain.page.goto(`/kos/${owner.kosId}`)
-      // DISCREPANCY: the sidebar subtracts the student discount for everyone, though only a verified campus e-mail gets it.
-      expect(digits(await sidebarTotal(plain.page).textContent())).toBe(1_425_000)
-      await expect(plain.page.getByText('Diskon aktif otomatis setelah verifikasi email kampus.')).toBeVisible()
+      expect(digits(await sidebarFirst(plain.page).textContent())).toBe(1_525_000)
+      await expect(plain.page.getByText(/potongan Rp\s100\.000 di pembayaran pertama/)).toBeVisible()
       await plain.page.getByRole('button', { name: 'Ajukan Sewa' }).click()
       await expect(checkoutTotal(plain.page)).toBeVisible()
       expect(digits(await checkoutTotal(plain.page).textContent())).toBe(1_525_000)
@@ -179,7 +201,7 @@ test('scenario 27: the checkout total and the first invoice agree; the detail si
 
     await test.step('one month, verified campus e-mail: sidebar, checkout and invoice agree', async () => {
       await campus.page.goto(`/kos/${owner.kosId}`)
-      expect(digits(await sidebarTotal(campus.page).textContent())).toBe(1_425_000)
+      expect(digits(await sidebarFirst(campus.page).textContent())).toBe(1_425_000)
       await campus.page.getByRole('button', { name: 'Ajukan Sewa' }).click()
       await expect(checkoutTotal(campus.page)).toBeVisible()
       expect(digits(await checkoutTotal(campus.page).textContent())).toBe(1_425_000)
@@ -188,10 +210,11 @@ test('scenario 27: the checkout total and the first invoice agree; the detail si
       expect(invoice.amount).toBe(1_425_000)
     })
 
-    await test.step('three months: the sidebar discounts every month, the server only the first invoice', async () => {
+    await test.step('three months: the sidebar total agrees with the invoices', async () => {
       await campus.page.goto(`/kos/${owner.kosId}`)
       await campus.page.getByRole('button', { name: '3 Bulan' }).click()
-      expect(digits(await sidebarTotal(campus.page).textContent())).toBe(4_225_000)
+      expect(digits(await sidebarFirst(campus.page).textContent())).toBe(1_425_000)
+      expect(digits(await sidebarLease(campus.page).textContent())).toBe(4_425_000)
 
       const third = await newStudent(browser, { label: 'prices-three', campus: true })
       try {
@@ -199,7 +222,7 @@ test('scenario 27: the checkout total and the first invoice agree; the detail si
         const paid = await trpcRaw(owner.ctx, 'payment.recordManual', { kosId: owner.kosId, invoiceId: held.invoiceId, method: 'CASH', confirmedAmount: 1_425_000 })
         expect(paid.status).toBe(200)
         const amounts = (await sql<{ amount: number }>('SELECT amount FROM "Invoice" WHERE "tenancyId" = $1 ORDER BY "dueDate"', [held.tenancyId])).map((r) => r.amount)
-        // DISCREPANCY: 1.425.000 + 2 x 1.500.000 = 4.425.000 over the lease, 200.000 more than the sidebar's "Total Estimasi".
+        expect(amounts.reduce((a, b) => a + b, 0)).toBe(4_425_000)
         expect(amounts).toEqual([1_425_000, 1_500_000, 1_500_000])
       } finally {
         await third.ctx.close()

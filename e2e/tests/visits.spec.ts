@@ -18,7 +18,7 @@ test('demo student schedules a survey, the demo owner sees it and marks it done'
 
   await loginAs(page, 'owner')
   await page.goto('/owner/dashboard')
-  const row = page.getByTestId('owner-visit').filter({ hasText: 'Demo Mahasiswa' }).first()
+  const row = page.getByTestId('owner-visit').filter({ hasText: 'Dimas Pratama' }).first()
   await expect(row).toBeVisible()
 
   // A waiting survey is promoted above the room board, the same way "Perlu Perhatian" is.

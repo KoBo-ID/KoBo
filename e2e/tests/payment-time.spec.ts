@@ -244,7 +244,7 @@ test('scenario 20: after month 1 the months are in order, fall due, turn overdue
     await test.step('the student pays month 2 with the simulator; month 3 stays open', async () => {
       const m2 = bulan(student.page, 2)
       await m2.getByRole('button', { name: 'Bayar Sekarang' }).click()
-      await m2.getByRole('button', { name: 'Simulasikan Pembayaran' }).click()
+      await m2.getByRole('button', { name: 'Selesaikan Pembayaran' }).click()
       await expect(m2).toContainText('Lunas')
       await expect(m2.getByRole('link', { name: /^KB\/\d{4}\/\d{2}\/\d{4}$/ })).toBeVisible()
       await expect(bulan(student.page, 3)).toContainText('Belum dibayar')

@@ -119,7 +119,7 @@ test('scenario 24: printing hides the site chrome and the download button but ke
 const METHODS = [
   // The generic MANUAL label never shows for owner-recorded payments: they always carry a method, so the page says "Tunai" or "Transfer bank".
   { provider: 'MANUAL', label: 'Tunai, dicatat oleh pemilik' },
-  { provider: 'MOCK', label: 'Pembayaran online KoBo (simulasi)' },
+  { provider: 'MOCK', label: 'Pembayaran online KoBo' },
   { provider: 'XENDIT', label: 'Pembayaran online terverifikasi (Xendit)' },
 ] as const
 

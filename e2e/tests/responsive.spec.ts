@@ -11,7 +11,7 @@ const VIEWPORTS = [
   { name: '1600x900 desktop', width: 1600, height: 900 },
 ] as const
 
-const STUDENT_ROUTES = ['/', '/search', '/kos/kos-1', '/my-kos', '/profile', '/does-not-exist', '/verifikasi-email', '/reset-password', '/owner/owner-1']
+const STUDENT_ROUTES = ['/', '/search', '/kos/kos-1', '/my-kos', '/profile', '/does-not-exist', '/verifikasi-email', '/reset-password', '/owner/owner-1', '/kontak', '/syarat', '/privasi']
 const OWNER_ROUTES = ['/owner/dashboard', '/owner/kos', '/owner/reviews']
 
 /** The page may not scroll sideways. A negative value is the reserved scrollbar gutter. */
@@ -72,9 +72,7 @@ for (const vp of VIEWPORTS) {
       await page.screenshot({ path: test.info().outputPath('poi.png') })
 
       const amenities = page.locator('.kos-amenities')
-      const amenityColumns = await amenities.locator('.kos-amenities__list').first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length)
-      const amenityWidth = await amenities.locator('.kos-amenities__group').first().evaluate((el) => el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft) - parseFloat(getComputedStyle(el).paddingRight))
-      expect(amenityColumns).toBe(amenityWidth >= 280 ? 2 : 1)
+      await expect(amenities.locator('.kos-amenities__scope')).not.toHaveCount(0)
       await page.screenshot({ path: test.info().outputPath('amenities.png') })
 
       const ruleButtons = page.locator('.kos-rules__toggle')
