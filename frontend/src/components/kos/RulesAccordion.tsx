@@ -14,20 +14,10 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
   const allOpen = rules.length > 0 && expanded.size === rules.length;
 
   return (
-    <section
-      className="kos-rules"
-      style={{
-        backgroundColor: 'var(--bg-surface)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border-subtle)',
-        padding: '1.5rem',
-        boxShadow: 'var(--shadow-sm)',
-      }}
-    >
+    <section className="kos-rules detail-card">
       <div className="section-head">
         <div>
           <h3 className="section-title">Tata tertib dan denda</h3>
-          <p className="section-sub">Aturan dan denda tertulis sebelum Anda mengajukan sewa.</p>
         </div>
         {rules.length > 1 && (
           <button
@@ -40,6 +30,11 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
         )}
       </div>
 
+      {rules.length === 0 ? (
+        <p style={{ margin: 0, padding: '0.9rem 1rem', border: '1px dashed var(--border-strong)', borderRadius: 'var(--radius-md)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          Pemilik belum mengisi tata tertib dan denda.
+        </p>
+      ) : (
       <div className="kos-rules__groups">
         {rules.map((rule) => {
           const isExpanded = expanded.has(rule.id);
@@ -95,6 +90,7 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
           );
         })}
       </div>
+      )}
     </section>
   );
 };

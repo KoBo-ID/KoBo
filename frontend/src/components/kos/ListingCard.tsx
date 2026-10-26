@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Star, MapPin, Footprints, ChevronLeft, ChevronRight, Calendar, GraduationCap } from 'lucide-react';
 import { Kos } from '../../types';
 import { GenderBadge, Badge } from '../ui/Badge';
@@ -41,7 +41,6 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
     <div
       onMouseEnter={() => setHoveredKosId(kos.id)}
       onMouseLeave={() => setHoveredKosId(null)}
-      onClick={() => navigate(`/kos/${kos.id}`)}
       className="card-hover-lift"
       style={{
         backgroundColor: 'var(--bg-surface)',
@@ -49,7 +48,6 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
         border: `1px solid ${isHovered ? 'var(--primary)' : 'var(--border-subtle)'}`,
         boxShadow: isHovered ? 'var(--shadow-hover)' : 'var(--shadow-sm)',
         overflow: 'hidden',
-        cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
@@ -87,8 +85,9 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '0 0.4rem',
+              padding: '0 0.625rem',
               pointerEvents: 'none',
+              zIndex: 2,
             }}
           >
             <button
@@ -142,6 +141,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
             display: 'flex',
             gap: '0.3rem',
             zIndex: 2,
+            pointerEvents: 'none',
           }}
         >
           {kos.images.map((_, i) => (
@@ -168,6 +168,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
             alignItems: 'center',
             gap: '0.35rem',
             zIndex: 2,
+            pointerEvents: 'none',
           }}
         >
           <GenderBadge gender={kos.gender} size="sm" />
@@ -179,7 +180,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
         </div>
 
         {/* Remaining Rooms */}
-        {kos.availableRooms <= 3 && (
+        {kos.totalRooms > 0 && kos.availableRooms <= 3 && (
           <div
             style={{
               position: 'absolute',
@@ -193,7 +194,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
               borderRadius: 'var(--radius-xs)',
             }}
           >
-            Sisa {kos.availableRooms} kamar
+            {kos.availableRooms === 0 ? 'Penuh' : `Sisa ${kos.availableRooms} kamar`}
           </div>
         )}
       </div>
@@ -230,7 +231,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
             lineHeight: 1.3,
           }}
         >
-          {kos.name}
+          <Link to={`/kos/${kos.id}`} className="listing-card__link">{kos.name}</Link>
         </h3>
 
         <div
@@ -273,8 +274,10 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
                 navigate(`/kos/${kos.id}`);
               }
             }}
-            className="interactive-tap"
+            className="interactive-tap listing-card__survey"
             style={{
+              position: 'relative',
+              zIndex: 2,
               display: 'flex',
               alignItems: 'center',
               gap: '0.3rem',

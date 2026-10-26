@@ -96,18 +96,10 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   };
 
   return (
-    <section
-      className="kos-reviews"
-      style={{
-        backgroundColor: 'var(--bg-surface)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border-subtle)',
-        padding: '1.5rem',
-        boxShadow: 'var(--shadow-sm)',
-      }}
-    >
-      {(writable || editable) && (
-        <div className="section-head" style={{ justifyContent: 'flex-end' }}>
+    <section className="kos-reviews detail-card">
+      <div className="section-head">
+        <h3 className="section-title">Ulasan</h3>
+        {(writable || editable) && (
           <Button
             variant="outline"
             size="sm"
@@ -116,8 +108,8 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
           >
             {writable ? 'Tulis ulasan kos' : 'Ubah ulasan saya'}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="kos-reviews__summary">
         <div className="kos-reviews__score">

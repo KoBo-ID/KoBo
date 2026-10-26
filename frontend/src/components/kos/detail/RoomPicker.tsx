@@ -33,11 +33,11 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
       </div>
       <div className="room-picker__grid">
         {groupEntries.map(([roomType, groupRooms]) => {
-          const firstRoom = groupRooms[0];
           // A live offer to someone else is not bookable; the viewer's own offer comes first.
           const vacantRooms = groupRooms
             .filter((r) => r.status === 'vacant' && !r.reservedForWaitlist)
             .sort((a, b) => Number(!!b.offeredToMe) - Number(!!a.offeredToMe));
+          const shown = vacantRooms[0] ?? groupRooms[0];
           const reservedCount = groupRooms.filter((r) => r.reservedForWaitlist).length;
           const vacantCount = vacantRooms.length;
           const isAvailable = vacantCount > 0;
@@ -55,25 +55,27 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
                 else onSelectFullType?.(roomType);
               }}
             >
-              <span className="room-picker__title">
-                <span>{roomType}</span>
-                {isSelected && <Check size={18} aria-hidden="true" />}
-              </span>
-              <span className="room-picker__availability">
-                <span>{vacantCount} dari {groupRooms.length}</span> kamar tersedia
-              </span>
-              <span className="room-picker__details">
-                <span>Ukuran: {firstRoom.size}</span>
-                <span>Kasur: {firstRoom.bedType}</span>
-              </span>
-              {reservedCount > 0 && (
-                <span className="room-picker__reserved">
-                  Dipesan antrean{reservedCount > 1 ? ` (${reservedCount})` : ''}
+              <span className="room-picker__main">
+                <span className="room-picker__title">
+                  <span>{roomType}</span>
+                  {isSelected && <span className="room-picker__chosen"><Check size={13} strokeWidth={3} aria-hidden="true" />Dipilih</span>}
                 </span>
-              )}
+                <span className="room-picker__availability">
+                  <span>{vacantCount} dari {groupRooms.length}</span> kamar tersedia
+                </span>
+                <span className="room-picker__details">
+                  <span>Ukuran: {shown.size}</span>
+                  <span>Kasur: {shown.bedType}</span>
+                </span>
+                {reservedCount > 0 && (
+                  <span className="room-picker__reserved">
+                    Dipesan antrean{reservedCount > 1 ? ` (${reservedCount})` : ''}
+                  </span>
+                )}
+              </span>
               <span className="room-picker__footer">
                 <span className="room-picker__price">
-                  {formatRupiah(firstRoom.priceMonthly)} <span>/bln</span>
+                  {formatRupiah(shown.priceMonthly)} <span>/bln</span>
                 </span>
                 {!isAvailable && onSelectFullType && (
                   <span className="room-picker__waitlist">Ikut daftar tunggu</span>
