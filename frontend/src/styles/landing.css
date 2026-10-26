@@ -1,3 +1,20 @@
+/* Landing sections: why tiles, owner CTA, Featured header. */
+
+/* ---------- Featured header ---------- */
+.featured-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-bottom: 2.5rem;
+}
+.featured-head__title {
+  font-size: clamp(1.4rem, 1.1rem + 1.2vw, 1.8rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
 /* Landing sections: owner CTA, Mengapa KoBo, Featured header. */
 
 /* ---------- Featured header ---------- */
@@ -15,208 +32,9 @@
   letter-spacing: -0.02em;
 }
 
-/* ---------- Mengapa KoBo ---------- */
-.why__title {
-  font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  margin-bottom: 1.75rem;
-  text-align: left;
-}
-.why__grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
-.why__tile {
-  border-radius: var(--radius-card);
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  min-width: 0;
-}
-.why__tile h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem; }
-.why__tile p { font-size: 0.92rem; color: var(--text-muted); line-height: 1.6; max-width: 46ch; }
-.why__caption { font-size: 0.78rem; font-weight: 500; color: var(--text-muted); }
-
-/* Survey: photo fills the tile, copy sits on a solid panel, the picker floats over the photo inset from the corner. */
-.why__tile--survey { position: relative; overflow: hidden; padding: 0; min-height: 28rem; background: var(--bg-muted); }
-.why__photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.why__panel {
-  position: relative;
-  align-self: flex-start;
-  margin: 1rem;
-  max-width: 21rem;
-  padding: 1rem 1.1rem;
-  background: var(--bg-surface);
-  border-radius: var(--radius-md);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
-}
-.why__panel h3 { font-size: 1.25rem; line-height: 1.25; letter-spacing: -0.01em; }
-.why__panel p { font-size: 0.9rem; margin: 0; }
-
-.why__picker {
-  position: absolute;
-  right: 1rem;
-  bottom: 1rem;
-  width: min(17.5rem, calc(100% - 2rem));
-  padding: 1.5rem 1rem 1rem;
-  background: var(--bg-surface);
-  border-radius: var(--radius-card);
-  box-shadow: 0 8px 12px -4px rgba(15, 23, 42, 0.22);
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-.why__picker-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.why__chip {
-  padding: 0.45rem 0.75rem;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-main);
-}
-.why__chip--on { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
-.why__seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-muted); border-radius: var(--radius-md); padding: 3px; }
-.why__seg span { text-align: center; padding: 0.4rem; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); border-radius: var(--radius-sm); }
-.why__seg .why__seg-on { background: var(--bg-surface); color: var(--primary); box-shadow: var(--shadow-xs); }
-.why__picker-btn {
-  background: var(--primary);
-  color: var(--text-inverse);
-  text-align: center;
-  padding: 0.6rem;
-  border-radius: var(--radius-btn);
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-.why__confirm {
-  position: absolute;
-  top: -1.25rem;
-  left: -1.25rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.55rem 0.8rem 0.55rem 0.6rem;
-  background: var(--bg-surface);
-  border-radius: var(--radius-md);
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.14);
-  white-space: nowrap;
-}
-.why__confirm-icon {
-  display: grid;
-  place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: var(--radius-sm);
-  background: var(--primary);
-  color: var(--text-inverse);
-}
-.why__confirm-text { display: flex; flex-direction: column; line-height: 1.25; font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.why__confirm-text strong { font-size: 0.85rem; font-weight: 700; color: var(--text-main); }
-
-/* Discount: the price is the focal element. */
-.why__tile--discount { background: var(--bg-surface); border: 1px solid var(--border-subtle); justify-content: space-between; }
-.why__tile--discount h3 { font-size: 1rem; }
-.why__tile--discount p { font-size: 0.88rem; }
-.why__price { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; }
-.why__price-top { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem 0.75rem; }
-.why__price-old { color: var(--text-muted); text-decoration: line-through; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
-.why__price-badge {
-  background: var(--primary-light);
-  color: var(--primary);
-  border-radius: var(--radius-badge);
-  padding: 0.15rem 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-.why__price-new {
-  color: var(--primary);
-  font-weight: 800;
-  font-size: 2.4rem;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-.why__price-note { color: var(--text-muted); font-size: 0.78rem; }
-
-/* Rules: receipt-style rows with dotted leaders. */
-.why__tile--rules { background: var(--bg-muted); justify-content: space-between; }
-.why__tile--rules h3 { font-size: 1rem; }
-.why__tile--rules p { font-size: 0.88rem; }
-.why__receipt {
-  background: var(--bg-surface);
-  border-radius: var(--radius-md);
-  border-top: 3px dotted var(--border-strong);
-  padding: 0.75rem 1rem 0.9rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-.why__rules { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; }
-.why__rules li { display: flex; align-items: baseline; gap: 0.5rem; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
-.why__rules li span { color: var(--text-main); font-weight: 500; }
-.why__rules li i { flex: 1; min-width: 1rem; border-bottom: 2px dotted var(--border-strong); transform: translateY(-0.2rem); }
-.why__rules li b { font-weight: 700; color: var(--text-main); white-space: nowrap; }
-
-/* Nearby: vertical distance line from Kos to Kampus at every width. */
-.why__tile--nearby { border: 1px solid var(--border-strong); background: var(--bg-surface); }
-.why__route-wrap { display: flex; flex-direction: column; gap: 0.9rem; }
-.why__route { list-style: none; position: relative; display: flex; flex-direction: column; gap: 1.1rem; }
-.why__route::before {
-  content: '';
-  position: absolute;
-  left: calc(1.125rem - 1px);
-  top: 1.1rem;
-  bottom: 1.1rem;
-  width: 2px;
-  background: var(--border-strong);
-}
-.why__stop { position: relative; display: flex; align-items: center; gap: 0.8rem; }
-.why__stop-dot {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 50%;
-  background: var(--bg-surface);
-  border: 2px solid var(--border-strong);
-  color: var(--primary);
-}
-.why__stop-dot--on { background: var(--primary); border-color: var(--primary); color: var(--text-inverse); }
-.why__stop--start .why__stop-dot { border-color: var(--primary); }
-.why__stop-text { display: flex; flex-direction: row; align-items: baseline; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted); }
-.why__stop-text b { color: var(--text-main); font-weight: 700; font-variant-numeric: tabular-nums; }
-
-@media (min-width: 768px) {
-  .why__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .why__tile--survey, .why__tile--nearby { grid-column: 1 / -1; }
-  .why__tile--survey { min-height: 26rem; }
-  .why__picker { width: 20rem; right: 1.5rem; bottom: 1.5rem; padding: 1.5rem 1.25rem 1.25rem; }
-}
-/* Desktop: one row of three columns so the whole section fits one screen
-   under the navbar (target 1280x650). Nearby keeps its vertical route, which
-   reads naturally in a narrow column. */
-@media (min-width: 1100px) {
-  .why__grid { grid-template-columns: repeat(12, minmax(0, 1fr)); }
-  .why__tile--survey { grid-column: 1 / 6; grid-row: 1 / 3; min-height: 0; }
-  .why__panel { margin: 1.25rem; padding: 1.1rem 1.25rem; }
-  .why__panel h3 { font-size: 1.35rem; }
-  .why__tile--discount { grid-column: 6 / 10; }
-  .why__tile--rules { grid-column: 6 / 10; }
-  .why__tile--nearby { grid-column: 10 / 13; grid-row: 1 / 3; }
-  .why__title { margin-bottom: 1.25rem; }
-  .why__tile { padding: 1.35rem; gap: 1rem; }
-  /* Spread the stops over the column's full height instead of bunching at the top. */
-  .why__tile--nearby .why__route-wrap { flex: 1; }
-  .why__tile--nearby .why__route { flex: 1; justify-content: space-between; }
-}
-
 /* ---------- Owner CTA ---------- */
 .owner-cta {
-  background: var(--primary-subtle);
+  background: transparent;
   padding: 3.5rem 0;
 }
 .owner-cta__inner {
@@ -232,7 +50,6 @@
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
-.owner-cta__lead { color: var(--text-muted); line-height: 1.6; max-width: 46ch; }
 .owner-cta__list { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 0.5rem; }
 .owner-cta__list li {
   font-size: 0.95rem;
@@ -313,4 +130,365 @@
 }
 @media (min-width: 1400px) {
   .owner-preview__scale { zoom: 0.9; }
+}
+
+/* Phones: 80px between sections is a third of the screen; 64px keeps them distinct without bloat. */
+@media (max-width: 639px) {
+  :root { --section-gap: 4rem; }
+}
+
+/* ---------- Landing backdrop ----------
+   Self-contained atmospheric layer. Put `landing-backdrop` on any
+   relatively-positioned wrapper; the glow starts under the (transparent)
+   navbar and fills the wrapper top to bottom: strong at the top and bottom edges, faint through the middle. Tune with --backdrop-strength /
+   --grain-strength. Blobs are sized in px so they land in the same place on
+   any page height. Hues: cyan, teal and aquamarine, kept spatially apart so they never blend to grey. */
+.landing-backdrop { position: relative; isolation: isolate; padding-bottom: 3rem; margin-bottom: -3rem; --backdrop-strength: 1; --grain-strength: 0.12;
+}
+/* Secondary text that sits directly on the tinted glow (not inside white cards):
+   darken just enough to hold AA (>=4.5:1). */
+.landing-backdrop #kobo-hero,
+.landing-backdrop .featured-head { --text-muted: hsl(215, 19%, 36%); }
+.landing-backdrop::before,
+.landing-backdrop::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  left: 0;
+  right: 0;
+  top: calc(-1 * var(--header-height, 0px));
+  bottom: 0;
+}
+.landing-backdrop::before {
+  opacity: var(--backdrop-strength);
+  background:
+    radial-gradient(900px 640px at 10% 0, hsla(188, 85%, 80%, 0.7), hsla(188, 85%, 80%, 0) 100%),
+    radial-gradient(760px 560px at 92% 3%, hsla(176, 62%, 78%, 0.62), hsla(176, 62%, 78%, 0) 100%),
+    radial-gradient(640px 420px at 50% 0, hsla(160, 72%, 82%, 0.45), hsla(160, 72%, 82%, 0) 100%),
+    radial-gradient(900px 600px at 88% 38%, hsla(190, 80%, 84%, 0.22), hsla(190, 80%, 84%, 0) 100%),
+    radial-gradient(800px 600px at 6% 62%, hsla(160, 72%, 82%, 0.2), hsla(160, 72%, 82%, 0) 100%),
+    radial-gradient(700px 500px at 100% 86%, hsla(170, 60%, 80%, 0.35), hsla(170, 60%, 80%, 0) 100%),
+    radial-gradient(900px 640px at 12% 100%, hsla(176, 62%, 78%, 0.6), hsla(176, 62%, 78%, 0) 100%),
+    radial-gradient(800px 560px at 88% 100%, hsla(188, 85%, 80%, 0.65), hsla(188, 85%, 80%, 0) 100%),
+    radial-gradient(600px 420px at 50% 100%, hsla(160, 72%, 82%, 0.5), hsla(160, 72%, 82%, 0) 100%);
+  background:
+    radial-gradient(900px 640px at 10% 0 in oklab, hsla(188, 85%, 80%, 0.7), hsla(188, 85%, 80%, 0) 100%),
+    radial-gradient(760px 560px at 92% 3% in oklab, hsla(176, 62%, 78%, 0.62), hsla(176, 62%, 78%, 0) 100%),
+    radial-gradient(640px 420px at 50% 0 in oklab, hsla(160, 72%, 82%, 0.45), hsla(160, 72%, 82%, 0) 100%),
+    radial-gradient(900px 600px at 88% 38% in oklab, hsla(190, 80%, 84%, 0.22), hsla(190, 80%, 84%, 0) 100%),
+    radial-gradient(800px 600px at 6% 62% in oklab, hsla(160, 72%, 82%, 0.2), hsla(160, 72%, 82%, 0) 100%),
+    radial-gradient(700px 500px at 100% 86% in oklab, hsla(170, 60%, 80%, 0.35), hsla(170, 60%, 80%, 0) 100%),
+    radial-gradient(900px 640px at 12% 100% in oklab, hsla(176, 62%, 78%, 0.6), hsla(176, 62%, 78%, 0) 100%),
+    radial-gradient(800px 560px at 88% 100% in oklab, hsla(188, 85%, 80%, 0.65), hsla(188, 85%, 80%, 0) 100%),
+    radial-gradient(600px 420px at 50% 100% in oklab, hsla(160, 72%, 82%, 0.5), hsla(160, 72%, 82%, 0) 100%);
+}
+.landing-backdrop::after {
+  opacity: var(--grain-strength);
+  background-size: 180px 180px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .08 0 0 0 0 .16 0 0 0 0 .2 .9 0 0 0 -.3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (prefers-contrast: more), (forced-colors: active) {
+  .landing-backdrop::before,
+  .landing-backdrop::after { display: none; }
+}
+
+/* ---------- Why rows (whyr-): four promises as separated rows ----------
+   Centered header, then rows. Text first in the DOM; only the desktop query
+   swaps sides. Each stage is a size container (cqi units) so overlays scale
+   with the stage, is filled edge to edge by its focal visual and has one
+   border and radius. */
+.whyr__title {
+  text-align: center;
+  font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin-bottom: 1.75rem;
+}
+.whyr__rows { display: flex; flex-direction: column; gap: 2.25rem; }
+.whyr__row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: center; }
+.whyr__text { min-width: 0; }
+.whyr__promise { display: flex; gap: 0.9rem; align-items: flex-start; }
+.whyr__num {
+  flex: none;
+  font-size: 2.25rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+.whyr__text h3 { font-size: 1.25rem; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 0.4rem; }
+.whyr__text p { font-size: 1rem; line-height: 1.6; color: var(--text-main); max-width: 44ch; }
+
+.whyr__stage {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  container-type: inline-size;
+  min-width: 0;
+  height: 19rem;
+  border-radius: var(--radius-card);
+  border: 1px solid hsla(190, 30%, 40%, 0.18);
+  background: var(--bg-muted);
+}
+.whyr__photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; }
+
+/* Row 1: the picker card floats bottom right over the photo. */
+.whyr__picker {
+  position: absolute;
+  right: 4cqi;
+  bottom: 4cqi;
+  width: clamp(14rem, 56cqi, 17rem);
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 12px -4px rgba(15, 23, 42, 0.22);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.whyr__confirm { display: none; align-items: center; gap: 0.6rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border-subtle); }
+.whyr__confirm-icon { display: grid; place-items: center; width: 1.4rem; height: 1.4rem; border-radius: var(--radius-sm); background: var(--primary); color: var(--text-inverse); flex: none; }
+.whyr__confirm-text { display: flex; flex-direction: column; line-height: 1.25; font-size: 0.74rem; color: var(--text-muted); }
+.whyr__confirm-text strong { font-size: 0.82rem; font-weight: 700; color: var(--text-main); }
+.whyr__picker-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.whyr__chip { padding: 0.35rem 0.6rem; border: 1px solid var(--border-strong); border-radius: var(--radius-md); font-size: 0.8rem; font-weight: 600; color: var(--text-main); }
+.whyr__chip--on { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+.whyr__seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-muted); border-radius: var(--radius-md); padding: 3px; }
+.whyr__seg span { text-align: center; padding: 0.3rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); border-radius: var(--radius-sm); }
+.whyr__seg .whyr__seg-on { background: var(--bg-surface); color: var(--primary); box-shadow: var(--shadow-xs); }
+.whyr__picker-btn { background: var(--primary); color: var(--text-inverse); text-align: center; padding: 0.5rem; border-radius: var(--radius-btn); font-size: 0.82rem; font-weight: 700; }
+
+/* Row 2: saturated teal field, layered price cards, the front one cropped by the right edge. */
+.whyr__stage--teal {
+  height: 16rem;
+  background:
+    radial-gradient(120% 90% at 100% 0%, hsl(172, 70%, 40%) 0%, transparent 60%),
+    linear-gradient(150deg, hsl(176, 75%, 30%), hsl(180, 80%, 17%));
+}
+.whyr__card { position: absolute; border-radius: var(--radius-card); }
+.whyr__card--back {
+  left: 6cqi;
+  top: 9%;
+  width: 84cqi;
+  height: 62%;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  transform: rotate(-3deg);
+}
+.whyr__card--under {
+  left: 15cqi;
+  top: 88%;
+  width: 90cqi;
+  height: 40%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  transform: rotate(2deg);
+}
+.whyr__card--price {
+  left: 9cqi;
+  top: 24%;
+  width: 98cqi;
+  padding: 4.5cqi 5.5cqi 5cqi;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.6cqi;
+  background: var(--bg-surface);
+  box-shadow: 0 18px 32px -12px rgba(2, 40, 38, 0.55);
+}
+.whyr__verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem 0.25rem 0.45rem;
+  border-radius: var(--radius-badge);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: clamp(0.68rem, 2.7cqi, 0.8rem);
+  font-weight: 700;
+}
+.whyr__price-top { display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem 0.6rem; }
+.whyr__price-old { color: #475569; text-decoration: line-through; font-size: clamp(0.8rem, 3.2cqi, 0.95rem); font-variant-numeric: tabular-nums; }
+.whyr__price-badge { background: var(--primary); color: var(--text-inverse); border-radius: var(--radius-badge); padding: 0.15rem 0.55rem; font-size: clamp(0.68rem, 2.7cqi, 0.8rem); font-weight: 700; }
+.whyr__price-new { color: var(--primary); font-weight: 800; font-size: clamp(1.9rem, 12cqi, 3.5rem); line-height: 1.05; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.whyr__price-note { color: #475569; font-size: clamp(0.72rem, 3cqi, 0.85rem); font-weight: 600; }
+.whyr__save {
+  position: absolute;
+  right: 4cqi;
+  top: 6cqi;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-badge);
+  background: hsl(48, 96%, 62%);
+  color: hsl(222, 47%, 11%);
+  font-size: clamp(0.72rem, 3cqi, 0.85rem);
+  font-weight: 800;
+  transform: rotate(3deg);
+  box-shadow: 0 6px 14px -6px rgba(2, 40, 38, 0.6);
+}
+
+/* Row 3: living-area photo, glass tata tertib card top left, authorship tag bottom right. */
+.whyr__rulecard {
+  position: absolute;
+  left: 4cqi;
+  top: 4cqi;
+  width: clamp(15rem, 82cqi, 19rem);
+  padding: 0.85rem 1rem 0.4rem;
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 10px 18px -8px rgba(15, 23, 42, 0.35);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.whyr__rulecard-head { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; font-weight: 800; color: var(--primary); margin-bottom: 0.25rem; }
+.whyr__rulecard ul { list-style: none; }
+.whyr__rulecard li { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; padding: 0.5rem 0; border-top: 1px solid var(--border-subtle); font-size: 0.84rem; font-variant-numeric: tabular-nums; }
+.whyr__rulecard li span { color: var(--text-main); font-weight: 500; }
+.whyr__rulecard li b { color: var(--text-main); font-weight: 700; white-space: nowrap; }
+.whyr__rulecard .whyr__rule-fine { margin: 0.15rem -0.45rem 0.25rem; padding: 0.5rem 0.45rem; border-top: 0; border-radius: var(--radius-md); background: var(--primary-light); }
+.whyr__rulecard .whyr__rule-fine span, .whyr__rulecard .whyr__rule-fine b { color: var(--primary); font-weight: 800; }
+.whyr__by {
+  position: absolute;
+  right: 4cqi;
+  bottom: 4cqi;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-badge);
+  background: var(--primary);
+  color: var(--text-inverse);
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-shadow: 0 8px 14px -6px rgba(2, 40, 38, 0.5);
+}
+
+/* Row 4: stylised neighbourhood map filling the stage; pins at the same percent coordinates as the route. */
+.whyr__stage--map { height: 20rem; background: #e4f3ef; }
+.whyr__map { position: absolute; inset: 0; width: 100%; height: 100%; }
+.whyr__map path { vector-effect: non-scaling-stroke; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.whyr__map .whyr__map-water { fill: #bfe2ec; }
+.whyr__map .whyr__map-park { fill: #cde8d8; }
+.whyr__map-road { stroke: rgba(255, 255, 255, 0.85); stroke-width: 4px; }
+.whyr__map-road--wide { stroke-width: 9px; }
+.whyr__map-route { stroke: var(--primary); stroke-width: 4px; stroke-dasharray: 0.1 9; }
+.whyr__pin { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; }
+.whyr__pin-dot {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 2px solid var(--primary);
+  color: var(--primary);
+  box-shadow: 0 6px 12px -4px rgba(15, 23, 42, 0.3);
+}
+.whyr__pin--end .whyr__pin-dot { width: 3rem; height: 3rem; background: var(--primary); color: var(--text-inverse); box-shadow: 0 0 0 5px rgba(15, 118, 110, 0.18), 0 8px 14px -4px rgba(15, 23, 42, 0.35); }
+.whyr__pin-chip {
+  position: absolute;
+  left: calc(100% + 0.35rem);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-badge);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 4px 10px -4px rgba(15, 23, 42, 0.25);
+  font-size: clamp(0.72rem, 2.7cqi, 0.85rem);
+  color: var(--text-main);
+  white-space: nowrap;
+}
+.whyr__pin-chip b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.whyr__pin--end .whyr__pin-chip { left: auto; right: calc(100% + 0.35rem); }
+.whyr__pin-chip > span:only-child { font-weight: 800; }
+
+@media (min-width: 960px) {
+  .whyr__rows { gap: 1.75rem; }
+  /* One unit: text and stage share the row width equally, the pair is centered
+     and capped, and the gutter stays 40-56px. */
+  .whyr__row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(2rem, 3vw, 2.75rem); max-width: 1160px; margin-inline: auto; width: 100%; }
+  .whyr__row--flip .whyr__text { order: 2; }
+  .whyr__row--flip .whyr__stage { order: 1; }
+  .whyr__text { max-width: 34rem; justify-self: end; }
+  .whyr__row--flip .whyr__text { justify-self: start; }
+  .whyr__text p { max-width: 40ch; }
+  .whyr__stage, .whyr__stage--teal, .whyr__stage--map { height: 21rem; }
+  .whyr__num { font-size: 3rem; }
+  .whyr__text h3 { font-size: 1.5rem; }
+  .whyr__text p { font-size: 1.05rem; }
+  .whyr__confirm { display: flex; }
+  .whyr__picker { width: clamp(14rem, 54cqi, 16rem); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .whyr__picker, .whyr__rulecard { background: var(--bg-surface); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .whyr__card--back { background: hsl(176, 60%, 34%); }
+  .whyr__card--under { background: hsl(176, 70%, 24%); }
+  .whyr__pin-chip { background: var(--bg-surface); }
+}
+
+/* ---------- Landing motion: why rows ----------
+   One reveal unit per row (useReveal sets data-reveal on the article): text
+   group at 0, stage one beat later, stage interior in story order. Only
+   transform/opacity move; the dotted route is wiped with clip-path (a
+   dashoffset would slide the dots) and two small colour fades mark "selected". */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal='armed'] .whyr__promise { opacity: 0; transform: translateY(var(--rise)); }
+  .whyr__promise { transition: opacity var(--dur-base) var(--ease-apple-out), transform var(--dur-base) var(--ease-apple-out); }
+  [data-reveal='armed'] .whyr__stage { opacity: 0; transform: translateY(var(--rise)) scale(0.985); }
+  .whyr__stage { transition: opacity var(--dur-base) var(--ease-apple-out) var(--stagger), transform var(--dur-base) var(--ease-apple-out) var(--stagger); }
+  [data-reveal='armed'] .whyr__photo { transform: scale(1.04); }
+  .whyr__photo { transition: transform var(--dur-slow) var(--ease-apple-out) var(--stagger); }
+
+  /* Row 1: picker, then date chip and slot select, then the owner is notified */
+  [data-reveal='armed'] .whyr__picker { opacity: 0; transform: translateY(16px); }
+  .whyr__picker { transition: opacity var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 4), transform var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 4); }
+  .whyr__chip, .whyr__seg span { transition: background-color var(--dur-fast) var(--ease-apple-inout), border-color var(--dur-fast) var(--ease-apple-inout), color var(--dur-fast) var(--ease-apple-inout), box-shadow var(--dur-fast) var(--ease-apple-inout); }
+  [data-reveal='armed'] .whyr__chip--on { background: transparent; border-color: var(--border-strong); color: var(--text-main); }
+  .whyr__chip--on { transition-delay: calc(var(--stagger) * 11); }
+  [data-reveal='armed'] .whyr__seg .whyr__seg-on { background: transparent; box-shadow: none; color: var(--text-muted); }
+  .whyr__seg .whyr__seg-on { transition-delay: calc(var(--stagger) * 13); }
+  [data-reveal='armed'] .whyr__confirm { opacity: 0; transform: translateY(calc(var(--rise-sm) * -1)); }
+  .whyr__confirm { transition: opacity var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 15), transform var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 15); }
+
+  /* Row 2: back cards settle, price slides in, Hemat pops (individual scale leaves rotate(3deg) alone) */
+  [data-reveal='armed'] .whyr__card--back { opacity: 0; transform: rotate(-3deg) translateY(12px); }
+  [data-reveal='armed'] .whyr__card--under { opacity: 0; transform: rotate(2deg) translateY(-12px); }
+  .whyr__card--back, .whyr__card--under { transition: opacity var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 2), transform var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 2); }
+  [data-reveal='armed'] .whyr__card--price { opacity: 0; transform: translateY(28px); }
+  .whyr__card--price { transition: opacity var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 4), transform var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 4); }
+  [data-reveal='armed'] .whyr__save { opacity: 0; scale: 0.6; }
+  .whyr__save { transition: opacity var(--dur-fast) var(--ease-apple-out) calc(var(--stagger) * 11), scale var(--dur-slow) var(--ease-spring-ish) calc(var(--stagger) * 11); }
+
+  /* Row 3: rule card, the lines one by one, the fine highlight last, author tag */
+  [data-reveal='armed'] .whyr__rulecard { opacity: 0; transform: translateY(16px); }
+  .whyr__rulecard { transition: opacity var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 4), transform var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 4); }
+  [data-reveal='armed'] .whyr__rulecard li { opacity: 0; transform: translateY(var(--rise-sm)); }
+  .whyr__rulecard li { transition: opacity var(--dur-base) var(--ease-apple-out), transform var(--dur-base) var(--ease-apple-out); }
+  .whyr__rulecard li:nth-child(1) { transition-delay: calc(var(--stagger) * 8); }
+  .whyr__rulecard li:nth-child(2) { transition-delay: calc(var(--stagger) * 9); }
+  .whyr__rulecard li:nth-child(3) { transition-delay: calc(var(--stagger) * 10); }
+  [data-reveal='armed'] .whyr__rulecard li.whyr__rule-fine { background-color: transparent; }
+  .whyr__rulecard li.whyr__rule-fine { transition-property: opacity, transform, background-color; transition-delay: calc(var(--stagger) * 10), calc(var(--stagger) * 10), calc(var(--stagger) * 12); }
+  [data-reveal='armed'] .whyr__by { opacity: 0; transform: translateY(var(--rise-sm)); }
+  .whyr__by { transition: opacity var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 14), transform var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 14); }
+
+  /* Row 4: route wipe left to right (pins are x-ordered), pins drop as it passes.
+     Resting state must be an explicit inset(0): clip-path cannot interpolate from none. */
+  [data-reveal='armed'] .whyr__map-route { clip-path: inset(0 100% 0 0); }
+  .whyr__map-route { clip-path: inset(0 0 0 0); transition: clip-path var(--dur-slow) linear calc(var(--stagger) * 3); }
+  [data-reveal='armed'] .whyr__pin { opacity: 0; translate: 0 -12px; scale: 0.7; }
+  .whyr__pin { transition: opacity var(--dur-fast) var(--ease-apple-out) var(--pd, 0ms), translate var(--dur-slow) var(--ease-spring-ish) var(--pd, 0ms), scale var(--dur-slow) var(--ease-spring-ish) var(--pd, 0ms); }
+  .whyr__pin:nth-of-type(1) { --pd: calc(var(--stagger) * 3); }
+  .whyr__pin:nth-of-type(2) { --pd: calc(var(--stagger) * 6); }
+  .whyr__pin:nth-of-type(3) { --pd: calc(var(--stagger) * 8); }
+  .whyr__pin:nth-of-type(4) { --pd: calc(var(--stagger) * 10); }
+  .whyr__pin:nth-of-type(5) { --pd: calc(var(--stagger) * 14); }
 }

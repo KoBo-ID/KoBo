@@ -30,7 +30,7 @@ const room = (
 
 const tenant = (name: string, campus: string) => ({ name, phone: null, campus });
 
-// Static, made-up data. Dates are fixed so the preview never changes between renders.
+// Static illustrative rooms. Dates are fixed so the preview never changes between renders.
 const DEMO_ROOMS: BoardRoom[] = [
   room('101', 1, 'paid', 1_500_000, {
     tenant: tenant('Rina Putri', 'UI'),
@@ -38,7 +38,7 @@ const DEMO_ROOMS: BoardRoom[] = [
     lastReceipt: { receiptNumber: 1, receiptNo: 'KWT-0001' },
   }),
   room('102', 1, 'due', 1_500_000, {
-    tenant: tenant('Dimas Pratama', 'Binus'),
+    tenant: tenant('Salsabila Putri', 'Binus'),
     invoice: { id: 'demo-i-102', dueDate: '2026-10-15', amount: 1_500_000 },
   }),
   room('103', 1, 'overdue', 1_600_000, {
@@ -59,16 +59,16 @@ const DEMO_ROOMS: BoardRoom[] = [
   room('203', 2, 'vacant', 1_800_000),
 ];
 
-/** The real owner board with static demo rooms. Inert: it is a picture of the product, not a control. */
+/** The real owner board with static rooms. Inert: it is a picture of the product, not a control. */
 export const OwnerBoardPreview: React.FC = () => (
   <figure className="owner-preview">
     <figcaption className="owner-preview__caption">
-      Contoh papan okupansi kamar: tujuh kamar di dua lantai dengan status lunas, jatuh tempo, menunggak, kosong, dan booking.
+      Papan okupansi kamar: tujuh kamar di dua lantai dengan status lunas, jatuh tempo, menunggak, kosong, dan booking.
     </figcaption>
     <div className="owner-preview__window" aria-hidden="true" inert>
       <div className="owner-preview__scale">
         <RoomOccupancyBoard
-          kosName="Kos Contoh"
+          kosName="Kos Melati Kemanggisan"
           rooms={DEMO_ROOMS}
           onOpenWhatsApp={noop}
           onMarkPaid={noop}

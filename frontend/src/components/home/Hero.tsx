@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { FEATURED_CAMPUSES } from '@kobo/shared/featured-campuses';
 import { LocateFixed } from 'lucide-react';
 import { PRESET_LOCATIONS } from '../../data/locations';
 import { Button } from '../ui/Button';
@@ -47,8 +48,9 @@ export const Hero: React.FC = () => {
       <section
         id="kobo-hero"
         style={{
-          background: 'radial-gradient(110% 110% at 50% 0%, hsla(176, 55%, 94%, 0.85) 0%, var(--bg-page) 100%)',
-          /* Fill the whole viewport. The section is pulled up under the sticky
+          background: 'transparent',
+          /* The glow now lives in .landing-backdrop (landing.css) on the page wrapper.
+             Fill the whole viewport. The section is pulled up under the sticky
              navbar by exactly its height and padded back down by the same
              amount, so the gradient runs behind the transparent bar while the
              content position is unchanged. Navbar.tsx watches #kobo-hero to
@@ -59,19 +61,14 @@ export const Hero: React.FC = () => {
           paddingBottom: '2.5rem',
           display: 'flex',
           alignItems: 'center',
-          borderBottom: '1px solid var(--border-subtle)',
         }}
       >
         <div className="app-container">
           <div className="kobo-hero">
             <div className="kobo-hero__copy">
               <h1 className="kobo-hero__title hero-enter">
-                <span style={{ color: 'var(--primary)' }}>Survey dulu</span>, baru ajukan sewa.
+                <span style={{ color: 'var(--primary)' }}>Survey dulu,</span> Baru sewa.
               </h1>
-
-              <p className="kobo-hero__sub hero-enter">
-                Lihat kos dan kampus terdekat di peta, baca aturan tertulisnya, lalu ajukan sewa untuk disetujui pemilik.
-              </p>
 
               {/* ── Location Search Bar ── */}
               <div className="kobo-hero__search hero-enter">
@@ -120,6 +117,15 @@ export const Hero: React.FC = () => {
                   </Button>
                 </form>
               </div>
+
+              <nav className="kobo-hero__campus-chips hero-enter" aria-label="Kampus populer">
+                <span className="kobo-hero__campus-lead">Cari dekat:</span>
+                {FEATURED_CAMPUSES.map(({ id, label }) => (
+                  <Link key={id} to={`/search?campus=${encodeURIComponent(id)}&sort=distance_asc`} className="kobo-hero__campus-chip">
+                    {label}
+                  </Link>
+                ))}
+              </nav>
             </div>
             <HeroScene />
           </div>
