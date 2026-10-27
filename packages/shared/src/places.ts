@@ -1,6 +1,6 @@
 // Place catalogue rules shared by the server (ranking, radii) and, later, the client (labels). Pure, no zod.
 
-export const PLACE_CATEGORY_IDS = ['campus', 'food', 'minimarket', 'laundry', 'print', 'atm', 'pharmacy', 'clinic', 'hospital', 'worship', 'gym', 'cafe', 'transit', 'pasar'] as const
+export const PLACE_CATEGORY_IDS = ['campus', 'food', 'minimarket', 'laundry', 'print', 'atm', 'pharmacy', 'clinic', 'hospital', 'police', 'worship', 'gym', 'cafe', 'transit', 'pasar'] as const
 export type PlaceCategoryId = (typeof PLACE_CATEGORY_IDS)[number]
 
 export type TravelMode = 'walk' | 'motor'
@@ -29,6 +29,7 @@ export const PLACE_CATEGORIES: readonly PlaceCategory[] = [
   { id: 'pharmacy', label: 'Apotek', primaryRadius: 1000, moreRadius: 3000, cap: 5, mode: 'motor' },
   { id: 'clinic', label: 'Klinik', primaryRadius: 1000, moreRadius: 3000, cap: 5, mode: 'motor' },
   { id: 'hospital', label: 'Rumah sakit', primaryRadius: 3000, moreRadius: 8000, cap: 5, mode: 'motor' },
+  { id: 'police', label: 'Kantor polisi', primaryRadius: 3000, moreRadius: 8000, cap: 3, mode: 'motor' },
   { id: 'worship', label: 'Tempat ibadah', primaryRadius: 500, moreRadius: 1500, cap: 5, mode: 'walk' },
   { id: 'gym', label: 'Olahraga', primaryRadius: 1000, moreRadius: 3000, cap: 5, mode: 'motor' },
   { id: 'cafe', label: 'Kafe & coworking', primaryRadius: 800, moreRadius: 2000, cap: 5, mode: 'walk' },

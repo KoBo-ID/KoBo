@@ -150,7 +150,7 @@ export async function regionLookup(prisma: PrismaClient, p: LatLng): Promise<Reg
   if (cached !== undefined) return cached
 
   const select = { code: true, name: true, kind: true, lat: true, lng: true, minLat: true, maxLat: true, minLng: true, maxLng: true, polygon: true } as const
-  const candidates = await prisma.region.findMany({ where: { level: 3, minLat: { lte: p.lat }, maxLat: { gte: p.lat }, minLng: { lte: p.lng }, maxLng: { gte: p.lng } }, select })
+  const candidates = await prisma.region.findMany({ where: { level: 3, minLat: { lte: p.lat }, maxLat: { gte: p.lat }, minLng: { lte: p.lng }, maxLng: { gte: p.lng } }, select, orderBy: { code: 'asc' } })
   let hit: RegionHit | null = null
   for (const c of candidates) {
     const poly = polygonOf(c)

@@ -8,7 +8,7 @@ const LNG = [94.5, 141.5] as const
 export const REGION_COLUMNS = ['code', 'level', 'name', 'kind', 'parent_code', 'lat', 'lng', 'min_lat', 'max_lat', 'min_lng', 'max_lng', 'postal_code', 'polygon', 'polygon_provenance', 'data_version', 'source', 'licence']
 export const PLACE_COLUMNS = ['id', 'source', 'source_id', 'category', 'subcategory', 'name', 'name_alt', 'brand', 'lat', 'lng', 'cell', 'desa_code', 'hours_raw', 'website', 'osm_type', 'osm_id', 'score', 'licence', 'attribution', 'derived_from_osm', 'first_seen', 'updated_at', 'is_hidden', 'data_version']
 export const CAMPUS_COLUMNS = ['id', 'name', 'short_name', 'city', 'lat', 'lng', 'kind', 'parent_id', 'pddikti_id', 'osm_id', 'wikidata_id', 'desa_code', 'gate_lat', 'gate_lng', 'coord_method', 'verified_at', 'email_domains', 'website', 'aliases', 'licence', 'source', 'data_version']
-export const PLACE_CATEGORIES_OK = new Set(['food', 'minimarket', 'laundry', 'print', 'atm', 'pharmacy', 'clinic', 'hospital', 'worship', 'gym', 'cafe', 'transit', 'pasar'])
+export const PLACE_CATEGORIES_OK = new Set(['food', 'minimarket', 'laundry', 'print', 'atm', 'pharmacy', 'clinic', 'hospital', 'worship', 'gym', 'cafe', 'transit', 'pasar', 'police'])
 
 export interface Problem {
   row: number
