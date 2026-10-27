@@ -5,6 +5,8 @@ import L from 'leaflet';
 // into the chunk that actually renders a map.
 import 'leaflet/dist/leaflet.css';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { useTRPC } from '../../lib/trpc';
 import { MapPin, Star } from 'lucide-react';
 import { Campus, Kos, LocationPin } from '../../types';
 import { CAMPUSES } from '../../data/campuses';
@@ -143,7 +145,20 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   style,
   className = '',
 }) => {
+  const trpc = useTRPC();
+  // Catalogue campuses around the searched point (about 3 km) or inside the region; the built-in list is the fallback.
+  const box = useMemo(() => {
+    if (regionOutline) return regionOutline.bbox;
+    if (!activeLocation) return null;
+    const d = NEARBY_CAMPUS_METERS / 111_000;
+    const { lat, lng } = activeLocation.coordinates;
+    return { minLat: lat - d, maxLat: lat + d, minLng: lng - d, maxLng: lng + d };
+  }, [activeLocation, regionOutline]);
+  const campusBox = useQuery({ ...trpc.campus.inBox.queryOptions({ ...(box ?? { minLat: 0, maxLat: 0, minLng: 0, maxLng: 0 }), limit: 40 }), enabled: !!box });
   const nearbyCampuses = useMemo(() => {
+    if (campusBox.data) {
+      return campusBox.data.map((c) => ({ id: c.id, name: c.name, shortName: c.shortName, city: c.city, coordinates: { lat: c.lat, lng: c.lng } })) as Campus[];
+    }
     if (regionOutline) {
       const b = regionOutline.bbox;
       return CAMPUSES.filter((c) => c.coordinates.lat >= b.minLat && c.coordinates.lat <= b.maxLat && c.coordinates.lng >= b.minLng && c.coordinates.lng <= b.maxLng);
@@ -152,7 +167,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     return CAMPUSES.filter(
       (campus) => haversineMeters(activeLocation.coordinates, campus.coordinates) <= NEARBY_CAMPUS_METERS
     );
-  }, [activeLocation, regionOutline]);
+  }, [activeLocation, regionOutline, campusBox.data]);
 
   const center: [number, number] = activeLocation
     ? [activeLocation.coordinates.lat, activeLocation.coordinates.lng]
@@ -257,7 +272,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
             position={[campus.coordinates.lat, campus.coordinates.lng]}
             icon={L.divIcon({
               className: 'kobo-poi-marker-wrapper',
-              html: `<div class="kobo-poi-pin">${gradCapSvg}<span>${campus.shortName}</span></div>`,
+              html: `<div class="kobo-poi-pin" title="${campus.name.replace(/"/g, '&quot;')}">${gradCapSvg}<span>${campus.name.replace(/</g, '&lt;')}</span></div>`,
               iconSize: [0, 0],
               iconAnchor: [0, 0],
             })}

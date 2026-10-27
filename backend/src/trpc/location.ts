@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
-import { campusSearchInput, regionChildrenInput, regionLookupInput, regionSearchInput } from '@kobo/shared/schemas'
+import { campusBoxInput, campusSearchInput, regionChildrenInput, regionLookupInput, regionSearchInput } from '@kobo/shared/schemas'
 import { parseList } from '../env.ts'
 import { Prisma } from '../generated/prisma/client.ts'
 import { normalizeRegionName } from '../regionLookup.ts'
@@ -99,6 +99,18 @@ export const campusRouter = router({
       WHERE lower(name) LIKE ${`%${q}%`} ESCAPE '\\' OR lower("shortName") LIKE ${`${q}%`} ESCAPE '\\' OR lower(city) = ${input.q.toLowerCase()}
          OR EXISTS (SELECT 1 FROM unnest(aliases) a WHERE lower(a) LIKE ${`${q}%`} ESCAPE '\\')
       ORDER BY (lower("shortName") = ${input.q.toLowerCase()}) DESC, (lower(name) LIKE ${`${q}%`} ESCAPE '\\') DESC, name
+      LIMIT ${input.limit}`)
+  }),
+
+  /** Campuses inside a map box, nearest to its centre first (the search map's campus pins). */
+  inBox: publicProcedure.input(campusBoxInput).query(async ({ ctx, input }): Promise<CampusView[]> => {
+    const cLat = (input.minLat + input.maxLat) / 2
+    const cLng = (input.minLng + input.maxLng) / 2
+    return ctx.prisma.$queryRaw<CampusView[]>(Prisma.sql`
+      SELECT id, name, "shortName", city, lat, lng, kind
+      FROM "Campus"
+      WHERE lat BETWEEN ${input.minLat} AND ${input.maxLat} AND lng BETWEEN ${input.minLng} AND ${input.maxLng}
+      ORDER BY (lat - ${cLat}) ^ 2 + (lng - ${cLng}) ^ 2
       LIMIT ${input.limit}`)
   }),
 })

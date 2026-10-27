@@ -288,6 +288,11 @@ export const regionChildrenInput = z.object({ parentCode: z.string().regex(/^\d{
 export const regionSearchInput = z.object({ q: z.string().trim().min(2).max(60), level: z.number().int().min(1).max(4).optional(), limit: z.number().int().min(1).max(20).default(10) })
 export const regionLookupInput = z.object({ code: z.string().regex(/^\d{2}(\.\d{2}){0,2}(\.\d{4})?$/) })
 
+export const campusBoxInput = z.object({
+  minLat: z.number().min(-12).max(8), maxLat: z.number().min(-12).max(8), minLng: z.number().min(94).max(142), maxLng: z.number().min(94).max(142),
+  limit: z.number().int().min(1).max(60).default(40),
+})
+
 export const campusSearchInput = z.object({ q: z.string().trim().min(2).max(60), limit: z.number().int().min(1).max(20).default(10) })
 
 const PLACE_CATEGORY_ENUM = ['campus', 'food', 'minimarket', 'laundry', 'print', 'atm', 'pharmacy', 'clinic', 'hospital', 'police', 'worship', 'gym', 'cafe', 'transit', 'pasar'] as const

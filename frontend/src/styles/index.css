@@ -224,39 +224,45 @@ img {
 /* Campus / Nearby POI Marker */
 .kobo-poi-pin {
   position: absolute;
-  transform: translate(-50%, -100%);
+  transform: translate(-50%, -50%);
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
   background-color: var(--bg-surface);
   color: var(--text-muted);
-  padding: 0.25rem 0.55rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  border: 1.5px solid var(--primary);
   font-family: var(--font-sans);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  white-space: nowrap;
   box-shadow: var(--shadow-sm);
 }
-
-.kobo-poi-pin::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -5px;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 5px solid var(--bg-surface);
-}
-
 .kobo-poi-pin svg {
   color: var(--primary);
   flex-shrink: 0;
+  width: 0.9rem;
+  height: 0.9rem;
 }
+/* The campus name shows on hover or keyboard focus, above the icon. */
+.kobo-poi-pin span {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: var(--text-main);
+  color: var(--text-inverse);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease-out;
+}
+.kobo-poi-pin:hover span { opacity: 1; }
+.kobo-poi-pin:hover { background-color: var(--primary-light); }
+.kobo-poi-marker-wrapper:hover { z-index: 1000 !important; }
 
 /* Location Reference Pin (the search anchor point) */
 .kobo-location-pin {
