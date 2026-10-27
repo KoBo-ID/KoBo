@@ -959,16 +959,21 @@
 
 /* Payment breakdown: one bordered unit; every row shares the same 16px side padding. */
 .booking-lines { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; font-size: 0.875rem; }
-.booking-lines__rows { display: flex; flex-direction: column; gap: 0.625rem; padding: 1rem; }
-.booking-lines__total { padding: 0.875rem 1rem; background: var(--primary-light); border-top: 1px solid var(--border-subtle); }
+.booking-lines__rows { display: flex; flex-direction: column; padding: 0 1rem; }
+.booking-fee-row { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: baseline; column-gap: 0.75rem; padding: 0.875rem 0; color: var(--text-main); font-weight: 500; }
+.booking-fee-row + .booking-fee-row { border-top: 1px solid var(--border-subtle); }
+.booking-fee-row__value { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.booking-fee-row__note { grid-column: 1 / -1; margin-top: 0.3rem; font-size: 0.75rem; font-weight: 400; line-height: 1.5; color: var(--text-muted); }
+.booking-fee-row--strong { font-weight: 700; }
+.booking-lines__total { padding: 1rem; background: var(--primary-light); border-top: 1px solid var(--border-subtle); }
 .booking-lines__total-main { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; }
-.booking-lines__total small { display: block; margin-top: 0.125rem; color: var(--text-muted); font-size: 0.75rem; }
-.booking-lines__sum { padding: 0.75rem 1rem; border-top: 1px solid var(--border-subtle); }
+.booking-lines__total small { display: block; margin-top: 0.375rem; color: var(--text-muted); font-size: 0.75rem; }
+.booking-lines__sum { padding: 0 1rem; border-top: 1px solid var(--border-subtle); }
 
 /* Short laptop windows: tighter rhythm so the whole card (every payment line) fits under the header without scrolling. */
 @media (min-width: 1024px) and (max-height: 720px) {
   .booking-card { padding: 1.25rem !important; gap: 1rem !important; }
-  .booking-lines__rows { gap: 0.5rem !important; padding-block: 0.75rem !important; }
+  .booking-fee-row { padding-block: 0.625rem !important; }
   .booking-lines__total { padding-block: 0.625rem !important; }
 }
 

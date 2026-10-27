@@ -27,10 +27,10 @@ interface StickyBookingSidebarProps {
 }
 
 const FeeRow: React.FC<{ label: React.ReactNode; note?: React.ReactNode; value: string; accent?: boolean; strong?: boolean; testId?: string }> = ({ label, note, value, accent, strong, testId }) => (
-  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) max-content', alignItems: 'baseline', columnGap: '0.75rem', color: strong ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: strong ? 700 : 400 }}>
+  <div className={`booking-fee-row${strong ? ' booking-fee-row--strong' : ''}`}>
     <span style={{ minWidth: 0 }}>{label}</span>
-    <span data-testid={testId} style={{ whiteSpace: 'nowrap', ...(accent ? { color: 'var(--accent-strong)', fontWeight: 600 } : {}) }}>{value}</span>
-    {note && <span style={{ gridColumn: '1 / -1', fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>{note}</span>}
+    <span className="booking-fee-row__value" data-testid={testId} style={accent ? { color: 'var(--accent-strong)', fontWeight: 600 } : undefined}>{value}</span>
+    {note && <span className="booking-fee-row__note">{note}</span>}
   </div>
 );
 
