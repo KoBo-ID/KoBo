@@ -1,10 +1,12 @@
 import { itemsFromArrays } from '@kobo/shared/facilities'
 import type { FacilityItem } from '@kobo/shared/facilities'
-import { deriveRoomStatus } from '@kobo/shared/domain'
+import { deriveRoomStatus, pointInMultiPolygon } from '@kobo/shared/domain'
+import type { MultiPolygonCoords } from '@kobo/shared/domain'
 import { idInput, kosListInput, kosSearchInput } from '@kobo/shared/schemas'
 import { PRICE_MAX, SEARCH_LIMIT, SEARCH_RADIUS_METERS } from '@kobo/shared/search'
 import type { RoomStatus } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
+import type { PrismaClient } from '../db/client.ts'
 import { Prisma } from '../generated/prisma/client.ts'
 import { liveOffer, roomClaims } from '../waitlist.ts'
 import { loadNearby } from '../placeCatalog.ts'
@@ -14,6 +16,20 @@ import type { KosCard } from './kosQueries.ts'
 import { publicProcedure, router } from './trpc.ts'
 
 export type { KosCard } from './kosQueries.ts'
+
+
+/** Ids of kos with no desaCode whose point lies in the region (polygon test; bbox only when no polygon is stored). Levels 1 to 3. */
+async function unmappedKosInRegion(prisma: PrismaClient, regionCode: string): Promise<string[]> {
+  if (regionCode.split('.').length > 3) return []
+  const r = await prisma.region.findUnique({ where: { code: regionCode }, select: { minLat: true, maxLat: true, minLng: true, maxLng: true, polygon: true } })
+  if (!r || r.minLat === null || r.maxLat === null || r.minLng === null || r.maxLng === null) return []
+  const bbox = { minLat: r.minLat, maxLat: r.maxLat, minLng: r.minLng, maxLng: r.maxLng }
+  const rows = await prisma.$queryRaw<{ id: string; lat: number; lng: number }[]>(Prisma.sql`
+    SELECT id, lat, lng FROM "Kos"
+    WHERE "desaCode" IS NULL AND lat BETWEEN ${bbox.minLat} AND ${bbox.maxLat} AND lng BETWEEN ${bbox.minLng} AND ${bbox.maxLng}`)
+  const polygon = (r.polygon as { coordinates?: MultiPolygonCoords } | null)?.coordinates ?? null
+  return rows.filter((k) => !polygon || pointInMultiPolygon({ lat: k.lat, lng: k.lng }, polygon, bbox)).map((k) => k.id)
+}
 
 export interface KosSearchCard extends KosCard {
   /** Metres from the search reference point; null when the search has none. */
@@ -97,13 +113,22 @@ export const kosRouter = router({
    * One query: card fields + aggregates + distance, filtered and sorted in SQL, hard-capped at 200.
    * No pagination and no bbox (spec section 10): the list and the map render the same array.
    */
-  search: publicProcedure.input(kosSearchInput).query(({ ctx, input }): Promise<KosSearchCard[]> => {
+  search: publicProcedure.input(kosSearchInput).query(async ({ ctx, input }): Promise<KosSearchCard[]> => {
     const { q, lat, lng, radius, regionCode, gender, maxPrice, discountOnly, surveyOnly, sort } = input
     const geo = lat !== undefined && lng !== undefined
     const dist = geo ? haversineSql(lat, lng) : null
     const conds: Prisma.Sql[] = []
     if (dist) conds.push(Prisma.sql`${dist} <= ${radius ?? SEARCH_RADIUS_METERS}`)
-    if (regionCode) conds.push(Prisma.sql`(k."desaCode" = ${regionCode} OR k."desaCode" LIKE ${`${regionCode}.%`})`)
+    if (regionCode) {
+      // Kos with a stored desaCode match by prefix. Kos without one (older rows, imports before the catalogue) are placed
+      // by their point against the region polygon (bbox only when the region has no polygon), never by a radius.
+      const unmapped = await unmappedKosInRegion(ctx.prisma, regionCode)
+      conds.push(
+        unmapped.length
+          ? Prisma.sql`(k."desaCode" = ${regionCode} OR k."desaCode" LIKE ${`${regionCode}.%`} OR k.id = ANY(${unmapped}::text[]))`
+          : Prisma.sql`(k."desaCode" = ${regionCode} OR k."desaCode" LIKE ${`${regionCode}.%`})`,
+      )
+    }
     if (gender !== 'all') conds.push(Prisma.sql`k.gender = ${gender.toUpperCase()}::"KosGender"`)
     // At PRICE_MAX the slider is "off": do not hide kos that cost more than the slider range.
     if (maxPrice < PRICE_MAX) conds.push(Prisma.sql`rm."priceMonthlyStart" <= ${maxPrice}`)

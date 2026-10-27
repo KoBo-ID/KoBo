@@ -42,6 +42,20 @@ export const regionRouter = router({
     return { region, ancestors: chain.slice(0, -1).map((c) => rows.find((r) => r.code === c)).filter((r): r is RegionView => !!r) }
   }),
 
+  /** The polygon and bbox of one province, regency or district, for the map outline. Fetched lazily, only by the map. */
+  outline: publicProcedure.input(regionLookupInput).query(async ({ ctx, input }) => {
+    const r = await ctx.prisma.region.findUnique({ where: { code: input.code }, select: { code: true, name: true, kind: true, lat: true, lng: true, minLat: true, maxLat: true, minLng: true, maxLng: true, polygon: true } })
+    if (!r || r.minLat === null || r.maxLat === null || r.minLng === null || r.maxLng === null) return null
+    return {
+      code: r.code,
+      name: r.name,
+      kind: r.kind,
+      center: { lat: r.lat, lng: r.lng },
+      bbox: { minLat: r.minLat, maxLat: r.maxLat, minLng: r.minLng, maxLng: r.maxLng },
+      polygon: (r.polygon as { type: 'MultiPolygon'; coordinates: number[][][][] } | null) ?? null,
+    }
+  }),
+
   /** Typeahead by name with the administrative prefix tolerated ("kota jakarta barat", "kec. kelapa dua"). */
   search: publicProcedure.input(regionSearchInput).query(async ({ ctx, input }): Promise<(RegionView & { path: string })[]> => {
     const norm = normalizeRegionName(input.q)

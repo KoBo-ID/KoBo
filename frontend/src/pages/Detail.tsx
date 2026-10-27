@@ -23,6 +23,7 @@ import { useTRPC } from '../lib/trpc';
 import { useWaitlistStatus } from '../lib/waitlist';
 import { isNotFound } from '../lib/queryErrors';
 import { kosDetailToKos, reviewsToLegacy } from '../utils/kosDetail';
+import { NearbyList } from '../components/kos/NearbyList';
 import type { KosDetail } from '../../../backend/src/trpc/router';
 import type { Room } from '../types';
 
@@ -203,7 +204,7 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
             </div>
 
             <div id="lokasi" className="detail-section">
-              <PoiRadar pois={kos.pois} campusName={kos.campusProximity.campusName} />
+              {detail?.nearby ? <NearbyList nearby={detail.nearby} /> : <PoiRadar pois={kos.pois} campusName={kos.campusProximity.campusName} />}
             </div>
 
             <div id="aturan" className="detail-section">

@@ -331,12 +331,37 @@ describe('region, campus and search', () => {
 
   it('kos.search filters by regionCode at any level and keeps other filters', async () => {
     const { kos } = await ownerWithKos()
+    // The seed sits around Jakarta, inside the fixture province's box: move every other kos away so only this one can match.
+    await prisma.kos.updateMany({ where: { id: { not: kos.id } }, data: { lat: -2, lng: 120, desaCode: null } })
     await prisma.kos.update({ where: { id: kos.id }, data: { desaCode: '99.01.01.1001', regionConfidence: 'polygon' } })
     for (const regionCode of ['99', '99.01', '99.01.01', '99.01.01.1001']) {
       expect((await caller.kos.search({ regionCode })).map((k) => k.id)).toEqual([kos.id])
     }
     expect(await caller.kos.search({ regionCode: '99.01.02' })).toEqual([])
     expect(await caller.kos.search({ regionCode: '99.01.01', maxPrice: 1 })).toEqual([])
+  })
+
+  it('kos.search by regionCode finds a kos without desaCode only when its point is inside the region polygon', async () => {
+    const { kos, other } = await ownerWithKos()
+    await prisma.kos.updateMany({ where: { id: { not: kos.id } }, data: { lat: -2, lng: 120 } })
+    await prisma.kos.updateMany({ data: { desaCode: null } })
+    await prisma.kos.update({ where: { id: kos.id }, data: { lat: -6.25, lng: 106.65 } })
+    await prisma.kos.update({ where: { id: other.id }, data: { lat: -6.5, lng: 106.65 } })
+    for (const regionCode of ['99', '99.01', '99.01.01']) {
+      expect((await caller.kos.search({ regionCode })).map((k) => k.id)).toEqual([kos.id])
+    }
+    expect(await caller.kos.search({ regionCode: '99.01.02' })).toEqual([])
+    // Every hit really lies inside the region: nothing outside leaks in through the fallback.
+    const hits = await caller.kos.search({ regionCode: '99' })
+    expect(hits.every((k) => k.id !== other.id)).toBe(true)
+  })
+
+  it('region.outline returns the polygon and bbox, or null for an unknown code', async () => {
+    const out = await caller.region.outline({ code: '99' })
+    expect(out?.name).toBe('Provinsi Uji')
+    expect(out?.bbox).toEqual({ minLat: -6.3, maxLat: -6.2, minLng: 106.6, maxLng: 106.8 })
+    expect(out?.polygon?.type).toBe('MultiPolygon')
+    expect(await caller.region.outline({ code: '98' })).toBeNull()
   })
 
   it('catalog.status is for allow-listed operators only', async () => {

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 // Imported here rather than in styles/index.css so Leaflet's CSS is code-split
 // into the chunk that actually renders a map.
@@ -12,8 +12,16 @@ import { formatDistance, haversineMeters } from '../../utils/geo';
 import { SafeImage } from '../ui/SafeImage';
 import { formatRupiah } from '../../lib/format';
 
+/** A searched province / regency: its boundary (when one is stored) and bounding box, from region.outline. */
+export interface RegionOutline {
+  name: string;
+  bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number };
+  polygon: { type: 'MultiPolygon'; coordinates: number[][][][] } | null;
+}
+
 interface LeafletMapProps {
   kosList: Kos[];
+  regionOutline?: RegionOutline | null;
   activeLocation: LocationPin | null;
   hoveredKosId?: string | null;
   onHoverKos?: (id: string | null) => void;
@@ -50,7 +58,8 @@ const MapViewportController: React.FC<{
   pin: LocationPin | null;
   kosList: Kos[];
   campuses: Campus[];
-}> = ({ pin, kosList, campuses }) => {
+  region: RegionOutline | null;
+}> = ({ pin, kosList, campuses, region }) => {
   const map = useMap();
   const [viewportVersion, setViewportVersion] = useState(0);
   const kosListRef = useRef(kosList);
@@ -92,6 +101,13 @@ const MapViewportController: React.FC<{
 
     map.invalidateSize();
 
+    if (region) {
+      // A region search shows the whole region, never a circle around a point.
+      const b = region.bbox;
+      map.fitBounds([[b.minLat, b.minLng], [b.maxLat, b.maxLng]], { padding: [24, 24], animate: true });
+      return;
+    }
+
     if (pinLat !== null && pinLng !== null && pinRadius > REGION_RADIUS_METERS) {
       // A region (province, regency): show all of it instead of zooming onto its centre point.
       map.fitBounds(L.latLng(pinLat, pinLng).toBounds(pinRadius * 2), { padding: [24, 24], animate: true });
@@ -113,7 +129,7 @@ const MapViewportController: React.FC<{
     if (points.length > 0) {
       map.fitBounds(L.latLngBounds(points), { padding: [36, 36], maxZoom: 13 });
     }
-  }, [pinKey, pinLat, pinLng, pinRadius, map, viewportVersion]);
+  }, [pinKey, pinLat, pinLng, pinRadius, map, viewportVersion, region]);
 
   return null;
 };
@@ -121,17 +137,22 @@ const MapViewportController: React.FC<{
 export const LeafletMap: React.FC<LeafletMapProps> = ({
   kosList,
   activeLocation,
+  regionOutline = null,
   hoveredKosId,
   onHoverKos,
   style,
   className = '',
 }) => {
   const nearbyCampuses = useMemo(() => {
+    if (regionOutline) {
+      const b = regionOutline.bbox;
+      return CAMPUSES.filter((c) => c.coordinates.lat >= b.minLat && c.coordinates.lat <= b.maxLat && c.coordinates.lng >= b.minLng && c.coordinates.lng <= b.maxLng);
+    }
     if (!activeLocation) return CAMPUSES;
     return CAMPUSES.filter(
       (campus) => haversineMeters(activeLocation.coordinates, campus.coordinates) <= NEARBY_CAMPUS_METERS
     );
-  }, [activeLocation]);
+  }, [activeLocation, regionOutline]);
 
   const center: [number, number] = activeLocation
     ? [activeLocation.coordinates.lat, activeLocation.coordinates.lng]
@@ -165,12 +186,21 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         style={{ width: '100%', height: '100%', background: 'var(--bg-muted)' }}
         attributionControl={false}
       >
-        <MapViewportController pin={activeLocation} kosList={kosList} campuses={nearbyCampuses} />
+        <MapViewportController pin={activeLocation} kosList={kosList} campuses={nearbyCampuses} region={regionOutline} />
 
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+
+        {regionOutline?.polygon && (
+          <GeoJSON
+            key={regionOutline.name}
+            data={regionOutline.polygon}
+            interactive={false}
+            style={{ color: 'hsl(190, 95%, 36%)', weight: 2, opacity: 0.9, fillColor: 'hsl(190, 95%, 42%)', fillOpacity: 0.05 }}
+          />
+        )}
 
         {activeLocation && (
           <>
