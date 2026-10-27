@@ -1382,3 +1382,28 @@
 .kos-amenities__status.is-paid { background: var(--bg-muted); color: var(--text-main); }
 .kos-amenities__item { align-items: flex-start; }
 .kos-amenities__item .kos-amenities__status { align-self: center; }
+
+/* "Rute" in the nearby list: a real button, in the accent color so it does not read as plain teal text. */
+.nearby-route {
+  display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md);
+  color: var(--accent-strong); transition: background-color 0.15s;
+}
+.nearby-route:hover { background: var(--accent-light); }
+.nearby-route:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+
+/* Nearby chips: one scrollable row, never a multi-row grid. */
+.nearby-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.nearby-chip {
+  flex: 1 1 0; min-width: 2.5rem; display: inline-flex; align-items: center; justify-content: center; height: 2.75rem;
+  border: 1px solid transparent; border-radius: var(--radius-md); background: var(--bg-muted); color: var(--text-muted);
+  transition: border-color 0.15s, color 0.15s;
+}
+/* The open tab stays filled; a hovered or focused tab only gets a brand border and icon. */
+.nearby-chip.is-selected { background: var(--primary); color: var(--text-inverse); }
+@media (hover: hover) and (pointer: fine) {
+  .nearby-chip:not(.is-selected):hover { border-color: var(--primary); color: var(--primary); }
+}
+.nearby-chip:not(.is-selected):focus-visible { border-color: var(--primary); color: var(--primary); }
+.nearby-chip:focus-visible { outline: 3px solid var(--border-focus); outline-offset: 2px; }
+/* The name sits on its own line under the tabs: fixed height, so hovering never moves anything. */
+.nearby-caption { min-height: 2rem; margin: 1rem 0 0.25rem; font-size: 1.375rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.3; color: var(--text-main); }

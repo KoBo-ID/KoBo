@@ -32,7 +32,7 @@ export const PLACE_CATEGORIES: readonly PlaceCategory[] = [
   { id: 'police', label: 'Kantor polisi', primaryRadius: 3000, moreRadius: 8000, cap: 3, mode: 'motor' },
   { id: 'worship', label: 'Tempat ibadah', primaryRadius: 500, moreRadius: 1500, cap: 5, mode: 'walk' },
   { id: 'gym', label: 'Olahraga', primaryRadius: 1000, moreRadius: 3000, cap: 5, mode: 'motor' },
-  { id: 'cafe', label: 'Kafe & coworking', primaryRadius: 800, moreRadius: 2000, cap: 5, mode: 'walk' },
+  { id: 'cafe', label: 'Kafe', primaryRadius: 800, moreRadius: 2000, cap: 5, mode: 'walk' },
   { id: 'transit', label: 'Transportasi umum', primaryRadius: 1000, moreRadius: 3000, cap: 5, mode: 'walk' },
   { id: 'pasar', label: 'Pasar', primaryRadius: 1500, moreRadius: 4000, cap: 5, mode: 'motor' },
 ]

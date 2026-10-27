@@ -202,10 +202,13 @@ test('a new kos explains missing rules and locations without empty POI filters',
     await expect(owner.page.getByText('Pemilik belum mengisi tata tertib dan denda.', { exact: true })).toBeVisible()
     // Either the old empty message (no snapshot) or the catalogue list: never a filter chip without places behind it.
     await expect(owner.page.getByRole('heading', { name: 'Lokasi dan sekitar kos' })).toBeVisible()
-    const chips = await owner.page.locator('.kos-poi__categories button').count()
-    const groups = await owner.page.locator('[data-testid^="nearby-"]').count()
+    const chips = await owner.page.locator('.nearby-chips button').count()
     if (chips === 0) await expect(owner.page.getByText('Belum ada data lokasi untuk kos ini.', { exact: true })).toBeVisible()
-    else expect(chips).toBe(groups + 1)
+    else {
+      // Opens on Sorotan when there is anything to highlight; either way the open view lists a place or offers "Tampilkan ... lagi" for places beyond the primary radius.
+      expect(chips).toBeLessThanOrEqual(16)
+      await expect(owner.page.locator('.nearby-route, .kos-poi button[aria-expanded]').first()).toBeVisible()
+    }
     await expect(owner.page.locator('.kos-rules__groups')).toHaveCount(0)
     await expect(owner.page.locator('.kos-rules .section-sub, .kos-poi .section-sub')).toHaveCount(0)
   } finally {
