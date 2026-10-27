@@ -458,8 +458,9 @@ describe('deleting with a live offer', () => {
       expect(e?.message).toBe('Masih ada penawaran daftar tunggu aktif.')
     }
     await a.c.waitlist.decline({ entryId: a.entry.id })
-    await f.owner.room.delete({ kosId: f.kos.id, roomId })
-    expect(await prisma.room.count({ where: { id: roomId } })).toBe(0)
+    // The room had a tenancy (ended above): it is archived, not deleted, once the offer is gone.
+    expect(await f.owner.room.delete({ kosId: f.kos.id, roomId })).toEqual({ id: roomId, archived: true })
+    expect((await prisma.room.findUniqueOrThrow({ where: { id: roomId } })).archivedAt).not.toBeNull()
   })
 
   it('cascades waiting entries when a kos with no live offer is deleted', async () => {

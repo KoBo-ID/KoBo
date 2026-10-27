@@ -112,6 +112,7 @@ export async function me(cookie?: string) {
     user: { id: string; email: string; isDemo: boolean }
     isOwner: boolean
     ownerProfileId: string | null
+    ownerApproved: boolean | null
     campusVerified: boolean
   }
 }

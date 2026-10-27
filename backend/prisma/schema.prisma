@@ -207,7 +207,29 @@ model Campus {
   lng          Float
   emailDomains String[]
 
+  // Nationwide catalogue fields (null on the hand-seeded rows). Rows loaded by `catalog:import` carry dataVersion.
+  pddiktiId   String?
+  osmId       String?
+  wikidataId  String?
+  kind        String?
+  parentId    String?
+  desaCode    String?
+  gateLat     Float?
+  gateLng     Float?
+  coordMethod String?
+  verifiedAt  DateTime? @db.Timestamptz(3)
+  website     String?
+  aliases     String[]
+  dataVersion String?
+  // Where an imported row comes from and under which licence; derivedFromOsm marks rows that fall under the ODbL (D3).
+  source         String?
+  licence        String?
+  derivedFromOsm Boolean @default(false)
+
   kos Kos[]
+
+  @@index([lat, lng])
+  @@index([desaCode])
 }
 
 model OwnerProfile {
@@ -221,6 +243,9 @@ model OwnerProfile {
   xenditSubaccountId     String?                @unique
   xenditOnboardingStatus XenditOnboardingStatus @default(NOT_STARTED)
   xenditVerifiedAt       DateTime?              @db.Timestamptz(3)
+  // Set when KoBo approves a new owner (scripts/approve-owner.ts or OWNER_AUTO_APPROVE). Until then the owner's kos are
+  // visible only to the owner. Not the `verified` badge flag, which stays hidden in the UI.
+  approvedAt             DateTime?              @db.Timestamptz(3)
 
   kos Kos[]
 }
@@ -244,10 +269,25 @@ model Kos {
   studentDiscountAmount Int             @default(0)
   applicationFee        Int             @default(25000)
 
+  // Building facts and structured facilities (Kamar / Gedung scopes). privateAmenities / sharedAmenities stay the flat
+  // search index and are rewritten from `facilities` on every owner write. Null facilities: legacy rows, read from the arrays.
+  floors         Int?
+  yearBuilt      Int?
+  buildingAreaM2 Int?
+  facilities     Json?
+
   // Written on create / location edit only. Everything else (rating, price, rooms) is computed on read.
   nearestCampusId     String?
   nearestCampus       Campus? @relation(fields: [nearestCampusId], references: [id])
   nearestCampusMeters Int?
+
+  // Finest Region code the pin resolved to (4 segments for a desa/kelurahan, 3 when only the kecamatan is known) and how
+  // sure we are: desa | kecamatan | nearest | sea_fallback. Written on create and when the point moves.
+  desaCode         String?
+  regionConfidence String?
+
+  // Set instead of deleting once the kos ever had a tenancy: it disappears from the marketplace, its paid history stays.
+  archivedAt DateTime? @db.Timestamptz(3)
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
@@ -255,11 +295,15 @@ model Kos {
   rooms    Room[]
   rules    HouseRule[]
   pois     Poi[]
+  places      KosPlace[]
+  ownerPlaces OwnerPlace[]
+  overlays    PlaceOverlay[]
   images   KosImage[]
   visits   Visit[]
   waitlist WaitlistEntry[]
 
   @@index([ownerId])
+  @@index([desaCode])
 }
 
 model Room {
@@ -273,6 +317,8 @@ model Room {
   bedType      String
   priceMonthly Int
   occupancy    Occupancy @default(VACANT)
+  // Same rule as Kos.archivedAt: a room with tenancy history is archived, never deleted.
+  archivedAt   DateTime? @db.Timestamptz(3)
 
   tenancies          Tenancy[]
   waitlistOffers     WaitlistEntry[]
@@ -284,7 +330,7 @@ model Room {
 model Tenancy {
   id             String        @id @default(cuid(2))
   roomId         String
-  room           Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room           Room          @relation(fields: [roomId], references: [id], onDelete: Restrict)
   userId         String
   user           User          @relation(fields: [userId], references: [id])
   status         TenancyStatus
@@ -524,4 +570,125 @@ model EmailOutbox {
   createdAt     DateTime     @default(now()) @db.Timestamptz(3)
 
   @@index([status, nextAttemptAt])
+}
+
+// ---------------------------------------------------------------------------
+// Location catalogue. Region, PlaceCatalog and CatalogMeta are read-only reference data loaded by `catalog:import`
+// (ADR 0016): no foreign keys to app tables, so a TRUNCATE ... CASCADE of the app never reaches them, and resetDb skips them.
+// ---------------------------------------------------------------------------
+
+model Region {
+  code              String  @id
+  level             Int
+  name              String
+  kind              String
+  parentCode        String?
+  lat               Float
+  lng               Float
+  minLat            Float?
+  maxLat            Float?
+  minLng            Float?
+  maxLng            Float?
+  postalCode        String?
+  // GeoJSON MultiPolygon coordinates ([lng, lat]); provinsi, kab/kota and kecamatan only.
+  polygon           Json?
+  polygonProvenance String?
+  dataVersion       String
+
+  @@index([level, parentCode])
+  @@index([level, minLat, maxLat])
+  @@index([name])
+}
+
+model PlaceCatalog {
+  id             String    @id
+  source         String
+  sourceId       String
+  category       String
+  subcategory    String?
+  name           String
+  nameAlt        String?
+  brand          String?
+  lat            Float
+  lng            Float
+  cell           String
+  desaCode       String?
+  hoursRaw       String?
+  website        String?
+  osmType        String?
+  osmId          BigInt?
+  score          Int
+  licence        String
+  attribution    String
+  derivedFromOsm Boolean
+  firstSeen      DateTime? @db.Timestamptz(3)
+  updatedAt      DateTime? @db.Timestamptz(3)
+  isHidden       Boolean   @default(false)
+  dataVersion    String
+
+  @@unique([source, sourceId])
+  @@index([category, cell])
+  @@index([cell])
+  @@index([source])
+  @@index([desaCode])
+}
+
+model CatalogMeta {
+  version       String   @id
+  dataset       String
+  status        String
+  rowCount      Int
+  checksum      String?
+  loadedAt      DateTime @default(now()) @db.Timestamptz(3)
+  sourceSummary Json?
+}
+
+// A snapshot of "what is near this kos": references to PlaceCatalog / OwnerPlace rows, never copies of their fields.
+model KosPlace {
+  id             String @id @default(cuid(2))
+  kosId          String
+  kos            Kos    @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  // PlaceCatalog.id or OwnerPlace.id (no foreign key on purpose: the catalogue is reloaded by version).
+  placeId        String
+  category       String
+  distanceM      Int
+  mode           String
+  rank           Int
+  catalogVersion String
+  hiddenByOwner  Boolean @default(false)
+  addedByOwner   Boolean @default(false)
+  sourceLabel    String
+
+  @@unique([kosId, placeId])
+  @@index([kosId])
+}
+
+// An owner's decision about a place, kept across snapshot refreshes (the snapshot is rebuilt, the overlay is not).
+model PlaceOverlay {
+  id        String   @id @default(cuid(2))
+  kosId     String
+  kos       Kos      @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  placeId   String
+  override  String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([kosId, placeId, override])
+  @@index([kosId])
+}
+
+// A place an owner adds. Pending until KoBo approves it; never public before, never carries contact details.
+model OwnerPlace {
+  id        String   @id @default(cuid(2))
+  kosId     String
+  kos       Kos      @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  name      String
+  category  String
+  lat       Float
+  lng       Float
+  note      String?
+  status    String   @default("pending")
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([kosId])
+  @@index([status])
 }

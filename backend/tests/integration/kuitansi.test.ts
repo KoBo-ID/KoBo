@@ -52,11 +52,11 @@ describe('kuitansi.get', () => {
     expect((await student.kuitansi.get({ receiptNo: pay.receiptNo })).method).toBe('MOCK')
   })
 
-  it('refuses any other signed-in user and another owner with FORBIDDEN', async () => {
+  it('refuses any other signed-in user and another owner with NOT_FOUND (same as a missing receipt)', async () => {
     const { room, paid } = await paidReceipt()
-    expect(await code(callerFor('user-student-5').kuitansi.get({ receiptNo: paid.receiptNumber }))).toBe('FORBIDDEN')
+    expect(await code(callerFor('user-student-5').kuitansi.get({ receiptNo: paid.receiptNumber }))).toBe('NOT_FOUND')
     const other = await prisma.ownerProfile.findFirstOrThrow({ where: { id: { not: room.kos.ownerId } } })
-    expect(await code(callerFor(other.userId).kuitansi.get({ receiptNo: paid.receiptNumber }))).toBe('FORBIDDEN')
+    expect(await code(callerFor(other.userId).kuitansi.get({ receiptNo: paid.receiptNumber }))).toBe('NOT_FOUND')
   })
 
   it('is NOT_FOUND for an unknown number and for a payment that is not paid', async () => {

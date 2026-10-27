@@ -12,13 +12,17 @@ export interface CheckoutTotal {
   total: number
 }
 
-/** Integer rupiah. Discount only when campus email verified, capped so total never goes negative. */
+/**
+ * Integer rupiah. Discount only when campus email verified. It is capped at the monthly rent, not at rent + fee:
+ * the invoice constraints require discountAmount <= rentAmount (the application fee is never discounted), so a
+ * larger cap would produce an invoice the database refuses.
+ */
 export function computeCheckoutTotal(input: CheckoutInput): CheckoutTotal {
   const rent = Math.max(0, Math.trunc(input.monthlyRent))
   const applicationFee = Math.max(0, Math.trunc(input.applicationFee))
   const gross = rent + applicationFee
   const requested = input.campusEmailVerified ? Math.max(0, Math.trunc(input.discountAmount)) : 0
-  const discount = Math.min(requested, gross)
+  const discount = Math.min(requested, rent)
   return { rent, applicationFee, discount, total: gross - discount }
 }
 

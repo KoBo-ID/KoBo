@@ -1,14 +1,19 @@
 import { randomUUID } from 'node:crypto'
-import { haversineMeters } from '@kobo/shared/domain'
-import { idInput, kosCreateInput, kosIdOnly, kosUpdateInput, roomCreateInput, roomDeleteInput, roomUpdateInput, rulesSetInput, tenancyEndInput } from '@kobo/shared/schemas'
+import { amenityArrays, itemsFromArrays } from '@kobo/shared/facilities'
+import type { FacilityItem } from '@kobo/shared/facilities'
+import { idInput, kosCreateInput, ownerRegisterInput, kosIdOnly, kosUpdateInput, roomCreateInput, roomDeleteInput, roomUpdateInput, rulesSetInput, tenancyEndInput, MAX_KOS_PER_OWNER, MAX_ROOMS_PER_KOS } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
 import type { PrismaClient } from '../db/client.ts'
 import { Prisma } from '../generated/prisma/client.ts'
+import { isAutoApproved } from '../ownerApproval.ts'
+import { DAY, HOUR, limiter } from '../rateLimit.ts'
+import { attachPlaces, NEAREST_CAMPUS_MAX_METERS, nearestCampuses, stampKosRegion } from '../placeCatalog.ts'
 import { loadBoardRooms, loadBoardSummary } from '../ownerBoard.ts'
 import type { BoardRoom, BoardSummary } from '../ownerBoard.ts'
 import type { KosCard, OwnerPublic } from './kos.ts'
 import { queryCards } from './kosQueries.ts'
 import { ownerImageRouter } from './ownerImages.ts'
+import { ownerPlacesRouter } from './ownerPlaces.ts'
 import type { OwnerImage } from './ownerImages.ts'
 import { ownerVisitRouter, ownerVisits } from './visit.ts'
 import { ownerWaitlistEntries, ownerWaitlistRouter } from './waitlist.ts'
@@ -32,7 +37,7 @@ export interface OwnerReview {
 }
 
 /** A kos is only linked to a campus when one is this close; "700 km to the nearest campus" is noise. */
-export const NEAREST_CAMPUS_MAX_METERS = 10_000
+export { NEAREST_CAMPUS_MAX_METERS }
 
 export interface OwnerPublicProfile {
   owner: OwnerPublic
@@ -54,6 +59,11 @@ export interface OwnerKos {
   privateAmenities: string[]
   sharedAmenities: string[]
   studentDiscountAmount: number
+  floors: number | null
+  yearBuilt: number | null
+  buildingAreaM2: number | null
+  /** Structured facilities; rows saved before they existed are read from the flat arrays. */
+  facilities: FacilityItem[]
   image: string | null
   nearestCampus: { id: string; shortName: string; meters: number | null } | null
   totalRooms: number
@@ -77,13 +87,21 @@ function isUniqueViolation(e: unknown): boolean {
 }
 
 async function nearestCampus(prisma: PrismaClient, lat: number, lng: number): Promise<{ nearestCampusId: string | null; nearestCampusMeters: number | null }> {
-  const campuses = await prisma.campus.findMany({ select: { id: true, lat: true, lng: true } })
-  let best: { id: string; d: number } | null = null
-  for (const c of campuses) {
-    const d = haversineMeters({ lat, lng }, { lat: c.lat, lng: c.lng })
-    if (!best || d < best.d) best = { id: c.id, d }
+  const [best] = await nearestCampuses(prisma, { lat, lng }, 1, NEAREST_CAMPUS_MAX_METERS)
+  return best ? { nearestCampusId: best.id, nearestCampusMeters: best.meters } : { nearestCampusId: null, nearestCampusMeters: null }
+}
+
+/**
+ * After a kos is created or its pin moves: resolve its region and rebuild the "sekitar kos" snapshot. Best effort: the
+ * catalogue is reference data that may be empty or mid-import, and a failure here must never block the owner's save.
+ */
+async function locate(prisma: PrismaClient, kosId: string, lat: number, lng: number): Promise<void> {
+  try {
+    await stampKosRegion(prisma, kosId, { lat, lng })
+    await prisma.$transaction((tx) => attachPlaces(tx, kosId))
+  } catch (e) {
+    console.error(`[catalog] locate failed for kos ${kosId}:`, e instanceof Error ? e.message : e)
   }
-  return best && best.d <= NEAREST_CAMPUS_MAX_METERS ? { nearestCampusId: best.id, nearestCampusMeters: best.d } : { nearestCampusId: null, nearestCampusMeters: null }
 }
 
 const slugify = (name: string) =>
@@ -103,12 +121,20 @@ export const ownerRouter = router({
    * `ownerProfile != null`). Idempotent: the unique userId plus upsert makes a double click harmless.
    * Demo accounts are pre-seeded and read-only, so they are refused.
    */
-  becomeOwner: authedProcedure.mutation(async ({ ctx }): Promise<{ ownerProfileId: string }> => {
-    const user = await ctx.prisma.user.findUnique({ where: { id: ctx.user.id }, select: { isDemo: true } })
+  becomeOwner: authedProcedure.input(ownerRegisterInput).mutation(async ({ ctx, input }): Promise<{ ownerProfileId: string; approved: boolean }> => {
+    const user = await ctx.prisma.user.findUnique({ where: { id: ctx.user.id }, select: { isDemo: true, emailVerified: true, email: true, ownerProfile: { select: { id: true, approvedAt: true } } } })
     if (!user) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Silakan masuk terlebih dahulu.' })
     if (user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Akun ini bersifat hanya-baca dan tidak dapat didaftarkan sebagai pemilik.' })
-    const profile = await ctx.prisma.ownerProfile.upsert({ where: { userId: ctx.user.id }, update: {}, create: { userId: ctx.user.id }, select: { id: true } })
-    return { ownerProfileId: profile.id }
+    // Already an owner: idempotent, nothing is rewritten.
+    if (user.ownerProfile) return { ownerProfileId: user.ownerProfile.id, approved: user.ownerProfile.approvedAt !== null }
+    if (!user.emailVerified) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Verifikasi email Anda terlebih dahulu sebelum mendaftar sebagai pemilik.' })
+    limiter.check(`become-owner:${ctx.user.id}`, 3, HOUR, 'Terlalu banyak percobaan mendaftar sebagai pemilik. Coba lagi dalam satu jam.')
+    const approved = isAutoApproved(user.email)
+    const profile = await ctx.prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: ctx.user.id }, data: { phone: input.phone } })
+      return tx.ownerProfile.upsert({ where: { userId: ctx.user.id }, update: {}, create: { userId: ctx.user.id, ...(approved ? { approvedAt: new Date() } : {}) }, select: { id: true } })
+    })
+    return { ownerProfileId: profile.id, approved }
   }),
 
   /** What /owner/:id renders. `id` is the OwnerProfile id (the same one Kos.ownerId points at). */
@@ -135,7 +161,7 @@ export const ownerRouter = router({
   /** The caller's kos with computed room status and counts (the workspace's property picker and KosManager). */
   myKos: ownerOnlyProcedure.query(async ({ ctx }): Promise<OwnerKos[]> => {
     const kos = await ctx.prisma.kos.findMany({
-      where: { ownerId: ctx.ownerProfileId },
+      where: { ownerId: ctx.ownerProfileId, archivedAt: null },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       include: { images: { orderBy: { order: 'asc' }, take: 1 }, nearestCampus: { select: { id: true, shortName: true } } },
     })
@@ -157,6 +183,10 @@ export const ownerRouter = router({
         privateAmenities: k.privateAmenities,
         sharedAmenities: k.sharedAmenities,
         studentDiscountAmount: k.studentDiscountAmount,
+        floors: k.floors,
+        yearBuilt: k.yearBuilt,
+        buildingAreaM2: k.buildingAreaM2,
+        facilities: (k.facilities as FacilityItem[] | null) ?? itemsFromArrays(k.privateAmenities, k.sharedAmenities),
         image: img ? (img.url ?? ctx.storage.publicUrl(img.key!)) : null,
         nearestCampus: k.nearestCampus ? { ...k.nearestCampus, meters: k.nearestCampusMeters } : null,
         totalRooms: rooms.length,
@@ -210,16 +240,28 @@ export const ownerRouter = router({
 
   waitlist: ownerWaitlistRouter,
 
+  places: ownerPlacesRouter,
+
   kos: router({
     /** No kosId exists yet, so this needs an OwnerProfile rather than ownerProcedure. */
     create: ownerOnlyProcedure.input(kosCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
-      const { imageUrl, initialRooms, ...fields } = input
+      const { imageUrl, initialRooms, facilities, ...rest } = input
+      // Demo accounts are reset nightly (demoReset), so the per-owner caps and the daily limit do not apply to them.
+      if (!ctx.isDemo) {
+        limiter.check(`kos-create:${ctx.user.id}`, 5, DAY, 'Terlalu banyak kos didaftarkan hari ini. Coba lagi besok.')
+        if ((await ctx.prisma.kos.count({ where: { ownerId: ctx.ownerProfileId, archivedAt: null } })) >= MAX_KOS_PER_OWNER) {
+          throw new TRPCError({ code: 'CONFLICT', message: `Satu akun dapat mendaftarkan maksimal ${MAX_KOS_PER_OWNER} kos. Hubungi KoBo bila Anda mengelola lebih banyak.` })
+        }
+      }
+      const fields = { ...rest, ...(facilities ? { facilities, ...amenityArrays(facilities) } : {}) }
       const campus = await nearestCampus(ctx.prisma, fields.lat, fields.lng)
+      // Rooms are spread over the declared floors; without a floor count the old rule (4 per floor) applies.
+      const perFloor = initialRooms ? (rest.floors ? Math.ceil(initialRooms.count / rest.floors) : 4) : 4
       const rooms = initialRooms
         ? Array.from({ length: initialRooms.count }, (_, i) => {
-            const floor = Math.floor(i / 4) + 1
+            const floor = Math.floor(i / perFloor) + 1
             return {
-              roomNumber: `${floor}${String((i % 4) + 1).padStart(2, '0')}`,
+              roomNumber: `${floor}${String((i % perFloor) + 1).padStart(2, '0')}`,
               floor,
               type: 'Standar',
               size: '3 x 3 m',
@@ -230,7 +272,7 @@ export const ownerRouter = router({
         : []
       for (let attempt = 0; ; attempt++) {
         try {
-          return await ctx.prisma.kos.create({
+          const created = await ctx.prisma.kos.create({
             data: {
               ...fields,
               ...campus,
@@ -241,6 +283,8 @@ export const ownerRouter = router({
             },
             select: { id: true },
           })
+          await locate(ctx.prisma, created.id, fields.lat, fields.lng)
+          return created
         } catch (e) {
           // Only a slug collision can retry; a duplicate room number cannot happen with generated numbers.
           if (!isUniqueViolation(e) || attempt >= 2) throw e
@@ -249,30 +293,49 @@ export const ownerRouter = router({
     }),
 
     update: ownerProcedure.input(kosUpdateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
-      const { kosId, ...fields } = input
+      const { kosId, facilities, ...rest } = input
+      const fields = { ...rest, ...(facilities ? { facilities, ...amenityArrays(facilities) } : {}) }
       const current = await ctx.prisma.kos.findUniqueOrThrow({ where: { id: kosId }, select: { lat: true, lng: true } })
       const moved = current.lat !== fields.lat || current.lng !== fields.lng
       const campus = moved ? await nearestCampus(ctx.prisma, fields.lat, fields.lng) : {}
       await ctx.prisma.kos.update({ where: { id: kosId }, data: { ...fields, ...campus } })
+      // A moved pin re-runs region, campus and the places snapshot (owner hides and additions are kept by placeId).
+      if (moved) await locate(ctx.prisma, kosId, fields.lat, fields.lng)
       return { id: kosId }
     }),
 
-    /** Refused while any live tenancy exists; demo accounts never delete (spec section 5). */
-    delete: ownerProcedure.input(kosIdOnly).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
+    /**
+     * Refused while anything is live; demo accounts never delete (spec section 5). A kos that ever had a tenancy is
+     * ARCHIVED (hidden from the marketplace, receipts and history kept) instead of deleted; a kos with no tenancy at all is
+     * deleted. The Kos row lock serialises this with approvals, applications and waitlist offers, which take it through
+     * advanceWaitlist, and the Tenancy -> Room foreign key is RESTRICT, so a racing delete fails instead of cascading.
+     */
+    delete: ownerProcedure.input(kosIdOnly).mutation(async ({ ctx, input }): Promise<{ id: string; archived: boolean }> => {
       const user = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id }, select: { isDemo: true } })
       if (user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Akun ini bersifat hanya-baca dan tidak dapat menghapus kos.' })
-      const busy = await ctx.prisma.tenancy.count({ where: { room: { kosId: input.kosId }, ...live(new Date()) } })
-      if (busy > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kos ini masih memiliki sewa atau booking aktif. Akhiri sewa tersebut terlebih dahulu.' })
-      if ((await ctx.prisma.rentalApplication.count({ where: { room: { kosId: input.kosId }, status: 'PENDING' } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kos ini masih memiliki pengajuan sewa yang perlu diputuskan.' })
-      if ((await ctx.prisma.waitlistEntry.count({ where: { kosId: input.kosId, ...liveOffer(new Date()) } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: OFFER_ACTIVE })
-      if ((await ctx.prisma.paymentRefund.count({ where: { payment: { invoice: { tenancy: { room: { kosId: input.kosId } } } } } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kos ini memiliki riwayat pengembalian dana yang harus tetap tersimpan, sehingga tidak dapat dihapus.' })
-      await ctx.prisma.kos.delete({ where: { id: input.kosId } })
-      return { id: input.kosId }
+      return ctx.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Kos" WHERE id = ${input.kosId} FOR UPDATE`
+        const now = new Date()
+        const busy = await tx.tenancy.count({ where: { room: { kosId: input.kosId }, ...live(now) } })
+        if (busy > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kos ini masih memiliki sewa atau booking aktif. Akhiri sewa tersebut terlebih dahulu.' })
+        if ((await tx.rentalApplication.count({ where: { room: { kosId: input.kosId }, status: 'PENDING' } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kos ini masih memiliki pengajuan sewa yang perlu diputuskan.' })
+        if ((await tx.waitlistEntry.count({ where: { kosId: input.kosId, ...liveOffer(now) } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: OFFER_ACTIVE })
+        if ((await tx.tenancy.count({ where: { room: { kosId: input.kosId } } })) > 0) {
+          await tx.kos.update({ where: { id: input.kosId }, data: { archivedAt: now } })
+          return { id: input.kosId, archived: true }
+        }
+        await tx.kos.delete({ where: { id: input.kosId } })
+        return { id: input.kosId, archived: false }
+      })
     }),
   }),
 
   room: router({
     create: ownerProcedure.input(roomCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
+      if (!(await ctx.prisma.user.findUnique({ where: { id: ctx.user.id }, select: { isDemo: true } }))?.isDemo) limiter.check(`room-create:${ctx.user.id}`, 60, HOUR, 'Terlalu banyak kamar ditambahkan. Coba lagi dalam satu jam.')
+      if ((await ctx.prisma.room.count({ where: { kosId: input.kosId, archivedAt: null } })) >= MAX_ROOMS_PER_KOS) {
+        throw new TRPCError({ code: 'CONFLICT', message: `Satu kos dapat memiliki maksimal ${MAX_ROOMS_PER_KOS} kamar.` })
+      }
       try {
         // A new room may be the one a waiting student has been queueing for.
         return await ctx.prisma.$transaction(async (tx) => {
@@ -305,16 +368,24 @@ export const ownerRouter = router({
       return { id: roomId }
     }),
 
-    delete: ownerProcedure.input(roomDeleteInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
-      const room = await ctx.prisma.room.findFirst({ where: { id: input.roomId, kosId: input.kosId }, select: { id: true } })
-      if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kamar tidak ditemukan.' })
-      const busy = await ctx.prisma.tenancy.count({ where: { roomId: room.id, ...live(new Date()) } })
-      if (busy > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kamar ini masih memiliki sewa atau booking aktif. Akhiri sewa tersebut terlebih dahulu.' })
-      if ((await ctx.prisma.rentalApplication.count({ where: { roomId: room.id, status: 'PENDING' } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kamar ini masih memiliki pengajuan sewa yang perlu diputuskan.' })
-      if ((await ctx.prisma.waitlistEntry.count({ where: { offeredRoomId: room.id, ...liveOffer(new Date()) } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: OFFER_ACTIVE })
-      if ((await ctx.prisma.paymentRefund.count({ where: { payment: { invoice: { tenancy: { roomId: room.id } } } } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kamar ini memiliki riwayat pengembalian dana yang harus tetap tersimpan, sehingga tidak dapat dihapus.' })
-      await ctx.prisma.room.delete({ where: { id: room.id } })
-      return { id: room.id }
+    /** Same rule as kos.delete: a room with tenancy history is archived (hidden, history kept), an unused room is deleted. */
+    delete: ownerProcedure.input(roomDeleteInput).mutation(async ({ ctx, input }): Promise<{ id: string; archived: boolean }> => {
+      return ctx.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "Kos" WHERE id = ${input.kosId} FOR UPDATE`
+        const room = await tx.room.findFirst({ where: { id: input.roomId, kosId: input.kosId, archivedAt: null }, select: { id: true } })
+        if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kamar tidak ditemukan.' })
+        const now = new Date()
+        const busy = await tx.tenancy.count({ where: { roomId: room.id, ...live(now) } })
+        if (busy > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kamar ini masih memiliki sewa atau booking aktif. Akhiri sewa tersebut terlebih dahulu.' })
+        if ((await tx.rentalApplication.count({ where: { roomId: room.id, status: 'PENDING' } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kamar ini masih memiliki pengajuan sewa yang perlu diputuskan.' })
+        if ((await tx.waitlistEntry.count({ where: { offeredRoomId: room.id, ...liveOffer(now) } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: OFFER_ACTIVE })
+        if ((await tx.tenancy.count({ where: { roomId: room.id } })) > 0) {
+          await tx.room.update({ where: { id: room.id }, data: { archivedAt: now } })
+          return { id: room.id, archived: true }
+        }
+        await tx.room.delete({ where: { id: room.id } })
+        return { id: room.id, archived: false }
+      })
     }),
   }),
 

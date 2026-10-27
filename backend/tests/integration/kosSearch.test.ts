@@ -179,7 +179,7 @@ describe('kos.search', () => {
 
   it('caps the result at SEARCH_LIMIT (200)', async () => {
     const src = await prisma.kos.findFirstOrThrow()
-    const { id: _id, slug: _slug, createdAt: _c, updatedAt: _u, ...rest } = src
+    const { id: _id, slug: _slug, createdAt: _c, updatedAt: _u, facilities: _f, ...rest } = src
     await prisma.kos.createMany({
       data: Array.from({ length: SEARCH_LIMIT + 5 }, (_, i) => ({ ...rest, name: `Kos Massal ${i}`, slug: `kos-massal-${i}` })),
     })

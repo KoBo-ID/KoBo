@@ -179,8 +179,10 @@ describe('owner.kos.create / update / delete', () => {
     const res = await approveApplication(DEMO_STUDENT_ID, room.id, { startDate: addDays(todayWIB(new Date()), 2), durationMonths: 3 })
     expect(await code(owner.owner.kos.delete({ kosId: k.id }))).toBe('CONFLICT')
     await prisma.tenancy.update({ where: { id: res.tenancyId }, data: { expiresAt: new Date(Date.now() - 1000) } })
-    await owner.owner.kos.delete({ kosId: k.id })
-    expect(await prisma.kos.count({ where: { id: k.id } })).toBe(0)
+    // The lapsed hold is history: the kos is archived (hidden), not deleted, and the tenancy row survives.
+    expect(await owner.owner.kos.delete({ kosId: k.id })).toEqual({ id: k.id, archived: true })
+    expect((await prisma.kos.findUniqueOrThrow({ where: { id: k.id } })).archivedAt).not.toBeNull()
+    expect(await prisma.tenancy.count({ where: { id: res.tenancyId } })).toBe(1)
   })
 
   it('blocks demo users from deleting a kos (spec section 5)', async () => {

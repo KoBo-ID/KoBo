@@ -4,6 +4,7 @@ import type { NormalizedPaymentEvent, PaymentSessionSnapshot } from './provider.
 import type { PaymentService } from './service.ts'
 import { applyPaymentEventTx } from './settlement.ts'
 import { XenditError } from './xendit.ts'
+import { startPeriodic, type StopWorker } from '../worker.ts'
 
 /** One provider lookup per attempt per this window; extra clicks just see the current state. */
 export const RECONCILE_MIN_INTERVAL_MS = 30_000
@@ -114,19 +115,6 @@ export async function sweepStalePayments(prisma: PrismaClient, service: Service,
 }
 
 /** Not started from createApp: tests call sweepStalePayments() directly. Returns a stop function. */
-export function startPaymentSweep(prisma: PrismaClient, service: Service, intervalMs = 5 * 60_000): () => void {
-  let running = false
-  const tick = async () => {
-    if (running) return
-    running = true
-    try {
-      await sweepStalePayments(prisma, service)
-    } catch (err) {
-      console.error('[payments] sweep failed:', err instanceof Error ? err.message : err)
-    } finally {
-      running = false
-    }
-  }
-  const timer = setInterval(() => void tick(), intervalMs)
-  return () => clearInterval(timer)
+export function startPaymentSweep(prisma: PrismaClient, service: Service, intervalMs = 5 * 60_000): StopWorker {
+  return startPeriodic('payments', intervalMs, () => sweepStalePayments(prisma, service))
 }

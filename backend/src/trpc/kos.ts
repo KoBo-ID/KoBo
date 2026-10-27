@@ -1,3 +1,5 @@
+import { itemsFromArrays } from '@kobo/shared/facilities'
+import type { FacilityItem } from '@kobo/shared/facilities'
 import { deriveRoomStatus } from '@kobo/shared/domain'
 import { idInput, kosListInput, kosSearchInput } from '@kobo/shared/schemas'
 import { PRICE_MAX, SEARCH_LIMIT, SEARCH_RADIUS_METERS } from '@kobo/shared/search'
@@ -5,6 +7,8 @@ import type { RoomStatus } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
 import { Prisma } from '../generated/prisma/client.ts'
 import { liveOffer, roomClaims } from '../waitlist.ts'
+import { loadNearby } from '../placeCatalog.ts'
+import type { NearbyView } from '../placeCatalog.ts'
 import { haversineSql, queryCards } from './kosQueries.ts'
 import type { KosCard } from './kosQueries.ts'
 import { publicProcedure, router } from './trpc.ts'
@@ -63,12 +67,17 @@ export interface KosDetail extends KosCard {
   applicationFee: number
   privateAmenities: string[]
   sharedAmenities: string[]
+  /** Structured facilities; rows saved before they existed are derived from the flat arrays. */
+  facilities: FacilityItem[]
+  building: { floors: number | null; yearBuilt: number | null; areaM2: number | null; roomCount: number }
   nearestCampus: { id: string; shortName: string } | null
   /** Per-aspect mean (1 decimal); null when no review rated that aspect. */
   subRatings: { cleanliness: number | null; wifi: number | null; owner: number | null; quietness: number | null }
   rooms: RoomView[]
   rules: { id: string; tier: number; categoryTitle: string; rules: string[]; penaltyAmount: number | null; penaltyClause: string | null }[]
   pois: { id: string; category: string; name: string; distanceMeters: number; walkMinutes: number; description: string }[]
+  /** The catalogue-based "Lokasi dan sekitar kos" list (grouped, with the licence lines to show). Null until a snapshot exists; the UI then falls back to `pois`. */
+  nearby: NearbyView | null
   owner: OwnerPublic
   /** Newest first, capped at REVIEW_LIMIT; `reviewCount` is the total. */
   reviews: ReviewView[]
@@ -89,11 +98,12 @@ export const kosRouter = router({
    * No pagination and no bbox (spec section 10): the list and the map render the same array.
    */
   search: publicProcedure.input(kosSearchInput).query(({ ctx, input }): Promise<KosSearchCard[]> => {
-    const { q, lat, lng, radius, gender, maxPrice, discountOnly, surveyOnly, sort } = input
+    const { q, lat, lng, radius, regionCode, gender, maxPrice, discountOnly, surveyOnly, sort } = input
     const geo = lat !== undefined && lng !== undefined
     const dist = geo ? haversineSql(lat, lng) : null
     const conds: Prisma.Sql[] = []
     if (dist) conds.push(Prisma.sql`${dist} <= ${radius ?? SEARCH_RADIUS_METERS}`)
+    if (regionCode) conds.push(Prisma.sql`(k."desaCode" = ${regionCode} OR k."desaCode" LIKE ${`${regionCode}.%`})`)
     if (gender !== 'all') conds.push(Prisma.sql`k.gender = ${gender.toUpperCase()}::"KosGender"`)
     // At PRICE_MAX the slider is "off": do not hide kos that cost more than the slider range.
     if (maxPrice < PRICE_MAX) conds.push(Prisma.sql`rm."priceMonthlyStart" <= ${maxPrice}`)
@@ -123,18 +133,20 @@ export const kosRouter = router({
   /** Everything the Detail page renders, in one round trip. */
   detail: publicProcedure.input(idInput).query(async ({ ctx, input }): Promise<KosDetail> => {
     const { prisma } = ctx
-    const [card] = await queryCards(prisma, { mediaBase: ctx.storage.publicUrl(''), where: Prisma.sql`k.id = ${input.id}`, limit: 1 })
+    const session = await ctx.getSession()
+    // A kos whose owner still waits for approval is visible to that owner only.
+    const viewerOwnerId = session ? ((await prisma.ownerProfile.findUnique({ where: { userId: session.user.id }, select: { id: true } }))?.id ?? null) : null
+    const [card] = await queryCards(prisma, { mediaBase: ctx.storage.publicUrl(''), where: Prisma.sql`k.id = ${input.id}`, limit: 1, viewerOwnerId })
     if (!card) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kos tidak ditemukan.' })
 
     const now = new Date()
-    const session = await ctx.getSession()
-    const [kos, rooms, rules, pois, reviews, subs, offers] = await Promise.all([
+    const [kos, rooms, rules, pois, nearby, reviews, subs, offers] = await Promise.all([
       prisma.kos.findUniqueOrThrow({
         where: { id: card.id },
         include: { nearestCampus: { select: { id: true, shortName: true } }, owner: { include: { user: true } } },
       }),
       prisma.room.findMany({
-        where: { kosId: card.id },
+        where: { kosId: card.id, archivedAt: null },
         include: {
           tenancies: {
             where: { status: { in: ['ACTIVE', 'PENDING'] } },
@@ -144,6 +156,7 @@ export const kosRouter = router({
       }),
       prisma.houseRule.findMany({ where: { kosId: card.id }, orderBy: [{ tier: 'asc' }, { id: 'asc' }] }),
       prisma.poi.findMany({ where: { kosId: card.id }, orderBy: { id: 'asc' } }),
+      loadNearby(prisma, card.id),
       prisma.review.findMany({
         where: { tenancy: { room: { kosId: card.id } } },
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
@@ -200,6 +213,8 @@ export const kosRouter = router({
       applicationFee: kos.applicationFee,
       privateAmenities: kos.privateAmenities,
       sharedAmenities: kos.sharedAmenities,
+      facilities: (kos.facilities as FacilityItem[] | null) ?? itemsFromArrays(kos.privateAmenities, kos.sharedAmenities),
+      building: { floors: kos.floors, yearBuilt: kos.yearBuilt, areaM2: kos.buildingAreaM2, roomCount: rooms.length },
       nearestCampus: kos.nearestCampus,
       subRatings: {
         cleanliness: round1(subs._avg.cleanliness),
@@ -224,6 +239,7 @@ export const kosRouter = router({
         walkMinutes: p.walkMinutes,
         description: p.description,
       })),
+      nearby,
       owner: {
         id: kos.owner.id,
         name: kos.owner.user.name,

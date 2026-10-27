@@ -178,3 +178,50 @@ UPDATE "EmailOutbox"
 SET status = 'PENDING', attempts = 0, "nextAttemptAt" = now()
 WHERE status = 'FAILED' AND template NOT IN ('verify-email', 'reset-password');
 ```
+
+## 12. Location catalogue (regions, campuses, places)
+
+Reference data for "Lokasi dan sekitar kos", region search and nationwide campus search (ADR 0016). The schema ships with a normal release; the data is **not** loaded by migrations and **never inside the api container** (`mem_limit` 384m). A one-off job loads it.
+
+### First deploy, in this order
+1. **Release the code.** `deploy.sh` runs `prisma migrate deploy` itself (section 2). The seven `20261028…` migrations are additive (new tables, nullable columns, two views, CHECKs) and create **empty** tables, so the new release is safe before any data exists: region lookups return "not found", `kos.detail.nearby` is `null` and the old `pois` still show. The pre-deploy `pg_dump` to R2 is the rollback point.
+2. **Env (optional).** In `/opt/kobo/backend/.env`: `CATALOG_ADMIN_EMAILS=you@...` (comma-separated, enables `catalog.status`). `DATA_CONTACT` is for the data job only, not the api.
+3. **Get the files.** `backend/data/catalog/` (committed): `region.*`, `campus.*`, `places-tier1.osm-*`, `places-tier1.overture-*`, about 9 MB gzipped. They are not in the api image (`backend/Dockerfile` copies only `src`), so use a checkout with Node 24 and `npm ci` (your laptop, or `/opt/kobo` after `git pull`).
+4. **Open a DB connection.** The importer needs `DATABASE_URL` for the production database. Use an SSH tunnel to the compose Postgres (`ssh -L 5440:localhost:5432 deploy@<vps>`, which needs the compose file to publish 5432 on loopback only). Never publish Postgres on a public interface.
+5. **Dry run, then load** (regions first, then campuses, then every places file, which `all` does in that order):
+
+```bash
+cd backend
+export DATABASE_URL=postgresql://<user>:<pw>@127.0.0.1:5440/kobo
+npm run catalog:import -- all data/catalog --dry-run    # validates every file, writes nothing
+npm run catalog:import -- all data/catalog              # about 25 s on a laptop against a local DB; slower over a tunnel
+npm run catalog:backfill                                 # region + nearby snapshot for existing kos
+```
+
+6. **Check.** `npm run catalog:rollback -- list` shows four active rows (`regions:`, `campuses:`, `places-osm:`, `places-overture:`). In psql: `SELECT source, count(*) FROM "PlaceCatalog" GROUP BY 1;` (expect osm 37,832, overture 71,757) and `SELECT count(*) FROM "Region";` (83,389). Open a kos page: the "sekitar" list shows the "garis lurus" note and the OpenStreetMap / Overture credits. As an owner, `place.reverse` on a Jakarta point returns a kecamatan.
+
+If a step fails: the importer is idempotent, so run it again. Nothing in step 5 touches app tables except `Campus` (catalogue columns only; names, coordinates and `emailDomains` of existing campuses are never overwritten) and `Kos` (`desaCode`, `regionConfidence`, via backfill).
+
+### Every later release
+Only migrations run (automatic). Re-import only when a new data version exists.
+
+### Files
+Built by the data job (`notes/data-gathering/scripts`, git-excluded). File names are `<dataset>.<data_version>.csv.gz`; each file has exactly one `data_version`. Larger tiers (Tier 2/3 places) are not committed: keep them as an R2 object and pass `--sha256=<hex>` from `registry.csv`. Keep the previous version's files next to the new ones until the new version has been checked. Licences and credits per file: `backend/data/catalog/README.md`.
+
+### Version and rollback
+`npm run catalog:rollback -- list` shows `CatalogMeta` (one active version per dataset; each place source has its own, so loading Overture never supersedes OSM). To go back, import the earlier file again: `npm run catalog:rollback -- <regions|places|campuses> <earlier file>`. Snapshots (`KosPlace`) keep their `catalogVersion`; rebuild them with `catalog:backfill -- --all` if removed rows matter. Schema rollback: the down SQL is in each migration header; drop in reverse order, only if nothing depends on the tables.
+
+### Quarterly refresh
+Owner: Bryan unless assigned. Re-run the data job (new Geofabrik extract and Overture release), read the per-city diff, `--dry-run`, import on a staging copy, spot-check 10 addresses, import on production, `catalog:backfill -- --all`, keep the old files, update `/lisensi` if a source changed.
+
+### Size and memory
+Tables after loading Tier 1: `Region` about 90 MB (polygons as jsonb), `PlaceCatalog` about 40 MB. The importer parses the region file in memory (about 200 MB), which is why it never runs in the 384m api container. `regionLookup` keeps at most 300 polygons and 500 results in memory; a test process using it reached 254 MB RSS, so watch api memory after the first deploy.
+
+### Backups
+The catalogue is rebuildable, so `backup.sh` could pass `--exclude-table-data='"Region"' --exclude-table-data='"PlaceCatalog"'` and shrink each nightly dump by about 130 MB. Not applied: restore would become two steps (restore, then `catalog:import` and `catalog:backfill`). Restore drill: after step 5 of section 4, run both and write the time here (not yet measured).
+
+### Railway fallback (section 7)
+Same job from a laptop: `railway run npm run catalog:import -w backend -- all data/catalog` (Railway injects `DATABASE_URL`). Not tested.
+
+### Operators
+Owner-added places are pending until approved: `npm run places:approve -w backend -- list|approve <id>|reject <id>`. `catalog.status` is limited to `CATALOG_ADMIN_EMAILS`. Dev tools, never for production: `catalog:golden` (read-only) and `catalog:perf` (refuses a database without "scratch" in its URL).

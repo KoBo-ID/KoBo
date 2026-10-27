@@ -63,7 +63,7 @@ const cardJoins = (mediaBase: string) => Prisma.sql`
           AND w.status = 'OFFERED'
           AND w."offerExpiresAt" >= now()
       )) AS available
-    FROM "Room" ro WHERE ro."kosId" = k.id
+    FROM "Room" ro WHERE ro."kosId" = k.id AND ro."archivedAt" IS NULL
   ) rm ON true`
 
 interface CardQuery {
@@ -74,14 +74,18 @@ interface CardQuery {
   limit: number
   /** Storage.publicUrl(''): prefix that turns an uploaded photo's key into its public URL. */
   mediaBase: string
+  /** The viewer's OwnerProfile id: their own kos stay visible while their account waits for approval. */
+  viewerOwnerId?: string | null
 }
 
 /** The one card query behind kos.list, kos.search, kos.detail and owner.publicProfile. */
 export function queryCards<T = KosCard>(prisma: PrismaClient, q: CardQuery): Promise<T[]> {
   return prisma.$queryRaw<T[]>(Prisma.sql`
     SELECT ${CARD_COLUMNS}${q.extraSelect ? Prisma.sql`, ${q.extraSelect}` : Prisma.empty}
-    FROM "Kos" k ${cardJoins(q.mediaBase)}
-    ${q.where ? Prisma.sql`WHERE ${q.where}` : Prisma.empty}
+    FROM "Kos" k
+    JOIN "OwnerProfile" op ON op.id = k."ownerId" ${cardJoins(q.mediaBase)}
+    WHERE k."archivedAt" IS NULL AND (op."approvedAt" IS NOT NULL OR k."ownerId" = ${q.viewerOwnerId ?? ''})
+    ${q.where ? Prisma.sql`AND (${q.where})` : Prisma.empty}
     ORDER BY ${q.orderBy ? Prisma.sql`${q.orderBy}, ` : Prisma.empty}k."createdAt", k.id
     LIMIT ${q.limit}`)
 }

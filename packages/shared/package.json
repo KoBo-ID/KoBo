@@ -8,6 +8,9 @@
     "./schemas": "./src/schemas.ts",
     "./search": "./src/search.ts",
     "./campuses": "./src/campuses.ts",
+    "./places": "./src/places.ts",
+    "./facilities": "./src/facilities.ts",
+    "./address-query": "./src/addressQuery.ts",
     "./featured-campuses": "./src/featuredCampuses.ts",
     "./domain": "./src/domain/index.ts"
   },

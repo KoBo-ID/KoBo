@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import fc from 'fast-check'
-import { averageLatLng, formatDistance, haversineMeters } from './geo.ts'
+import { averageLatLng, formatDistance, haversineMeters, parseCoordinates } from './geo.ts'
 
 const pt = fc.record({
   lat: fc.double({ min: -90, max: 90, noNaN: true }),
@@ -49,3 +49,18 @@ describe('averageLatLng', () => {
     )
   })
 })
+
+describe('parseCoordinates', () => {
+  it('reads plain coordinates and Google Maps links', () => {
+    expect(parseCoordinates('-6.2008, 106.7861')).toEqual({ lat: -6.2008, lng: 106.7861 });
+    expect(parseCoordinates('https://www.google.com/maps/place/Kos/@-6.2437,106.6291,17z/data=!3m1')).toEqual({ lat: -6.2437, lng: 106.6291 });
+    expect(parseCoordinates('https://www.google.com/maps/place/x/data=!3d-6.2437!4d106.6291')).toEqual({ lat: -6.2437, lng: 106.6291 });
+    expect(parseCoordinates('https://maps.google.com/?q=-6.2437,106.6291')).toEqual({ lat: -6.2437, lng: 106.6291 });
+  });
+  it('rejects text without a point, swapped values and places outside Indonesia', () => {
+    expect(parseCoordinates('Jl. Melati No. 3')).toBeNull();
+    expect(parseCoordinates('106.7861, -6.2008')).toBeNull();
+    expect(parseCoordinates('51.5, -0.12')).toBeNull();
+    expect(parseCoordinates('https://maps.app.goo.gl/abc123')).toBeNull();
+  });
+});

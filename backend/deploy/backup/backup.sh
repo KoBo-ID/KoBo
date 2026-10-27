@@ -17,7 +17,7 @@ BUCKET="${R2_BACKUP_BUCKET:-kobo-backups}"
 HC="${HEALTHCHECKS_URL:-}"
 HC="${HC%/}"
 DISK_FAIL_PCT="${DISK_FAIL_PCT:-85}"
-CHECK_DB="kobo_restorecheck"
+CHECK_DB="kobo_restorecheck_$$" # per process: the daemon and a pre-deploy run must not drop each other's restore-check database
 WORK="$(mktemp -d)"
 
 export RCLONE_CONFIG_R2_TYPE=s3

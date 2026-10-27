@@ -2,7 +2,9 @@ import { readFile, stat } from 'node:fs/promises'
 import { extname, join, normalize, sep } from 'node:path'
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
 import { Hono } from 'hono'
+import type { Context as HonoContext } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
+import { secureHeaders } from 'hono/secure-headers'
 import { createAuth } from './auth.ts'
 import type { Auth } from './auth.ts'
 import type { PrismaClient } from './db/client.ts'
@@ -33,6 +35,8 @@ export interface AppOptions {
   e2eHooks?: E2eHooks | null
 }
 
+/** Largest tRPC request body. Real inputs are a few KB; 256 KiB leaves room for long text fields. */
+const MAX_TRPC_BYTES = 256 * 1024
 const IMMUTABLE = 'public, max-age=31536000, immutable'
 const NO_CACHE = 'no-cache'
 
@@ -68,14 +72,34 @@ async function readIfFile(root: string, urlPath: string): Promise<Uint8Array<Arr
 export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...authEnv() }), storage = storageFromEnv(), paymentService = paymentServiceFromEnv(), geocoder = geocoderFromEnv(), e2eHooks = null }: AppOptions) {
   const app = new Hono()
 
-  app.get('/health', async (c) => {
+  // Response hardening for the SPA and the API (OWASP HTTP Headers Cheat Sheet; Hono secureHeaders defaults otherwise).
+  //  - X-Frame-Options DENY plus CSP frame-ancestors 'none': the app is never framed (clickjacking of approve / pay buttons).
+  //  - Referrer-Policy strict-origin-when-cross-origin (not Hono's no-referrer): map tile servers require a Referer origin.
+  //  - COOP / CORP off: OAuth and payment redirects are plain navigations, and nothing here needs cross-origin isolation.
+  //  - The CSP carries only origin-independent directives; a script/style/img allow-list is a separate, tested change.
+  app.use(
+    '*',
+    secureHeaders({
+      xFrameOptions: 'DENY',
+      referrerPolicy: 'strict-origin-when-cross-origin',
+      crossOriginOpenerPolicy: false,
+      crossOriginResourcePolicy: false,
+      contentSecurityPolicy: { frameAncestors: ["'none'"], baseUri: ["'self'"], objectSrc: ["'none'"], formAction: ["'self'"] },
+    }),
+  )
+
+  // /health for the platform probe; /api/health for anything that reaches the app through the Vercel rewrite, where
+  // /health would be answered by the SPA fallback instead of this service.
+  const health = async (c: HonoContext) => {
     try {
       await prisma.$queryRaw`SELECT 1`
       return c.json({ ok: true })
     } catch {
       return c.json({ ok: false }, 503)
     }
-  })
+  }
+  app.get('/health', health)
+  app.get('/api/health', health)
 
   // better-auth owns everything under /api/auth (sign-in/up, verify-email, demo-login, campus-email, ...).
   app.on(['GET', 'POST'], '/api/auth/*', async (c) => {
@@ -100,13 +124,22 @@ export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...auth
   // Dev/e2e only: the fake storage's presigned URLs point here. Never mounted when R2 is configured.
   if (storage.kind === 'fake') mountDevUploads(app, storage as FakeStorage)
 
+  // Inputs are small JSON documents (photos go straight to R2): refuse anything bigger before it is buffered and parsed.
+  app.use(
+    '/api/trpc/*',
+    bodyLimit({
+      maxSize: MAX_TRPC_BYTES,
+      onError: (c) => c.json({ error: { message: 'Permintaan terlalu besar.', code: -32600, data: { code: 'PAYLOAD_TOO_LARGE', httpStatus: 413 } } }, 413),
+    }),
+  )
   app.all('/api/trpc/*', (c) =>
     fetchRequestHandler({
       endpoint: '/api/trpc',
       req: c.req.raw,
       router: appRouter,
-      // Session-dependent answers must never be cached by the browser or an intermediary.
-      responseMeta: ({ paths }) => (paths?.some((p) => p.startsWith('auth.')) ? { headers: { 'Cache-Control': 'no-store' } } : {}),
+      // Answers can depend on the session (kos.detail carries the caller's own offer, every owner/student read is private),
+      // so no RPC response is stored by the browser or an intermediary.
+      responseMeta: () => ({ headers: { 'Cache-Control': 'no-store' } }),
       createContext: ({ req, resHeaders }): Context => {
         let session: Promise<Session | null> | undefined
         return {
@@ -160,6 +193,7 @@ function mountDevUploads(app: Hono, fake: FakeStorage) {
     const q = c.req.query()
     const bytes = new Uint8Array(await c.req.arrayBuffer())
     const type = c.req.header('content-type') ?? ''
+    if (!fake.verifyUpload(key, q)) return c.json({ error: 'Signature mismatch' }, 403)
     if (Number(q.exp) < Date.now()) return c.json({ error: 'Expired' }, 403)
     if (type !== q.ct || bytes.byteLength !== Number(q.len)) return c.json({ error: 'Signature mismatch' }, 403)
     fake.put(key, bytes, type)

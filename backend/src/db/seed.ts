@@ -1,4 +1,7 @@
 import { addDays, addMonths, todayWIB } from '@kobo/shared/domain'
+import { itemsFromArrays } from '@kobo/shared/facilities'
+import type { FacilityItem } from '@kobo/shared/facilities'
+import { readFileSync } from 'node:fs'
 import { DEMO_EMAILS } from '../demo.ts'
 import type { PrismaClient } from './client.ts'
 import rawData from './seedData.json' with { type: 'json' }
@@ -70,10 +73,19 @@ interface MockReview {
   comment: string
   ownerReply?: { text: string }
 }
-const data = rawData as unknown as {
+type SeedInput = {
   campuses: { id: string; name: string; shortName: string; city: string; coordinates: { lat: number; lng: number } }[]
   kos: MockKos[]
   reviews: MockReview[]
+}
+
+/**
+ * The bundled mock snapshot, or the file named by KOBO_SEED_FILE (a proposed seed in the same shape, e.g. one produced by the data job).
+ * Off by default on purpose: tests and CI always use the bundled file. Read on every call so a test can switch it.
+ */
+function seedInput(): SeedInput {
+  const file = process.env.KOBO_SEED_FILE
+  return (file ? JSON.parse(readFileSync(file, 'utf8')) : rawData) as unknown as SeedInput
 }
 
 const EMAIL_DOMAINS: Record<string, string[]> = {
@@ -157,6 +169,7 @@ export interface SeedRows {
 }
 
 export function buildSeed(now: Date): SeedRows {
+  const data = seedInput()
   const today = todayWIB(now)
   const rng = makeRng(20261001)
 
@@ -207,6 +220,7 @@ export function buildSeed(now: Date): SeedRows {
       userId: `user-${o.id}`,
       bio: o.bio ?? null,
       verified: o.verified,
+      approvedAt: baseCreated,
       responseRate: o.responseRate,
       memberSince: parseMemberSince(o.memberSince),
     }
@@ -349,6 +363,8 @@ export function buildSeed(now: Date): SeedRows {
       electricityType: k.electricityType.toUpperCase(),
       privateAmenities: k.privateAmenities,
       sharedAmenities: k.sharedAmenities,
+      floors: Math.max(1, ...k.rooms.map((r) => r.floor)),
+      ...(ki === 0 ? { yearBuilt: 2019, buildingAreaM2: 320, facilities: richFacilities(k.privateAmenities, k.sharedAmenities) } : {}),
       studentDiscountAmount: k.studentDiscountAmount,
       applicationFee: fee,
       nearestCampusId: k.campusProximity.campusId,
@@ -487,7 +503,7 @@ export async function seed(prisma: PrismaClient, opts: { now?: Date } = {}): Pro
   // Tenancies/Invoices/Payments reference users and rooms: insert parents first.
   await prisma.$transaction([
     prisma.user.createMany({ data: d.users as never }),
-    prisma.campus.createMany({ data: d.campuses as never }),
+    prisma.campus.createMany({ data: d.campuses as never, skipDuplicates: true }),
     prisma.ownerProfile.createMany({ data: d.ownerProfiles as never }),
     prisma.kos.createMany({ data: d.kos as never }),
     prisma.kosImage.createMany({ data: d.images as never }),
@@ -502,10 +518,34 @@ export async function seed(prisma: PrismaClient, opts: { now?: Date } = {}): Pro
 }
 
 /** TRUNCATE every app table (identity restarted) and reseed. Backs both tests and the demo reset. */
+/** The first seeded kos shows what a fully filled building looks like: notes, a paid service and a parking fee. */
+function richFacilities(priv: string[], shared: string[]): FacilityItem[] {
+  const notes: [RegExp, Partial<FacilityItem>][] = [
+    [/wi-?fi/i, { note: 'Fiber, stabil untuk kuliah daring' }],
+    [/parkir/i, { note: 'Motor 15 unit, mobil 2 unit' }],
+    [/cuci/i, { status: 'PAID', fee: 5000, note: 'Per cucian, token di mesin' }],
+    [/cctv/i, { note: 'Aktif 24 jam' }],
+  ]
+  return itemsFromArrays(priv, shared).map((item) => ({ ...item, ...(notes.find(([re]) => re.test(item.label))?.[1] ?? {}) }))
+}
+
+/**
+ * Reference data loaded by `catalog:import` (ADR 0016). resetDb must never wipe it: it is rebuilt only by an import, and
+ * nothing in the app references it with a foreign key, so excluding it from the TRUNCATE list is enough (a CASCADE only
+ * follows foreign keys *to* truncated tables). Campus holds both seeded rows and imported rows: only the seeded ones
+ * (dataVersion IS NULL) are replaced.
+ */
+export const REFERENCE_TABLES = ['Region', 'PlaceCatalog', 'CatalogMeta', 'Campus'] as const
+
 export async function resetDb(prisma: PrismaClient, opts: { now?: Date } = {}): Promise<void> {
   const tables = await prisma.$queryRaw<{ tablename: string }[]>`
     SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`
-  const list = tables.map((t) => `"public"."${t.tablename}"`).join(', ')
+  const list = tables
+    .filter((t) => !(REFERENCE_TABLES as readonly string[]).includes(t.tablename))
+    .map((t) => `"public"."${t.tablename}"`)
+    .join(', ')
   await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`)
+  // Kos rows are gone, so no foreign key points at a seeded campus any more.
+  await prisma.$executeRaw`DELETE FROM "Campus" WHERE "dataVersion" IS NULL`
   await seed(prisma, opts)
 }

@@ -1,5 +1,6 @@
 import type { PrismaClient } from './db/client.ts'
 import { renderEmail } from './emailTemplates.ts'
+import { startPeriodic, type StopWorker } from './worker.ts'
 
 /*
  * Transactional email outbox (spec section 8). Business code writes a row with enqueueEmail(); the
@@ -11,6 +12,8 @@ export interface EmailMessage {
   subject: string
   html: string
   text: string
+  /** Stable per outbox row: lets the provider drop a duplicate send of the same row (Resend keeps keys for 24 h). */
+  idempotencyKey?: string
 }
 
 export interface EmailTransport {
@@ -19,7 +22,9 @@ export interface EmailTransport {
 
 export const MAX_ATTEMPTS = 5
 /** A claimed row is invisible to other drains for this long. A worker that dies mid-send is retried after it. */
-const LEASE_SECONDS = 120
+const LEASE_SECONDS = 150
+/** Rows per claim. Worst case a batch lasts BATCH_SIZE x the 15 s send timeout (120 s), which must stay under LEASE_SECONDS. */
+const DEFAULT_BATCH_SIZE = 8
 const BACKOFF_BASE_SECONDS = 30
 const BACKOFF_CAP_SECONDS = 3600
 
@@ -56,7 +61,7 @@ export interface DrainResult {
  * instead of losing or double-sending the row.
  */
 export async function drainOutbox(prisma: PrismaClient, transport: EmailTransport, opts: { batchSize?: number } = {}): Promise<DrainResult> {
-  const batchSize = opts.batchSize ?? 20
+  const batchSize = opts.batchSize ?? DEFAULT_BATCH_SIZE
   const rows = await prisma.$queryRaw<ClaimedRow[]>`
     UPDATE "EmailOutbox"
     SET attempts = attempts + 1,
@@ -81,8 +86,9 @@ export async function drainOutbox(prisma: PrismaClient, transport: EmailTranspor
       continue
     }
     try {
-      await transport.send({ to: row.to, ...rendered })
-      await prisma.emailOutbox.update({ where: { id: row.id }, data: { status: 'SENT', sentAt: new Date() } })
+      await transport.send({ to: row.to, ...rendered, idempotencyKey: row.id })
+      // Conditional: never move a row another worker already finished back to a retry state.
+      await prisma.emailOutbox.updateMany({ where: { id: row.id, status: 'PENDING' }, data: { status: 'SENT', sentAt: new Date() } })
       result.sent++
     } catch (err) {
       result.failed++
@@ -93,8 +99,8 @@ export async function drainOutbox(prisma: PrismaClient, transport: EmailTranspor
         `[outbox] ${row.id}: ${row.template} to *@${domain} failed (attempt ${row.attempts}/${MAX_ATTEMPTS})${giveUp ? ', giving up: status FAILED' : ''}:`,
         err instanceof Error ? err.message : err,
       )
-      await prisma.emailOutbox.update({
-        where: { id: row.id },
+      await prisma.emailOutbox.updateMany({
+        where: { id: row.id, status: 'PENDING' },
         data: giveUp ? { status: 'FAILED' } : { nextAttemptAt: new Date(Date.now() + backoffSeconds(row.attempts) * 1000) },
       })
     }
@@ -109,7 +115,11 @@ export function resendTransport(opts: { apiKey: string; from: string; replyTo?: 
     async send(message) {
       const res = await doFetch('https://api.resend.com/emails', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${opts.apiKey}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${opts.apiKey}`,
+          'Content-Type': 'application/json',
+          ...(message.idempotencyKey ? { 'Idempotency-Key': message.idempotencyKey } : {}),
+        },
         body: JSON.stringify({
           from: opts.from,
           to: [message.to],
@@ -151,7 +161,13 @@ export const isResendTestSender = (from: string) => /@resend\.dev>?\s*$/i.test(f
 
 export function transportFromEnv(env: NodeJS.ProcessEnv = process.env, warn: (line: string) => void = console.warn): EmailTransport {
   if (!env.RESEND_API_KEY) {
-    if (env.NODE_ENV === 'production') warn('[email] RESEND_API_KEY is not set: emails are only printed to the log, nobody receives them.')
+    if (env.NODE_ENV === 'production') {
+      // Verification and reset links are bearer tokens: printing them is never an acceptable production substitute for sending them.
+      if (env.ALLOW_CONSOLE_EMAIL !== '1') {
+        throw new Error('[email] RESEND_API_KEY is not set in production: verification and reset links would only be printed to the log. Set RESEND_API_KEY and EMAIL_FROM (ALLOW_CONSOLE_EMAIL=1 is for e2e and demo only).')
+      }
+      warn('[email] RESEND_API_KEY is not set (ALLOW_CONSOLE_EMAIL=1): emails are only printed to the log, nobody receives them.')
+    }
     return consoleTransport()
   }
   if (!env.EMAIL_FROM) throw new Error('EMAIL_FROM is required when RESEND_API_KEY is set')
@@ -165,19 +181,6 @@ export function transportFromEnv(env: NodeJS.ProcessEnv = process.env, warn: (li
 }
 
 /** Start the periodic drain. Ticks never overlap within this process. Returns a stop function. */
-export function startOutboxWorker(prisma: PrismaClient, transport: EmailTransport, intervalMs = 15_000): () => void {
-  let running = false
-  const tick = async () => {
-    if (running) return
-    running = true
-    try {
-      await drainOutbox(prisma, transport)
-    } catch (err) {
-      console.error('[outbox] drain failed:', err instanceof Error ? err.message : err)
-    } finally {
-      running = false
-    }
-  }
-  const timer = setInterval(() => void tick(), intervalMs)
-  return () => clearInterval(timer)
+export function startOutboxWorker(prisma: PrismaClient, transport: EmailTransport, intervalMs = 15_000): StopWorker {
+  return startPeriodic('outbox', intervalMs, () => drainOutbox(prisma, transport))
 }

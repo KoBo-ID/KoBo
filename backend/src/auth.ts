@@ -3,6 +3,7 @@ import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { APIError, createAuthEndpoint, createAuthMiddleware, getSessionFromCtx, sessionMiddleware } from 'better-auth/api'
 import { setSessionCookie } from 'better-auth/cookies'
 import type { BetterAuthPlugin } from 'better-auth'
+import { profileUpdateInput } from '@kobo/shared/schemas'
 import { z } from 'zod'
 import { CAMPUS_TOKEN_TTL_SECONDS, domainMatches, emailDomain, isAcademicDomain, signCampusToken, verifyCampusToken } from './campusEmail.ts'
 import type { PrismaClient } from './db/client.ts'
@@ -97,10 +98,16 @@ function koboPlugin(prisma: PrismaClient, secret: string): BetterAuthPlugin {
         const domain = emailDomain(claim.email) ?? ''
         const campuses = await prisma.campus.findMany({ select: { shortName: true, emailDomains: true } })
         const campus = campuses.find((c) => c.emailDomains.some((d) => domainMatches(domain, d)))
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { campusEmail: claim.email, campusEmailVerifiedAt: new Date(), ...(campus && !user.campus ? { campus: campus.shortName } : {}) },
-        })
+        try {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { campusEmail: claim.email, campusEmailVerifiedAt: new Date(), ...(campus && !user.campus ? { campus: campus.shortName } : {}) },
+          })
+        } catch (e) {
+          // Two accounts verified the same mailbox at once: the partial unique index lets exactly one win.
+          if ((e as { code?: string } | null)?.code === 'P2002') throw ctx.redirect('/profile?campus=invalid')
+          throw e
+        }
         throw ctx.redirect('/profile?campus=verified')
       }),
     },
@@ -118,6 +125,8 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAdd
       enabled: true,
       requireEmailVerification: true,
       minPasswordLength: 8,
+      // Better Auth leaves other sessions alive after a reset by default; a reset usually means the old password or a session leaked.
+      revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
         await enqueueEmail(prisma, { to: user.email, template: 'reset-password', payload: { name: user.name, url } })
       },
@@ -165,6 +174,27 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAdd
     },
 
     databaseHooks: {
+      user: {
+        update: {
+          // Better Auth's own /update-user accepts any string for the additional fields, bypassing the tRPC profile schema.
+          // Apply the same limits (name, WhatsApp number, campus) to every write.
+          before: async (data) => {
+            const d = data as { name?: unknown; phone?: unknown; campus?: unknown }
+            const checked = profileUpdateInput.partial().safeParse({
+              ...(d.name !== undefined ? { name: d.name } : {}),
+              ...(d.phone !== undefined ? { phone: d.phone } : {}),
+              ...(d.campus !== undefined ? { campus: d.campus } : {}),
+            })
+            if (!checked.success) throw new APIError('BAD_REQUEST', { message: checked.error.issues[0]?.message ?? 'Data profil tidak valid.', code: 'INVALID_PROFILE' })
+            return { data: { ...data, ...checked.data } }
+          },
+        },
+        create: {
+          // A Google sign-up would otherwise copy the Google photo. Every new account starts with KoBo's default avatar
+          // (the initial on the brand tint, rendered by the frontend when `image` is empty); a photo is the user's own choice later.
+          before: async (user) => ({ data: { ...user, image: null } }),
+        },
+      },
       account: {
         create: {
           // Implicit linking at the OAuth callback bypasses the path guards above, so refuse the insert itself for a demo user.

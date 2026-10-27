@@ -4,6 +4,7 @@ import { bookingRouter } from './booking.ts'
 import { demoRouter } from './demo.ts'
 import { kosRouter } from './kos.ts'
 import { kuitansiRouter } from './kuitansi.ts'
+import { campusRouter, catalogRouter, regionRouter } from './location.ts'
 import { ownerRouter } from './owner.ts'
 import { paymentRouter } from './payment.ts'
 import { placeRouter } from './place.ts'
@@ -12,9 +13,12 @@ import { router } from './trpc.ts'
 import { visitRouter } from './visit.ts'
 import { waitlistRouter } from './waitlist.ts'
 
-export const appRouter = router({ auth: authRouter, kos: kosRouter, owner: ownerRouter, application: applicationRouter, booking: bookingRouter, payment: paymentRouter, place: placeRouter, kuitansi: kuitansiRouter, review: reviewRouter, visit: visitRouter, waitlist: waitlistRouter, demo: demoRouter })
+export const appRouter = router({ auth: authRouter, kos: kosRouter, owner: ownerRouter, application: applicationRouter, booking: bookingRouter, payment: paymentRouter, place: placeRouter, kuitansi: kuitansiRouter, review: reviewRouter, visit: visitRouter, waitlist: waitlistRouter, demo: demoRouter, region: regionRouter, campus: campusRouter, catalog: catalogRouter })
 export type AppRouter = typeof appRouter
 export type { Place } from '../geocode.ts'
+export type { RegionView, CampusView, CatalogStatus } from './location.ts'
+export type { OwnerPlaceRow } from './ownerPlaces.ts'
+export type { NearbyView, NearbyGroup, NearbyItem } from '../placeCatalog.ts'
 export type { KosCard, KosSearchCard, KosDetail, RoomView, ReviewView, OwnerPublic } from './kos.ts'
 export type { OwnerPublicProfile, OwnerKos, OwnerBoard, BoardRoom, BoardSummary, OwnerReview, OwnerImage, ImagePresign } from './owner.ts'
 export type { KuitansiView } from './kuitansi.ts'

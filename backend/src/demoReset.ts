@@ -11,7 +11,8 @@ import { buildSeed } from './db/seed.ts'
  *  - the demo owner's profile, kos (edits, rooms, photos, rules, POIs, new kos), and the seeded tenants,
  *    invoices, payments and reviews of those kos (owner actions such as "Tandai Lunas", move-out and
  *    review replies all land there).
- * Never touched: other owners, real users' tenancies / reviews / visits, sessions, accounts.
+ * Never touched: other owners, real users' tenancies / reviews / visits, sessions, accounts, and any extra kos of the demo
+ * owner that a real user applied to or rented in.
  * A real user's live tenancy in a demo kos room wins over the seeded tenant that used to live there.
  */
 
@@ -40,6 +41,26 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
 
   await prisma.$transaction(
     async (tx) => {
+      // The demo owner's extra kos that this reset may drop: only those where nobody outside the demo set has a tenancy or
+      // an application (the records that carry money and obligations). Such a kos and its paid history stay untouched.
+      // Waiting-list entries and survey bookings of outsiders do not protect a kos: they cascade away with it, as before.
+      const outsider = { id: { notIn: seedUserIds } }
+      const dropped = (
+        await tx.kos.findMany({
+          where: {
+            ownerId: demoProfile.id,
+            id: { notIn: seedKosIds },
+            NOT: {
+              OR: [
+                { rooms: { some: { tenancies: { some: { user: outsider } } } } },
+                { rooms: { some: { rentalApplications: { some: { user: outsider } } } } },
+              ],
+            },
+          },
+          select: { id: true },
+        })
+      ).map((k) => k.id)
+
       // 0. Refund rows are financial history (onDelete Restrict), so they go first, only for the tenancies this reset deletes below.
       await tx.paymentRefund.deleteMany({
         where: {
@@ -49,7 +70,7 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
                 OR: [
                   { userId: demoStudent.id },
                   { userId: { in: seedUserIds }, room: { kosId: { in: seedKosIds } } },
-                  { room: { kos: { ownerId: demoProfile.id, id: { notIn: seedKosIds } } } },
+                  { room: { kosId: { in: dropped } } },
                 ],
               },
             },
@@ -60,10 +81,7 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
       // 1. Demo student: visits and (below) tenancies.
       await tx.visit.deleteMany({ where: { userId: demoStudent.id } })
 
-      // 2. Kos the demo owner added (cascades rooms, tenancies, photos, ...).
-      await tx.kos.deleteMany({ where: { ownerId: demoProfile.id, id: { notIn: seedKosIds } } })
-
-      // 3. Tenancies in scope: the demo student's anywhere, and seeded tenants' in the demo owner's kos.
+      // 2. Tenancies in scope: the demo student's anywhere, and seeded tenants' in the demo owner's kos.
       const scope = { OR: [{ userId: demoStudent.id }, { userId: { in: seedUserIds }, room: { kosId: { in: seedKosIds } } }] }
       const doomed = await tx.tenancy.findMany({ where: scope, select: { roomId: true } })
       await tx.tenancy.deleteMany({ where: scope })
@@ -73,6 +91,10 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
 
       // 3c. Rental applications in the same scope. Real applicants to demo kos remain untouched.
       await tx.rentalApplication.deleteMany({ where: { OR: [{ userId: demoStudent.id }, { userId: { in: seedUserIds }, room: { kosId: { in: seedKosIds } } }] } })
+
+      // 3d. Kos the demo owner added and nobody else used (cascades rooms, photos, ...). Their tenancies were removed above,
+      // which the Tenancy -> Room restriction (archive-not-delete rule) requires before a room can go.
+      await tx.kos.deleteMany({ where: { id: { in: dropped } } })
 
       // 4. The demo owner's kos back to seed: fields, photos, rules, POIs.
       for (const { id, ...fields } of seedKos) await tx.kos.update({ where: { id }, data: fields as never })

@@ -39,15 +39,21 @@ const stopWaitlist = startWaitlistWorker(prisma)
 
 // Also not started from createApp. Restores demo-owned rows only (demoReset.ts).
 // e2e: a 03:30 reset would wipe rows mid-suite.
-const stopDemoReset = e2eHooks ? () => {} : startDemoReset(prisma)
+const stopDemoReset: () => void = e2eHooks ? () => {} : startDemoReset(prisma)
 
-const shutdown = () => {
-  stopOutbox()
-  stopRefunds()
-  stopPaymentSweep()
-  stopWaitlist()
-  stopDemoReset()
-  server.close(() => void prisma.$disconnect().finally(() => process.exit(0)))
+// Compose gives the container 10 s (stop_grace_period). Stop taking requests, let the running ticks and in-flight
+// requests finish (max 8 s), then close the pool, so a refund or email send is not cut off between the provider call
+// and the row update.
+const SHUTDOWN_WAIT_MS = 8_000
+let shuttingDown = false
+const shutdown = async () => {
+  if (shuttingDown) return
+  shuttingDown = true
+  const httpClosed = new Promise<void>((resolve) => server.close(() => resolve()))
+  const workers = [stopOutbox(), stopRefunds(), stopPaymentSweep(), stopWaitlist(), Promise.resolve(stopDemoReset())]
+  await Promise.race([Promise.allSettled([httpClosed, ...workers]), new Promise((resolve) => setTimeout(resolve, SHUTDOWN_WAIT_MS).unref())])
+  await prisma.$disconnect().catch(() => undefined)
+  process.exit(0)
 }
-process.on('SIGTERM', shutdown)
-process.on('SIGINT', shutdown)
+process.on('SIGTERM', () => void shutdown())
+process.on('SIGINT', () => void shutdown())

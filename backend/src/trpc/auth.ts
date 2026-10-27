@@ -6,6 +6,8 @@ export interface MeResult {
   /** "Is owner" is exactly `ownerProfile != null` (spec section 3). */
   isOwner: boolean
   ownerProfileId: string | null
+  /** False while a newly registered owner waits for KoBo's approval; their kos are not public yet. Null for non-owners. */
+  ownerApproved: boolean | null
   campusVerified: boolean
 }
 
@@ -21,12 +23,13 @@ export const authRouter = router({
   me: publicProcedure.query(async ({ ctx }): Promise<MeResult | null> => {
     const session = await ctx.getSession()
     if (!session) return null
-    const u = await ctx.prisma.user.findUnique({ where: { id: session.user.id }, include: { ownerProfile: { select: { id: true } } } })
+    const u = await ctx.prisma.user.findUnique({ where: { id: session.user.id }, include: { ownerProfile: { select: { id: true, approvedAt: true } } } })
     if (!u) return null
     return {
       user: { id: u.id, name: u.name, email: u.email, image: u.image, phone: u.phone, campus: u.campus, campusEmail: u.campusEmail, isDemo: u.isDemo },
       isOwner: u.ownerProfile !== null,
       ownerProfileId: u.ownerProfile?.id ?? null,
+      ownerApproved: u.ownerProfile ? u.ownerProfile.approvedAt !== null : null,
       campusVerified: u.campusEmailVerifiedAt !== null,
     }
   }),

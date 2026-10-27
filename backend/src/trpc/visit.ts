@@ -1,6 +1,7 @@
 import { compareDates, todayWIB } from '@kobo/shared/domain'
 import { kosIdOnly, visitCompleteInput, visitCreateInput, visitIdInput } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
+import { assertDemoIsolation } from '../demoIsolation.ts'
 import { authedProcedure, ownerProcedure, router } from './trpc.ts'
 
 export interface MyVisit {
@@ -40,8 +41,9 @@ export const visitRouter = router({
     if (!real || compareDates(input.date, todayWIB(new Date())) <= 0) {
       throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tanggal survey harus setelah hari ini.' })
     }
-    const kos = await ctx.prisma.kos.findUnique({ where: { id: input.kosId }, select: { id: true } })
+    const kos = await ctx.prisma.kos.findUnique({ where: { id: input.kosId, archivedAt: null }, select: { id: true } })
     if (!kos) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kos tidak ditemukan.' })
+    await assertDemoIsolation(ctx.prisma, ctx.user, kos.id)
     const conflict = new TRPCError({ code: 'CONFLICT', message: ALREADY_SCHEDULED })
     if ((await ctx.prisma.visit.count({ where: { userId: ctx.user.id, kosId: kos.id, status: 'SCHEDULED' } })) > 0) throw conflict
     try {

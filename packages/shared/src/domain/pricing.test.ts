@@ -13,12 +13,20 @@ describe('computeCheckoutTotal', () => {
       computeCheckoutTotal({ monthlyRent: 1_000_000, applicationFee: 50_000, discountAmount: 100_000, campusEmailVerified: false }).total,
     ).toBe(1_050_000)
   })
-  it('discount larger than rent+fee is capped, total 0', () => {
+  it('discount larger than the rent is capped at the rent, total 0 without a fee', () => {
     expect(computeCheckoutTotal({ monthlyRent: 100, applicationFee: 0, discountAmount: 500, campusEmailVerified: true })).toEqual({
       rent: 100,
       applicationFee: 0,
       discount: 100,
       total: 0,
+    })
+  })
+  it('never discounts the application fee (invoice constraint: discount <= rent)', () => {
+    expect(computeCheckoutTotal({ monthlyRent: 1_550_000, applicationFee: 25_000, discountAmount: 1_600_000, campusEmailVerified: true })).toEqual({
+      rent: 1_550_000,
+      applicationFee: 25_000,
+      discount: 1_550_000,
+      total: 25_000,
     })
   })
 
@@ -36,6 +44,7 @@ describe('computeCheckoutTotal', () => {
         expect(Number.isInteger(r.total)).toBe(true)
         expect(r.total).toBe(r.rent + r.applicationFee - r.discount)
         expect(r.discount).toBeLessThanOrEqual(i.discountAmount)
+        expect(r.discount).toBeLessThanOrEqual(r.rent)
       }),
     )
   })

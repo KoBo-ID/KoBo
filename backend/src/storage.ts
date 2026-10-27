@@ -1,4 +1,5 @@
-import { DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 export interface PresignedPut {
@@ -17,8 +18,21 @@ export interface Storage {
   kind: 'r2' | 'fake'
   presignPut(key: string, contentType: string, contentLength: number): Promise<PresignedPut>
   head(key: string): Promise<HeadResult | null>
+  /** The first `length` bytes of an object (null when it does not exist). Used to check the file signature, not just the declared type. */
+  peek(key: string, length: number): Promise<Uint8Array | null>
   delete(key: string): Promise<void>
   publicUrl(key: string): string
+}
+
+/**
+ * True when the leading bytes match the declared image type (WebP: RIFF....WEBP, JPEG: FF D8 FF). A signature check, not
+ * a decode: it stops HTML, SVG, scripts and executables declared as images, while re-encoding stays a separate hardening step.
+ */
+export function hasImageSignature(contentType: string, bytes: Uint8Array): boolean {
+  const ascii = (from: number, to: number) => String.fromCharCode(...bytes.slice(from, to))
+  if (contentType === 'image/webp') return bytes.length >= 12 && ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP'
+  if (contentType === 'image/jpeg') return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+  return false
 }
 
 /** Presigned PUTs live this long; an upload is a few hundred KB so a minute is plenty. */
@@ -63,6 +77,16 @@ export function createR2Storage(cfg: R2Config): Storage {
         throw e
       }
     },
+    async peek(key, length) {
+      try {
+        const res = await client.send(new GetObjectCommand({ Bucket: cfg.bucket, Key: key, Range: `bytes=0-${length - 1}` }))
+        return res.Body ? await res.Body.transformToByteArray() : null
+      } catch (e) {
+        const err = e as { name?: string; $metadata?: { httpStatusCode?: number } }
+        if (err.name === 'NoSuchKey' || err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) return null
+        throw e
+      }
+    },
     async delete(key) {
       await client.send(new DeleteObjectCommand({ Bucket: cfg.bucket, Key: key }))
     },
@@ -83,23 +107,38 @@ export interface FakeStorage extends Storage {
   put(key: string, bytes: Uint8Array, contentType: string): void
   get(key: string): { bytes: Uint8Array; contentType: string } | undefined
   has(key: string): boolean
+  /** Checks the HMAC the fake presign put in the URL (key, type, length, expiry). */
+  verifyUpload(key: string, q: { ct?: string; len?: string; exp?: string; sig?: string }): boolean
 }
 
 export function createFakeStorage(): FakeStorage {
   const objects = new Map<string, { bytes: Uint8Array; contentType: string }>()
+  // Per-instance secret: the fake's URLs are signed like a real presign, so an unsigned PUT can never write an object.
+  const secret = randomBytes(32)
+  const sign = (key: string, ct: string, len: string, exp: string) => createHmac('sha256', secret).update(`${key}\n${ct}\n${len}\n${exp}`).digest('hex')
   return {
     kind: 'fake',
     async presignPut(key, contentType, contentLength) {
       const exp = Date.now() + PRESIGN_EXPIRES_SECONDS * 1000
-      const q = new URLSearchParams({ ct: contentType, len: String(contentLength), exp: String(exp) })
+      const q = new URLSearchParams({ ct: contentType, len: String(contentLength), exp: String(exp), sig: sign(key, contentType, String(contentLength), String(exp)) })
       return { url: `${DEV_UPLOAD_PREFIX}${key}?${q}`, headers: { 'Content-Type': contentType } }
     },
     async head(key) {
       const o = objects.get(key)
       return o ? { contentType: o.contentType, contentLength: o.bytes.byteLength } : null
     },
+    async peek(key, length) {
+      const o = objects.get(key)
+      return o ? o.bytes.slice(0, length) : null
+    },
     async delete(key) {
       objects.delete(key)
+    },
+    verifyUpload(key, q) {
+      if (!q.ct || !q.len || !q.exp || !q.sig) return false
+      const expected = Buffer.from(sign(key, q.ct, q.len, q.exp), 'hex')
+      const given = Buffer.from(q.sig, 'hex')
+      return given.length === expected.length && timingSafeEqual(given, expected)
     },
     publicUrl: (key) => `${DEV_UPLOAD_PREFIX}${key}`,
     put: (key, bytes, contentType) => void objects.set(key, { bytes, contentType }),

@@ -34,3 +34,26 @@ export const averageLatLng = (points: LatLng[]): LatLng | null => {
   );
   return { lat: total.lat / points.length, lng: total.lng / points.length };
 };
+
+/**
+ * Pulls a point out of what an owner pastes: "-6.2008, 106.7861", a Google Maps link containing `@lat,lng`, `!3dLAT!4dLNG`
+ * or `q=lat,lng`. Short links (maps.app.goo.gl) carry no coordinates and are not resolved here. Returns null when nothing
+ * plausible is found (latitude -11..6, longitude 95..141 covers Indonesia, which also rejects swapped values).
+ */
+export const parseCoordinates = (text: string): LatLng | null => {
+  const num = String.raw`(-?\d{1,3}(?:\.\d+)?)`;
+  const patterns = [
+    new RegExp(String.raw`@${num},\s*${num}`),
+    new RegExp(String.raw`!3d${num}!4d${num}`),
+    new RegExp(String.raw`[?&](?:q|ll|query|center)=${num}(?:,|%2C)\s*${num}`),
+    new RegExp(String.raw`^\s*${num}\s*[,;\s]\s*${num}\s*$`),
+  ];
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (!m) continue;
+    const lat = Number(m[1]);
+    const lng = Number(m[2]);
+    if (lat >= -11 && lat <= 6 && lng >= 95 && lng <= 141) return { lat, lng };
+  }
+  return null;
+};
