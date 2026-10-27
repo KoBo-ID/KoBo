@@ -86,7 +86,7 @@ export const OwnerLayout: React.FC = () => {
       panelClassName="kobo-menu"
       trigger={(p) => (
         <button {...p} type="button" className="kobo-control os-picker" style={{ minWidth }}>
-          <span className="truncate-1 os-picker__name">{selectedKos?.name ?? 'Belum ada kos'}</span>
+          <span className="os-picker__name" title={selectedKos?.name}>{selectedKos?.name ?? 'Belum ada kos'}</span>
           <ChevronDown size={14} />
         </button>
       )}
@@ -127,7 +127,11 @@ export const OwnerLayout: React.FC = () => {
 
         <div className="os-sidebar__picker">
           <span className="os-label">Properti aktif</span>
-          {renderKosPicker('0', 'kobo-popover-anchor--block')}
+          {kosList.length > 1 ? (
+            renderKosPicker('0', 'kobo-popover-anchor--block')
+          ) : (
+            <p className="os-active-name">{selectedKos?.name ?? 'Belum ada kos'}</p>
+          )}
         </div>
 
         <nav className="os-nav" aria-label="Menu pemilik">
@@ -182,6 +186,13 @@ export const OwnerLayout: React.FC = () => {
             )}
           </div>
         </div>
+
+        {me?.ownerApproved === false && (
+          <div className="os-banner" role="status">
+            <strong>Akun pemilik Anda sedang diperiksa KoBo.</strong>
+            <span>Anda bisa menyiapkan kos, kamar, dan foto sekarang. Kos baru tampil di pencarian setelah akun disetujui.</span>
+          </div>
+        )}
 
         <main className="os-main-content">
           {kosQuery.isPending ? (

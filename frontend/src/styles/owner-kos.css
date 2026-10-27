@@ -300,3 +300,16 @@
     white-space: normal;
   }
 }
+
+/* Containers on Kelola properti: the page's flex gap spaces them, so the shared bottom margin is dropped. */
+.owner-kos > .os-card, .owner-kos.os-card { margin-bottom: 0; }
+.owner-kos__identity-card { display: flex; flex-direction: column; gap: 1.25rem; }
+
+/* Tata tertib summary rows: title, count and fine on shared tracks. */
+.rules-card__list { display: flex; flex-direction: column; gap: 0.25rem; list-style: none; margin: 0; padding: 0; }
+.rules-card__row { display: grid; grid-template-columns: minmax(0, 1fr) 6rem 9rem; align-items: center; column-gap: 1.5rem; padding: 0.65rem 0.75rem; border-radius: var(--radius-md); font-size: 0.875rem; }
+.rules-card__row:hover { background: var(--bg-page); }
+.rules-card__title { font-weight: 700; min-width: 0; }
+.rules-card__count { color: var(--text-muted); font-size: 0.8125rem; }
+.rules-card__fine { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) { .rules-card__row { grid-template-columns: 1fr auto; } .rules-card__count { display: none; } }

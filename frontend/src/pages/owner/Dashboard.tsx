@@ -20,6 +20,7 @@ import { formatDueDate, formatRupiah, useOwnerWorkspace } from '../../lib/ownerW
 import { useRoomActions } from '../../lib/ownerActions';
 import { useOwnerVisits } from '../../lib/visits';
 import { useTRPC } from '../../lib/trpc';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const START_STEPS = ['Daftarkan kos', 'Tambah kamar dan harga', 'Terima pengajuan sewa'];
 
@@ -56,6 +57,7 @@ const DashboardSkeleton: React.FC = () => (
 );
 
 export const OwnerDashboard: React.FC = () => {
+  useDocumentTitle('Papan okupansi');
   const { selectedKos } = useOwnerWorkspace();
   const trpc = useTRPC();
   const board = useQuery({ ...trpc.owner.board.queryOptions({ kosId: selectedKos?.id ?? '' }), enabled: !!selectedKos,

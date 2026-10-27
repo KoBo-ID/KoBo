@@ -56,13 +56,13 @@
 .rv-filters__count { font-weight: 500; color: var(--text-muted); }
 
 .rv-surface {
-  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 0.75rem;
+  list-style: none; margin: 0; padding: 1.25rem;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
 }
-.rv-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 0.9rem; padding: 1.1rem 1.25rem; align-items: start; }
-.rv-row + .rv-row { border-top: 1px solid var(--border-subtle); }
+.rv-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 0.9rem; padding: 1rem 1.25rem; align-items: start; background: var(--bg-muted); border-radius: var(--radius-lg); }
 .rv-main { min-width: 0; }
 .rv-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; }
 .rv-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.6rem; min-width: 0; }
@@ -82,7 +82,7 @@
 .rv-subs { display: flex; flex-wrap: wrap; gap: 0.1rem 1rem; margin-top: 0.4rem; font-size: 0.78rem; color: var(--text-muted); }
 .rv-subs .rv-num { color: var(--text-main); font-weight: 600; }
 
-.rv-reply { margin: 0.8rem 0 0; padding: 0.75rem 0.9rem; background: var(--bg-muted); border-radius: var(--radius-md); }
+.rv-reply { margin: 0.8rem 0 0; padding: 0.75rem 0.9rem; background: var(--bg-surface); border-radius: var(--radius-md); }
 .rv-reply__label { font-size: 0.8rem; font-weight: 700; color: var(--text-main); }
 .rv-reply__text { margin-top: 0.15rem; font-size: 0.875rem; line-height: 1.55; color: var(--text-main); overflow-wrap: anywhere; }
 

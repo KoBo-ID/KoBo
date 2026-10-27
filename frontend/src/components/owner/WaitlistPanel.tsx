@@ -41,20 +41,18 @@ export const WaitlistPanel: React.FC<{ kosId: string; kosName: string }> = ({ ko
   const rows = list.data ?? [];
   const live = rows.filter((e) => e.status === 'WAITING' || e.status === 'OFFERED');
 
+  // Nobody queued and nothing failed: no card. The queue appears here by itself once a full kos has students waiting.
+  if (list.isSuccess && rows.length === 0 && !remove.isError) return null;
+
   return (
-    <section className="owner-kos">
-      <div className="owner-kos__section-head" style={{ marginBottom: '0.75rem' }}>
-        <h3 className="owner-kos__section-title">
+    <section className="owner-kos os-card">
+      <div className="os-card__head">
+        <h2 className="os-card__title">
           Daftar tunggu <span>{live.length} pengantre</span>
-        </h3>
+        </h2>
       </div>
       {list.isError && <Notice tone="error">Gagal memuat daftar tunggu.</Notice>}
       {remove.isError && <Notice tone="error">{messageForError(remove.error)}</Notice>}
-      {list.isSuccess && rows.length === 0 && (
-        <p className="owner-kos__section-hint">
-          Belum ada yang mengantre. Pengantre muncul di sini saat semua kamar terisi.
-        </p>
-      )}
       {rows.length > 0 && (
         <div className="kobo-table-wrap">
           <table className="kobo-table kobo-table--labels" role="table">

@@ -19,10 +19,10 @@
   --badge-campur-text: hsl(271, 70%, 48%);
   --badge-campur-bg: hsl(271, 80%, 96%);
   --badge-campur-border: hsl(271, 60%, 88%);
-  --badge-putra-text: hsl(212, 85%, 48%);
+  --badge-putra-text: hsl(212, 85%, 40%);
   --badge-putra-bg: hsl(212, 90%, 96%);
   --badge-putra-border: hsl(212, 70%, 88%);
-  --badge-putri-text: hsl(340, 75%, 52%);
+  --badge-putri-text: hsl(340, 75%, 42%);
   --badge-putri-bg: hsl(340, 80%, 96%);
   --badge-putri-border: hsl(340, 65%, 88%);
 
@@ -64,7 +64,7 @@
   --border-focus: hsl(176, 75%, 28%);
 
   --text-main: hsl(222, 47%, 11%);        /* #0F172A */
-  --text-muted: hsl(215, 16%, 47%);       /* #64748B */
+  --text-muted: hsl(215, 16%, 44%);
   --text-subtle: hsl(215, 16%, 65%);      /* #94A3B8 */
   --text-inverse: hsl(0, 0%, 100%);
 

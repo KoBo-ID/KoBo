@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -9,14 +9,16 @@ import {
 import { Button } from '../../components/ui/Button';
 import { Notice } from '../../components/ui/Notice';
 import { useSession } from '../../lib/session';
-import { useBecomeOwner } from '../../lib/owner';
+import { BecomeOwnerModal } from '../../components/owner/BecomeOwnerModal';
 import { useAppStore } from '../../store/AppContext';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 export const OwnerLogin: React.FC = () => {
+  useDocumentTitle('Masuk pemilik');
   const navigate = useNavigate();
   const { me, isLoading } = useSession();
   const { openAuthModal } = useAppStore();
-  const { becomeOwner, isPending, error } = useBecomeOwner();
+  const [registering, setRegistering] = useState(false);
   const isDemo = !!me?.user.isDemo;
 
   // One CTA, three meanings: sign in, open the workspace, or self-register as an owner.
@@ -24,7 +26,7 @@ export const OwnerLogin: React.FC = () => {
   const onCta = () => {
     if (!me) openAuthModal();
     else if (me.isOwner) navigate('/owner/dashboard');
-    else void becomeOwner();
+    else setRegistering(true);
   };
 
   const features = [
@@ -77,17 +79,11 @@ export const OwnerLogin: React.FC = () => {
             icon={<ArrowRight size={18} />}
             iconPosition="right"
             style={{ width: '100%', justifyContent: 'center' }}
-            isLoading={isPending}
-            disabled={isLoading || isPending || (isDemo && !me?.isOwner)}
+            disabled={isLoading || (isDemo && !me?.isOwner)}
             onClick={onCta}
           >
             {ctaLabel}
           </Button>
-          {error && (
-            <div style={{ marginTop: '1rem' }}>
-              <Notice tone="error">{error}</Notice>
-            </div>
-          )}
 
           <p
             style={{
@@ -100,6 +96,7 @@ export const OwnerLogin: React.FC = () => {
           </p>
         </div>
       </div>
+      {registering && <BecomeOwnerModal onClose={() => setRegistering(false)} />}
     </div>
   );
 };

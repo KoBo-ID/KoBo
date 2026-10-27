@@ -70,6 +70,8 @@ export const MyKos: React.FC = () => {
   const visitsQuery = useQuery({ ...trpc.visit.mine.queryOptions(), enabled: !!me });
   const visits = me ? (visitsQuery.data ?? []) : [];
   const scheduledCount = visits.filter((v) => v.status === 'SCHEDULED').length;
+  // A count is shown only once its query has answered; while the session or the query is loading, or after a failure, it reads "–", never "(0)".
+  const countLabel = (q: { isSuccess: boolean }, n: number) => ((!me && !sessionLoading) || q.isSuccess ? String(n) : '–');
   const cancelVisit = useMutation(
     trpc.visit.cancel.mutationOptions({
       onSuccess: () => {
@@ -125,9 +127,9 @@ export const MyKos: React.FC = () => {
 
       <div role="tablist" aria-label="Kos Saya" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-subtle)', marginBottom: '2rem' }}>
         {([
-          { id: 'rentals', icon: <Home size={18} />, label: `Kamar yang Disewa (${rentals.length})` },
-          { id: 'applications', icon: <ClipboardList size={18} />, label: `Pengajuan Sewa (${applications.length})` },
-          { id: 'visits', icon: <Calendar size={18} />, label: `Jadwal Survey Gratis (${scheduledCount})` },
+          { id: 'rentals', icon: <Home size={18} />, label: `Kamar yang Disewa (${countLabel(mine, rentals.length)})` },
+          { id: 'applications', icon: <ClipboardList size={18} />, label: `Pengajuan Sewa (${countLabel(applicationQuery, applications.length)})` },
+          { id: 'visits', icon: <Calendar size={18} />, label: `Jadwal Survey Gratis (${countLabel(visitsQuery, scheduledCount)})` },
         ] as const).map((tab) => (
           <button
             key={tab.id}

@@ -6,6 +6,7 @@ import { Star, Share2 } from 'lucide-react';
 import { useAppStore } from '../store/AppContext';
 import { PhotoHeroMosaic } from '../components/kos/PhotoHeroMosaic';
 import { AmenitiesSection } from '../components/kos/AmenitiesSection';
+import { itemsFromArrays } from '@kobo/shared/facilities';
 import { PoiRadar } from '../components/kos/PoiRadar';
 import { RulesAccordion } from '../components/kos/RulesAccordion';
 import { ReviewsSection } from '../components/kos/ReviewsSection';
@@ -196,8 +197,8 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
 
             <div id="fasilitas" className="detail-section">
               <AmenitiesSection
-                privateAmenities={kos.privateAmenities}
-                sharedAmenities={kos.sharedAmenities}
+                facilities={kos.facilities ?? itemsFromArrays(kos.privateAmenities, kos.sharedAmenities)}
+                building={kos.building}
               />
             </div>
 

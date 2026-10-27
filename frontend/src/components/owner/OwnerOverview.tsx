@@ -14,7 +14,7 @@ interface OwnerOverviewProps {
 }
 
 /**
- * The one panel on the dashboard: money this month beside the building. Only figures the board query returns.
+ * Three tiles: money collected, money overdue, and the building. Only figures the board query returns.
  * Occupancy is a proportional bar, so it stays the same size for 1 room or 100. The status counts jump to the room board, which holds the per-room and per-floor detail.
  */
 export const OwnerOverview: React.FC<OwnerOverviewProps> = ({ summary, onShowStatus }) => {
@@ -25,52 +25,46 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({ summary, onShowSta
 
   return (
     <section className="od-hero" aria-label="Ringkasan bulan ini">
-      <div className="od-money">
+      <div className="od-tile od-tile--brand">
         <h2 className="od-eyebrow">Terkumpul bulan ini</h2>
-        <p className="od-money__value">{formatRupiah(collectedThisMonth)}</p>
-        {expectedThisMonth > 0 && (
+        <p className="od-figure od-figure--brand">{formatRupiah(collectedThisMonth)}</p>
+        {expectedThisMonth > 0 ? (
           <>
             <div className="od-bar" role="img" aria-label={`${collectedPct}% dari ${formatRupiah(expectedThisMonth)}`}>
               <span style={{ width: `${collectedPct}%` }} />
             </div>
-            <p className="od-money__meta">
+            <p className="od-meta">
               {collectedPct}% dari {formatRupiah(expectedThisMonth)} tagihan bulan ini
             </p>
           </>
+        ) : (
+          <p className="od-meta">Belum ada tagihan bulan ini.</p>
         )}
-        <dl className="od-facts">
-          <div>
-            <dt>Menunggak</dt>
-            <dd>
-              {overdueAmount > 0 ? (
-                <button type="button" className="od-link od-link--late" aria-label={`Lihat ${counts.overdue} kamar menunggak, ${formatRupiah(overdueAmount)}`} onClick={() => onShowStatus('overdue')}>
-                  {formatRupiah(overdueAmount)}
-                  <span>{counts.overdue} kamar</span>
-                </button>
-              ) : (
-                <span className="od-ok">Tidak ada</span>
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt>Daftar tunggu</dt>
-            <dd>
-              <Link to="/owner/kos" className="od-link">
-                {waitlistCount}
-                <span>pengantre</span>
-              </Link>
-            </dd>
-          </div>
-        </dl>
       </div>
 
-      <div className="od-building">
-        <div className="od-building__head">
-          <h2 className="od-eyebrow">Hunian</h2>
-          <p className="od-building__value">
-            {occupiedRooms} dari {totalRooms} <span>kamar terisi, {occupancyPct}%</span>
-          </p>
-        </div>
+      <div className="od-tile">
+        <h2 className="od-eyebrow">Menunggak</h2>
+        {overdueAmount > 0 ? (
+          <>
+            <p className="od-figure od-figure--late">{formatRupiah(overdueAmount)}</p>
+            <p className="od-meta">{counts.overdue} kamar belum membayar tepat waktu</p>
+            <button type="button" className="od-link" aria-label={`Lihat ${counts.overdue} kamar menunggak, ${formatRupiah(overdueAmount)}`} onClick={() => onShowStatus('overdue')}>
+              Lihat kamar
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="od-figure od-ok">Tidak ada</p>
+            <p className="od-meta">Semua tagihan jatuh tempo sudah dibayar.</p>
+          </>
+        )}
+      </div>
+
+      <div className="od-tile od-tile--wide">
+        <h2 className="od-eyebrow">Hunian</h2>
+        <p className="od-figure">
+          {occupiedRooms} dari {totalRooms} <span>kamar terisi, {occupancyPct}%</span>
+        </p>
         <div className="od-split" role="img" aria-label={`Status kamar: ${segments.map((x) => `${STATUS_META[x].label} ${counts[x]}`).join(', ')}`}>
           {segments.map((x) => (
             <span key={x} className={`od-split__seg od-split__seg--${x}`} style={{ flexGrow: counts[x] }} />
@@ -87,6 +81,11 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({ summary, onShowSta
             </li>
           ))}
         </ul>
+        {waitlistCount > 0 && (
+          <Link to="/owner/kos" className="od-link">
+            {waitlistCount} pengantre di daftar tunggu
+          </Link>
+        )}
       </div>
     </section>
   );

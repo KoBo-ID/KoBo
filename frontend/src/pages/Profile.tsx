@@ -11,7 +11,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { AccountSecurityCard } from '../components/auth/AccountSecurityCard';
 import { CampusDiscountCard } from '../components/booking/CampusDiscountCard';
 import { useSession } from '../lib/session';
-import { useBecomeOwner } from '../lib/owner';
+import { BecomeOwnerModal } from '../components/owner/BecomeOwnerModal';
 import { useTRPC } from '../lib/trpc';
 import { messageForError } from '../lib/errors';
 
@@ -21,7 +21,7 @@ export const Profile: React.FC = () => {
   useDocumentTitle('Profil');
   const { addToast, openAuthModal } = useAppStore();
   const { me, isLoading } = useSession();
-  const { becomeOwner, isPending, error: ownerError } = useBecomeOwner();
+  const [registering, setRegistering] = useState(false);
   const trpc = useTRPC();
   const qc = useQueryClient();
   const save = useMutation(trpc.auth.updateProfile.mutationOptions());
@@ -222,8 +222,7 @@ export const Profile: React.FC = () => {
             ) : (
               <>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Kelola kamar, tagihan, dan kuitansi dari dashboard pemilik. Gratis.</p>
-                {ownerError && <Notice tone="error">{ownerError}</Notice>}
-                <Button variant="primary" size="sm" isLoading={isPending} disabled={isPending} onClick={() => void becomeOwner()}>
+                <Button variant="primary" size="sm" onClick={() => setRegistering(true)}>
                   Daftarkan diri sebagai pemilik
                 </Button>
               </>
@@ -233,6 +232,7 @@ export const Profile: React.FC = () => {
         </div>
 
       </div>
+      {registering && <BecomeOwnerModal onClose={() => setRegistering(false)} />}
     </div>
   );
 };

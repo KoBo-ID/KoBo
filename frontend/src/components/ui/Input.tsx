@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useId } from 'react';
+import { InfoTip } from './InfoTip';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   helperText?: string;
+  /** Shown in an (i) popover next to the label, for context that is not needed to fill the field. */
+  info?: React.ReactNode;
   iconLeft?: React.ReactNode;
   iconRight?: React.ReactNode;
   fullWidth?: boolean;
@@ -13,6 +16,7 @@ export const Input: React.FC<InputProps> = ({
   label,
   error,
   helperText,
+  info,
   iconLeft,
   iconRight,
   fullWidth = true,
@@ -21,21 +25,26 @@ export const Input: React.FC<InputProps> = ({
   style,
   ...props
 }) => {
-  const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+  const autoId = useId();
+  const inputId = id || autoId;
+  const noteId = `${inputId}-note`;
 
   return (
     <div style={{ width: fullWidth ? '100%' : 'auto', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
       {label && (
-        <label
-          htmlFor={inputId}
-          style={{
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            color: 'var(--text-main)',
-          }}
-        >
-          {label}
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          <label
+            htmlFor={inputId}
+            style={{
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              color: 'var(--text-main)',
+            }}
+          >
+            {label}
+          </label>
+          {info && <InfoTip label={label}>{info}</InfoTip>}
+        </div>
       )}
       <div
         style={{
@@ -61,6 +70,8 @@ export const Input: React.FC<InputProps> = ({
         )}
         <input
           id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error || helperText ? noteId : undefined}
           className={className}
           style={{
             width: '100%',
@@ -93,12 +104,13 @@ export const Input: React.FC<InputProps> = ({
         )}
       </div>
       {error && (
-        <span style={{ fontSize: '0.8rem', color: 'var(--status-overdue-text)', fontWeight: 500 }}>
+        <span id={noteId} style={{ fontSize: '0.8rem', color: 'var(--status-overdue-text)', fontWeight: 500 }}>
+          <span className="sr-only">Error: </span>
           {error}
         </span>
       )}
       {!error && helperText && (
-        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <span id={noteId} style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           {helperText}
         </span>
       )}

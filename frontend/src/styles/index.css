@@ -34,8 +34,11 @@ body {
 
 /* Accessible Focus Rings */
 :focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--bg-surface), 0 0 0 4px var(--primary);
+  /* The dark band is an outline so an inline box-shadow (Button) cannot remove it, and forced-colors keeps it.
+     The light band is the box-shadow halo filling the outline offset (WCAG C40 two-colour pairing). */
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--bg-surface);
   border-radius: var(--radius-sm);
 }
 
@@ -351,5 +354,9 @@ img {
 }
 
 .kobo-range:focus-visible {
+  outline: none;
   box-shadow: none;
 }
+
+/* Visually hidden, still read by assistive tech: a section keeps its heading for the document outline and the in-page nav. */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

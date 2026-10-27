@@ -228,6 +228,7 @@
 
 /* The shell renders the focus ring, so suppress the input's own */
 .kobo-searchfield input:focus-visible {
+  outline: none;
   box-shadow: none;
 }
 
@@ -1331,3 +1332,52 @@
   .application-card { flex-direction: column; align-items: stretch; }
   .application-card__action > button { width: 100%; }
 }
+
+/* Narrow phones: the header's "Kos Saya" keeps its icon and count (the dock carries the label) so "Masuk" fits at 320 px. */
+@media (max-width: 389px) {
+  .kobo-nav-mykos__label { display: none; }
+}
+
+/* ── Detail page containers: every section is one container; sections are separated by space, not hairlines. ── */
+.detail-info { gap: 1.5rem; }
+.detail-main { gap: 1.5rem; }
+.detail-info > * + *, .detail-reviews { border-top: 0; }
+.detail-card, .detail-main .room-picker {
+  padding: 1.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+@media (min-width: 1024px) { .detail-card, .detail-main .room-picker { padding: 1.75rem; } }
+@media (max-width: 639px) { .detail-card, .detail-main .room-picker { padding: 1.25rem; } }
+.detail-reviews { margin-top: 1.5rem; }
+/* Inside a container the light-grey fill separates the items: rules groups and reviews. */
+.kos-rules__group { background: var(--bg-muted); border-color: transparent; }
+.kos-rules__group:hover, .kos-rules__group:focus-within { border-color: var(--border-strong); }
+.kos-rules__panel { background: transparent; border-top: 0; padding-top: 0.25rem; }
+.kos-reviews__summary { padding: 0; margin: 0 0 1.25rem; border: 0; border-radius: 0; background: transparent; }
+.kos-reviews__aspects { padding-top: 0; border-top: 0; }
+.kos-reviews__list, .kos-reviews__extra { gap: 0.75rem; }
+.kos-reviews__extra { margin-top: 0.75rem; }
+.kos-reviews__item { padding: 1rem 1.25rem; border: 0; border-radius: var(--radius-lg); background: var(--bg-muted); }
+.kos-reviews__reply { margin-top: 0.75rem; padding: 0.75rem 0 0; border-top: 0; }
+
+/* (i) info popover next to a field label */
+.kobo-infotip__btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; background: none; border: 0; border-radius: 50%; color: var(--text-muted); cursor: pointer; }
+.kobo-infotip__btn:hover, .kobo-infotip__btn[aria-expanded='true'] { color: var(--primary); background: var(--primary-light); }
+@media (pointer: coarse) { .kobo-infotip__btn { width: 40px; height: 40px; margin: -6px 0; } }
+.kobo-infotip { width: min(18rem, 80vw); padding: 0.75rem 0.9rem; }
+.kobo-infotip__text { margin: 0; font-size: 0.8125rem; line-height: 1.5; color: var(--text-main); font-weight: 400; }
+
+/* Fasilitas: building facts, then Kamar and Gedung, items with their inclusion status. */
+.kos-amenities__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 0.75rem; margin: 0 0 1.5rem; }
+.kos-amenities__facts > div { padding: 0.75rem 1rem; background: var(--bg-muted); border-radius: var(--radius-lg); }
+.kos-amenities__facts dt { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+.kos-amenities__facts dd { margin: 0.15rem 0 0; font-size: 1.125rem; font-weight: 800; color: var(--text-main); font-variant-numeric: tabular-nums; }
+.kos-amenities__group + .kos-amenities__group { margin-top: 1.25rem; }
+.kos-amenities__group h5 { margin: 0 0 0.6rem; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); }
+.kos-amenities__empty { margin: 0; font-size: 0.875rem; color: var(--text-muted); }
+.kos-amenities__status { margin-left: auto; flex-shrink: 0; padding: 0.15rem 0.55rem; border-radius: var(--radius-badge); background: var(--primary-light); color: var(--primary); font-size: 0.75rem; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kos-amenities__status.is-paid { background: var(--bg-muted); color: var(--text-main); }
+.kos-amenities__item { align-items: flex-start; }
+.kos-amenities__item .kos-amenities__status { align-self: center; }

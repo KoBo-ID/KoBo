@@ -11,6 +11,7 @@ import { formatRupiah, useOwnerWorkspace } from '../../lib/ownerWorkspace';
 import { KosFormModal } from '../../components/owner/KosFormModal';
 import { KosPhotosModal } from '../../components/owner/KosPhotosModal';
 import { KosRulesModal } from '../../components/owner/KosRulesModal';
+import { RulesCard } from '../../components/owner/RulesCard';
 import { WaitlistPanel } from '../../components/owner/WaitlistPanel';
 import { Button } from '../../components/ui/Button';
 import { Popover } from '../../components/ui/Popover';
@@ -19,8 +20,10 @@ import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { SafeImage } from '../../components/ui/SafeImage';
 import { Link } from 'react-router-dom';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 export const KosManager: React.FC = () => {
+  useDocumentTitle('Kelola properti');
   const { addToast } = useAppStore();
   const { selectedKos } = useOwnerWorkspace();
   const trpc = useTRPC();
@@ -34,10 +37,10 @@ export const KosManager: React.FC = () => {
     void qc.invalidateQueries({ queryKey: trpc.owner.pathKey() });
     void qc.invalidateQueries({ queryKey: trpc.kos.pathKey() });
   };
-  const attempt = async (job: () => Promise<unknown>, ok: string) => {
+  const attempt = async (job: () => Promise<unknown>, ok: string | ((result: unknown) => string)) => {
     try {
-      await job();
-      addToast(ok, 'success');
+      const result = await job();
+      addToast(typeof ok === 'function' ? ok(result) : ok, 'success');
       return true;
     } catch (err) {
       addToast(messageForError(err), 'error');
@@ -136,7 +139,8 @@ export const KosManager: React.FC = () => {
       )}
 
       {kos && (
-        <div className="owner-kos__card">
+        <>
+          <section className="os-card owner-kos__identity-card" aria-label="Properti aktif">
           <div className="owner-kos__head">
             <div className="owner-kos__identity">
               {kos.image ? (
@@ -229,7 +233,7 @@ export const KosManager: React.FC = () => {
 
           {confirmKosDelete && (
             <div className="owner-kos__confirm" role="alert">
-              <span>Hapus {kos.name} beserta seluruh kamarnya? Tindakan ini tidak bisa dibatalkan.</span>
+              <span>Hapus {kos.name} beserta seluruh kamarnya? Jika kos ini pernah disewa, kos akan diarsipkan (disembunyikan) dan riwayat pembayarannya tetap tersimpan.</span>
               <div className="owner-kos__confirm-actions">
                 <Button variant="outline" size="sm" onClick={() => setConfirmKosDelete(false)}>
                   Batal
@@ -239,7 +243,10 @@ export const KosManager: React.FC = () => {
                   size="sm"
                   isLoading={deleteKosMutation.isPending}
                   onClick={() => {
-                    void attempt(() => deleteKosMutation.mutateAsync({ kosId: kos.id }), 'Properti kos telah dihapus.').then(() =>
+                    void attempt(
+                      () => deleteKosMutation.mutateAsync({ kosId: kos.id }),
+                      (r) => ((r as { archived?: boolean }).archived ? 'Properti kos diarsipkan. Riwayat sewa dan pembayarannya tetap tersimpan.' : 'Properti kos telah dihapus.'),
+                    ).then(() =>
                       setConfirmKosDelete(false),
                     );
                   }}
@@ -250,12 +257,14 @@ export const KosManager: React.FC = () => {
             </div>
           )}
 
+          </section>
+
           {/* Room details */}
-          <section>
-            <div className="owner-kos__section-head">
-              <h3 className="owner-kos__section-title">
+          <section className="os-card" aria-labelledby="owner-rooms-title">
+            <div className="os-card__head">
+              <h2 id="owner-rooms-title" className="os-card__title">
                 Daftar kamar <span>{kos.totalRooms} kamar</span>
-              </h3>
+              </h2>
               <Button variant="secondary" size="sm" onClick={() => openAddRoom(kos.id)} icon={<Plus size={14} />} style={{ minHeight: 40 }}>
                 Tambah kamar
               </Button>
@@ -296,7 +305,7 @@ export const KosManager: React.FC = () => {
                                   onClick={() => {
                                     void attempt(
                                       () => deleteRoomMutation.mutateAsync({ kosId: kos.id, roomId: room.id }),
-                                      'Kamar berhasil dihapus.',
+                                      (r) => ((r as { archived?: boolean }).archived ? 'Kamar diarsipkan. Riwayat sewa dan pembayarannya tetap tersimpan.' : 'Kamar berhasil dihapus.'),
                                     ).then(() => setConfirmRoomId(null));
                                   }}
                                 >
@@ -376,8 +385,10 @@ export const KosManager: React.FC = () => {
             )}
           </section>
 
+          <RulesCard kosId={kos.id} onEdit={() => setRulesKos(kos)} />
+
           <WaitlistPanel kosId={kos.id} kosName={kos.name} />
-        </div>
+        </>
       )}
 
       {/* Kos Form Modal (Add / Edit) */}

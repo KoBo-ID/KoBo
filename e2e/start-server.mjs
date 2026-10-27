@@ -23,6 +23,7 @@ const env = {
   // Never hit the real email service from e2e: backend/.env may hold a Resend key, and loadEnvFile
   // does not override keys that already exist, so an empty value forces the console transport.
   RESEND_API_KEY: '',
+  ALLOW_CONSOLE_EMAIL: '1', // e2e only: production mode normally refuses to start without a mail key
   // Never reach a public geocoder from e2e; specs stub place.search where they need a hit.
   GEOCODER: 'off',
 }

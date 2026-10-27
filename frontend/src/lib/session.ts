@@ -9,6 +9,12 @@ export const GOOGLE_RETURN_FLAG = 'google';
 export const AUTH_PAGE_PATH = '/masuk';
 
 let googleReturnError: string | null = null;
+let signedOutAt = 0;
+
+/** True for a few seconds after an explicit sign-out, so route guards redirect home without reopening the sign-in dialog. */
+export function justSignedOut(): boolean {
+  return Date.now() - signedOutAt < 5000;
+}
 
 /** The message left by a failed Google round trip, handed over once to the sign-in modal. */
 export function takeGoogleReturnError(): string | null {
@@ -74,6 +80,7 @@ export function useAuthActions() {
   /** The auth client is fetched on demand, the first time someone actually signs out. */
   const logout = useCallback(async () => {
     const { authClient } = await import('./authClient');
+    signedOutAt = Date.now();
     await authClient.signOut();
     qc.setQueryData(trpc.auth.me.queryKey(), null);
     // Signed-in-only queries must not refetch (and 401) while the navbar still renders the old session.

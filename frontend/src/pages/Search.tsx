@@ -31,6 +31,7 @@ import {
 } from '@kobo/shared/search';
 import type { KosSearchInput } from '@kobo/shared/schemas';
 import { ListingCard } from '../components/kos/ListingCard';
+import { VisitModal } from '../components/booking/VisitModal';
 import { KosCardSkeleton } from '../components/kos/KosCardSkeleton';
 import { CampusSearchField } from '../components/search/CampusSearchField';
 import { ErrorState } from '../components/ui/QueryState';
@@ -219,6 +220,8 @@ export const Search: React.FC = () => {
     }),
     [filters, activeLocation],
   );
+  // The card's "Survey" button opens the visit modal in place, as on Home (no navigation).
+  const [visitKos, setVisitKos] = useState<Kos | null>(null);
   const search = useQuery({
     ...trpc.kos.search.queryOptions(searchInput),
     placeholderData: keepPreviousData,
@@ -644,7 +647,7 @@ export const Search: React.FC = () => {
                   {activeLocation ? `Kos di Sekitar ${activeLocation.label}` : 'Semua Kos'}
                 </h1>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                  {searchPending || searchFailed ? (
+                  {searchFailed ? null : searchPending ? (
                     'Memuat daftar kos…'
                   ) : (
                     <>
@@ -670,7 +673,7 @@ export const Search: React.FC = () => {
                   onMouseEnter={() => setHoveredKosId(kos.id)}
                   onMouseLeave={() => setHoveredKosId(null)}
                 >
-                  <ListingCard kos={kos} distance={activeLocation ? (distanceById.get(kos.id) ?? undefined) : undefined} />
+                  <ListingCard kos={kos} onOpenSurvey={setVisitKos} distance={activeLocation ? (distanceById.get(kos.id) ?? undefined) : undefined} />
                 </div>
               ))}
             </div>
@@ -768,6 +771,7 @@ export const Search: React.FC = () => {
       </div>
 
       {/* Responsive Split View Media Queries */}
+      {visitKos && <VisitModal isOpen onClose={() => setVisitKos(null)} kos={visitKos} />}
     </div>
   );
 };

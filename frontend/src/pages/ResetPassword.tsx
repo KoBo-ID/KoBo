@@ -8,9 +8,11 @@ import { Input } from '../components/ui/Input';
 import { Notice } from '../components/ui/Notice';
 import { useAppStore } from '../store/AppContext';
 import { messageForError } from '../lib/errors';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 /** Landing page of the emailed reset link: /reset-password?token=... (or ?error=INVALID_TOKEN). */
 export const ResetPassword: React.FC = () => {
+  useDocumentTitle('Atur ulang kata sandi');
   const [params] = useSearchParams();
   const token = params.get('token');
   const linkError = params.get('error');

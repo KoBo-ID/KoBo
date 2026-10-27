@@ -164,6 +164,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
         <nav style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
           <Link
             to="/my-kos"
+            aria-label={activeRentalsCount + activeVisitsCount > 0 ? `Kos Saya (${activeRentalsCount + activeVisitsCount})` : 'Kos Saya'}
+            className="kobo-nav-mykos"
             style={{
               fontSize: '0.875rem',
               fontWeight: location.pathname === '/my-kos' ? 700 : 600,
@@ -180,7 +182,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
             }}
           >
             <Home size={16} />
-            <span>Kos Saya</span>
+            <span className="kobo-nav-mykos__label">Kos Saya</span>
             {(activeRentalsCount > 0 || activeVisitsCount > 0) && (
               <span
                 style={{

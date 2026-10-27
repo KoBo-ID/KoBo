@@ -135,7 +135,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
   };
 
   return (
-    <section aria-labelledby="room-board-title" className="od-board" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <section aria-labelledby="room-board-title" className="od-board os-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       <div
         style={{
           display: 'flex',
@@ -146,8 +146,8 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
         }}
       >
         <div>
-          <h2 id="room-board-title" style={{ fontSize: '1.15rem', fontWeight: 700 }}>
-            Status Kamar <span style={{ ...countStyle, fontSize: '0.875rem', marginLeft: '0.25rem' }}>{rooms.length}</span>
+          <h2 id="room-board-title" className="od-section__title" style={{ margin: 0 }}>
+            Status Kamar <span className="od-count">{rooms.length}</span>
           </h2>
         </div>
 

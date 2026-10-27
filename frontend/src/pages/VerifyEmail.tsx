@@ -5,9 +5,11 @@ import { AuthCard } from '../components/auth/AuthCard';
 import { EmailActionForm } from '../components/auth/EmailActionForm';
 import { Button } from '../components/ui/Button';
 import { useAuthActions } from '../lib/session';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 /** Landing page of the emailed verification link: /verifikasi-email (success) or ?error=... (failure). */
 export const VerifyEmail: React.FC = () => {
+  useDocumentTitle('Verifikasi email');
   const [params] = useSearchParams();
   const failed = params.get('error');
   const { refreshSession } = useAuthActions();

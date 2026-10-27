@@ -13,6 +13,7 @@ import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/QueryState';
 import { OwnerPageHeader } from '../../components/owner/OwnerPageHeader';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const SUB_LABELS: { key: keyof OwnerReview['subRatings']; label: string }[] = [
   { key: 'cleanliness', label: 'Kebersihan' },
@@ -138,6 +139,7 @@ const ReviewRow: React.FC<{
 };
 
 export const ReviewsManager: React.FC = () => {
+  useDocumentTitle('Ulasan');
   const { addToast } = useAppStore();
   const { selectedKos } = useOwnerWorkspace();
   const trpc = useTRPC();

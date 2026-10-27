@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useSession } from '../../lib/session';
+import { justSignedOut, useSession } from '../../lib/session';
 import { useAppStore } from '../../store/AppContext';
 
 /**
@@ -14,7 +14,8 @@ export const OwnerGuard: React.FC = () => {
   const allowed = !!me?.isOwner;
 
   useEffect(() => {
-    if (!isLoading && !allowed) openAuthModal();
+    // After an explicit sign-out the guard only redirects home; the dialog is for people who arrive without a session.
+    if (!isLoading && !allowed && !justSignedOut()) openAuthModal();
   }, [isLoading, allowed, openAuthModal]);
 
   if (isLoading) {

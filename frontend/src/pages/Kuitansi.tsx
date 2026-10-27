@@ -10,6 +10,7 @@ import { errorCode } from '../lib/queryErrors';
 import { messageForError } from '../lib/errors';
 import { useAppStore } from '../store/AppContext';
 import { formatRupiah } from '../lib/format';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 const longDate = (d: Date) => d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
 const METHOD_LABEL = {
@@ -27,6 +28,7 @@ const Row: React.FC<{ label: string; children: React.ReactNode }> = ({ label, ch
 
 /** /kuitansi/:receiptNo. The tenant who paid or the kos owner; "Unduh PDF" is the browser's print dialog. */
 export const Kuitansi: React.FC = () => {
+  useDocumentTitle('Kuitansi');
   const { receiptNo: param } = useParams();
   const trpc = useTRPC();
   const { me, isLoading } = useSession();

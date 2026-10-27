@@ -1,6 +1,6 @@
 import type { Browser, BrowserContext, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
-import { expectHttpErrors, expireHold, expireOffer, heldRoom, newStudent, sql, tick, trpcPost, watch, type HeldRoom, type Student } from './seams'
+import { expectHttpErrors, expireHold, expireOffer, heldRoom, newOwnerWorld, newStudent, sql, tick, trpcPost, watch, type HeldRoom, type Student } from './seams'
 
 // The queue for a full kos, beyond what waitlist.spec.ts covers (demo student, owner cancels a booking): position numbers,
 // leaving, the five-entry limit, a declined or lapsed offer passing to the next student, and the owner removing someone.
@@ -90,15 +90,14 @@ test('scenario 25: a student joins a full kos, sees the position, and leaves the
 test('scenario 25: a student can queue in five kos at once, not six', async ({ browser, problems }) => {
   const held = await heldRoom(browser, { label: 'wl-limit' })
   const student = await newStudent(browser, { label: 'wl-limit-s' })
+  const others: BrowserContext[] = []
   watch(student.page, problems)
   try {
-    // Five live entries in the owner's other kos (isolated rows; nobody else queues there).
+    // Five live entries in five other kos, one per owner (an owner may register at most 5 kos, so the other kos are not all one owner's).
     for (let i = 0; i < 5; i++) {
-      const { id } = await trpcPost<{ id: string }>(held.owner.ctx, 'owner.kos.create', {
-        name: `Kos batas ${i} ${Date.now()}`, gender: 'CAMPUR', address: 'Jl. Batas No. 1', district: 'Kebayoran Baru', city: 'Jakarta Selatan', lat: -6.2, lng: 106.8,
-        electricityType: 'INCLUDED', privateAmenities: [], sharedAmenities: [], studentDiscountAmount: 0, initialRooms: { count: 1, priceMonthly: 1_500_000 },
-      })
-      await sql(`INSERT INTO "WaitlistEntry" (id, "kosId", "userId", status, "createdAt") VALUES (gen_random_uuid()::text, $1, $2, 'WAITING', now())`, [id, student.userId])
+      const other = await newOwnerWorld(browser, { label: `wl-limit-o${i}`, rooms: 1 })
+      others.push(other.ctx)
+      await sql(`INSERT INTO "WaitlistEntry" (id, "kosId", "userId", status, "createdAt") VALUES (gen_random_uuid()::text, $1, $2, 'WAITING', now())`, [other.kosId, student.userId])
     }
     await student.page.goto(`/kos/${held.owner.kosId}`)
     await student.page.getByTestId('waitlist-join').getByRole('button', { name: 'Ikut Daftar Tunggu' }).click()
@@ -107,7 +106,7 @@ test('scenario 25: a student can queue in five kos at once, not six', async ({ b
     expect(await sql('SELECT id FROM "WaitlistEntry" WHERE "userId" = $1 AND "kosId" = $2', [student.userId, held.owner.kosId])).toHaveLength(0)
     expectHttpErrors(problems, 400)
   } finally {
-    await closeAll(held.owner.ctx, held.student.ctx, student.ctx)
+    await closeAll(held.owner.ctx, held.student.ctx, student.ctx, ...others)
   }
 })
 

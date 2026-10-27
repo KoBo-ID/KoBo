@@ -85,9 +85,11 @@ export const OwnerProfile: React.FC = () => {
                 </h1>
               </div>
 
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.35rem', maxWidth: '640px', lineHeight: 1.5 }}>
-                {owner.bio || 'Pengelola kos profesional yang berkomitmen memberikan hunian aman, bersih, dan nyaman bagi para penyewa.'}
-              </p>
+              {owner.bio && (
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.35rem', maxWidth: '640px', lineHeight: 1.5 }}>
+                  {owner.bio}
+                </p>
+              )}
             </div>
           </div>
 
@@ -134,15 +136,6 @@ export const OwnerProfile: React.FC = () => {
             </span>
             <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
               {ownerKosList.length} Properti Kos
-            </span>
-          </div>
-
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
-              Jaminan Keamanan:
-            </span>
-            <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--primary)' }}>
-              100% Bebas Calo
             </span>
           </div>
         </div>

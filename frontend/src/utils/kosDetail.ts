@@ -22,6 +22,8 @@ export function kosDetailToKos(d: KosDetail): Kos {
     applicationFee: d.applicationFee,
     privateAmenities: d.privateAmenities,
     sharedAmenities: d.sharedAmenities,
+    facilities: d.facilities,
+    building: d.building,
     campusProximity: {
       campusId: d.nearestCampus?.id ?? '',
       campusName: d.nearestCampus?.shortName ?? '',

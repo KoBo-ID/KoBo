@@ -265,7 +265,9 @@ export async function newOwnerWorld(browser: Browser, opts: { label: string; roo
   const { ctx, page } = await newContext(browser)
   const email = await signUpVerified(page, opts.label)
   const [{ id: userId }] = await sql<{ id: string }>('SELECT id FROM "User" WHERE email = $1', [email])
-  await trpcPost(page, 'owner.becomeOwner', {})
+  await trpcPost(page, 'owner.becomeOwner', { phone: '081234567890' })
+  // New owners wait for KoBo's approval before their kos are public; these worlds are public from the start.
+  await sql('UPDATE "OwnerProfile" SET "approvedAt" = now() WHERE "userId" = $1', [userId])
   const kosName = `Kos ${opts.label} ${Date.now()}`
   const { id: kosId } = await trpcPost<{ id: string }>(page, 'owner.kos.create', {
     name: kosName,

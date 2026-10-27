@@ -1,46 +1,48 @@
-/* Owner dashboard: overview panel, open work regions (applications / bills / surveys), inline confirm, loading. */
+/* Owner dashboard: overview tiles, open work in one container per section, inline confirm, loading.
+   Spacing rhythm: 1rem between tiles, 1.5rem between sections, 1.25rem inside a container, 0.75rem title to content. */
 
-/* ---- Overview: the one panel (money beside the building). Everything below it is open regions with 1px rules. ---- */
+/* ---- Overview: three tiles (money in, money late, the building) ---- */
 .od-date { font-size: 0.875rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .od-hero {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  margin-bottom: 2rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.od-tile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; min-width: 0;
+  padding: 1.25rem;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card);
 }
-.od-money, .od-building { display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; padding: 1.25rem 1.5rem; }
-.od-building { border-left: 1px solid var(--border-subtle); }
+/* The brand tile: the one place the teal carries a whole surface. */
+.od-tile--brand { background: var(--primary-light); border-color: hsl(176, 40%, 84%); }
 .od-eyebrow { margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
-.od-money__value { margin: 0; color: var(--text-main); font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.od-money__meta { margin: 0; font-size: 0.8125rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.od-bar { height: 0.5rem; border-radius: var(--radius-pill); background: var(--bg-muted); overflow: hidden; }
+.od-figure { margin: 0; color: var(--text-main); font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.od-figure span { font-size: 0.875rem; font-weight: 500; letter-spacing: 0; color: var(--text-muted); }
+.od-figure--brand { color: var(--primary); }
+.od-figure--late { color: var(--status-overdue-text); }
+.od-meta { margin: 0; font-size: 0.8125rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.od-tile--brand .od-meta { color: hsl(176, 30%, 24%); }
+.od-bar { align-self: stretch; height: 0.5rem; margin-top: 0.25rem; border-radius: var(--radius-pill); background: var(--bg-surface); overflow: hidden; }
 .od-bar > span { display: block; height: 100%; background: var(--primary); border-radius: inherit; transform-origin: left; animation: od-grow 500ms cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes od-grow { from { transform: scaleX(0); } }
-.od-facts { display: flex; gap: 2rem; flex-wrap: wrap; margin: 0.4rem 0 0; padding-top: 0.9rem; border-top: 1px solid var(--border-subtle); }
-.od-facts > div { min-width: 0; }
-.od-facts dt { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.15rem; }
-.od-facts dd { margin: 0; font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.od-link { display: inline-flex; align-items: baseline; gap: 0.4rem; min-height: 2rem; padding: 0; background: none; border: 0; font: inherit; font-weight: 700; color: var(--text-main); text-decoration: none; cursor: pointer; border-radius: var(--radius-sm); }
-.od-link span { font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); }
-.od-link--late { color: var(--status-overdue-text); }
+.od-link { display: inline-flex; align-items: baseline; gap: 0.4rem; min-height: 2rem; padding: 0; background: none; border: 0; font: inherit; font-size: 0.875rem; font-weight: 700; color: var(--primary); text-decoration: none; cursor: pointer; border-radius: var(--radius-sm); }
 .od-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .od-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .od-ok { color: var(--status-paid-text); }
 
-.od-building__value { margin: 0; color: var(--text-main); font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.od-building__value span { font-size: 0.875rem; font-weight: 500; letter-spacing: 0; color: var(--text-muted); }
 /* Occupancy: one proportional bar (size never depends on room count) + status counts that filter the room board. */
-.od-split { display: flex; gap: 2px; height: 1.25rem; margin-top: 0.25rem; }
+.od-split { align-self: stretch; display: flex; gap: 2px; height: 1rem; margin-top: 0.25rem; }
 .od-split__seg { flex-basis: 0; min-width: 6px; border-radius: 3px; }
 .od-split__seg--paid { background: var(--status-paid); }
 .od-split__seg--due { background: var(--status-due); }
 .od-split__seg--overdue { background: var(--status-overdue); }
 .od-split__seg--booking { background: var(--status-booking); }
 .od-split__seg--vacant { background: repeating-linear-gradient(135deg, var(--bg-muted) 0 4px, var(--border-strong) 4px 5px); border: 1px dashed var(--text-muted); }
-.od-legend { display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; list-style: none; margin: 0; padding: 0; }
-.od-stat { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.25rem; padding: 0 0.6rem; background: none; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font: inherit; font-size: 0.8125rem; color: var(--text-main); cursor: pointer; }
+.od-legend { display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; margin: 0; padding: 0; }
+.od-stat { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.25rem; padding: 0 0.6rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font: inherit; font-size: 0.8125rem; color: var(--text-main); cursor: pointer; }
 .od-stat strong { font-variant-numeric: tabular-nums; }
 .od-stat:hover { background: var(--bg-muted); }
 .od-stat:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
@@ -52,27 +54,26 @@
 .od-swatch--booking { background: var(--status-booking); }
 .od-swatch--vacant { border: 1px dashed var(--text-muted); }
 
-/* ---- Sections: open regions on one left edge, 1px rules, no boxes ---- */
-.od-section { margin-bottom: 2rem; }
-.od-section__title { display: flex; align-items: baseline; gap: 0.5rem; font-size: 1rem; font-weight: 700; margin: 0 0 0.25rem; }
+/* ---- Sections: the shared container (.od-section, .od-board, .os-card) lives in owner.css ---- */
 .od-count { font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .od-empty { font-size: 0.875rem; color: var(--text-muted); line-height: 1.5; margin: 0; max-width: 60ch; }
-.od-clear { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 2rem; font-size: 0.9375rem; font-weight: 600; color: var(--status-paid-text); }
+.od-clear { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 1.5rem; padding: 0.85rem 1.25rem; background: var(--status-paid-bg); border: 1px solid var(--status-paid-border); border-radius: var(--radius-card); font-size: 0.9375rem; font-weight: 600; color: var(--status-paid-text); }
 .od-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* ---- Work rows: aligned columns, stacked on mobile ---- */
-.od-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border-subtle); }
+/* ---- Work rows: the same tracks in every list, so amounts, dates and actions line up from row to row ---- */
+.od-list { display: flex; flex-direction: column; gap: 0.25rem; list-style: none; margin: 0; padding: 0; }
 .od-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: 1.25rem;
+  column-gap: 1.5rem;
   row-gap: 0.5rem;
-  padding: 0.85rem 0;
+  padding: 0.75rem;
   font-size: 0.875rem;
-  border-bottom: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
 }
-.od-row--attention { grid-template-columns: minmax(0, 1.5fr) 7.5rem minmax(0, 1fr) auto; }
+.od-row:hover { background: var(--bg-page); }
+.od-row--attention { grid-template-columns: minmax(0, 1.4fr) 8rem 11rem auto; }
 .od-row__main { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
 .od-row__title { font-weight: 700; }
 .od-row__sub { color: var(--text-muted); font-size: 0.8125rem; overflow-wrap: anywhere; }
@@ -84,7 +85,7 @@
 .od-chip--late { background: var(--status-overdue-bg); border-color: var(--status-overdue-border); color: var(--status-overdue-text); }
 .od-row__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 .od-row__note { color: var(--text-main); font-size: 0.8125rem; max-width: 60ch; margin-top: 0.2rem; }
-.od-row__confirm { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding-top: 0.6rem; border-top: 1px dashed var(--border-subtle); }
+.od-row__confirm { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding-top: 0.6rem; }
 .od-row__confirm span { font-size: 0.8125rem; color: var(--text-main); }
 
 /* Room board: the status heading is a jump target under the sticky bars. */
@@ -115,17 +116,18 @@
 .od-steps li::before { content: counter(step); flex: none; width: 1.5rem; height: 1.5rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8125rem; font-weight: 700; background: var(--primary-light); color: var(--text-main); font-variant-numeric: tabular-nums; }
 
 /* ---- Loading ---- */
-.od-skel-list { border-top: 1px solid var(--border-subtle); }
-.od-skel-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 1.25rem; padding: 0.9rem 0; border-bottom: 1px solid var(--border-subtle); }
+.od-skel-list { display: flex; flex-direction: column; }
+.od-skel-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 1.25rem; padding: 0.75rem; }
 
 /* ---- Responsive ---- */
-@media (max-width: 899px) {
-  .od-hero { grid-template-columns: minmax(0, 1fr); }
-  .od-building { border-left: 0; border-top: 1px solid var(--border-subtle); }
+@media (max-width: 1023px) {
+  .od-hero { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .od-tile--wide { grid-column: 1 / -1; }
 }
 @media (max-width: 760px) {
-  .od-money, .od-building { padding: 1rem; }
-  .od-money__value, .od-building__value { font-size: 1.75rem; }
+  .od-hero { grid-template-columns: minmax(0, 1fr); }
+  .od-tile, .od-section, .od-board { padding: 1rem; }
+  .od-figure { font-size: 1.5rem; }
   .od-row,
   .od-row--attention {
     grid-template-columns: 1fr 1fr;
@@ -156,8 +158,6 @@
   .od-col-actions { width: 6rem; }
   .od-board .kobo-table thead th, .od-board .kobo-table tbody td { padding-left: 1rem; padding-right: 1rem; overflow: hidden; }
   .od-board .kobo-table thead th.kobo-table__right { text-align: right; }
-  .od-board .kobo-table tbody td[data-cell='price'] { padding-right: 1.5rem; }
-  .od-board .kobo-table thead th:nth-child(2) { padding-right: 1.5rem; }
   .od-board .kobo-table tbody tr:not(.kobo-table__group) td { height: 4rem; }
   .od-board .kobo-table tbody td.kobo-table__empty { height: 8rem; }
   .od-board .kobo-table tbody td[data-cell='actions'] { overflow: visible; }
@@ -180,3 +180,4 @@
 .od-board .od-trunc { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Many floors: the filter groups scroll sideways inside the column instead of widening the page. */
 .od-board__filters { min-width: 0; max-width: 100%; }
+

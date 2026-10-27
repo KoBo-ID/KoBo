@@ -73,7 +73,7 @@ export const CampusDiscountCard: React.FC<CampusDiscountCardProps> = ({ studentD
           <div style={{ ...iconBox, backgroundColor: 'var(--primary-light)', color: 'var(--primary)', width: '32px', height: '32px' }}>
             <ShieldCheck size={18} />
           </div>
-          <div>
+          <div style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', display: 'block' }}>
               Email kampus terverifikasi{me.user.campusEmail ? ` (${me.user.campusEmail})` : ''}
             </span>
