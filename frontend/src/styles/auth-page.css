@@ -125,3 +125,6 @@
 @media (min-width: 481px) {
   .auth-page { --auth-quick-cols: 1fr 1fr; }
 }
+
+/* Role toggle above the form card: Pencari kos / Pemilik kos. */
+.auth-page__role { align-self: center; }

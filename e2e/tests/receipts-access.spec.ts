@@ -62,8 +62,8 @@ test('scenario 24: everyone else is refused or asked to sign in, and unknown or 
     for (const [who, page] of [['another student', stranger.page], ['another owner', otherOwner.page]] as const) {
       await test.step(`${who} is refused`, async () => {
         await page.goto(`/kuitansi/${receiptNumber}`)
-        await expect(page.getByRole('heading', { name: 'Tidak dapat dibuka' })).toBeVisible()
-        await expect(page.getByText('Anda tidak memiliki akses ke kuitansi ini.')).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Kuitansi tidak ditemukan' })).toBeVisible()
+        await expect(page.getByText('Nomor kuitansi ini tidak ada atau belum dibayar.')).toBeVisible()
         await expect(page.getByTestId('kuitansi-no')).toHaveCount(0)
       })
     }
@@ -73,7 +73,7 @@ test('scenario 24: everyone else is refused or asked to sign in, and unknown or 
       await expect(visitor.page.getByRole('heading', { name: 'Masuk untuk Melihat Kuitansi' })).toBeVisible()
       await expect(visitor.page.getByText('Kuitansi hanya dapat dibuka oleh penyewa yang membayar dan pemilik kosnya.')).toBeVisible()
       await visitor.page.getByRole('main').getByRole('button', { name: 'Masuk', exact: true }).click()
-      await expect(visitor.page.getByRole('dialog')).toBeVisible()
+      await expect(visitor.page).toHaveURL(/[/]masuk[?]next=/)
     })
 
     await test.step('an unknown number and an unpaid attempt read the same as not found', async () => {

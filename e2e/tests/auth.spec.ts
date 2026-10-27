@@ -7,11 +7,11 @@ test.beforeEach(({ page }) => ownIp(page))
 test('demo owner button signs in and lands on the owner dashboard @postdeploy', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Masuk', exact: true }).click()
-  const dialog = page.getByRole('dialog')
+  const dialog = page.locator('main')
   await expect(dialog.getByRole('button', { name: 'Masuk sebagai Mahasiswa' })).toBeVisible()
   await dialog.getByRole('button', { name: 'Masuk sebagai Pemilik' }).click()
   await expect(page).toHaveURL(/\/owner\/dashboard$/)
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page).not.toHaveURL(/[/]masuk/)
   await expect(page.getByRole('heading', { level: 1, name: 'Papan okupansi' })).toBeVisible()
 })
 
@@ -19,7 +19,7 @@ test('demo student signs in, sees their account in the navbar, and can sign out'
   await page.goto('/')
   await page.getByRole('button', { name: 'Masuk', exact: true }).click()
   await page.getByRole('button', { name: 'Masuk sebagai Mahasiswa' }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page).not.toHaveURL(/[/]masuk/)
 
   await page.getByRole('button', { name: 'Menu Pengguna' }).click()
   await expect(page.getByText('Dimas Pratama', { exact: true })).toBeVisible()
@@ -33,10 +33,12 @@ test('demo student signs in, sees their account in the navbar, and can sign out'
 })
 
 for (const route of ['/owner/dashboard', '/owner/kos', '/owner/reviews']) {
-  test(`${route} redirects home and opens the sign-in dialog when signed out`, async ({ page }) => {
+  test(`${route} redirects to the owner sign-in page and returns after login`, async ({ page }) => {
     await page.goto(route)
-    await expect(page).toHaveURL(/\/$/)
-    await expect(page.getByRole('dialog').getByRole('button', { name: 'Masuk sebagai Pemilik' })).toBeVisible()
+    await expect(page).toHaveURL(/\/masuk\?peran=pemilik&next=/)
+    await expect(page.getByRole('button', { name: 'Pemilik kos' })).toHaveAttribute('aria-pressed', 'true')
+    await page.getByRole('button', { name: 'Masuk sebagai Pemilik' }).click()
+    await expect(page).toHaveURL(new RegExp(route + '$'))
   })
 }
 
@@ -44,16 +46,15 @@ test('a student session cannot enter the owner workspace', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Masuk', exact: true }).click()
   await page.getByRole('button', { name: 'Masuk sebagai Mahasiswa' }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page).not.toHaveURL(/\/masuk/)
   await page.goto('/owner/dashboard')
-  await expect(page).toHaveURL(/\/$/)
-  await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(page).toHaveURL(/\/owner\/login$/)
 })
 
 test('wrong password shows an inline Indonesian error', async ({ page, problems }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Masuk', exact: true }).click()
-  const dialog = page.getByRole('dialog')
+  const dialog = page.locator('main')
   await dialog.getByLabel('Email').fill('tidak-ada@example.com')
   await dialog.getByLabel('Kata Sandi').fill('salah-salah-1')
   await dialog.getByRole('button', { name: 'Masuk ke Akun' }).click()
@@ -83,3 +84,14 @@ for (const [label, open] of [
     expect(leftSite).toBe(false)
   })
 }
+
+test('/masuk role toggle keeps the typed email and honours ?peran and ?next', async ({ page }) => {
+  await page.goto('/masuk?peran=pemilik&next=%2Fowner%2Fkos')
+  await expect(page.getByRole('heading', { level: 1, name: 'Masuk ke Portal Pemilik Kos' })).toBeVisible()
+  await page.getByLabel('Email').fill('ketik@example.com')
+  await page.getByRole('button', { name: 'Pencari kos' }).click()
+  await expect(page).toHaveURL(/next=%2Fowner%2Fkos/)
+  await expect(page).not.toHaveURL(/peran=/)
+  await expect(page.getByLabel('Email')).toHaveValue('ketik@example.com')
+  await expect(page.getByRole('heading', { level: 1, name: 'Masuk ke Akun KoBo' })).toBeVisible()
+})

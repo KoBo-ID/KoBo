@@ -10,21 +10,19 @@ import { Button } from '../../components/ui/Button';
 import { Notice } from '../../components/ui/Notice';
 import { useSession } from '../../lib/session';
 import { BecomeOwnerModal } from '../../components/owner/BecomeOwnerModal';
-import { useAppStore } from '../../store/AppContext';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 export const OwnerLogin: React.FC = () => {
   useDocumentTitle('Masuk pemilik');
   const navigate = useNavigate();
   const { me, isLoading } = useSession();
-  const { openAuthModal } = useAppStore();
   const [registering, setRegistering] = useState(false);
   const isDemo = !!me?.user.isDemo;
 
   // One CTA, three meanings: sign in, open the workspace, or self-register as an owner.
   const ctaLabel = !me ? 'Masuk untuk mendaftar' : me.isOwner ? 'Lanjut ke dasbor pemilik' : 'Daftarkan diri sebagai pemilik';
   const onCta = () => {
-    if (!me) openAuthModal();
+    if (!me) navigate('/masuk?peran=pemilik&next=%2Fowner%2Flogin');
     else if (me.isOwner) navigate('/owner/dashboard');
     else setRegistering(true);
   };

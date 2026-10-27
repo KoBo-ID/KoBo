@@ -18,6 +18,7 @@ async function closeAll(...contexts: (BrowserContext | undefined)[]) {
 }
 
 const ownerBoard = (owner: OwnerWorld) => owner.page.goto(`/owner/dashboard?kos=${owner.kosId}`)
+const ownerInbox = (owner: OwnerWorld) => owner.page.goto(`/owner/dashboard?kos=${owner.kosId}&tab=tindakan`)
 const ownerRow = (page: Page, text: string) => page.getByTestId('owner-application').filter({ hasText: text })
 const boardRow = (page: Page, roomNumber: string) => page.getByRole('row').filter({ hasText: `Kamar ${roomNumber}` })
 const checkoutTotal = (page: Page) => page.getByText('Total perkiraan', { exact: true }).locator('xpath=../..')
@@ -134,14 +135,14 @@ test('scenario 2: a signed-out visitor signs in from the checkout and can apply 
     // The form validates first, so a signed-out visitor fills it in before being asked to sign in.
     await fillApplication(page, 'Mahasiswa BINUS')
     await page.getByRole('button', { name: 'Masuk untuk Mengajukan' }).click()
-    const dialog = page.getByRole('dialog')
-    await dialog.getByLabel('Email').fill(account.email)
-    await dialog.getByLabel('Kata Sandi').fill(PASSWORD)
-    await dialog.getByRole('button', { name: 'Masuk ke Akun' }).click()
-    await expect(dialog).toHaveCount(0)
+    await expect(page).toHaveURL(/[/]masuk[?]next=/)
+    const form = page.locator('main')
+    await form.getByLabel('Email').fill(account.email)
+    await form.getByLabel('Kata Sandi').fill(PASSWORD)
+    await form.getByRole('button', { name: 'Masuk ke Akun' }).click()
 
     // KNOWN DEFECT (audit): signing in with a password sends the browser to the e-mail verification landing page
-    // (AuthModal.tsx passes callbackURL '/verifikasi-email'), so the visitor leaves the checkout and is told "Email berhasil
+    // (AuthForm.tsx passes callbackURL '/verifikasi-email'), so the visitor leaves the checkout and is told "Email berhasil
     // diverifikasi" although nothing was verified. The room is only kept because it lives in the checkout URL.
     await test.step('password sign-in leaves the checkout for the verification page (current behaviour)', async () => {
       await expect(page).toHaveURL(/\/verifikasi-email/)
@@ -315,7 +316,7 @@ test('scenario 4: a submitted application reads "Menunggu Pemilik" for the stude
     })
 
     await test.step('the owner sees who applied, for which room, and can decide', async () => {
-      await ownerBoard(owner)
+      await ownerInbox(owner)
       const row = ownerRow(owner.page, 'Mahasiswa BINUS')
       await expect(row).toContainText('Penguji E2E')
       await expect(row).toContainText(`Kamar ${room.roomNumber}, Standar`)
@@ -344,12 +345,13 @@ test('scenario 6: approving holds the room for 24 hours with an unpaid first inv
     const applicationId = await apply(student, room.id, { months: 3 })
 
     await test.step('the owner confirms the approval', async () => {
-      await ownerBoard(owner)
+      await ownerInbox(owner)
       await ownerRow(owner.page, 'Mahasiswa').getByRole('button', { name: 'Terima' }).click()
       const dialog = owner.page.getByRole('dialog')
       await expect(dialog).toContainText('Terima pengajuan?')
       await expect(dialog).toContainText('Kamar akan ditahan 24 jam untuk pembayaran Penguji E2E.')
       await dialog.getByRole('button', { name: 'Terima Pengajuan' }).click()
+      await owner.page.getByRole('tab', { name: 'Ringkasan' }).click()
       await expect(ownerRow(owner.page, 'Mahasiswa')).toHaveCount(0)
       await expect(boardRow(owner.page, room.roomNumber).getByText('Dipesan', { exact: true })).toBeVisible()
     })
@@ -399,7 +401,7 @@ test('scenario 7: rejecting creates nothing, frees the room for others and tells
     const applicationId = await apply(student, room.id)
 
     await test.step('the owner confirms the rejection', async () => {
-      await ownerBoard(owner)
+      await ownerInbox(owner)
       await ownerRow(owner.page, 'Mahasiswa').getByRole('button', { name: 'Tolak' }).click()
       const dialog = owner.page.getByRole('dialog')
       await expect(dialog).toContainText('Tolak pengajuan?')
@@ -449,9 +451,9 @@ test('scenario 8: approving one of two applicants rejects the other, and a stale
     const appB = await apply(b, room.id, { occupation: 'Pelamar Kedua' })
 
     await test.step('the owner sees both and keeps a second window open on the same list', async () => {
-      await ownerBoard(owner)
+      await ownerInbox(owner)
       await expect(owner.page.getByTestId('owner-application')).toHaveCount(2)
-      await stale.goto(`/owner/dashboard?kos=${owner.kosId}`)
+      await stale.goto(`/owner/dashboard?kos=${owner.kosId}&tab=tindakan`)
       await expect(stale.getByTestId('owner-application')).toHaveCount(2)
     })
 
@@ -518,7 +520,7 @@ test('scenario 9: approving an application for a room already offered to a queue
        VALUES (gen_random_uuid()::text, $1, $2, NULL, 'OFFERED', $3, now() + interval '1 day')`,
       [owner.kosId, queued.userId, room.id],
     )
-    await ownerBoard(owner)
+    await ownerInbox(owner)
     await ownerRow(stale, 'Pelamar Awal').getByRole('button', { name: 'Terima' }).click()
     await stale.getByRole('dialog').getByRole('button', { name: 'Terima Pengajuan' }).click()
     await expect(stale.getByRole('alert')).toContainText('Kamar ini sedang ditawarkan ke pengantre lain.')

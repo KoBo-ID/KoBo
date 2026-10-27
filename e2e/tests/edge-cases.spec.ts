@@ -48,7 +48,7 @@ test('scenario 27: signed-out visitors are asked to sign in on /my-kos, /checkou
       await page.getByRole('tab', { name: /Pengajuan Sewa/ }).click()
       await expect(page.getByRole('heading', { name: 'Masuk untuk melihat pengajuan Anda' })).toBeVisible()
       await page.getByRole('button', { name: 'Masuk', exact: true }).last().click()
-      await expect(page.getByRole('dialog')).toBeVisible()
+      await expect(page).toHaveURL(/[/]masuk[?]next=/)
     })
 
     await test.step('/checkout shows the form but asks to sign in to send it', async () => {
@@ -146,7 +146,7 @@ test('scenario 27: an unverified e-mail cannot sign in, can ask for a new link, 
       await page.goto(`/checkout/${owner.kosId}?room=${owner.rooms[0].id}`)
       await page.getByLabel('Pekerjaan atau kegiatan utama').fill('Mahasiswa')
       await page.getByRole('button', { name: 'Masuk untuk Mengajukan' }).click()
-      const dialog = page.getByRole('dialog')
+      const dialog = page.locator('main')
       await dialog.getByLabel('Email').fill(email)
       await dialog.getByLabel('Kata Sandi').fill(password)
       await dialog.getByRole('button', { name: 'Masuk ke Akun' }).click()
@@ -163,7 +163,7 @@ test('scenario 27: an unverified e-mail cannot sign in, can ask for a new link, 
 
     await test.step('asking for a new link says so', async () => {
       await page.getByRole('button', { name: 'Kirim ulang email verifikasi' }).click()
-      await expect(page.getByRole('dialog')).toContainText('Tautan verifikasi dikirim ulang. Periksa kotak masuk dan folder spam Anda.')
+      await expect(page.locator('main')).toContainText('Tautan verifikasi dikirim ulang. Periksa kotak masuk dan folder spam Anda.')
     })
 
     await test.step('after following the link the account can apply', async () => {

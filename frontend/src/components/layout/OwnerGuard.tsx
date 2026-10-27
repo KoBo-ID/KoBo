@@ -1,22 +1,16 @@
-import React, { useEffect } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import React from 'react';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { justSignedOut, useSession } from '../../lib/session';
-import { useAppStore } from '../../store/AppContext';
 
 /**
  * Gate for the owner workspace. Persona is derived from the session: only a user with an OwnerProfile gets
- * through. Everyone else goes home and the sign-in dialog opens. (The server enforces ownership too;
- * this guard is only the UX half.)
+ * through. A visitor without a session goes to the owner side of /masuk and comes back afterwards; a signed-in
+ * non-owner goes to the owner sign-up page; right after an explicit sign-out the guard only goes home.
+ * (The server enforces ownership too; this guard is only the UX half.)
  */
 export const OwnerGuard: React.FC = () => {
   const { me, isLoading } = useSession();
-  const { openAuthModal } = useAppStore();
-  const allowed = !!me?.isOwner;
-
-  useEffect(() => {
-    // After an explicit sign-out the guard only redirects home; the dialog is for people who arrive without a session.
-    if (!isLoading && !allowed && !justSignedOut()) openAuthModal();
-  }, [isLoading, allowed, openAuthModal]);
+  const { pathname, search } = useLocation();
 
   if (isLoading) {
     return (
@@ -25,5 +19,8 @@ export const OwnerGuard: React.FC = () => {
       </div>
     );
   }
-  return allowed ? <Outlet /> : <Navigate to="/" replace />;
+  if (me?.isOwner) return <Outlet />;
+  if (me) return <Navigate to="/owner/login" replace />;
+  if (justSignedOut()) return <Navigate to="/" replace />;
+  return <Navigate to={`/masuk?peran=pemilik&next=${encodeURIComponent(pathname + search)}`} replace />;
 };

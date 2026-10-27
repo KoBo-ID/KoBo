@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, useNavigationType } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { lazyWithReload } from './lib/lazyWithReload';
 import { TRPCProvider, queryClient, trpcClient } from './lib/trpc';
@@ -63,12 +63,7 @@ const Privacy = lazyWithReload(() =>
   import('./pages/Privacy').then((m) => ({ default: m.Privacy }))
 );
 
-// The sign-in dialog (and, further down the chain, the better-auth client) loads on first open.
-const AuthModal = lazyWithReload(() =>
-  import('./pages/AuthModal').then((m) => ({ default: m.AuthModal }))
-);
-
-// Full-page sign-in (deep links, the navbar button once adopted). Shares its form with the dialog.
+// The one sign-in / register page. `openAuthModal` redirects here (see AuthRedirect).
 const AuthPage = lazyWithReload(() =>
   import('./pages/AuthPage').then((m) => ({ default: m.AuthPage }))
 );
@@ -118,15 +113,19 @@ const ScrollToTop: React.FC = () => {
   return null;
 };
 
-const AuthModalHost: React.FC = () => {
+/* `openAuthModal` (gated actions, route guards) no longer opens a dialog: it sends the visitor to /masuk and
+   back through ?next. The store flag is kept so the many callers stay unchanged. */
+const AuthRedirect: React.FC = () => {
   const { authModalOpen, closeAuthModal } = useAppStore();
-  const { pathname } = useLocation();
-  if (!authModalOpen || pathname === '/masuk') return null;
-  return (
-    <Suspense fallback={null}>
-      <AuthModal isOpen onClose={closeAuthModal} />
-    </Suspense>
-  );
+  const { pathname, search, hash } = useLocation();
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    if (!authModalOpen) return;
+    closeAuthModal();
+    if (pathname === '/masuk') return;
+    navigate(`/masuk?next=${encodeURIComponent(pathname + search + hash)}`);
+  }, [authModalOpen, closeAuthModal, pathname, search, hash, navigate]);
+  return null;
 };
 
 export function App() {
@@ -170,7 +169,7 @@ export function App() {
           </Routes>
         </Suspense>
 
-        <AuthModalHost />
+        <AuthRedirect />
         <ToastContainer />
       </BrowserRouter>
     </AppProvider>

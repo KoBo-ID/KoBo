@@ -1,5 +1,5 @@
 import React, { useId, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { User, Lock, Mail, Phone, Building2, GraduationCap, CheckCircle2, MailCheck } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -8,6 +8,7 @@ import { Notice } from '../ui/Notice';
 import { useAppStore } from '../../store/AppContext';
 import { GOOGLE_RETURN_FLAG, useAuthActions } from '../../lib/session';
 import { useTRPC } from '../../lib/trpc';
+import { TERMS_VERSION } from '@kobo/shared/domain';
 import { messageForError } from '../../lib/errors';
 
 export type AuthView = 'login' | 'register' | 'verify-sent' | 'unverified' | 'forgot' | 'forgot-sent';
@@ -42,6 +43,8 @@ const column = (gap: string): React.CSSProperties => ({ display: 'flex', flexDir
 interface AuthFormProps {
   /** `modal`: the title lives in the dialog header. `page`: the form renders its own h1 and the page frames the two blocks. */
   variant: 'modal' | 'page';
+  /** Which side of the /masuk toggle is active; the owner side gets its own heading. */
+  role?: 'seeker' | 'owner';
   /** Called after a successful sign-in (before an owner is sent to their workspace). */
   onDone: () => void;
   onViewChange?: (view: AuthView) => void;
@@ -54,7 +57,7 @@ interface AuthFormProps {
  * (pages/AuthPage). It renders two sibling blocks: `.auth-main` (form) and `.auth-quick` (one-click tester accounts),
  * so each host decides how they are laid out.
  */
-export const AuthForm: React.FC<AuthFormProps> = ({ variant, onDone, onViewChange, initialError = null }) => {
+export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', onDone, onViewChange, initialError = null }) => {
   const { addToast } = useAppStore();
   const { demoLogin, refreshSession } = useAuthActions();
   const navigate = useNavigate();
@@ -72,6 +75,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, onDone, onViewChang
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [agreed, setAgreed] = useState(false);
 
   const isRegister = view === 'register';
   const isPage = variant === 'page';
@@ -85,9 +89,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, onDone, onViewChang
     await refreshSession();
     const me = qc.getQueryData(trpc.auth.me.queryKey());
     addToast(welcome, 'success');
+    // Read before onDone navigates away. An owner lands in their workspace (or on the owner page they were sent
+    // from); everyone else stays where they were.
+    const wantsOwnerPage = isPage && new URLSearchParams(window.location.search).get('next')?.startsWith('/owner/');
     onDone();
-    // An owner always lands in their workspace; everyone else stays where they were.
-    if (me?.isOwner) navigate('/owner/dashboard');
+    if (me?.isOwner && !wantsOwnerPage) navigate('/owner/dashboard');
   };
 
   /** Full-page round trip to Google and back to this page. better-auth stays out of the initial chunk. */
@@ -145,7 +151,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, onDone, onViewChang
           email: email.trim(),
           password,
           callbackURL: VERIFY_CALLBACK,
-          ...({ phone: phone.trim() } as object),
+          ...({ phone: phone.trim(), termsVersion: TERMS_VERSION } as object),
         });
         if (err) setError(messageForError(err));
         else setView('verify-sent');
@@ -204,7 +210,19 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, onDone, onViewChang
     />
   );
 
-  const heading = isPage && <h1 className="auth-title">{AUTH_TITLES[view]}</h1>;
+  const ownerSide = role === 'owner' && (view === 'login' || view === 'register');
+  const heading = isPage && (
+    <>
+      <h1 className="auth-title">
+        {ownerSide ? (isRegister ? 'Daftar Akun Pemilik Kos' : 'Masuk ke Portal Pemilik Kos') : AUTH_TITLES[view]}
+      </h1>
+      {ownerSide && (
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: '-0.6rem' }}>
+          Akun yang sama untuk mencari kos dan mengelola kos. Setelah masuk, daftarkan kos Anda di portal pemilik.
+        </p>
+      )}
+    </>
+  );
   const showQuick = view === 'login' || view === 'register';
 
   let main: React.ReactNode;
@@ -279,6 +297,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, onDone, onViewChang
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Nama sesuai identitas"
+              maxLength={80}
               iconLeft={<User size={16} />}
               autoComplete="name"
               style={fieldStyle}
@@ -317,6 +336,15 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, onDone, onViewChang
             style={fieldStyle}
             required
           />
+
+          {isRegister && (
+            <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--text-main)' }}>
+              <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required style={{ marginTop: '0.2rem' }} />
+              <span>
+                Saya menyetujui <Link to="/syarat" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Syarat dan Ketentuan</Link> dan <Link to="/privasi" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Kebijakan Privasi</Link> (draf, versi {TERMS_VERSION}).
+              </span>
+            </label>
+          )}
 
           {!isRegister && (
             <button

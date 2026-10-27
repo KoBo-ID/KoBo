@@ -12,7 +12,7 @@ const VIEWPORTS = [
 ] as const
 
 const STUDENT_ROUTES = ['/', '/search', '/kos/kos-1', '/my-kos', '/profile', '/does-not-exist', '/verifikasi-email', '/reset-password', '/owner/owner-1', '/kontak', '/syarat', '/privasi']
-const OWNER_ROUTES = ['/owner/dashboard', '/owner/kos', '/owner/reviews']
+const OWNER_ROUTES = ['/owner/dashboard', '/owner/dashboard?tab=tindakan', '/owner/kos', '/owner/reviews']
 
 /** The page may not scroll sideways. A negative value is the reserved scrollbar gutter. */
 const horizontalOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
@@ -113,17 +113,17 @@ for (const vp of VIEWPORTS) {
       }
     })
 
-    test('signed-out pages and the auth modal fit', async ({ page }) => {
+    test('signed-out pages and the sign-in page fit', async ({ page }) => {
       await settle(page, '/owner/login')
       expect(await horizontalOverflow(page), `/owner/login at ${vp.name}`).toBeLessThanOrEqual(0)
       await settle(page, '/')
       await page.getByRole('button', { name: 'Masuk', exact: true }).click()
-      const dialog = page.getByRole('dialog')
-      await expect(dialog).toBeVisible()
-      const box = (await dialog.boundingBox())!
+      await expect(page).toHaveURL(/[/]masuk/)
+      const form = page.locator('main .auth-main')
+      await expect(form).toBeVisible()
+      const box = (await form.boundingBox())!
       expect(box.x).toBeGreaterThanOrEqual(0)
       expect(box.x + box.width).toBeLessThanOrEqual(vp.width)
-      expect(box.y + box.height).toBeLessThanOrEqual(vp.height)
       expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0)
     })
 
