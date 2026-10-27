@@ -15,6 +15,7 @@ import { geocoderFromEnv, type Geocoder } from './geocode.ts'
 import { paymentServiceFromEnv } from './payment/service.ts'
 import type { PaymentService } from './payment/service.ts'
 import { handleXenditWebhook, MAX_WEBHOOK_BYTES } from './payment/webhook.ts'
+import type { RateLimiter } from './rateLimit.ts'
 import { DEV_UPLOAD_PREFIX, storageFromEnv } from './storage.ts'
 import type { FakeStorage, Storage } from './storage.ts'
 import { appRouter } from './trpc/router.ts'
@@ -31,12 +32,16 @@ export interface AppOptions {
   /** Defaults to the provider selected by PAYMENT_PROVIDER. Tests inject a network-free service explicitly. */
   paymentService?: PaymentService
   geocoder?: Geocoder
+  /** Defaults to the shared limiter (off under NODE_ENV=test). Tests inject one with their own clock. */
+  limiter?: RateLimiter
   /** Test/e2e only (ALLOW_E2E_HOOKS=1, see e2eHooks.ts). Mounts /api/__e2e/*; absent in every real deployment. */
   e2eHooks?: E2eHooks | null
 }
 
 /** Largest tRPC request body. Real inputs are a few KB; 256 KiB leaves room for long text fields. */
 const MAX_TRPC_BYTES = 256 * 1024
+/** Largest /api/auth body. */
+const MAX_AUTH_BYTES = 16 * 1024
 const IMMUTABLE = 'public, max-age=31536000, immutable'
 const NO_CACHE = 'no-cache'
 
@@ -69,7 +74,7 @@ async function readIfFile(root: string, urlPath: string): Promise<Uint8Array<Arr
   }
 }
 
-export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...authEnv() }), storage = storageFromEnv(), paymentService = paymentServiceFromEnv(), geocoder = geocoderFromEnv(), e2eHooks = null }: AppOptions) {
+export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...authEnv() }), storage = storageFromEnv(), paymentService = paymentServiceFromEnv(), geocoder = geocoderFromEnv(), limiter, e2eHooks = null }: AppOptions) {
   const app = new Hono()
 
   // Response hardening for the SPA and the API (OWASP HTTP Headers Cheat Sheet; Hono secureHeaders defaults otherwise).
@@ -100,6 +105,12 @@ export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...auth
   }
   app.get('/health', health)
   app.get('/api/health', health)
+
+  // Auth bodies are tiny (sign-up is under 1 KB): refuse anything bigger before it is buffered, with or without Content-Length.
+  app.use(
+    '/api/auth/*',
+    bodyLimit({ maxSize: MAX_AUTH_BYTES, onError: (c) => c.json({ message: 'Permintaan terlalu besar.', code: 'PAYLOAD_TOO_LARGE' }, 413) }),
+  )
 
   // better-auth owns everything under /api/auth (sign-in/up, verify-email, demo-login, campus-email, ...).
   app.on(['GET', 'POST'], '/api/auth/*', async (c) => {
@@ -148,6 +159,7 @@ export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...auth
           storage,
           paymentService,
           geocoder,
+          limiter,
           headers: req.headers,
           resHeaders,
           getSession: () => (session ??= auth.api.getSession({ headers: req.headers })),

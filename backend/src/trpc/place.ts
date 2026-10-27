@@ -5,7 +5,7 @@ import type { AddressMatch } from '../geocode.ts'
 import { GeocoderUnavailable } from '../geocode.ts'
 import { nearestCampuses, placesNear } from '../placeCatalog.ts'
 import type { CampusNear, RankedByCategory } from '../placeCatalog.ts'
-import { limiter } from '../rateLimit.ts'
+import { limiterFor } from '../rateLimit.ts'
 import { regionLookup, sameRegionName } from '../regionLookup.ts'
 import type { RegionHit } from '../regionLookup.ts'
 import { authedProcedure, publicProcedure, router } from './trpc.ts'
@@ -49,7 +49,7 @@ export const placeRouter = router({
    * against Region: when the district the text names is not the district the point lies in, the owner is asked to confirm.
    */
   resolveAddress: authedProcedure.input(z.object({ q: z.string().trim().min(5).max(200) })).mutation(async ({ ctx, input }): Promise<ResolvedAddress | null> => {
-    limiter.check(`address:${ctx.user.id}`, 20, 60_000, 'Terlalu banyak pencarian alamat. Tunggu sebentar lalu coba lagi.')
+    limiterFor(ctx).check(`address:${ctx.user.id}`, 20, 60_000, 'Terlalu banyak pencarian alamat. Tunggu sebentar lalu coba lagi.')
     let match: AddressMatch | null
     try {
       match = await ctx.geocoder.resolveAddress(input.q)
@@ -78,7 +78,7 @@ export const placeRouter = router({
 
   /** Pin to region, nearest campuses and a places preview. For the owner form when the pin is dragged. */
   reverse: authedProcedure.input(placeReverseInput).mutation(async ({ ctx, input }): Promise<ReverseResult> => {
-    limiter.check(`reverse:${ctx.user.id}`, 20, 60_000, 'Terlalu banyak pencarian titik. Tunggu sebentar lalu coba lagi.')
+    limiterFor(ctx).check(`reverse:${ctx.user.id}`, 20, 60_000, 'Terlalu banyak pencarian titik. Tunggu sebentar lalu coba lagi.')
     const point = { lat: input.lat, lng: input.lng }
     const [region, campuses, ranked] = await Promise.all([regionLookup(ctx.prisma, point), nearestCampuses(ctx.prisma, point, 3), placesNear(ctx.prisma, point)])
     return { region, campuses, places: previewOf(ranked) }

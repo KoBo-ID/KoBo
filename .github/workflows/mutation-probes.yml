@@ -1,0 +1,71 @@
+name: Mutation probes
+
+# Fault-injection gate for the gap tests: each probe breaks one behaviour and a gap test must fail. Slow, so nightly and manual only.
+on:
+  schedule:
+    - cron: '17 19 * * *' # 02:17 WIB
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-probes
+  cancel-in-progress: false
+
+jobs:
+  probes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: kobo
+          POSTGRES_PASSWORD: kobo
+          POSTGRES_DB: kobo_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U kobo -d kobo_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://kobo:kobo@localhost:5433/kobo_test
+      DATABASE_URL: postgresql://kobo:kobo@localhost:5433/kobo_test
+      E2E_DATABASE_URL: postgresql://kobo:kobo@localhost:5433/kobo_e2e
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build SPA (the e2e probes run against the production server)
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Create the e2e database
+        run: PGPASSWORD=kobo psql -h localhost -p 5433 -U kobo -d postgres -c 'CREATE DATABASE kobo_e2e'
+
+      - name: Run all probes
+        run: node e2e/gap/mutations/run.mjs all
+
+      # run.mjs only records results; the gate is here: every probe must be killed.
+      - name: Require 21 of 21 killed
+        run: |
+          csv=notes/gap-tests/mutation-results.all.csv
+          cat "$csv"
+          total=$(tail -n +2 "$csv" | wc -l)
+          killed=$(tail -n +2 "$csv" | awk -F, '{ for (i = 1; i <= NF; i++) if ($i == "true") { c++; break } } END { print c + 0 }')
+          echo "killed $killed of $total"
+          [ "$total" -eq 21 ] && [ "$killed" -eq 21 ]
+

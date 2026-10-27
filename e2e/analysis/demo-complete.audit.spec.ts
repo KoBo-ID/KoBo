@@ -1,0 +1,41 @@
+﻿import {test,expect} from './safe-fixtures'
+import {ownIp} from '../tests/accounts'
+test('E1 uninterrupted demo search through owner receipt',async({page,browser})=>{
+ const ownerContext=await browser.newContext({baseURL:'http://localhost:3100',viewport:{width:1280,height:650},reducedMotion:'reduce'})
+ const op=await ownerContext.newPage();await ownIp(op);await ownIp(page)
+ try {
+  await op.goto('/masuk');await op.getByRole('button',{name:'Masuk sebagai Pemilik'}).click()
+  await expect(op).toHaveURL(/\/owner\/dashboard/)
+  const response=await op.request.get('/api/trpc/owner.myKos');expect(response.ok()).toBe(true)
+  const body=await response.json();const properties=body.result.data.json??body.result.data
+  const kos=properties.find((k:any)=>k.name.startsWith('Kost Uji E2E')&&k.rooms.some((r:any)=>r.status==='vacant'))
+  expect(kos,'previously created demo property with available room').toBeTruthy()
+  await page.goto('/masuk');await page.getByRole('button',{name:'Masuk sebagai Mahasiswa'}).click()
+  await page.goto('/search');await page.getByRole('combobox',{name:'Cari lokasi'}).fill(kos.name)
+  await page.getByRole('button',{name:'Cari',exact:true}).click()
+  const link=page.locator(`a[href="/kos/${kos.id}"]`).first();await expect(link).toBeVisible();await link.click()
+  await page.getByRole('button',{name:'Jadwalkan Survey Gratis'}).first().click()
+  await page.getByLabel('Nomor WhatsApp').fill('081234567890')
+  await page.getByRole('button',{name:'Konfirmasi Jadwal Survey Gratis'}).click()
+  await expect(page.getByText('berhasil dikonfirmasi')).toBeVisible()
+  await page.goto(`/kos/${kos.id}`);await page.getByRole('button',{name:'Ajukan Sewa'}).click()
+  await expect(page).toHaveURL(/\/checkout\//)
+  const roomId=new URL(page.url()).searchParams.get('room');const room=kos.rooms.find((r:any)=>r.id===roomId);expect(room).toBeTruthy()
+  const occupation=`Mahasiswa audit perjalanan ${Date.now()}`
+  await page.getByLabel('Pekerjaan atau kegiatan utama').fill(occupation)
+  await page.getByRole('button',{name:'Kirim Pengajuan'}).click()
+  await expect(page.getByRole('heading',{name:'Pengajuan Terkirim'})).toBeVisible()
+  await op.goto(`/owner/dashboard?kos=${kos.id}&tab=tindakan`)
+  const application=op.getByTestId('owner-application').filter({hasText:occupation})
+  await application.getByRole('button',{name:'Terima'}).click();await op.getByRole('dialog').getByRole('button',{name:'Terima Pengajuan'}).click()
+  await expect(application).toHaveCount(0)
+  await page.goto('/my-kos');const card=page.getByTestId('tenancy-card').filter({hasText:kos.name}).first()
+  await card.getByRole('button',{name:'Bayar Sekarang'}).click();await page.getByRole('button',{name:'Selesaikan Pembayaran'}).click()
+  await expect(card).toHaveAttribute('data-status','ACTIVE');await page.reload()
+  await expect(page.getByTestId('tenancy-card').filter({hasText:kos.name}).first()).toHaveAttribute('data-status','ACTIVE')
+  await op.goto(`/owner/dashboard?kos=${kos.id}`)
+  const row=op.getByRole('row').filter({hasText:`Kamar ${room.roomNumber}`})
+  await expect(row.getByText('Lunas',{exact:true})).toBeVisible()
+  await row.getByRole('link',{name:/Lihat kuitansi Kamar/}).click();await expect(op.getByTestId('kuitansi-no')).toBeVisible()
+ } finally {await ownerContext.close()}
+})

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { IMAGE_CONTENT_TYPES, IMAGE_MAX_BYTES, IMAGE_MAX_PER_KOS, imageConfirmInput, imageDeleteInput, imagePresignInput, imageReorderInput } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
-import { HOUR, limiter } from '../rateLimit.ts'
+import { HOUR, limiterFor } from '../rateLimit.ts'
 import { hasImageSignature, PRESIGN_EXPIRES_SECONDS } from '../storage.ts'
 import { ownerProcedure, router } from './trpc.ts'
 
@@ -26,7 +26,7 @@ const bad = (message: string) => new TRPCError({ code: 'BAD_REQUEST', message })
 export const ownerImageRouter = router({
   /** A short-lived presigned PUT. Type and length are signed, so R2 refuses anything else. */
   presign: ownerProcedure.input(imagePresignInput).mutation(async ({ ctx, input }): Promise<ImagePresign> => {
-    limiter.check(`presign:${ctx.user.id}`, 60, HOUR, 'Terlalu banyak unggahan foto. Coba lagi dalam satu jam.')
+    limiterFor(ctx).check(`presign:${ctx.user.id}`, 60, HOUR, 'Terlalu banyak unggahan foto. Coba lagi dalam satu jam.')
     const key = `kos/${input.kosId}/${input.baseId ?? randomUUID()}-${input.width}.webp`
     const signed = await ctx.storage.presignPut(key, input.contentType, input.contentLength)
     return { key, url: signed.url, headers: signed.headers, expiresInSeconds: PRESIGN_EXPIRES_SECONDS }

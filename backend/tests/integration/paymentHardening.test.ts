@@ -67,6 +67,9 @@ describe('refund rows and cascading deletes', () => {
     await prisma.payment.update({ where: { id: payment.id }, data: { status: 'REFUNDED' } })
     await refundRow(payment.id, payment.amount)
     await prisma.tenancy.update({ where: { id: tenancyId }, data: { status: 'ENDED' } })
+    // The seed's first vacant room can share a kos with seeded live tenancies, which rightly block kos.delete: end them so only archiving is under test.
+    await prisma.tenancy.updateMany({ where: { room: { kosId: room.kosId }, status: { in: ['ACTIVE', 'PENDING'] } }, data: { status: 'ENDED' } })
+    await prisma.rentalApplication.updateMany({ where: { room: { kosId: room.kosId }, status: 'PENDING' }, data: { status: 'REJECTED' } })
     const ownerProfile = await prisma.ownerProfile.findFirstOrThrow({ where: { kos: { some: { id: room.kosId } } } })
     await prisma.user.update({ where: { id: ownerProfile.userId }, data: { isDemo: false } })
     const owner = callerFor(ownerProfile.userId)

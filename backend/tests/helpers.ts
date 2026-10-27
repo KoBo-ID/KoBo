@@ -8,6 +8,7 @@ import { createPrisma } from '../src/db/client.ts'
 import { MOCK_BUSINESS_ID, mockCompletedEvent, MockPaymentProvider } from '../src/payment/mock.ts'
 import { PaymentService } from '../src/payment/service.ts'
 import { applyPaymentEventTx } from '../src/payment/settlement.ts'
+import type { RateLimiter } from '../src/rateLimit.ts'
 import { createFakeStorage } from '../src/storage.ts'
 import { createCallerFactory } from '../src/trpc/trpc.ts'
 import type { Context } from '../src/trpc/trpc.ts'
@@ -30,11 +31,12 @@ interface CallerOptions {
   isDemo?: boolean
   paymentService?: PaymentService
   geocoder?: Geocoder
+  limiter?: RateLimiter
 }
 
 function contextFor(userId: string | null, options: CallerOptions = {}): Context {
   const session = userId ? ({ user: { id: userId, isDemo: options.isDemo ?? false }, session: { userId } } as never) : null
-  return { prisma, auth, storage, paymentService: options.paymentService ?? paymentService, geocoder: options.geocoder ?? new NoGeocoder(), headers: new Headers(), resHeaders: new Headers(), getSession: async () => session }
+  return { prisma, auth, storage, paymentService: options.paymentService ?? paymentService, geocoder: options.geocoder ?? new NoGeocoder(), limiter: options.limiter, headers: new Headers(), resHeaders: new Headers(), getSession: async () => session }
 }
 
 /** tRPC caller with no session. */

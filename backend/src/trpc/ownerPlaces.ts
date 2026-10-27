@@ -3,7 +3,7 @@ import { haversineMeters } from '@kobo/shared/domain'
 import { isPhoneLike, isUrlLike, placeCategory } from '@kobo/shared/places'
 import { ownerPlaceAddInput, ownerPlaceKosInput, ownerPlaceRefInput } from '@kobo/shared/schemas'
 import { attachPlaces, loadNearby } from '../placeCatalog.ts'
-import { DAY, limiter } from '../rateLimit.ts'
+import { DAY, limiterFor } from '../rateLimit.ts'
 import { ownerProcedure, router } from './trpc.ts'
 
 /** Owner-added places may sit this far from the kos at most; farther is not "nearby". */
@@ -79,7 +79,7 @@ export const ownerPlacesRouter = router({
     if ((await ctx.prisma.ownerPlace.count({ where: { kosId: input.kosId } })) >= MAX_OWNER_PLACES) {
       throw new TRPCError({ code: 'CONFLICT', message: `Maksimal ${MAX_OWNER_PLACES} tempat tambahan per kos.` })
     }
-    limiter.check(`owner-place:${ctx.user.id}`, 30, DAY, 'Terlalu banyak tempat ditambahkan hari ini. Coba lagi besok.')
+    limiterFor(ctx).check(`owner-place:${ctx.user.id}`, 30, DAY, 'Terlalu banyak tempat ditambahkan hari ini. Coba lagi besok.')
     const row = await ctx.prisma.ownerPlace.create({ data: { kosId: input.kosId, name: input.name, category: input.category, lat: input.lat, lng: input.lng, note: input.note ?? null }, select: { id: true } })
     return { id: row.id, status: 'pending' }
   }),
@@ -97,7 +97,7 @@ export const ownerPlacesRouter = router({
 
   /** Rebuilds the snapshot from the current catalogue; owner hides and approved additions are kept. */
   refresh: ownerProcedure.input(ownerPlaceKosInput).mutation(async ({ ctx, input }): Promise<{ catalogVersion: string; rows: number }> => {
-    limiter.check(`owner-place-refresh:${input.kosId}`, REFRESH_PER_DAY, DAY, `Pembaruan sekitar kos dibatasi ${REFRESH_PER_DAY} kali per hari.`)
+    limiterFor(ctx).check(`owner-place-refresh:${input.kosId}`, REFRESH_PER_DAY, DAY, `Pembaruan sekitar kos dibatasi ${REFRESH_PER_DAY} kali per hari.`)
     return ctx.prisma.$transaction((tx) => attachPlaces(tx, input.kosId))
   }),
 

@@ -32,3 +32,6 @@ export const DAY = 24 * HOUR
 
 /** The shared limiter. Off under vitest (NODE_ENV=test), where one process runs hundreds of cases as the same seeded users. */
 export const limiter = new RateLimiter({ enabled: process.env.NODE_ENV !== 'test' })
+
+/** The limiter a request uses: the one injected into the context (tests), else the shared one. */
+export const limiterFor = (ctx: { limiter?: RateLimiter }): RateLimiter => ctx.limiter ?? limiter
