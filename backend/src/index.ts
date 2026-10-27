@@ -5,6 +5,7 @@ import { createPrisma } from './db/client.ts'
 import { startDemoReset } from './demoSchedule.ts'
 import { createE2eHooks } from './e2eHooks.ts'
 import { e2eHooksEnabled, requireEnv } from './env.ts'
+import { startNotificationWorker, whatsappFromEnv } from './notifications.ts'
 import { startOutboxWorker, transportFromEnv } from './outbox.ts'
 import { startPaymentSweep } from './payment/reconcile.ts'
 import { startRefundWorker } from './payment/refunds.ts'
@@ -34,6 +35,9 @@ const stopRefunds = startRefundWorker(prisma, paymentService, 15_000)
 // Also not started from createApp: tests call sweepStalePayments() directly. Recovers payments whose callbacks were lost.
 const stopPaymentSweep = startPaymentSweep(prisma, paymentService)
 
+// Also not started from createApp: tests call scanNotifications() with their own clock. WhatsApp only logs until a provider is wired.
+const stopNotifications = startNotificationWorker(prisma, { whatsapp: whatsappFromEnv() })
+
 // Also not started from createApp: tests call advanceAllWaitlists() directly.
 const stopWaitlist = startWaitlistWorker(prisma)
 
@@ -50,7 +54,7 @@ const shutdown = async () => {
   if (shuttingDown) return
   shuttingDown = true
   const httpClosed = new Promise<void>((resolve) => server.close(() => resolve()))
-  const workers = [stopOutbox(), stopRefunds(), stopPaymentSweep(), stopWaitlist(), Promise.resolve(stopDemoReset())]
+  const workers = [stopOutbox(), stopNotifications(), stopRefunds(), stopPaymentSweep(), stopWaitlist(), Promise.resolve(stopDemoReset())]
   await Promise.race([Promise.allSettled([httpClosed, ...workers]), new Promise((resolve) => setTimeout(resolve, SHUTDOWN_WAIT_MS).unref())])
   await prisma.$disconnect().catch(() => undefined)
   process.exit(0)

@@ -18,6 +18,7 @@ export type AppRouter = typeof appRouter
 export type { Place } from '../geocode.ts'
 export type { RegionView, CampusView, CatalogStatus } from './location.ts'
 export type { OwnerPlaceRow } from './ownerPlaces.ts'
+export type { TenantProfile, OwnerNotificationRow } from './ownerTenant.ts'
 export type { NearbyView, NearbyGroup, NearbyItem } from '../placeCatalog.ts'
 export type { KosCard, KosSearchCard, KosDetail, RoomView, ReviewView, OwnerPublic } from './kos.ts'
 export type { OwnerPublicProfile, OwnerKos, OwnerBoard, BoardRoom, BoardSummary, OwnerReview, OwnerImage, ImagePresign } from './owner.ts'

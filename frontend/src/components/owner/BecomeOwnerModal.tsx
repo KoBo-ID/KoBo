@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Notice } from '../ui/Notice';
+import { Select } from '../ui/Select';
 import { useSession } from '../../lib/session';
 import { useBecomeOwner } from '../../lib/owner';
 
@@ -14,6 +15,7 @@ export const BecomeOwnerModal: React.FC<{ onClose: () => void }> = ({ onClose })
   const { becomeOwner, isPending, error } = useBecomeOwner();
   const [phone, setPhone] = useState(me?.user.phone ?? '');
   const [fieldError, setFieldError] = useState<string | undefined>();
+  const [ownership, setOwnership] = useState<'' | 'PEMILIK' | 'PENGELOLA_KUASA' | 'LAINNYA'>('');
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +24,7 @@ export const BecomeOwnerModal: React.FC<{ onClose: () => void }> = ({ onClose })
       return;
     }
     setFieldError(undefined);
-    if (await becomeOwner(phone.trim())) onClose();
+    if (await becomeOwner(phone.trim(), ownership || undefined)) onClose();
   };
 
   return (
@@ -38,6 +40,18 @@ export const BecomeOwnerModal: React.FC<{ onClose: () => void }> = ({ onClose })
           error={fieldError}
           placeholder="0812 3456 7890"
           helperText="Dipakai calon penyewa dan KoBo untuk menghubungi Anda."
+        />
+        <Select
+          label="Status Anda atas kos (opsional)"
+          value={ownership}
+          onChange={(e) => setOwnership(e.target.value as typeof ownership)}
+          options={[
+            { value: '', label: 'Pilih salah satu' },
+            { value: 'PEMILIK', label: 'Saya pemilik properti' },
+            { value: 'PENGELOLA_KUASA', label: 'Saya pengelola dengan surat kuasa' },
+            { value: 'LAINNYA', label: 'Lainnya' },
+          ]}
+          helperText="Pernyataan Anda sendiri, belum diperiksa KoBo. Lencana Terverifikasi dokumen diberikan manual setelah dokumen diperiksa."
         />
         <p style={{ margin: 0, fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
           Anda bisa langsung menyiapkan kos, kamar, dan foto. Kos baru muncul di pencarian setelah KoBo memeriksa dan menyetujui akun pemilik Anda.

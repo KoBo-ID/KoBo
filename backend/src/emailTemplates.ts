@@ -96,9 +96,31 @@ function ownerPaymentCopy(p: Partial<OwnerPaymentPayload>): Copy | null {
   }
 }
 
+interface ReminderPayload extends LinkPayload {
+  kosName: string
+  roomNumber: string
+  amount: number
+  /** YYYY-MM-DD */
+  dueDate: string
+  /** Days until the due date (0 = today). */
+  days: number
+}
+
+/** H-7 / H-3 / H-1 payment reminder to the student. */
+function reminderCopy(p: Partial<ReminderPayload>): Copy | null {
+  if (typeof p.kosName !== 'string' || typeof p.roomNumber !== 'string' || typeof p.amount !== 'number' || typeof p.dueDate !== 'string' || typeof p.days !== 'number') return null
+  const when = p.days <= 0 ? 'hari ini' : p.days === 1 ? 'besok' : `${p.days} hari lagi`
+  return {
+    subject: `Pengingat: tagihan sewa kamar ${p.roomNumber} jatuh tempo ${when}`,
+    intro: `Tagihan sewa ${rupiah(p.amount)} untuk kamar ${p.roomNumber} di ${p.kosName} jatuh tempo ${when} (${p.dueDate}). Bayar lewat KoBo agar kamar Anda tetap aman.`,
+    action: 'Bayar di KoBo',
+    outro: 'Abaikan email ini jika Anda sudah membayar. Anda dapat mematikan pengingat di halaman Profil.',
+  }
+}
+
 export function renderEmail(template: string, payload: unknown): RenderedEmail | null {
-  const p = payload as (Partial<OfferPayload> & Partial<OwnerPaymentPayload>) | null
-  const copy = template === 'waitlist-offer' ? (p ? offerCopy(p) : null) : template === 'payment-received-owner' ? (p ? ownerPaymentCopy(p) : null) : COPY[template]
+  const p = payload as (Partial<OfferPayload> & Partial<OwnerPaymentPayload> & Partial<ReminderPayload>) | null
+  const copy = template === 'waitlist-offer' ? (p ? offerCopy(p) : null) : template === 'payment-received-owner' ? (p ? ownerPaymentCopy(p) : null) : template === 'invoice-reminder' ? (p ? reminderCopy(p) : null) : COPY[template]
   if (!copy || !p || typeof p.url !== 'string') return null
   const name = typeof p.name === 'string' && p.name.trim() ? p.name.trim() : 'Pengguna KoBo'
   const text = `Halo ${name},\n\n${copy.intro}\n\n${copy.action}: ${p.url}\n\n${copy.outro}\n\nTim KoBo`

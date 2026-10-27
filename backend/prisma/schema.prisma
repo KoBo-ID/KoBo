@@ -28,6 +28,17 @@ model User {
   campusEmailVerifiedAt DateTime? @db.Timestamptz(3)
   isDemo                Boolean   @default(false)
 
+  // Emergency contact: required before a first application; the contact is only messaged when the student consented.
+  emergencyContactName      String?
+  emergencyContactRelation  String?
+  emergencyContactPhone     String?
+  emergencyContactConsentAt DateTime? @db.Timestamptz(3)
+  // The student switched off payment reminders to themselves (the owner can still see the invoice).
+  notifyOptOut              Boolean   @default(false)
+  // The Syarat/Privasi version this user agreed to, and when.
+  termsVersion              String?
+  termsAcceptedAt           DateTime? @db.Timestamptz(3)
+
   sessions           Session[]
   accounts           Account[]
   ownerProfile       OwnerProfile?
@@ -36,6 +47,8 @@ model User {
   waitlistEntries    WaitlistEntry[]
   rentalApplications RentalApplication[]
   recordedPayments   Payment[]           @relation("PaymentRecordedBy")
+  profileViewsMade   TenantProfileView[] @relation("ProfileViewOwner")
+  profileViewsOfMe   TenantProfileView[] @relation("ProfileViewTenant")
 }
 
 model Session {
@@ -208,23 +221,23 @@ model Campus {
   emailDomains String[]
 
   // Nationwide catalogue fields (null on the hand-seeded rows). Rows loaded by `catalog:import` carry dataVersion.
-  pddiktiId   String?
-  osmId       String?
-  wikidataId  String?
-  kind        String?
-  parentId    String?
-  desaCode    String?
-  gateLat     Float?
-  gateLng     Float?
-  coordMethod String?
-  verifiedAt  DateTime? @db.Timestamptz(3)
-  website     String?
-  aliases     String[]
-  dataVersion String?
+  pddiktiId      String?
+  osmId          String?
+  wikidataId     String?
+  kind           String?
+  parentId       String?
+  desaCode       String?
+  gateLat        Float?
+  gateLng        Float?
+  coordMethod    String?
+  verifiedAt     DateTime? @db.Timestamptz(3)
+  website        String?
+  aliases        String[]
+  dataVersion    String?
   // Where an imported row comes from and under which licence; derivedFromOsm marks rows that fall under the ODbL (D3).
   source         String?
   licence        String?
-  derivedFromOsm Boolean @default(false)
+  derivedFromOsm Boolean   @default(false)
 
   kos Kos[]
 
@@ -246,6 +259,9 @@ model OwnerProfile {
   // Set when KoBo approves a new owner (scripts/approve-owner.ts or OWNER_AUTO_APPROVE). Until then the owner's kos are
   // visible only to the owner. Not the `verified` badge flag, which stays hidden in the UI.
   approvedAt             DateTime?              @db.Timestamptz(3)
+  // Self-declared: PEMILIK, PENGELOLA_KUASA (manager with a power of attorney) or LAINNYA. Not verified; a document badge is manual.
+  ownershipType          String?
+  ownershipDeclaredAt    DateTime?              @db.Timestamptz(3)
 
   kos Kos[]
 }
@@ -292,15 +308,15 @@ model Kos {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  rooms    Room[]
-  rules    HouseRule[]
-  pois     Poi[]
+  rooms       Room[]
+  rules       HouseRule[]
+  pois        Poi[]
   places      KosPlace[]
   ownerPlaces OwnerPlace[]
   overlays    PlaceOverlay[]
-  images   KosImage[]
-  visits   Visit[]
-  waitlist WaitlistEntry[]
+  images      KosImage[]
+  visits      Visit[]
+  waitlist    WaitlistEntry[]
 
   @@index([ownerId])
   @@index([desaCode])
@@ -383,7 +399,8 @@ model Invoice {
   gatewayFeeBearer      GatewayFeeBearer
   status                InvoiceStatus    @default(UNPAID)
 
-  payments Payment[]
+  payments      Payment[]
+  notifications NotificationLog[]
 
   @@index([tenancyId])
 }
@@ -413,7 +430,9 @@ model Payment {
   status                   PaymentStatus        @default(PENDING)
   paidAt                   DateTime?            @db.Timestamptz(3)
   refundedAt               DateTime?            @db.Timestamptz(3)
-  /** Throttle for payment.reconcile: one provider lookup per attempt per 30 seconds. */
+  /**
+   * Throttle for payment.reconcile: one provider lookup per attempt per 30 seconds.
+   */
   lastReconciledAt         DateTime?            @db.Timestamptz(3)
   createdAt                DateTime             @default(now()) @db.Timestamptz(3)
   updatedAt                DateTime             @updatedAt @db.Timestamptz(3)
@@ -558,6 +577,37 @@ model WaitlistEntry {
   @@index([userId])
 }
 
+/// Audit row for every time an owner opens a tenant's profile (UU PDP: who looked at what, when).
+model TenantProfileView {
+  id           String   @id @default(cuid(2))
+  ownerUserId  String
+  owner        User     @relation("ProfileViewOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  tenantUserId String
+  tenant       User     @relation("ProfileViewTenant", fields: [tenantUserId], references: [id], onDelete: Cascade)
+  kosId        String
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantUserId, createdAt])
+}
+
+/// One row per payment reminder decision. The unique key makes a rescan harmless: an invoice gets each kind once per channel.
+/// kind: REMINDER_H7 | REMINDER_H3 | REMINDER_H1 | EMERGENCY_CONTACT. channel: EMAIL | WHATSAPP. status: SENT | FAILED.
+/// recipient is a role label (PENYEWA, KONTAK_DARURAT), never a phone number or address.
+model NotificationLog {
+  id        String   @id @default(cuid(2))
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  kind      String
+  channel   String
+  recipient String
+  status    String
+  reason    String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([invoiceId, kind, channel])
+  @@index([invoiceId])
+}
+
 model EmailOutbox {
   id            String       @id @default(cuid(2))
   to            String
@@ -645,9 +695,9 @@ model CatalogMeta {
 
 // A snapshot of "what is near this kos": references to PlaceCatalog / OwnerPlace rows, never copies of their fields.
 model KosPlace {
-  id             String @id @default(cuid(2))
+  id             String  @id @default(cuid(2))
   kosId          String
-  kos            Kos    @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  kos            Kos     @relation(fields: [kosId], references: [id], onDelete: Cascade)
   // PlaceCatalog.id or OwnerPlace.id (no foreign key on purpose: the catalogue is reloaded by version).
   placeId        String
   category       String

@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Notice } from '../ui/Notice';
 import { Skeleton } from '../ui/Skeleton';
+import { TenantProfileModal } from './TenantProfileModal';
 import { messageForError } from '../../lib/errors';
 import { useTRPC } from '../../lib/trpc';
 
@@ -24,6 +25,7 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
     },
   }));
 
+  const [profileFor, setProfileFor] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<{ applicationId: string; decision: 'APPROVE' | 'REJECT'; name: string } | null>(null);
   const act = (applicationId: string, decision: 'APPROVE' | 'REJECT', applicantName: string) => setConfirming({ applicationId, decision, name: applicantName });
 
@@ -46,6 +48,7 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
           }}
         />
       )}
+      {profileFor && <TenantProfileModal target={{ kosId, applicationId: profileFor }} onClose={() => setProfileFor(null)} />}
       <h2 id="owner-applications-title" className="od-section__title">
         Pengajuan sewa
         {count > 0 && <span className="od-count">{count}</span>}
@@ -80,6 +83,7 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
                 {application.note && <span className="od-row__note">{application.note}</span>}
               </div>
               <div className="od-row__actions">
+                <Button variant="ghost" size="sm" aria-label={`Profil ${application.applicant.name}`} onClick={() => setProfileFor(application.id)}>Profil</Button>
                 <Button variant="outline" size="sm" icon={<X size={14} />} disabled={decide.isPending} onClick={() => act(application.id, 'REJECT', application.applicant.name)}>Tolak</Button>
                 <Button variant="primary" size="sm" icon={<Check size={14} />} disabled={decide.isPending} onClick={() => act(application.id, 'APPROVE', application.applicant.name)}>Terima</Button>
               </div>

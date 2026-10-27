@@ -2,6 +2,7 @@ import { addDays, todayWIB } from '@kobo/shared/domain'
 import { rentalApplicationCreateInput, rentalApplicationDecisionInput, kosIdOnly } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
 import type { Prisma } from '../generated/prisma/client.ts'
+import { assertApplicationConsents } from '../consents.ts'
 import { assertDemoIsolation } from '../demoIsolation.ts'
 import { advanceWaitlist, liveOffer } from '../waitlist.ts'
 import { CONFLICT_MESSAGE, createApprovedTenancyObligation, isRoomTakenError, OFFERED_ELSEWHERE, OFFERED_ELSEWHERE_MESSAGE } from './booking.ts'
@@ -34,7 +35,8 @@ export interface OwnerRentalApplication {
   occupation: string
   note: string | null
   createdAt: string
-  applicant: { name: string; phone: string | null; campus: string | null }
+  /** No phone here: the number is released only through owner.tenant.tenantProfile once the application is approved. */
+  applicant: { name: string; campus: string | null }
   room: { id: string; roomNumber: string; type: string }
 }
 
@@ -72,6 +74,7 @@ export const applicationRouter = router({
     const room = await ctx.prisma.room.findFirst({ where: { id: input.roomId, archivedAt: null, kos: { archivedAt: null } }, select: { id: true, kosId: true } })
     if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kamar tidak ditemukan.' })
     await assertDemoIsolation(ctx.prisma, ctx.user, room.kosId)
+    await assertApplicationConsents(ctx.prisma, ctx.user.id)
 
     try {
       const created = await ctx.prisma.$transaction(async (tx) => {
@@ -136,7 +139,7 @@ export const applicationRouter = router({
     const rows = await ctx.prisma.rentalApplication.findMany({
       where: { room: { kosId: input.kosId }, status: 'PENDING' },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      include: { user: { select: { name: true, phone: true, campus: true } }, room: { select: { id: true, roomNumber: true, type: true } } },
+      include: { user: { select: { name: true, campus: true } }, room: { select: { id: true, roomNumber: true, type: true } } },
     })
     return rows.map((a) => ({
       id: a.id,

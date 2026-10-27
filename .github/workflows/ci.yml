@@ -113,6 +113,14 @@ jobs:
           PGPASSWORD=kobo psql -h localhost -p 5433 -U kobo -d postgres -c 'CREATE DATABASE kobo_e2e'
           npm run e2e
 
+      # Gap project: the same production server with REQUIRE_PROFILE_CONSENTS=1, on its own database so it never truncates kobo_e2e.
+      - name: E2E consents project (Playwright, Chromium)
+        env:
+          E2E_DATABASE_URL: postgresql://kobo:kobo@localhost:5433/kobo_e2e_consents
+        run: |
+          PGPASSWORD=kobo psql -h localhost -p 5433 -U kobo -d postgres -c 'CREATE DATABASE kobo_e2e_consents'
+          npx playwright test -c e2e/gap/consents/playwright.config.ts
+
       - name: Bundle gate
         run: npm run bundle:check
 

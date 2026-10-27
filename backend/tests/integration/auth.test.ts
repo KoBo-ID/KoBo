@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { TERMS_VERSION } from '@kobo/shared/domain'
 import { createAuth } from '../../src/auth.ts'
 import { resetDb } from '../../src/db/seed.ts'
 import { baseURL, cookieFrom, demoCookie, lastEmail, me, nextIp, pathOf, prisma, registerAndSignIn, request, secret } from '../helpers.ts'
@@ -15,6 +16,15 @@ describe('email + password sign-up', () => {
     expect(row?.status).toBe('PENDING')
     expect(row?.payload.url).toContain('/api/auth/verify-email?token=')
     expect(row?.payload.name).toBe('Sari')
+  })
+
+  it('stores the Syarat version only when the sign-up sends the current one', async () => {
+    await request('/api/auth/sign-up/email', { body: { name: 'Sari', email: 'sari@example.com', password: PASSWORD, termsVersion: TERMS_VERSION } })
+    await request('/api/auth/sign-up/email', { body: { name: 'Budi', email: 'budi@example.com', password: PASSWORD, termsVersion: 'versi-palsu' } })
+    const sari = await prisma.user.findUniqueOrThrow({ where: { email: 'sari@example.com' } })
+    const budi = await prisma.user.findUniqueOrThrow({ where: { email: 'budi@example.com' } })
+    expect([sari.termsVersion, sari.termsAcceptedAt !== null]).toEqual([TERMS_VERSION, true])
+    expect([budi.termsVersion, budi.termsAcceptedAt]).toEqual([null, null])
   })
 
   it('refuses sign-in until the email is verified, then allows it', async () => {

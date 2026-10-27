@@ -80,8 +80,11 @@ export const recordManualInput = z
 // ---------------------------------------------------------------------------
 
 /** Registering as an owner: the WhatsApp number tenants and KoBo reach the owner on. */
+export const OWNERSHIP_TYPES = ['PEMILIK', 'PENGELOLA_KUASA', 'LAINNYA'] as const
 export const ownerRegisterInput = z.object({
   phone: z.string().trim().regex(/^\+?[0-9][0-9 ()-]{7,18}$/, 'Nomor WhatsApp tidak valid. Contoh: 0812 3456 7890.'),
+  /** Self-declared, optional, not verified: the owner, a manager with a power of attorney, or something else. */
+  ownershipType: z.enum(OWNERSHIP_TYPES).optional(),
 })
 
 /** Abuse cap: rooms per kos, enforced at creation and on room.create. */
@@ -253,6 +256,23 @@ export const profileUpdateInput = z.object({
 })
 export type ProfileUpdateInput = z.input<typeof profileUpdateInput>
 
+/** Emergency contact. `consent` must be true: the student agrees that KoBo may message this person about an overdue payment. */
+export const emergencyContactInput = z.object({
+  name: z.string().trim().min(2).max(80),
+  relation: z.string().trim().min(2).max(40),
+  phone: z.string().trim().regex(/^\+?[0-9][0-9 ()-]{7,18}$/, 'Nomor telepon tidak valid'),
+  consent: z.literal(true, { message: 'Persetujuan diperlukan agar kontak darurat dapat dihubungi.' }),
+})
+export type EmergencyContactInput = z.input<typeof emergencyContactInput>
+
+export const acceptTermsInput = z.object({ version: z.string().min(1).max(40) })
+export const notifyPrefInput = z.object({ optOut: z.boolean() })
+
+/** An owner opens a tenant's profile from an application or from a tenancy of their own kos. Exactly one of the two ids. */
+export const tenantProfileInput = z
+  .object({ kosId: z.string().min(1).max(64), applicationId: z.string().min(1).max(64).optional(), tenancyId: z.string().min(1).max(64).optional() })
+  .refine((v) => (v.applicationId === undefined) !== (v.tenancyId === undefined), { message: 'Pilih satu pengajuan atau satu sewa.', path: ['applicationId'] })
+
 // ---- Place catalogue (regions, nationwide campuses, places near a kos) ----
 
 const latitude = z.number().min(-11).max(6)
@@ -270,7 +290,7 @@ export const regionLookupInput = z.object({ code: z.string().regex(/^\d{2}(\.\d{
 
 export const campusSearchInput = z.object({ q: z.string().trim().min(2).max(60), limit: z.number().int().min(1).max(20).default(10) })
 
-const PLACE_CATEGORY_ENUM = ['campus', 'food', 'minimarket', 'laundry', 'print', 'atm', 'pharmacy', 'clinic', 'hospital', 'worship', 'gym', 'cafe', 'transit', 'pasar'] as const
+const PLACE_CATEGORY_ENUM = ['campus', 'food', 'minimarket', 'laundry', 'print', 'atm', 'pharmacy', 'clinic', 'hospital', 'police', 'worship', 'gym', 'cafe', 'transit', 'pasar'] as const
 export const placeCategoryEnum = z.enum(PLACE_CATEGORY_ENUM)
 
 export const ownerPlaceKosInput = z.object({ kosId: z.string().min(1).max(64) })

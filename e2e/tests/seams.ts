@@ -37,7 +37,7 @@ export async function hook<T = unknown>(who: Requester, path: string, body: unkn
   return json.result as T
 }
 
-export type TickWorker = 'sweep' | 'refunds' | 'waitlist' | 'outbox'
+export type TickWorker = 'sweep' | 'refunds' | 'waitlist' | 'outbox' | 'notify'
 /** Run one worker pass now. `now` moves the clock the worker uses (ISO string or Date). Ticks are global: assert only your own rows. */
 export function tick(who: Requester, worker: TickWorker, now?: string | Date) {
   return hook<unknown>(who, 'tick', { worker, ...(now ? { now: new Date(now).toISOString() } : {}) })

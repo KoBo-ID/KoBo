@@ -3,6 +3,7 @@ import { prismaAdapter } from 'better-auth/adapters/prisma'
 import { APIError, createAuthEndpoint, createAuthMiddleware, getSessionFromCtx, sessionMiddleware } from 'better-auth/api'
 import { setSessionCookie } from 'better-auth/cookies'
 import type { BetterAuthPlugin } from 'better-auth'
+import { TERMS_VERSION } from '@kobo/shared/domain'
 import { profileUpdateInput } from '@kobo/shared/schemas'
 import { z } from 'zod'
 import { CAMPUS_TOKEN_TTL_SECONDS, domainMatches, emailDomain, isAcademicDomain, signCampusToken, verifyCampusToken } from './campusEmail.ts'
@@ -34,6 +35,9 @@ export interface AuthOptions {
   /** Google sign-in. Omitted: the provider is not registered at all. Built by googleEnv(). */
   google?: { clientId: string; clientSecret: string }
 }
+
+/** Person-name limit, the same 80 as profileUpdateInput. */
+const MAX_NAME = 80
 
 /** Production trusts only Cloudflare's header. X-Forwarded-For is client-controlled unless a proxy overwrites it, so by default it is accepted in dev only. */
 const defaultIpHeaders = () => (process.env.NODE_ENV === 'production' ? ['cf-connecting-ip'] : ['cf-connecting-ip', 'x-forwarded-for'])
@@ -147,6 +151,9 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAdd
         campusEmail: { type: 'string', required: false, input: false },
         campusEmailVerifiedAt: { type: 'date', required: false, input: false },
         isDemo: { type: 'boolean', required: false, defaultValue: false, input: false },
+        // Sent by the sign-up form; the create hook keeps it only when it is the current Syarat version, and stamps the time.
+        termsVersion: { type: 'string', required: false },
+        termsAcceptedAt: { type: 'date', required: false, input: false },
       },
     },
 
@@ -159,6 +166,9 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAdd
 
     advanced: {
       ipAddress: { ipAddressHeaders },
+      // better-auth turns the Origin/Referer check off when NODE_ENV=test unless this is set explicitly. Pinning it to false
+      // keeps the check identical in every environment, so vitest can test it. Requests with neither header are still accepted.
+      disableOriginCheck: false,
     },
 
     rateLimit: {
@@ -186,13 +196,21 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAdd
               ...(d.campus !== undefined ? { campus: d.campus } : {}),
             })
             if (!checked.success) throw new APIError('BAD_REQUEST', { message: checked.error.issues[0]?.message ?? 'Data profil tidak valid.', code: 'INVALID_PROFILE' })
-            return { data: { ...data, ...checked.data } }
+            // The terms version is recorded only through sign-up and auth.acceptTerms (both check it), never by a raw update.
+            const { termsVersion: _tv, termsAcceptedAt: _ta, ...rest } = data as Record<string, unknown>
+            return { data: { ...rest, ...checked.data } }
           },
         },
         create: {
           // A Google sign-up would otherwise copy the Google photo. Every new account starts with KoBo's default avatar
           // (the initial on the brand tint, rendered by the frontend when `image` is empty); a photo is the user's own choice later.
-          before: async (user) => ({ data: { ...user, image: null } }),
+          before: async (user) => {
+            const claimed = (user as { termsVersion?: unknown }).termsVersion
+            const accepted = claimed === TERMS_VERSION
+            // Backstop for every creation path: the sign-up endpoint hook refuses a long name; a Google display name is clamped, never blocking.
+            const name = typeof user.name === 'string' ? user.name.slice(0, MAX_NAME) : user.name
+            return { data: { ...user, name, image: null, termsVersion: accepted ? TERMS_VERSION : null, termsAcceptedAt: accepted ? new Date() : null } }
+          },
         },
       },
       account: {
@@ -208,6 +226,12 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAdd
 
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path === '/sign-up/email') {
+          const name = (ctx.body as { name?: unknown } | undefined)?.name
+          if (typeof name === 'string' && !profileUpdateInput.shape.name.safeParse(name).success && name.trim().length > 0) {
+            throw new APIError('BAD_REQUEST', { message: 'Nama terlalu panjang (maksimal 80 karakter).', code: 'INVALID_PROFILE' })
+          }
+        }
         if (DEMO_BLOCKED_PATHS.has(ctx.path)) {
           const session = await getSessionFromCtx(ctx)
           if ((session?.user as { isDemo?: boolean } | undefined)?.isDemo) throw demoForbidden()

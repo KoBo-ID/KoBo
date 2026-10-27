@@ -6,7 +6,7 @@ import { TRPCError } from '@trpc/server'
 import type { PrismaClient } from '../db/client.ts'
 import { Prisma } from '../generated/prisma/client.ts'
 import { isAutoApproved } from '../ownerApproval.ts'
-import { DAY, HOUR, limiter } from '../rateLimit.ts'
+import { DAY, HOUR, limiterFor } from '../rateLimit.ts'
 import { attachPlaces, NEAREST_CAMPUS_MAX_METERS, nearestCampuses, stampKosRegion } from '../placeCatalog.ts'
 import { loadBoardRooms, loadBoardSummary } from '../ownerBoard.ts'
 import type { BoardRoom, BoardSummary } from '../ownerBoard.ts'
@@ -14,6 +14,7 @@ import type { KosCard, OwnerPublic } from './kos.ts'
 import { queryCards } from './kosQueries.ts'
 import { ownerImageRouter } from './ownerImages.ts'
 import { ownerPlacesRouter } from './ownerPlaces.ts'
+import { ownerTenantRouter } from './ownerTenant.ts'
 import type { OwnerImage } from './ownerImages.ts'
 import { ownerVisitRouter, ownerVisits } from './visit.ts'
 import { ownerWaitlistEntries, ownerWaitlistRouter } from './waitlist.ts'
@@ -128,11 +129,12 @@ export const ownerRouter = router({
     // Already an owner: idempotent, nothing is rewritten.
     if (user.ownerProfile) return { ownerProfileId: user.ownerProfile.id, approved: user.ownerProfile.approvedAt !== null }
     if (!user.emailVerified) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Verifikasi email Anda terlebih dahulu sebelum mendaftar sebagai pemilik.' })
-    limiter.check(`become-owner:${ctx.user.id}`, 3, HOUR, 'Terlalu banyak percobaan mendaftar sebagai pemilik. Coba lagi dalam satu jam.')
+    limiterFor(ctx).check(`become-owner:${ctx.user.id}`, 3, HOUR, 'Terlalu banyak percobaan mendaftar sebagai pemilik. Coba lagi dalam satu jam.')
     const approved = isAutoApproved(user.email)
     const profile = await ctx.prisma.$transaction(async (tx) => {
       await tx.user.update({ where: { id: ctx.user.id }, data: { phone: input.phone } })
-      return tx.ownerProfile.upsert({ where: { userId: ctx.user.id }, update: {}, create: { userId: ctx.user.id, ...(approved ? { approvedAt: new Date() } : {}) }, select: { id: true } })
+      const declared = input.ownershipType ? { ownershipType: input.ownershipType, ownershipDeclaredAt: new Date() } : {}
+      return tx.ownerProfile.upsert({ where: { userId: ctx.user.id }, update: {}, create: { userId: ctx.user.id, ...declared, ...(approved ? { approvedAt: new Date() } : {}) }, select: { id: true } })
     })
     return { ownerProfileId: profile.id, approved }
   }),
@@ -242,16 +244,15 @@ export const ownerRouter = router({
 
   places: ownerPlacesRouter,
 
+  tenant: ownerTenantRouter,
+
   kos: router({
     /** No kosId exists yet, so this needs an OwnerProfile rather than ownerProcedure. */
     create: ownerOnlyProcedure.input(kosCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
       const { imageUrl, initialRooms, facilities, ...rest } = input
       // Demo accounts are reset nightly (demoReset), so the per-owner caps and the daily limit do not apply to them.
       if (!ctx.isDemo) {
-        limiter.check(`kos-create:${ctx.user.id}`, 5, DAY, 'Terlalu banyak kos didaftarkan hari ini. Coba lagi besok.')
-        if ((await ctx.prisma.kos.count({ where: { ownerId: ctx.ownerProfileId, archivedAt: null } })) >= MAX_KOS_PER_OWNER) {
-          throw new TRPCError({ code: 'CONFLICT', message: `Satu akun dapat mendaftarkan maksimal ${MAX_KOS_PER_OWNER} kos. Hubungi KoBo bila Anda mengelola lebih banyak.` })
-        }
+        limiterFor(ctx).check(`kos-create:${ctx.user.id}`, 5, DAY, 'Terlalu banyak kos didaftarkan hari ini. Coba lagi besok.')
       }
       const fields = { ...rest, ...(facilities ? { facilities, ...amenityArrays(facilities) } : {}) }
       const campus = await nearestCampus(ctx.prisma, fields.lat, fields.lng)
@@ -272,17 +273,29 @@ export const ownerRouter = router({
         : []
       for (let attempt = 0; ; attempt++) {
         try {
-          const created = await ctx.prisma.kos.create({
-            data: {
-              ...fields,
-              ...campus,
-              slug: `${slugify(fields.name)}-${randomUUID().slice(0, 6)}`,
-              ownerId: ctx.ownerProfileId,
-              images: imageUrl ? { create: [{ url: imageUrl, order: 0 }] } : undefined,
-              rooms: rooms.length ? { create: rooms } : undefined,
-            },
-            select: { id: true },
-          })
+          // One transaction per attempt (a unique violation aborts it). The OwnerProfile row lock queues parallel creates of
+          // one owner, so the count below cannot go stale before the insert. FOR NO KEY UPDATE: it does not block the
+          // FOR KEY SHARE that inserting a Kos (FK to OwnerProfile) takes in other transactions. It is the first lock of
+          // this transaction; nothing else takes it, so it cannot deadlock with the Kos, Invoice or Tenancy locks.
+          const created = await ctx.prisma.$transaction(async (tx) => {
+            if (!ctx.isDemo) {
+              await tx.$queryRaw`SELECT id FROM "OwnerProfile" WHERE id = ${ctx.ownerProfileId} FOR NO KEY UPDATE`
+              if ((await tx.kos.count({ where: { ownerId: ctx.ownerProfileId, archivedAt: null } })) >= MAX_KOS_PER_OWNER) {
+                throw new TRPCError({ code: 'CONFLICT', message: `Satu akun dapat mendaftarkan maksimal ${MAX_KOS_PER_OWNER} kos. Hubungi KoBo bila Anda mengelola lebih banyak.` })
+              }
+            }
+            return tx.kos.create({
+              data: {
+                ...fields,
+                ...campus,
+                slug: `${slugify(fields.name)}-${randomUUID().slice(0, 6)}`,
+                ownerId: ctx.ownerProfileId,
+                images: imageUrl ? { create: [{ url: imageUrl, order: 0 }] } : undefined,
+                rooms: rooms.length ? { create: rooms } : undefined,
+              },
+              select: { id: true },
+            })
+          }, { maxWait: 10_000, timeout: 20_000 })
           await locate(ctx.prisma, created.id, fields.lat, fields.lng)
           return created
         } catch (e) {
@@ -332,17 +345,20 @@ export const ownerRouter = router({
 
   room: router({
     create: ownerProcedure.input(roomCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
-      if (!(await ctx.prisma.user.findUnique({ where: { id: ctx.user.id }, select: { isDemo: true } }))?.isDemo) limiter.check(`room-create:${ctx.user.id}`, 60, HOUR, 'Terlalu banyak kamar ditambahkan. Coba lagi dalam satu jam.')
-      if ((await ctx.prisma.room.count({ where: { kosId: input.kosId, archivedAt: null } })) >= MAX_ROOMS_PER_KOS) {
-        throw new TRPCError({ code: 'CONFLICT', message: `Satu kos dapat memiliki maksimal ${MAX_ROOMS_PER_KOS} kamar.` })
-      }
+      if (!(await ctx.prisma.user.findUnique({ where: { id: ctx.user.id }, select: { isDemo: true } }))?.isDemo) limiterFor(ctx).check(`room-create:${ctx.user.id}`, 60, HOUR, 'Terlalu banyak kamar ditambahkan. Coba lagi dalam satu jam.')
       try {
+        // The Kos row lock comes first and is FOR UPDATE, the strength advanceWaitlist (ADR 0014) takes, so there is no
+        // lock upgrade inside the transaction. It queues parallel creates for one kos, so the count cannot go stale.
         // A new room may be the one a waiting student has been queueing for.
         return await ctx.prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT id FROM "Kos" WHERE id = ${input.kosId} FOR UPDATE`
+          if ((await tx.room.count({ where: { kosId: input.kosId, archivedAt: null } })) >= MAX_ROOMS_PER_KOS) {
+            throw new TRPCError({ code: 'CONFLICT', message: `Satu kos dapat memiliki maksimal ${MAX_ROOMS_PER_KOS} kamar.` })
+          }
           const room = await tx.room.create({ data: input, select: { id: true } })
           await advanceWaitlist(tx, input.kosId, new Date())
           return room
-        })
+        }, { maxWait: 10_000, timeout: 20_000 })
       } catch (e) {
         if (isUniqueViolation(e)) throw new TRPCError({ code: 'CONFLICT', message: ROOM_TAKEN })
         throw e

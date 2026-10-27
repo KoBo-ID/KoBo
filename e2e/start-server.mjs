@@ -26,6 +26,9 @@ const env = {
   ALLOW_CONSOLE_EMAIL: '1', // e2e only: production mode normally refuses to start without a mail key
   // Never reach a public geocoder from e2e; specs stub place.search where they need a hit.
   GEOCODER: 'off',
+  // Production defaults to requiring an emergency contact and the current Syarat before a first application; the e2e students do not
+  // fill them in (the rule is covered by integration tests and one dedicated spec that turns it on through the profile).
+  REQUIRE_PROFILE_CONSENTS: '0',
 }
 const tsxCli = fileURLToPath(new URL('../node_modules/tsx/dist/cli.mjs', import.meta.url))
 const prismaCli = fileURLToPath(new URL('../node_modules/prisma/build/index.js', import.meta.url))

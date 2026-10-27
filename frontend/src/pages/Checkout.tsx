@@ -87,9 +87,13 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
     ? computeCheckoutTotal({ monthlyRent: room.priceMonthly, applicationFee: kos.applicationFee, discountAmount: kos.studentDiscountAmount, campusEmailVerified: !!me?.campusVerified })
     : null;
 
+  // Before a first application: the emergency contact (with consent) and the current Syarat. The server enforces it too.
+  const missingProfile = !!me && me.profileConsentsRequired && (!me.emergencyContact || !me.termsCurrent);
+
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!me) return openAuthModal();
+    if (missingProfile) return;
     if (!room) return;
     create.mutate({ roomId: room.id, startDate, durationMonths: duration, occupation, note: note.trim() || undefined });
   };
@@ -172,8 +176,13 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
                 </div>
               )}
 
+              {missingProfile && (
+                <Notice tone="error">
+                  Sebelum mengajukan sewa, lengkapi {!me!.emergencyContact ? 'kontak darurat' : ''}{!me!.emergencyContact && !me!.termsCurrent ? ' dan ' : ''}{!me!.termsCurrent ? 'persetujuan syarat' : ''} Anda di halaman <Link to="/profile" style={{ color: 'var(--primary)', fontWeight: 700 }}>Profil</Link>.
+                </Notice>
+              )}
               {create.isError && <Notice tone="error">{messageForError(create.error)}</Notice>}
-              <Button type="submit" variant="primary" size="lg" fullWidth isLoading={create.isPending} icon={<Send size={16} />}>{me ? 'Kirim Pengajuan' : 'Masuk untuk Mengajukan'}</Button>
+              <Button type="submit" variant="primary" size="lg" fullWidth isLoading={create.isPending} disabled={missingProfile} icon={<Send size={16} />}>{me ? 'Kirim Pengajuan' : 'Masuk untuk Mengajukan'}</Button>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 <ShieldCheck size={15} color="var(--primary)" style={{ flexShrink: 0 }} />
                 <span>Pengajuan tidak menahan kamar dan tidak memindahkan uang.</span>

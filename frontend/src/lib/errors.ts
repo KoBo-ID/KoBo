@@ -22,6 +22,7 @@ const AUTH_CODES: Record<string, string> = {
   INVALID_CAMPUS_EMAIL: 'Gunakan email kampus yang berakhiran .ac.id.',
   CAMPUS_EMAIL_TAKEN: 'Email kampus ini sudah dipakai akun lain.',
   DEMO_ACCOUNT_READONLY: 'Akun ini bersifat hanya-baca. Buat akun sendiri untuk mengubah data ini.',
+  INVALID_PROFILE: 'Nama terlalu panjang (maksimal 80 karakter).',
 };
 
 /** tRPC codes where the server's own (always Indonesian) message is more useful than a fixed line. */

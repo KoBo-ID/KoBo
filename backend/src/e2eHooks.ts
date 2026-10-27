@@ -1,6 +1,7 @@
 import type { Hono } from 'hono'
 import { z } from 'zod'
 import type { PrismaClient } from './db/client.ts'
+import { FakeWhatsApp, scanNotifications } from './notifications.ts'
 import { drainOutbox, transportFromEnv } from './outbox.ts'
 import { MockPaymentProvider } from './payment/mock.ts'
 import type { CheckoutSession, CreateCheckoutInput, CreateRefundInput, GetSessionInput, PaymentProvider, PaymentSessionSnapshot, RefundSnapshot } from './payment/provider.ts'
@@ -84,6 +85,8 @@ export class FakeXenditProvider implements PaymentProvider {
 export interface E2eHooks {
   provider: FakeXenditProvider
   paymentService: PaymentService
+  /** Collects the WhatsApp messages the notify tick would send; read through POST /api/__e2e/whatsapp. */
+  whatsapp: FakeWhatsApp
 }
 
 export function createE2eHooks(prisma: PrismaClient): E2eHooks {
@@ -93,10 +96,10 @@ export function createE2eHooks(prisma: PrismaClient): E2eHooks {
     mockProvider: new MockPaymentProvider(),
     xenditWebhook: { callbackToken: E2E_CALLBACK_TOKEN, businessId: E2E_BUSINESS_ID },
   })
-  return { provider, paymentService }
+  return { provider, paymentService, whatsapp: new FakeWhatsApp() }
 }
 
-const tickBody = z.object({ worker: z.enum(['sweep', 'refunds', 'waitlist', 'outbox']), now: z.iso.datetime().optional() })
+const tickBody = z.object({ worker: z.enum(['sweep', 'refunds', 'waitlist', 'outbox', 'notify']), now: z.iso.datetime().optional() })
 const sessionBody = z.object({ paymentId: z.string().min(1), state: z.enum(['ACTIVE', 'COMPLETED', 'EXPIRED']) })
 const refundBody = z.object({ paymentId: z.string().min(1), mode: z.enum(['SUCCEEDED', 'PENDING', 'FAILED', 'ERROR']) })
 const outageBody = z.object({ invoiceId: z.string().min(1) })
@@ -119,8 +122,11 @@ export function mountE2eHooks(app: Hono, prisma: PrismaClient, hooks: E2eHooks):
     if (worker === 'sweep') return sweepStalePayments(prisma, hooks.paymentService, { limit: 500, now: at })
     if (worker === 'refunds') return drainPaymentRefunds(prisma, hooks.paymentService, { batchSize: 100, now: () => at })
     if (worker === 'waitlist') return advanceAllWaitlists(prisma, at)
+    if (worker === 'notify') return scanNotifications(prisma, at, { whatsapp: hooks.whatsapp })
     return drainOutbox(prisma, transportFromEnv(), { batchSize: 200 })
   })
+
+  route('/api/__e2e/whatsapp', z.object({}), () => hooks.whatsapp.sent)
 
   route('/api/__e2e/xendit/session', sessionBody, ({ paymentId, state }) => {
     hooks.provider.sessions.set(paymentId, state)

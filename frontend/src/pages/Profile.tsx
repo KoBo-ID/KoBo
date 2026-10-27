@@ -10,6 +10,7 @@ import { Notice } from '../components/ui/Notice';
 import { Avatar } from '../components/ui/Avatar';
 import { AccountSecurityCard } from '../components/auth/AccountSecurityCard';
 import { CampusDiscountCard } from '../components/booking/CampusDiscountCard';
+import { EmergencyContactCard, RemindersAndTermsCard } from '../components/profile/ConsentCards';
 import { useSession } from '../lib/session';
 import { BecomeOwnerModal } from '../components/owner/BecomeOwnerModal';
 import { useTRPC } from '../lib/trpc';
@@ -193,6 +194,10 @@ export const Profile: React.FC = () => {
         </div>
 
         <CampusDiscountCard />
+
+        {me && !me.user.isDemo && <EmergencyContactCard />}
+
+        {me && !me.user.isDemo && <RemindersAndTermsCard />}
 
         {me && !me.user.isDemo && <AccountSecurityCard />}
 
