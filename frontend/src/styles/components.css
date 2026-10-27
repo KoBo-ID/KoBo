@@ -1358,14 +1358,14 @@
 @media (max-width: 639px) { .detail-card, .detail-main .room-picker { padding: 1.25rem; } }
 .detail-reviews { margin-top: 1.5rem; }
 /* Inside a container the light-grey fill separates the items: rules groups and reviews. */
-.kos-rules__group { background: var(--bg-surface); border-color: transparent; }
+.kos-rules__group { background: var(--bg-page); border-color: transparent; }
 .kos-rules__group:hover, .kos-rules__group:focus-within { border-color: var(--border-strong); }
 .kos-rules__panel { background: transparent; border-top: 0; padding-top: 0.25rem; }
 .kos-reviews__summary { padding: 0; margin: 0 0 1.25rem; border: 0; border-radius: 0; background: transparent; }
 .kos-reviews__aspects { padding-top: 0; border-top: 0; }
 .kos-reviews__list, .kos-reviews__extra { gap: 0.75rem; }
 .kos-reviews__extra { margin-top: 0.75rem; }
-.kos-reviews__item { padding: 1rem 1.25rem; border: 0; border-radius: var(--radius-lg); background: var(--bg-surface); }
+.kos-reviews__item { padding: 1rem 1.25rem; border: 0; border-radius: var(--radius-lg); background: var(--bg-page); }
 .kos-reviews__reply { margin-top: 0.75rem; padding: 0.75rem 0 0; border-top: 0; }
 
 /* (i) info popover next to a field label */
