@@ -6,6 +6,7 @@ import { Hero } from '../components/home/Hero';
 import { FeaturedKos } from '../components/home/FeaturedKos';
 import { WhyRows } from '../components/home/WhyRows';
 import { OwnerCta } from '../components/home/OwnerCta';
+import { StudentFaq } from '../components/home/StudentFaq';
 
 export const Home: React.FC = () => {
   useDocumentTitle('KoBo');
@@ -17,6 +18,7 @@ export const Home: React.FC = () => {
       <Hero />
       <FeaturedKos onOpenSurvey={setSelectedVisitKos} />
       <WhyRows />
+      <StudentFaq />
       <OwnerCta />
     </div>
 

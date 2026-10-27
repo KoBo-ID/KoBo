@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { leaseQuote } from '@kobo/shared/domain';
 import { useSession } from '../../../lib/session';
-import { ClipboardList, Calendar, GraduationCap } from 'lucide-react';
+import { ClipboardList, Calendar, GraduationCap, ShieldCheck } from 'lucide-react';
 import type { WaitlistStatusResult } from '../../../../../backend/src/trpc/router';
 import { Room, Kos } from '../../../types';
 import { Button } from '../../ui/Button';
@@ -257,6 +257,13 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
             Jadwalkan Survey Gratis
           </Button>
         </div>
+
+        {showBooking && !offerEntry && isVacant && (
+          <p style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', margin: '-0.25rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            <ShieldCheck size={15} color="var(--primary)" style={{ flexShrink: 0 }} aria-hidden="true" />
+            <span>Mengajukan sewa tidak menahan kamar dan tidak memindahkan uang. Anda membayar setelah pemilik menyetujui.</span>
+          </p>
+        )}
       </div>
     </aside>
 

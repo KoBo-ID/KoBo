@@ -89,7 +89,7 @@ export const Hero: React.FC = () => {
                   <CampusSearchField
                     value={searchInput}
                     label="Cari area atau lokasi"
-                    placeholder="Cari area atau lokasi..."
+                    placeholder="Cari kampus atau area..."
                     onChange={setSearchInput}
                     onSubmitText={submitText}
                     onPickCampus={(branch) => navigate(`/search?campus=${encodeURIComponent(branch.id)}&sort=distance_asc`)}
@@ -119,7 +119,7 @@ export const Hero: React.FC = () => {
               </div>
 
               <nav className="kobo-hero__campus-chips hero-enter" aria-label="Kampus populer">
-                <span className="kobo-hero__campus-lead">Cari dekat:</span>
+                <span className="kobo-hero__campus-lead">Kos dekat kampus:</span>
                 {FEATURED_CAMPUSES.map(({ id, label }) => (
                   <Link key={id} to={`/search?campus=${encodeURIComponent(id)}&sort=distance_asc`} className="kobo-hero__campus-chip">
                     {label}

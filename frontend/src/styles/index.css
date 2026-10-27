@@ -196,7 +196,7 @@ img {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: #ffffff;
+  background-color: var(--bg-surface);
   color: var(--text-main);
   font-family: var(--font-sans);
   font-size: 0.78rem;
@@ -214,7 +214,7 @@ img {
 .kobo-price-pin:hover,
 .kobo-price-pin.is-active {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--text-inverse);
   border-color: var(--primary);
   transform: translate(-50%, -50%) scale(1.1);
   box-shadow: var(--shadow-lg);
@@ -294,7 +294,7 @@ img {
   height: 14px;
   border-radius: 50%;
   background-color: var(--accent);
-  border: 3px solid #ffffff;
+  border: 3px solid var(--bg-surface);
   box-shadow: 0 0 0 4px hsla(190, 95%, 42%, 0.3), var(--shadow-md);
 }
 
