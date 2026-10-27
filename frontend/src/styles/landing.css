@@ -146,7 +146,7 @@
    navbar and fills the wrapper top to bottom: strong at the top and bottom edges, faint through the middle. Tune with --backdrop-strength /
    --grain-strength. Blobs are sized in px so they land in the same place on
    any page height. Hues: cyan, teal and aquamarine, kept spatially apart so they never blend to grey. */
-.landing-backdrop { position: relative; isolation: isolate; padding-bottom: 3rem; margin-bottom: -3rem; --backdrop-strength: 1; --grain-strength: 0.12;
+.landing-backdrop { position: relative; isolation: isolate; padding-bottom: 3rem; margin-bottom: -3rem; --backdrop-strength: 0.65; --grain-strength: 0.17; background-color: hsl(45, 45%, 98.5%);
 }
 /* Secondary text that sits directly on the tinted glow (not inside white cards):
    darken just enough to hold AA (>=4.5:1). */
@@ -174,7 +174,10 @@
     radial-gradient(700px 500px at 100% 86%, hsla(170, 60%, 80%, 0.35), hsla(170, 60%, 80%, 0) 100%),
     radial-gradient(900px 640px at 12% 100%, hsla(176, 62%, 78%, 0.6), hsla(176, 62%, 78%, 0) 100%),
     radial-gradient(800px 560px at 88% 100%, hsla(188, 85%, 80%, 0.65), hsla(188, 85%, 80%, 0) 100%),
-    radial-gradient(600px 420px at 50% 100%, hsla(160, 72%, 82%, 0.5), hsla(160, 72%, 82%, 0) 100%);
+    radial-gradient(600px 420px at 50% 100%, hsla(160, 72%, 82%, 0.5), hsla(160, 72%, 82%, 0) 100%),
+    radial-gradient(820px 600px at 72% 24%, hsla(188, 85%, 82%, 0.28), hsla(188, 85%, 82%, 0) 100%),
+    radial-gradient(860px 620px at 78% 62%, hsla(176, 62%, 80%, 0.26), hsla(176, 62%, 80%, 0) 100%),
+    radial-gradient(720px 520px at 38% 78%, hsla(188, 85%, 82%, 0.3), hsla(188, 85%, 82%, 0) 100%);
   background:
     radial-gradient(900px 640px at 10% 0 in oklab, hsla(188, 85%, 80%, 0.7), hsla(188, 85%, 80%, 0) 100%),
     radial-gradient(760px 560px at 92% 3% in oklab, hsla(176, 62%, 78%, 0.62), hsla(176, 62%, 78%, 0) 100%),
@@ -184,12 +187,15 @@
     radial-gradient(700px 500px at 100% 86% in oklab, hsla(170, 60%, 80%, 0.35), hsla(170, 60%, 80%, 0) 100%),
     radial-gradient(900px 640px at 12% 100% in oklab, hsla(176, 62%, 78%, 0.6), hsla(176, 62%, 78%, 0) 100%),
     radial-gradient(800px 560px at 88% 100% in oklab, hsla(188, 85%, 80%, 0.65), hsla(188, 85%, 80%, 0) 100%),
-    radial-gradient(600px 420px at 50% 100% in oklab, hsla(160, 72%, 82%, 0.5), hsla(160, 72%, 82%, 0) 100%);
+    radial-gradient(600px 420px at 50% 100% in oklab, hsla(160, 72%, 82%, 0.5), hsla(160, 72%, 82%, 0) 100%),
+    radial-gradient(820px 600px at 72% 24% in oklab, hsla(188, 85%, 82%, 0.28), hsla(188, 85%, 82%, 0) 100%),
+    radial-gradient(860px 620px at 78% 62% in oklab, hsla(176, 62%, 80%, 0.26), hsla(176, 62%, 80%, 0) 100%),
+    radial-gradient(720px 520px at 38% 78% in oklab, hsla(188, 85%, 82%, 0.3), hsla(188, 85%, 82%, 0) 100%);
 }
 .landing-backdrop::after {
   opacity: var(--grain-strength);
   background-size: 180px 180px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .08 0 0 0 0 .16 0 0 0 0 .2 .9 0 0 0 -.3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .08 0 0 0 0 .16 0 0 0 0 .2 .9 0 0 0 -.3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 @media (prefers-contrast: more), (forced-colors: active) {
   .landing-backdrop::before,
