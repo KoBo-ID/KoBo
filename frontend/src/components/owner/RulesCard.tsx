@@ -17,7 +17,7 @@ export const RulesCard: React.FC<{ kosId: string; onEdit: () => void }> = ({ kos
   const rules = detail.data?.rules ?? [];
 
   return (
-    <section className="os-card" aria-labelledby="owner-rules-title">
+    <section id="tata-tertib" className="os-card" aria-labelledby="owner-rules-title">
       <div className="os-card__head">
         <h2 id="owner-rules-title" className="os-card__title">
           Tata tertib dan denda {detail.isSuccess && <span>{rules.length} kelompok</span>}

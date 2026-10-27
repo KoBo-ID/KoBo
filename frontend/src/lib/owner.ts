@@ -14,10 +14,10 @@ export function useBecomeOwner() {
   const mutation = useMutation(trpc.owner.becomeOwner.mutationOptions());
 
   /** Resolves true once registered (the workspace is open), false with `error` set otherwise. */
-  const becomeOwner = async (phone: string): Promise<boolean> => {
+  const becomeOwner = async (phone: string, ownershipType?: 'PEMILIK' | 'PENGELOLA_KUASA' | 'LAINNYA'): Promise<boolean> => {
     setError(null);
     try {
-      await mutation.mutateAsync({ phone });
+      await mutation.mutateAsync({ phone, ...(ownershipType ? { ownershipType } : {}) });
       await refreshSession();
       navigate('/owner/dashboard');
       return true;

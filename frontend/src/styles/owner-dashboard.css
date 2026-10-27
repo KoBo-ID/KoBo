@@ -7,6 +7,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr);
   gap: 1rem;
+  align-items: start; /* height follows content: no tile is stretched to the tallest one */
   margin-bottom: 1.5rem;
 }
 .od-tile {
@@ -16,16 +17,13 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card);
 }
-/* The brand tile: the one place the teal carries a whole surface. */
-.od-tile--brand { background: var(--primary-light); border-color: hsl(176, 40%, 84%); }
 .od-eyebrow { margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
 .od-figure { margin: 0; color: var(--text-main); font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .od-figure span { font-size: 0.875rem; font-weight: 500; letter-spacing: 0; color: var(--text-muted); }
 .od-figure--brand { color: var(--primary); }
-.od-figure--late { color: var(--status-overdue-text); }
+.od-meta--late { color: var(--status-overdue-text); font-weight: 600; }
 .od-meta { margin: 0; font-size: 0.8125rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.od-tile--brand .od-meta { color: hsl(176, 30%, 24%); }
-.od-bar { align-self: stretch; height: 0.5rem; margin-top: 0.25rem; border-radius: var(--radius-pill); background: var(--bg-surface); overflow: hidden; }
+.od-bar { align-self: stretch; height: 0.5rem; margin-top: 0.25rem; border-radius: var(--radius-pill); background: var(--bg-muted); overflow: hidden; }
 .od-bar > span { display: block; height: 100%; background: var(--primary); border-radius: inherit; transform-origin: left; animation: od-grow 500ms cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes od-grow { from { transform: scaleX(0); } }
 .od-link { display: inline-flex; align-items: baseline; gap: 0.4rem; min-height: 2rem; padding: 0; background: none; border: 0; font: inherit; font-size: 0.875rem; font-weight: 700; color: var(--primary); text-decoration: none; cursor: pointer; border-radius: var(--radius-sm); }
@@ -64,7 +62,7 @@
 .od-list { display: flex; flex-direction: column; gap: 0.25rem; list-style: none; margin: 0; padding: 0; }
 .od-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 16rem) minmax(0, 1fr);
   align-items: center;
   column-gap: 1.5rem;
   row-gap: 0.5rem;
@@ -73,7 +71,7 @@
   border-radius: var(--radius-md);
 }
 .od-row:hover { background: var(--bg-page); }
-.od-row--attention { grid-template-columns: minmax(0, 1.4fr) 8rem 11rem auto; }
+.od-row--attention { grid-template-columns: minmax(0, 15rem) 8rem 11rem minmax(0, 1fr); }
 .od-row__main { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
 .od-row__title { font-weight: 700; }
 .od-row__sub { color: var(--text-muted); font-size: 0.8125rem; overflow-wrap: anywhere; }
@@ -181,3 +179,16 @@
 /* Many floors: the filter groups scroll sideways inside the column instead of widening the page. */
 .od-board__filters { min-width: 0; max-width: 100%; }
 
+
+/* Collapsed history under an active list (finished surveys). */
+.od-history { margin-top: 0.75rem; }
+.od-history > summary { cursor: pointer; font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); min-height: 2rem; display: flex; align-items: center; }
+.od-history > summary:hover { color: var(--text-main); }
+.od-history[open] > summary { margin-bottom: 0.5rem; }
+
+/* ---- Tabs: overview / things to act on ---- */
+.od-tabs { margin-bottom: 1.5rem; }
+.od-tabs button { gap: 0.5rem; }
+.od-tabs button[aria-selected='true'] { background-color: var(--bg-surface); color: var(--text-main); font-weight: 700; box-shadow: var(--shadow-xs); }
+.od-count-bubble { display: inline-flex; align-items: center; justify-content: center; min-width: 1.25rem; height: 1.25rem; padding: 0 0.35rem; border-radius: var(--radius-pill); background: var(--primary); color: var(--text-inverse); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.od-pending { margin: -0.5rem 0 1.5rem; }

@@ -144,7 +144,7 @@ export const OwnerLayout: React.FC = () => {
               {item.icon}
               <span>{item.label}</span>
               {item.count > 0 && (
-                <span className="os-nav__count">
+                <span className={`os-nav__count${item.to === '/owner/dashboard' ? ' os-nav__count--danger' : ''}`}>
                   {item.count}
                   <span className="os-sr"> {item.hint}</span>
                 </span>

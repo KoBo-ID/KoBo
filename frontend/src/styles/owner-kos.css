@@ -313,3 +313,21 @@
 .rules-card__count { color: var(--text-muted); font-size: 0.8125rem; }
 .rules-card__fine { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) { .rules-card__row { grid-template-columns: 1fr auto; } .rules-card__count { display: none; } }
+
+/* Sticky section nav on Kelola properti. Sits under the sticky owner bars (72px on desktop; 60 + 56px on phones). */
+.kos-sections {
+  position: sticky; top: calc(var(--header-height) - 1px); z-index: calc(var(--z-header) - 2);
+  display: flex; gap: 0.25rem; margin: 0 0 1rem; padding: 0.5rem 0;
+  background: var(--bg-page); border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto; scrollbar-width: none;
+}
+.kos-sections::-webkit-scrollbar { display: none; }
+.kos-sections a {
+  display: inline-flex; align-items: center; min-height: var(--control-height); padding: 0 0.85rem; white-space: nowrap;
+  border-radius: var(--radius-md); color: var(--text-muted); font-size: 0.875rem; font-weight: 600; text-decoration: none;
+}
+.kos-sections a:hover { color: var(--text-main); background: var(--bg-muted); }
+.kos-sections a[aria-current='true'] { color: var(--text-main); background: var(--bg-surface); box-shadow: var(--shadow-xs); font-weight: 700; }
+.kos-sections a:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+@media (max-width: 899px) { .kos-sections { top: 115px; } }
+.owner-kos__anchor, #properti, #kamar, #tata-tertib { scroll-margin-top: 9rem; }

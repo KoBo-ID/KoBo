@@ -42,11 +42,12 @@ test('owner marks a booked room paid and opens its kuitansi', async ({ page, bro
   expect(room, 'tenant applied for a vacant room').toBeTruthy()
   await tenantCtx.close()
 
-  await page.goto(`/owner/dashboard?kos=${kos!.id}`)
+  await page.goto(`/owner/dashboard?kos=${kos!.id}&tab=tindakan`)
   const application = page.getByTestId('owner-application').filter({ hasText: `Kamar ${room!.roomNumber}` })
   await application.getByRole('button', { name: 'Terima' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Terima Pengajuan' }).click()
   await expect(application).toHaveCount(0)
+  await page.getByRole('tab', { name: 'Ringkasan' }).click()
   const row = page.getByRole('row').filter({ hasText: `Kamar ${room!.roomNumber}` })
   await expect(row.getByText('Dipesan', { exact: true })).toBeVisible()
 
@@ -129,4 +130,22 @@ test('the Hunian status counts jump to the matching room filter', async ({ page 
   const label = (await stat.textContent())!.replace(/\d+$/, '').trim()
   await stat.click()
   await expect(page.locator('[aria-label="Filter status kamar"] [aria-pressed="true"]')).toContainText(label)
+})
+
+test('dashboard splits into Ringkasan and Perlu tindakan, deep-linkable, with the count on the tab', async ({ page }) => {
+  await loginAs(page, 'owner')
+  await page.goto('/owner/dashboard')
+  await expect(page.getByRole('tab', { name: 'Ringkasan' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('heading', { name: 'Terkumpul bulan ini' })).toBeVisible()
+  await expect(page.locator('table.kobo-table').first()).toBeVisible()
+
+  await page.getByRole('tab', { name: /Perlu tindakan/ }).click()
+  await expect(page).toHaveURL(/tab=tindakan/)
+  await expect(page.getByRole('heading', { name: 'Terkumpul bulan ini' })).toHaveCount(0)
+  await expect(page.locator('table.kobo-table')).toHaveCount(0)
+
+  await page.reload()
+  await expect(page.getByRole('tab', { name: /Perlu tindakan/ })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: 'Ringkasan' }).click()
+  await expect(page).not.toHaveURL(/tab=/)
 })

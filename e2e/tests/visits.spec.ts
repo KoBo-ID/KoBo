@@ -17,14 +17,9 @@ test('demo student schedules a survey, the demo owner sees it and marks it done'
   await expect(page.getByText('Terjadwal').first()).toBeVisible()
 
   await loginAs(page, 'owner')
-  await page.goto('/owner/dashboard')
+  await page.goto('/owner/dashboard?tab=tindakan')
   const row = page.getByTestId('owner-visit').filter({ hasText: 'Dimas Pratama' }).first()
   await expect(row).toBeVisible()
-
-  // A waiting survey is promoted above the room board, the same way "Perlu Perhatian" is.
-  const surveyTop = (await page.locator('#visits-title').boundingBox())!.y
-  const boardTop = (await page.locator('table.kobo-table').first().boundingBox())!.y
-  expect(surveyTop).toBeLessThan(boardTop)
 
   await row.getByRole('button', { name: 'Tandai Selesai' }).click()
   await expect(page.getByText('Survey ditandai selesai.')).toBeVisible()

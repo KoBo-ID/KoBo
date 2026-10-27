@@ -1,6 +1,6 @@
 import '../../styles/owner-dashboard.css';
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MessageSquare, CheckCircle2 } from 'lucide-react';
 import type { BoardRoom } from '../../../../backend/src/trpc/router';
@@ -8,6 +8,8 @@ import { OwnerOverview } from '../../components/owner/OwnerOverview';
 import { RoomOccupancyBoard } from '../../components/owner/RoomOccupancyBoard';
 import { ApplicationsPanel } from '../../components/owner/ApplicationsPanel';
 import { VisitsPanel } from '../../components/owner/VisitsPanel';
+import { RemindersLog } from '../../components/owner/RemindersLog';
+import { TenantProfileModal } from '../../components/owner/TenantProfileModal';
 import { ManualPaymentModal } from '../../components/owner/ManualPaymentModal';
 import { Notice } from '../../components/ui/Notice';
 import { WhatsAppModal } from '../../components/owner/WhatsAppModal';
@@ -68,11 +70,22 @@ export const OwnerDashboard: React.FC = () => {
   const visits = useOwnerVisits(selectedKos?.id);
   const applications = useQuery({ ...trpc.application.ownerList.queryOptions({ kosId: selectedKos?.id ?? '' }), enabled: !!selectedKos });
   const { busyRoomId, markPaid, endTenancy } = useRoomActions(selectedKos?.id);
+  // Two views of one set of queries: the overview (money, building, room board) and the inbox of things to act on.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab: 'ringkasan' | 'tindakan' = searchParams.get('tab') === 'tindakan' ? 'tindakan' : 'ringkasan';
+  const setTab = (next: 'ringkasan' | 'tindakan') =>
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      if (next === 'tindakan') p.set('tab', 'tindakan');
+      else p.delete('tab');
+      return p;
+    }, { replace: true });
 
   const [whatsAppTargetRoom, setWhatsAppTargetRoom] = useState<BoardRoom | null>(null);
   const [statusFilter, setStatusFilter] = useState<RoomStatus | 'all'>('all');
   const [confirmingRoom, setConfirmingRoom] = useState<BoardRoom | null>(null);
   const [payingRoom, setPayingRoom] = useState<BoardRoom | null>(null);
+  const [profileTenancy, setProfileTenancy] = useState<string | null>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
   const lastTrigger = useRef<HTMLElement | null>(null);
 
@@ -130,9 +143,12 @@ export const OwnerDashboard: React.FC = () => {
   };
 
   const hasAttention = attentionRooms.length > 0;
-  const hasVisitAttention = (visits.data ?? []).some((v) => v.status === 'SCHEDULED');
-  const hasApplications = (applications.data?.length ?? 0) > 0;
+  const scheduledVisits = (visits.data ?? []).filter((v) => v.status === 'SCHEDULED').length;
+  const hasVisitAttention = scheduledVisits > 0;
+  const applicationCount = applications.data?.length ?? 0;
+  const hasApplications = applicationCount > 0;
   const allClear = !hasAttention && !hasVisitAttention && !hasApplications;
+  const actionCount = attentionRooms.length + scheduledVisits + applicationCount + needsReview.length;
   const showStatus = (status: RoomStatus) => {
     setStatusFilter(status);
     document.getElementById('room-board-title')?.scrollIntoView({ block: 'start' });
@@ -145,8 +161,26 @@ export const OwnerDashboard: React.FC = () => {
     <div className="app-container owner-page">
       <OwnerPageHeader title="Papan okupansi" actions={<span className="od-date">{todayLabel()}</span>} />
 
-      <OwnerOverview summary={summary} onShowStatus={showStatus} />
+      <div className="od-tabs kobo-segmented" role="tablist" aria-label="Tampilan papan">
+        <button type="button" role="tab" id="od-tab-ringkasan" aria-selected={tab === 'ringkasan'} aria-controls="od-panel" onClick={() => setTab('ringkasan')}>
+          Ringkasan
+        </button>
+        <button type="button" role="tab" id="od-tab-tindakan" aria-selected={tab === 'tindakan'} aria-controls="od-panel" onClick={() => setTab('tindakan')}>
+          Perlu tindakan{actionCount > 0 && <span className="od-count-bubble">{actionCount}</span>}
+        </button>
+      </div>
 
+      <div id="od-panel" role="tabpanel" aria-labelledby={`od-tab-${tab}`}>
+        {tab === 'ringkasan' ? (
+          <>
+            <OwnerOverview summary={summary} onShowStatus={showStatus} />
+            {actionCount > 0 && (
+              <p className="od-pending">
+                <button type="button" className="od-link" onClick={() => setTab('tindakan')}>
+                  {actionCount} hal menunggu tindakan Anda
+                </button>
+              </p>
+            )}
       {confirmingRoom && (
         <div
           ref={confirmRef}
@@ -173,6 +207,20 @@ export const OwnerDashboard: React.FC = () => {
         </div>
       )}
 
+      <RoomOccupancyBoard
+        kosName={selectedKos.name}
+        rooms={rooms}
+        busyRoomId={busyRoomId}
+        filterStatus={statusFilter}
+        onFilterStatusChange={setStatusFilter}
+        onOpenWhatsApp={setWhatsAppTargetRoom}
+        onMarkPaid={pay}
+        onEndTenancy={askEnd}
+      />
+
+          </>
+        ) : (
+          <>
       {allClear && (
         <p className="od-clear">
           <CheckCircle2 size={18} aria-hidden="true" />
@@ -201,6 +249,7 @@ export const OwnerDashboard: React.FC = () => {
                   {room.daysOverdue > 0 ? <span className="od-chip od-chip--late">Telat {room.daysOverdue} hari</span> : null}
                 </div>
                 <div className="od-row__actions">
+                  {room.tenancyId && <Button variant="ghost" size="sm" aria-label={`Profil penyewa Kamar ${room.roomNumber}`} onClick={() => setProfileTenancy(room.tenancyId!)}>Profil</Button>}
                   <Button variant="outline" size="sm" icon={<MessageSquare size={14} />} onClick={() => setWhatsAppTargetRoom(room)}>
                     Kirim tagihan
                   </Button>
@@ -221,7 +270,7 @@ export const OwnerDashboard: React.FC = () => {
         </section>
       )}
 
-      <VisitsPanel kosId={selectedKos.id} promoted={hasVisitAttention} />
+      <VisitsPanel kosId={selectedKos.id} />
 
       {needsReview.length > 0 && (
         <Notice tone="error">
@@ -229,16 +278,12 @@ export const OwnerDashboard: React.FC = () => {
         </Notice>
       )}
 
-      <RoomOccupancyBoard
-        kosName={selectedKos.name}
-        rooms={rooms}
-        busyRoomId={busyRoomId}
-        filterStatus={statusFilter}
-        onFilterStatusChange={setStatusFilter}
-        onOpenWhatsApp={setWhatsAppTargetRoom}
-        onMarkPaid={pay}
-        onEndTenancy={askEnd}
-      />
+            <RemindersLog kosId={selectedKos.id} />
+          </>
+        )}
+      </div>
+
+      {profileTenancy && <TenantProfileModal target={{ kosId: selectedKos.id, tenancyId: profileTenancy }} onClose={() => setProfileTenancy(null)} />}
 
       {payingRoom?.invoice && (
         <ManualPaymentModal

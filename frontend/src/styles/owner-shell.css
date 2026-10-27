@@ -130,6 +130,7 @@
   border: 1px solid hsl(176, 40%, 82%);
 }
 .os-nav__link.is-active .os-nav__count { background: var(--bg-surface); }
+.os-nav__count--danger, .os-nav__link.is-active .os-nav__count--danger { background: var(--status-overdue-bg); color: var(--status-overdue-text); }
 .os-nav__count { margin-left: auto; }
 .os-dock-icon { position: relative; display: inline-flex; }
 .os-dock-count { position: absolute; top: -0.45rem; left: 55%; min-width: 1.15rem; height: 1.15rem; font-size: 0.6875rem; }

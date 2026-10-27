@@ -104,7 +104,7 @@ test('scenario 26: one scheduled visit per kos; the owner sees it and completes 
     })
 
     await test.step('the owner sees the student and the contact number, and marks it done', async () => {
-      await owner.page.goto(`/owner/dashboard?kos=${owner.kosId}`)
+      await owner.page.goto(`/owner/dashboard?kos=${owner.kosId}&tab=tindakan`)
       const row = owner.page.getByTestId('owner-visit')
       await expect(row).toHaveCount(1)
       await expect(row).toContainText('Penguji E2E')
@@ -113,8 +113,12 @@ test('scenario 26: one scheduled visit per kos; the owner sees it and completes 
       await expect(row).toContainText('Datang bersama orang tua')
       await row.getByRole('button', { name: 'Tandai selesai' }).click()
       await expect(owner.page.getByText('Survey ditandai selesai.')).toBeVisible()
-      await expect(owner.page.getByTestId('owner-visit')).toContainText('Selesai')
-      await expect(owner.page.getByTestId('owner-visit').getByRole('button', { name: 'Tandai selesai' })).toHaveCount(0)
+      // A finished survey leaves the active list and sits in the collapsed history.
+      await expect(owner.page.getByTestId('owner-visit')).toHaveCount(0)
+      const history = owner.page.getByTestId('owner-visit-history')
+      await expect(history).toContainText('Riwayat survey (1)')
+      await history.getByText('Riwayat survey').click()
+      await expect(history).toContainText('Selesai')
     })
 
     await test.step('the student sees Selesai and can no longer cancel; the server says so', async () => {

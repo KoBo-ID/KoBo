@@ -25,7 +25,7 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({ summary, onShowSta
 
   return (
     <section className="od-hero" aria-label="Ringkasan bulan ini">
-      <div className="od-tile od-tile--brand">
+      <div className="od-tile">
         <h2 className="od-eyebrow">Terkumpul bulan ini</h2>
         <p className="od-figure od-figure--brand">{formatRupiah(collectedThisMonth)}</p>
         {expectedThisMonth > 0 ? (
@@ -46,8 +46,8 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({ summary, onShowSta
         <h2 className="od-eyebrow">Menunggak</h2>
         {overdueAmount > 0 ? (
           <>
-            <p className="od-figure od-figure--late">{formatRupiah(overdueAmount)}</p>
-            <p className="od-meta">{counts.overdue} kamar belum membayar tepat waktu</p>
+            <p className="od-figure">{formatRupiah(overdueAmount)}</p>
+            <p className="od-meta od-meta--late">{counts.overdue} kamar belum membayar tepat waktu</p>
             <button type="button" className="od-link" aria-label={`Lihat ${counts.overdue} kamar menunggak, ${formatRupiah(overdueAmount)}`} onClick={() => onShowStatus('overdue')}>
               Lihat kamar
             </button>

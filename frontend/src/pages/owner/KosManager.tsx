@@ -11,6 +11,7 @@ import { formatRupiah, useOwnerWorkspace } from '../../lib/ownerWorkspace';
 import { KosFormModal } from '../../components/owner/KosFormModal';
 import { KosPhotosModal } from '../../components/owner/KosPhotosModal';
 import { KosRulesModal } from '../../components/owner/KosRulesModal';
+import { KosSectionNav } from '../../components/owner/KosSectionNav';
 import { RulesCard } from '../../components/owner/RulesCard';
 import { WaitlistPanel } from '../../components/owner/WaitlistPanel';
 import { Button } from '../../components/ui/Button';
@@ -21,6 +22,12 @@ import { Input } from '../../components/ui/Input';
 import { SafeImage } from '../../components/ui/SafeImage';
 import { Link } from 'react-router-dom';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
+
+const KOS_SECTIONS = [
+  { id: 'properti', label: 'Properti' },
+  { id: 'kamar', label: 'Kamar' },
+  { id: 'tata-tertib', label: 'Tata tertib dan denda' },
+];
 
 export const KosManager: React.FC = () => {
   useDocumentTitle('Kelola properti');
@@ -140,7 +147,8 @@ export const KosManager: React.FC = () => {
 
       {kos && (
         <>
-          <section className="os-card owner-kos__identity-card" aria-label="Properti aktif">
+          <KosSectionNav sections={KOS_SECTIONS} />
+          <section id="properti" className="os-card owner-kos__identity-card" aria-label="Properti aktif">
           <div className="owner-kos__head">
             <div className="owner-kos__identity">
               {kos.image ? (
@@ -260,7 +268,7 @@ export const KosManager: React.FC = () => {
           </section>
 
           {/* Room details */}
-          <section className="os-card" aria-labelledby="owner-rooms-title">
+          <section id="kamar" className="os-card" aria-labelledby="owner-rooms-title">
             <div className="os-card__head">
               <h2 id="owner-rooms-title" className="os-card__title">
                 Daftar kamar <span>{kos.totalRooms} kamar</span>
