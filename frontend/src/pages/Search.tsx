@@ -416,6 +416,8 @@ export const Search: React.FC = () => {
                 onClear={clearLocationInput}
                 onSubmitText={handleSearchText}
                 onPickCampus={(branch) => handlePickCampus(branch.id)}
+                onPickRegion={(region) => { setTypedInput(null); updateFilters({ q: '', loc: null, campus: null, lat: null, lng: null, place: null, radius: null, region: region.code }); }}
+                onPickPoint={(p) => { setTypedInput(null); updateFilters({ q: '', loc: null, campus: null, lat: p.lat, lng: p.lng, place: p.label, radius: 3000, region: null, sort: searchParams.has('sort') ? filters.sort : 'distance_asc' }); }}
                 style={{ flex: 1, minWidth: 0 }}
               />
               <button
@@ -636,52 +638,6 @@ export const Search: React.FC = () => {
             <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-main)' }}>{regionName ?? 'Wilayah'}</span>
             <div style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
               <strong style={{ color: 'var(--text-main)' }}>{sortedKos.length}</strong> kos di {regionName ?? 'wilayah ini'}
-            </div>
-          </div>
-        )}
-
-        {activeLocation && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1rem',
-              flexWrap: 'wrap',
-              padding: '0.65rem 0.9rem',
-              marginBottom: '1rem',
-              backgroundColor: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-md)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
-              <MapPin size={15} color="var(--accent)" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                {activeLocation.label}
-              </span>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                {activeLocation.area === activeLocation.label
-                  ? activeLocation.city
-                  : `${activeLocation.area}, ${activeLocation.city}`}
-              </span>
-            </div>
-            {nearbyCampuses.length > 0 && (
-              <>
-                <div style={{ width: '1px', height: '16px', backgroundColor: 'var(--border-subtle)' }} />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <GraduationCap size={15} color="var(--primary)" />
-                  {nearbyCampuses.slice(0, 2).map((item) => (
-                    <span key={item.campus.id} style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                      <strong style={{ color: 'var(--text-main)', fontWeight: 600 }}>{item.campus.shortName}</strong>{' '}
-                      {formatDistance(item.distance)}
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
-            <div style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              <strong style={{ color: 'var(--text-main)' }}>{sortedKos.length}</strong>{' '}
-              {filters.region ? `kos di ${regionName ?? 'wilayah ini'}` : `kos dalam radius ${Math.round((filters.radius ?? SEARCH_RADIUS_METERS) / 1000)} km`}
             </div>
           </div>
         )}
