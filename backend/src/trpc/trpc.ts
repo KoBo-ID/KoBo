@@ -4,6 +4,7 @@ import type { Auth } from '../auth.ts'
 import type { Geocoder } from '../geocode.ts'
 import type { PrismaClient } from '../db/client.ts'
 import type { PaymentService } from '../payment/service.ts'
+import type { RateLimiter } from '../rateLimit.ts'
 import type { Storage } from '../storage.ts'
 
 export type Session = NonNullable<Awaited<ReturnType<Auth['api']['getSession']>>>
@@ -14,6 +15,8 @@ export interface Context {
   storage: Storage
   paymentService: PaymentService
   geocoder: Geocoder
+  /** Rate limiter; absent means the shared one (rateLimit.ts). Tests inject their own. */
+  limiter?: RateLimiter
   /** Request headers (for forwarding to better-auth). */
   headers: Headers
   /** Response headers the tRPC adapter will send (Set-Cookie from auth-changing procedures). */

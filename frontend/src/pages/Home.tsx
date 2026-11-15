@@ -1,22 +1,28 @@
 import React, { useState } from 'react';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Kos } from '../types';
 import { VisitModal } from '../components/booking/VisitModal';
 import { Hero } from '../components/home/Hero';
-import { WhyKobo } from '../components/home/WhyKobo';
 import { FeaturedKos } from '../components/home/FeaturedKos';
+import { WhyRows } from '../components/home/WhyRows';
 import { OwnerCta } from '../components/home/OwnerCta';
+import { StudentFaq } from '../components/home/StudentFaq';
 
 export const Home: React.FC = () => {
+  useDocumentTitle('KoBo');
   const [selectedVisitKos, setSelectedVisitKos] = useState<Kos | null>(null);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--section-gap)' }}>
+    <>
+    <div className="landing-backdrop" style={{ display: 'flex', flexDirection: 'column', gap: 'calc(var(--section-gap) * 1.5)' }}>
       <Hero />
-      <WhyKobo />
       <FeaturedKos onOpenSurvey={setSelectedVisitKos} />
+      <WhyRows />
+      <StudentFaq />
       <OwnerCta />
+    </div>
 
-      {/* Free Visit Modal */}
+      {/* Free Visit Modal (outside the backdrop's stacking context) */}
       {selectedVisitKos && (
         <VisitModal
           isOpen={!!selectedVisitKos}
@@ -24,6 +30,6 @@ export const Home: React.FC = () => {
           kos={selectedVisitKos}
         />
       )}
-    </div>
+    </>
   );
 };

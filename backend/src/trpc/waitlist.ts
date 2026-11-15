@@ -2,6 +2,7 @@ import { competes, compareQueue, MAX_LIVE_ENTRIES, queuePosition } from '@kobo/s
 import { kosIdOnly, ownerWaitlistRemoveInput, waitlistEntryInput, waitlistJoinInput } from '@kobo/shared/schemas'
 import type { WaitlistStatus } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
+import { assertDemoIsolation } from '../demoIsolation.ts'
 import type { Prisma } from '../generated/prisma/client.ts'
 import type { Storage } from '../storage.ts'
 import { advanceWaitlist, liveOffer, roomClaims } from '../waitlist.ts'
@@ -67,6 +68,7 @@ export async function bookableRooms(db: Tx, kosId: string, now: Date): Promise<{
   return db.room.findMany({
     where: {
       kosId,
+      archivedAt: null,
       tenancies: { none: { OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gte: now } }] } },
       waitlistOffers: { none: liveOffer(now) },
     },
@@ -112,7 +114,7 @@ export const waitlistRouter = router({
   status: publicProcedure.input(kosIdOnly).query(async ({ ctx, input }): Promise<WaitlistStatusResult> => {
     const now = new Date()
     const [rooms, bookable, claims, waiting, session] = await Promise.all([
-      ctx.prisma.room.findMany({ where: { kosId: input.kosId }, select: { type: true } }),
+      ctx.prisma.room.findMany({ where: { kosId: input.kosId, archivedAt: null }, select: { type: true } }),
       bookableRooms(ctx.prisma, input.kosId, now),
       roomClaims(ctx.prisma, input.kosId, now),
       ctx.prisma.waitlistEntry.findMany({ where: { kosId: input.kosId, status: 'WAITING' }, select: { roomType: true } }),
@@ -136,9 +138,10 @@ export const waitlistRouter = router({
   /** Join a full kos's queue. Advances the kos first, so a lapsed hold or offer is settled before "is it full?" is decided. */
   join: authedProcedure.input(waitlistJoinInput).mutation(async ({ ctx, input }): Promise<MyWaitlistEntry> => {
     const now = new Date()
-    const kos = await ctx.prisma.kos.findUnique({ where: { id: input.kosId }, select: { id: true, owner: { select: { userId: true } } } })
+    const kos = await ctx.prisma.kos.findUnique({ where: { id: input.kosId, archivedAt: null }, select: { id: true, owner: { select: { userId: true } } } })
     if (!kos) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kos tidak ditemukan.' })
     if (kos.owner.userId === ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: 'Anda tidak bisa mengantre di kos Anda sendiri.' })
+    await assertDemoIsolation(ctx.prisma, ctx.user, kos.id)
     try {
       return await ctx.prisma.$transaction(async (tx) => {
         await advanceWaitlist(tx, kos.id, now)
@@ -147,7 +150,7 @@ export const waitlistRouter = router({
         const mine = await tx.waitlistEntry.findMany({ where: { userId: ctx.user.id, status: { in: [...LIVE] } }, select: { kosId: true } })
         if (mine.some((m) => m.kosId === kos.id)) throw new TRPCError({ code: 'CONFLICT', message: ALREADY_QUEUED })
         if (mine.length >= MAX_LIVE_ENTRIES) throw new TRPCError({ code: 'BAD_REQUEST', message: `Anda hanya bisa mengantre di ${MAX_LIVE_ENTRIES} kos sekaligus.` })
-        const rooms = await tx.room.findMany({ where: { kosId: kos.id }, select: { type: true } })
+        const rooms = await tx.room.findMany({ where: { kosId: kos.id, archivedAt: null }, select: { type: true } })
         if (input.roomType !== null && !rooms.some((r) => r.type === input.roomType)) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tipe kamar tidak ditemukan di kos ini.' })
         if ((await bookableRooms(tx, kos.id, now)).some((r) => input.roomType === null || r.type === input.roomType)) {
           throw new TRPCError({ code: 'BAD_REQUEST', message: 'Masih ada kamar kosong, silakan langsung pesan.' })

@@ -15,7 +15,8 @@ async function ownerAndKos() {
 async function otherOwner(not: string) {
   return prisma.ownerProfile.findFirstOrThrow({ where: { userId: { not }, kos: { some: {} } }, include: { kos: true } })
 }
-const BYTES = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])
+// RIFF....WEBP: the leading bytes confirm() now checks (a declared type alone is not enough).
+const BYTES = new Uint8Array([0x52, 0x49, 0x46, 0x46, 1, 2, 3, 4, 0x57, 0x45, 0x42, 0x50, 5, 6, 7, 8])
 
 /** presign, then "upload" through the fake, returning the presign result. */
 async function upload(userId: string, kosId: string, width = 800, bytes = BYTES, contentType = 'image/webp') {

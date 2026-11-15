@@ -37,7 +37,8 @@ async function queued(over: { provider?: 'XENDIT' | 'MOCK'; paymentRequestId?: s
     },
   })
   const refund = await prisma.paymentRefund.create({
-    data: { paymentId: payment.id, referenceId: `refund_${payment.id}`, amount: payment.amount, reason: over.reason ?? 'HOLD_EXPIRED' },
+    // The worker must see this fixture as due, independent of timestamp rounding or host/DB clock skew.
+    data: { paymentId: payment.id, referenceId: `refund_${payment.id}`, amount: payment.amount, reason: over.reason ?? 'HOLD_EXPIRED', nextAttemptAt: new Date(0) },
   })
   return { payment, refund }
 }

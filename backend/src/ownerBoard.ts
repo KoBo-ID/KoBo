@@ -51,7 +51,7 @@ const dateOnly = (d: Date) => d.toISOString().slice(0, 10)
 /** Board rooms for several kos at once, keyed by kos id. */
 export async function loadBoardRooms(prisma: PrismaClient, kosIds: string[], now = new Date()): Promise<Map<string, BoardRoom[]>> {
   const rooms = await prisma.room.findMany({
-    where: { kosId: { in: kosIds } },
+    where: { kosId: { in: kosIds }, archivedAt: null },
     orderBy: [{ floor: 'asc' }, { roomNumber: 'asc' }],
     include: {
       tenancies: {

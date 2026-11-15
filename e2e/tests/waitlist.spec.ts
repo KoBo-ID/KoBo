@@ -66,7 +66,8 @@ test('demo student queues for a full kos, gets the room when the owner frees it,
   await loginAs(page, 'student')
   await page.goto(`/kos/${kosId}`)
   await expect(page.getByTestId('waitlist-join')).toContainText('Kamar Penuh')
-  await page.getByRole('button', { name: 'Ikut Daftar Tunggu' }).click()
+  // Scoped: the full room-type tile in the picker also offers "Ikut daftar tunggu".
+  await page.getByTestId('waitlist-join').getByRole('button', { name: 'Ikut Daftar Tunggu' }).click()
   await expect(page.getByTestId('waitlist-queued')).toContainText('Anda di antrean #1')
 
   // 4. The owner cancels one booking from the dashboard.

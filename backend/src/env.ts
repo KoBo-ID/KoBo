@@ -58,7 +58,23 @@ export function authEnv(env: NodeJS.ProcessEnv = process.env) {
     trustedOrigins: [...new Set([...(production ? [] : ['http://localhost:5173']), ...parseList(env.TRUSTED_ORIGINS).map((o) => o.replace(/\/+$/, ''))])],
     // Unset: createAuth's default (cf-connecting-ip in production). Behind Vercel -> Railway use x-forwarded-for.
     ipAddressHeaders: ipHeaders.length > 0 ? ipHeaders : undefined,
+    // Optional Google sign-in; throws when only one of the two variables is set, so a half-configured deploy fails at boot.
+    google: googleEnv(env) ?? undefined,
   }
+}
+
+/**
+ * Google sign-in is optional. Both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET set -> enabled; neither -> off (null);
+ * exactly one -> refuse to start, because that is always a half-finished deployment.
+ */
+export function googleEnv(env: NodeJS.ProcessEnv = process.env): { clientId: string; clientSecret: string } | null {
+  const clientId = env.GOOGLE_CLIENT_ID?.trim() ?? ''
+  const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim() ?? ''
+  if (!clientId && !clientSecret) return null
+  if (!clientId || !clientSecret) {
+    throw new Error(`[auth] Google sign-in needs both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET; only ${clientId ? 'GOOGLE_CLIENT_ID' : 'GOOGLE_CLIENT_SECRET'} is set.`)
+  }
+  return { clientId, clientSecret }
 }
 
 type XenditBaseConfig = {
@@ -140,4 +156,20 @@ export function paymentEnv(env: NodeJS.ProcessEnv = process.env): PaymentConfig 
     return { provider, xendit: { ...xendit, secretApiKey, callbackToken, businessId } }
   }
   return { provider, xendit }
+}
+
+/**
+ * Test/e2e hooks (backend/src/e2eHooks.ts): extra /api/__e2e/* routes and a network-free fake Xendit provider.
+ * Off unless ALLOW_E2E_HOOKS=1, and then refused unless every guard holds, so a stray flag cannot reach a real deployment.
+ */
+export function e2eHooksEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.ALLOW_E2E_HOOKS !== '1') return false
+  if (paymentEnv(env).provider !== 'mock') throw new Error('ALLOW_E2E_HOOKS=1 requires PAYMENT_PROVIDER=mock (test/e2e only)')
+  // Mirrors ALLOW_MOCK_PAYMENTS: production mode must opt in twice.
+  if (env.NODE_ENV === 'production' && env.ALLOW_MOCK_PAYMENTS !== '1') {
+    throw new Error('ALLOW_E2E_HOOKS=1 in production requires ALLOW_MOCK_PAYMENTS=1 (e2e only)')
+  }
+  const host = new URL(requireEnv('DATABASE_URL', env)).hostname
+  if (!LOCAL_HOSTS.has(host)) throw new Error('ALLOW_E2E_HOOKS=1 requires a loopback DATABASE_URL')
+  return true
 }

@@ -8,6 +8,7 @@ interface SkeletonProps {
   style?: React.CSSProperties;
 }
 
+/** Gradient-shimmer placeholder. All styling (tokens, sweep, reduced motion) lives in styles/skeleton.css. */
 export const Skeleton: React.FC<SkeletonProps> = ({
   width = '100%',
   height = '1rem',
@@ -17,14 +18,9 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 }) => {
   return (
     <div
-      className={`animate-shimmer ${className}`}
-      style={{
-        width,
-        height,
-        borderRadius,
-        backgroundColor: 'var(--bg-muted)',
-        ...style,
-      }}
+      aria-hidden="true"
+      className={`skeleton ${className}`.trim()}
+      style={{ width, height, borderRadius, ...style }}
     />
   );
 };

@@ -11,8 +11,8 @@ const VIEWPORTS = [
   { name: '1600x900 desktop', width: 1600, height: 900 },
 ] as const
 
-const STUDENT_ROUTES = ['/', '/search', '/kos/kos-1', '/my-kos', '/profile', '/does-not-exist', '/verifikasi-email', '/reset-password', '/owner/owner-1']
-const OWNER_ROUTES = ['/owner/dashboard', '/owner/kos', '/owner/reviews']
+const STUDENT_ROUTES = ['/', '/search', '/kos/kos-1', '/my-kos', '/profile', '/does-not-exist', '/verifikasi-email', '/reset-password', '/owner/owner-1', '/kontak', '/syarat', '/privasi']
+const OWNER_ROUTES = ['/owner/dashboard', '/owner/dashboard?tab=tindakan', '/owner/kos', '/owner/reviews']
 
 /** The page may not scroll sideways. A negative value is the reserved scrollbar gutter. */
 const horizontalOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
@@ -59,7 +59,10 @@ for (const vp of VIEWPORTS) {
       await expect(categories).toHaveCount(7)
       const poiBox = (await poi.boundingBox())!
       const poiColumns = await poi.locator('.kos-poi__categories').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length)
-      expect(poiColumns).toBe(vp.width <= 390 ? 2 : 4)
+      // Narrow: 2 columns. Wide: a 12-track grid where the first four categories take 3 tracks and the rest 4 (4 + 3 tiles).
+      expect(poiColumns).toBe(vp.width <= 390 ? 2 : 12)
+      const firstRowTiles = await categories.evaluateAll((els) => els.filter((el) => el.getBoundingClientRect().top === els[0].getBoundingClientRect().top).length)
+      expect(firstRowTiles).toBe(vp.width <= 390 ? 2 : 4)
       for (const button of await categories.all()) {
         const box = (await button.boundingBox())!
         expect(box.x).toBeGreaterThanOrEqual(poiBox.x)
@@ -69,19 +72,17 @@ for (const vp of VIEWPORTS) {
       await page.screenshot({ path: test.info().outputPath('poi.png') })
 
       const amenities = page.locator('.kos-amenities')
-      const amenityColumns = await amenities.locator('.kos-amenities__grid').first().evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length)
-      const amenityWidth = await amenities.locator('.kos-amenities__group').first().evaluate((el) => el.clientWidth - parseFloat(getComputedStyle(el).paddingLeft) - parseFloat(getComputedStyle(el).paddingRight))
-      expect(amenityColumns).toBe(amenityWidth >= 700 ? 3 : amenityWidth >= 440 ? 2 : 1)
+      await expect(amenities.locator('.kos-amenities__scope')).not.toHaveCount(0)
       await page.screenshot({ path: test.info().outputPath('amenities.png') })
 
       const ruleButtons = page.locator('.kos-rules__toggle')
       await expect(ruleButtons).not.toHaveCount(0)
-      await expect(ruleButtons.first()).toHaveAttribute('aria-expanded', 'true')
       for (let i = 0; i < await ruleButtons.count(); i++) {
         const button = ruleButtons.nth(i)
-        if (i > 0) await expect(button).toHaveAttribute('aria-expanded', 'false')
+        // Rule groups start collapsed; each opens on demand.
+        await expect(button).toHaveAttribute('aria-expanded', 'false')
         const panel = page.locator(`#${await button.getAttribute('aria-controls')}`)
-        if (i > 0) await button.click()
+        await button.click()
         await expect(panel).toBeVisible()
         expect(await panel.evaluate((el) => getComputedStyle(el).overflowY)).toBe('visible')
         await panel.scrollIntoViewIfNeeded()
@@ -112,17 +113,17 @@ for (const vp of VIEWPORTS) {
       }
     })
 
-    test('signed-out pages and the auth modal fit', async ({ page }) => {
+    test('signed-out pages and the sign-in page fit', async ({ page }) => {
       await settle(page, '/owner/login')
       expect(await horizontalOverflow(page), `/owner/login at ${vp.name}`).toBeLessThanOrEqual(0)
       await settle(page, '/')
       await page.getByRole('button', { name: 'Masuk', exact: true }).click()
-      const dialog = page.getByRole('dialog')
-      await expect(dialog).toBeVisible()
-      const box = (await dialog.boundingBox())!
+      await expect(page).toHaveURL(/[/]masuk/)
+      const form = page.locator('main .auth-main')
+      await expect(form).toBeVisible()
+      const box = (await form.boundingBox())!
       expect(box.x).toBeGreaterThanOrEqual(0)
       expect(box.x + box.width).toBeLessThanOrEqual(vp.width)
-      expect(box.y + box.height).toBeLessThanOrEqual(vp.height)
       expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0)
     })
 

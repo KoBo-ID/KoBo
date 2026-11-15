@@ -35,6 +35,7 @@ export function kosCardToKos(c: KosCard): Kos {
     priceMonthlyStart: c.priceMonthlyStart ?? 0,
     studentDiscountAmount: c.studentDiscountAmount,
     studentDiscountLabel: studentDiscountLabel(c.studentDiscountAmount),
+    applicationFee: 0, // cards do not carry the fee; kosDetailToKos supplies it
     images: c.images,
     privateAmenities: [],
     sharedAmenities: [],

@@ -4,7 +4,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   MapPin,
   GraduationCap,
-  CalendarCheck,
+  BedDouble,
   X,
   Map as MapIcon,
   List,
@@ -31,6 +31,7 @@ import {
 } from '@kobo/shared/search';
 import type { KosSearchInput } from '@kobo/shared/schemas';
 import { ListingCard } from '../components/kos/ListingCard';
+import { VisitModal } from '../components/booking/VisitModal';
 import { KosCardSkeleton } from '../components/kos/KosCardSkeleton';
 import { CampusSearchField } from '../components/search/CampusSearchField';
 import { ErrorState } from '../components/ui/QueryState';
@@ -38,6 +39,7 @@ import { LeafletMap } from '../components/kos/LeafletMap';
 import { Button } from '../components/ui/Button';
 import { Popover } from '../components/ui/Popover';
 import { useResizeObserver } from '../hooks/useResizeObserver';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Kos, LocationPin } from '../types';
 import { averageLatLng, formatDistance, haversineMeters } from '../utils/geo';
 
@@ -51,6 +53,18 @@ const formatJuta = (value: number) => {
 
 const priceFillPercent = (value: number) =>
   `${((value - PRICE_MIN) / (PRICE_MAX - PRICE_MIN)) * 100}%`;
+
+/** Strips the administrative prefix: "Kota Tangerang Selatan" -> "tangerang selatan". */
+const bareRegionName = (name: string) =>
+  name.toLowerCase().replace(/./g, ' ').replace(/^(provinsi|kota administrasi|kabupaten administrasi|kota adm|kabupaten|kab|kota)s+/, '').replace(/s+/g, ' ').trim();
+
+/** The province or regency/city a free-text search names exactly; null when it is only similar. Province first, then kota over kabupaten. */
+export function pickRegion<T extends { code: string; level: number; kind: string; name: string }>(q: string, hits: T[]): T | null {
+  const want = bareRegionName(q);
+  const exact = hits.filter((h) => h.level <= 2 && (bareRegionName(h.name) === want || h.name.toLowerCase() === q.trim().toLowerCase()));
+  exact.sort((a, b) => a.level - b.level || Number(b.kind === 'kota') - Number(a.kind === 'kota'));
+  return exact[0] ?? null;
+}
 
 export const Search: React.FC = () => {
   const trpc = useTRPC();
@@ -167,12 +181,22 @@ export const Search: React.FC = () => {
     return filters.loc ? (allLocations.find((loc) => loc.id === filters.loc) ?? null) : null;
   }, [filters.lat, filters.lng, filters.place, filters.radius, filters.campus, filters.loc, allLocations]);
 
+  useDocumentTitle(filters.campus && activeLocation?.id.startsWith('campus-') ? `Kos dekat ${activeLocation.label}` : 'Cari kos');
+
   // What the user typed wins; otherwise the active place, otherwise the text being searched (e.g. arriving from the home page).
-  const locationInput = typedInput ?? (activeLocation ? activeLocation.label : filters.q);
+  // A province, regency or city (`?region=36`) is searched inside its boundary: no point, no radius.
+  const regionOutline = useQuery({
+    ...trpc.region.outline.queryOptions({ code: filters.region ?? '00' }),
+    enabled: !!filters.region,
+    staleTime: Infinity,
+    retry: false,
+  });
+  const regionName = filters.region ? (regionOutline.data?.name ?? null) : null;
+  const locationInput = typedInput ?? (activeLocation ? activeLocation.label : regionName ?? filters.q);
   const setLocationInput = (value: string) => setTypedInput(value);
   const clearLocationInput = () => {
     setTypedInput('');
-    updateFilters({ q: '', loc: null, campus: null, lat: null, lng: null, place: null, radius: null });
+    updateFilters({ q: '', loc: null, campus: null, lat: null, lng: null, place: null, radius: null, region: null });
   };
 
   // A kos-area id (area-*) can only be resolved once kos.list has loaded; do not search unfiltered meanwhile.
@@ -180,7 +204,26 @@ export const Search: React.FC = () => {
 
   // Free text ("banten") is looked up on the map once, when it arrives in the URL (a submit, never as-you-type). A
   // hit becomes the reference point; a miss or an outage falls back to matching the text against kos addresses.
-  const resolvePlace = filters.q.length >= 2 && filters.lat === null && !filters.loc && !filters.campus;
+  // The text is first matched against province / regency / city names (exact name only); only a miss goes to the geocoder.
+  const resolveText = filters.q.length >= 2 && filters.lat === null && !filters.loc && !filters.campus && !filters.region;
+  const regionQuery = useQuery({
+    ...trpc.region.search.queryOptions({ q: filters.q, limit: 8 }),
+    enabled: resolveText,
+    staleTime: Infinity,
+    retry: false,
+  });
+  const regionHit = useMemo(() => {
+    if (!resolveText || !regionQuery.data) return null;
+    return pickRegion(filters.q, regionQuery.data);
+  }, [resolveText, regionQuery.data, filters.q]);
+  useEffect(() => {
+    if (!regionHit) return;
+    setTypedInput((current) => current ?? filters.q);
+    updateFilters({ q: '', loc: null, campus: null, lat: null, lng: null, place: null, radius: null, region: regionHit.code });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regionHit]);
+  const regionResolving = resolveText && (regionQuery.isPending || !!regionHit);
+  const resolvePlace = resolveText && !regionResolving;
   const placeQuery = useQuery({
     ...trpc.place.search.queryOptions({ q: filters.q }),
     enabled: resolvePlace,
@@ -205,6 +248,7 @@ export const Search: React.FC = () => {
   const searchInput = useMemo<KosSearchInput>(
     () => ({
       q: filters.q,
+      ...(filters.region ? { regionCode: filters.region } : {}),
       ...(activeLocation
         ? { lat: activeLocation.coordinates.lat, lng: activeLocation.coordinates.lng, ...(filters.radius ? { radius: filters.radius } : {}) }
         : {}),
@@ -216,10 +260,12 @@ export const Search: React.FC = () => {
     }),
     [filters, activeLocation],
   );
+  // The card's "Survey" button opens the visit modal in place, as on Home (no navigation).
+  const [visitKos, setVisitKos] = useState<Kos | null>(null);
   const search = useQuery({
     ...trpc.kos.search.queryOptions(searchInput),
     placeholderData: keepPreviousData,
-    enabled: !locationPending && !placeResolving,
+    enabled: !locationPending && !placeResolving && !regionResolving,
   });
   const searchPending = search.isPending;
   const searchFailed = search.isError && !search.data;
@@ -241,6 +287,7 @@ export const Search: React.FC = () => {
       lng: location && geo ? location.coordinates.lng : null,
       place: null,
       radius: null,
+      region: null,
       ...(clearQuery ? { q: '' } : {}),
     });
   };
@@ -288,13 +335,13 @@ export const Search: React.FC = () => {
     }
 
     // A text search replaces the reference point, so the URL says exactly what is applied.
-    updateFilters({ q, loc: null, campus: null, lat: null, lng: null, place: null, radius: null });
+    updateFilters({ q, loc: null, campus: null, lat: null, lng: null, place: null, radius: null, region: null });
   };
 
   const handlePickCampus = (campusId: string) => {
     setTypedInput(null);
     updateFilters({
-      q: '', loc: null, campus: campusId, lat: null, lng: null, place: null, radius: null,
+      q: '', loc: null, campus: campusId, lat: null, lng: null, place: null, radius: null, region: null,
       sort: searchParams.has('sort') ? filters.sort : 'distance_asc',
     });
   };
@@ -303,7 +350,7 @@ export const Search: React.FC = () => {
     const q = text.trim();
     const exactLocation = allLocations.find((loc) => loc.label.toLowerCase() === q.toLowerCase());
     if (exactLocation) { applyLocation(exactLocation, true); return; }
-    updateFilters({ q, loc: null, campus: null, lat: null, lng: null, place: null, radius: null });
+    updateFilters({ q, loc: null, campus: null, lat: null, lng: null, place: null, radius: null, region: null });
   };
 
   const nearbyCampuses = activeLocation
@@ -317,6 +364,7 @@ export const Search: React.FC = () => {
 
   const hasActiveFilters =
     !!activeLocation ||
+    !!filters.region ||
     genderFilter !== 'all' ||
     !!searchQuery ||
     filterDiscountOnly ||
@@ -368,6 +416,8 @@ export const Search: React.FC = () => {
                 onClear={clearLocationInput}
                 onSubmitText={handleSearchText}
                 onPickCampus={(branch) => handlePickCampus(branch.id)}
+                onPickRegion={(region) => { setTypedInput(null); updateFilters({ q: '', loc: null, campus: null, lat: null, lng: null, place: null, radius: null, region: region.code }); }}
+                onPickPoint={(p) => { setTypedInput(null); updateFilters({ q: '', loc: null, campus: null, lat: p.lat, lng: p.lng, place: p.label, radius: 3000, region: null, sort: searchParams.has('sort') ? filters.sort : 'distance_asc' }); }}
                 style={{ flex: 1, minWidth: 0 }}
               />
               <button
@@ -473,14 +523,15 @@ export const Search: React.FC = () => {
                       <GraduationCap size={16} />
                       <span>Diskon Mahasiswa</span>
                     </button>
+                    {/* URL/API name stays "surveyOnly"; it filters kos that have a bookable room. */}
                     <button
                       type="button"
                       className="kobo-optionrow"
                       aria-pressed={filterSurveyOnly}
                       onClick={() => setFilterSurveyOnly(!filterSurveyOnly)}
                     >
-                      <CalendarCheck size={16} />
-                      <span>Bisa Survey Gratis</span>
+                      <BedDouble size={16} />
+                      <span>Kamar tersedia</span>
                     </button>
 
                     <div style={{ padding: '0.75rem 0.25rem 0.25rem' }}>
@@ -570,13 +621,12 @@ export const Search: React.FC = () => {
       {/* Main Content Area */}
       <div className="app-container" style={{ flex: 1, paddingBottom: '3rem', paddingTop: '1.25rem' }}>
         {/* Location reference strip */}
-        {activeLocation && (
+        {filters.region && !activeLocation && (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '1rem',
-              flexWrap: 'wrap',
+              gap: '0.75rem',
               padding: '0.65rem 0.9rem',
               marginBottom: '1rem',
               backgroundColor: 'var(--bg-surface)',
@@ -584,33 +634,10 @@ export const Search: React.FC = () => {
               borderRadius: 'var(--radius-md)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
-              <MapPin size={15} color="var(--accent)" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                {activeLocation.label}
-              </span>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                {activeLocation.area === activeLocation.label
-                  ? activeLocation.city
-                  : `${activeLocation.area}, ${activeLocation.city}`}
-              </span>
-            </div>
-            {nearbyCampuses.length > 0 && (
-              <>
-                <div style={{ width: '1px', height: '16px', backgroundColor: 'var(--border-subtle)' }} />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <GraduationCap size={15} color="var(--primary)" />
-                  {nearbyCampuses.slice(0, 2).map((item) => (
-                    <span key={item.campus.id} style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                      <strong style={{ color: 'var(--text-main)', fontWeight: 600 }}>{item.campus.shortName}</strong>{' '}
-                      {formatDistance(item.distance)}
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
+            <MapPin size={15} color="var(--accent)" style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-main)' }}>{regionName ?? 'Wilayah'}</span>
             <div style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              <strong style={{ color: 'var(--text-main)' }}>{sortedKos.length}</strong> kos dalam radius {Math.round((filters.radius ?? SEARCH_RADIUS_METERS) / 1000)} km
+              <strong style={{ color: 'var(--text-main)' }}>{sortedKos.length}</strong> kos di {regionName ?? 'wilayah ini'}
             </div>
           </div>
         )}
@@ -640,7 +667,7 @@ export const Search: React.FC = () => {
                   {activeLocation ? `Kos di Sekitar ${activeLocation.label}` : 'Semua Kos'}
                 </h1>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                  {searchPending || searchFailed ? (
+                  {searchFailed ? null : searchPending ? (
                     'Memuat daftar kos…'
                   ) : (
                     <>
@@ -666,7 +693,7 @@ export const Search: React.FC = () => {
                   onMouseEnter={() => setHoveredKosId(kos.id)}
                   onMouseLeave={() => setHoveredKosId(null)}
                 >
-                  <ListingCard kos={kos} distance={activeLocation ? (distanceById.get(kos.id) ?? undefined) : undefined} />
+                  <ListingCard kos={kos} onOpenSurvey={setVisitKos} distance={activeLocation ? (distanceById.get(kos.id) ?? undefined) : undefined} />
                 </div>
               ))}
             </div>
@@ -711,6 +738,7 @@ export const Search: React.FC = () => {
             <LeafletMap
               kosList={sortedKos}
               activeLocation={activeLocation}
+              regionOutline={regionOutline.data ?? null}
               hoveredKosId={hoveredKosId}
               onHoverKos={setHoveredKosId}
             />
@@ -764,6 +792,7 @@ export const Search: React.FC = () => {
       </div>
 
       {/* Responsive Split View Media Queries */}
+      {visitKos && <VisitModal isOpen onClose={() => setVisitKos(null)} kos={visitKos} />}
     </div>
   );
 };

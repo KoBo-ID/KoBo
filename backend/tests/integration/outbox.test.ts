@@ -195,7 +195,8 @@ describe('transports', () => {
     expect(warnings[0]).not.toContain('re_x')
     transportFromEnv({ RESEND_API_KEY: 're_x', EMAIL_FROM: 'onboarding@resend.dev' }, warn) // dev: no warning
     expect(warnings).toHaveLength(1)
-    transportFromEnv({ NODE_ENV: 'production' }, warn)
+    expect(() => transportFromEnv({ NODE_ENV: 'production' }, warn)).toThrow(/RESEND_API_KEY/) // fail closed: links must not only reach the log
+    transportFromEnv({ NODE_ENV: 'production', ALLOW_CONSOLE_EMAIL: '1' }, warn) // explicit e2e/demo opt-in
     expect(warnings[1]).toMatch(/RESEND_API_KEY/)
   })
 

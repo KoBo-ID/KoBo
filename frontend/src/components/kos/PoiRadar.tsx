@@ -4,10 +4,10 @@ import { Poi, PoiCategory } from '../../types';
 
 interface PoiRadarProps {
   pois: Poi[];
-  campusName: string;
+  campusName?: string;
 }
 
-export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
+export const PoiRadar: React.FC<PoiRadarProps> = ({ pois }) => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
   const categories: { id: string; label: string; icon: React.ReactNode }[] = [
@@ -44,22 +44,18 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
   };
 
   return (
-    <section className="kos-poi"
-      style={{
-        backgroundColor: 'var(--bg-surface)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border-subtle)',
-        padding: '1.5rem',
-        boxShadow: 'var(--shadow-sm)',
-      }}
-    >
+    <section className="kos-poi detail-card">
       <div className="section-head">
         <div>
-          <h3 className="section-title">Radar sekitar kos</h3>
-          <p className="section-sub">Lokasi di sekitar {campusName} yang tercatat untuk kos ini.</p>
+          <h3 className="section-title">Lokasi dan sekitar kos</h3>
         </div>
       </div>
 
+      {pois.length === 0 ? (
+        <p style={{ margin: 0, padding: '0.9rem 1rem', border: '1px dashed var(--border-strong)', borderRadius: 'var(--radius-md)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          Belum ada data lokasi untuk kos ini.
+        </p>
+      ) : (<>
       {/* Category Filter Chips */}
       <div className="kos-poi__categories" aria-label="Filter kategori lokasi">
         {categories.map((cat) => {
@@ -94,7 +90,7 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
       </div>
 
       {/* POI Listing Cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         {filteredPois.map((poi) => (
           <div
             key={poi.id}
@@ -103,10 +99,8 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
               alignItems: 'flex-start',
               justifyContent: 'space-between',
               gap: '1rem',
-              padding: '0.7rem 0.9rem',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-subtle)',
-              backgroundColor: 'var(--bg-page)',
+              padding: '1rem 0',
+              borderTop: '1px solid var(--border-subtle)',
               transition: 'background-color var(--duration-fast) var(--ease-out-spring), border-color var(--duration-fast) var(--ease-out-spring), color var(--duration-fast) var(--ease-out-spring), box-shadow var(--duration-fast) var(--ease-out-spring), transform var(--duration-fast) var(--ease-out-spring), opacity var(--duration-fast) var(--ease-out-spring)',
             }}
           >
@@ -148,6 +142,7 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois, campusName }) => {
           </div>
         )}
       </div>
+      </>)}
     </section>
   );
 };

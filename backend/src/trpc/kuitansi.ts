@@ -25,7 +25,7 @@ export interface KuitansiView {
 const dateOnly = (d: Date) => d.toISOString().slice(0, 10)
 
 export const kuitansiRouter = router({
-  /** Allowed for the tenant who paid and for the owner of the kos. Unpaid or unknown numbers are NOT_FOUND. */
+  /** Allowed for the tenant who paid and for the owner of the kos. Unpaid, unknown and foreign numbers are all NOT_FOUND. */
   get: authedProcedure.input(kuitansiGetInput).query(async ({ ctx, input }): Promise<KuitansiView> => {
     const p = await ctx.prisma.payment.findUnique({
       where: { receiptNo: input.receiptNo },
@@ -45,8 +45,9 @@ export const kuitansiRouter = router({
     if (!p || p.status !== 'PAID' || !p.paidAt) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kuitansi tidak ditemukan.' })
     const { tenancy } = p.invoice
     const { kos } = tenancy.room
+    // Receipt numbers are sequential, so a foreign receipt must look exactly like a missing one (no existence oracle).
     if (tenancy.user.id !== ctx.user.id && kos.owner.user.id !== ctx.user.id) {
-      throw new TRPCError({ code: 'FORBIDDEN', message: 'Anda tidak memiliki akses ke kuitansi ini.' })
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Kuitansi tidak ditemukan.' })
     }
     return {
       receiptNumber: p.receiptNo,

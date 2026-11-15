@@ -62,16 +62,21 @@ describe('refund rows and cascading deletes', () => {
     expect(await prisma.paymentRefund.count()).toBe(0)
   })
 
-  it('refuses to delete a kos or room that holds refund history, instead of a database error', async () => {
+  it('archives (never deletes) a kos or room that holds refund history, and keeps every financial row', async () => {
     const { room, payment, tenancyId } = await fixture()
     await prisma.payment.update({ where: { id: payment.id }, data: { status: 'REFUNDED' } })
     await refundRow(payment.id, payment.amount)
     await prisma.tenancy.update({ where: { id: tenancyId }, data: { status: 'ENDED' } })
+    // The seed's first vacant room can share a kos with seeded live tenancies, which rightly block kos.delete: end them so only archiving is under test.
+    await prisma.tenancy.updateMany({ where: { room: { kosId: room.kosId }, status: { in: ['ACTIVE', 'PENDING'] } }, data: { status: 'ENDED' } })
+    await prisma.rentalApplication.updateMany({ where: { room: { kosId: room.kosId }, status: 'PENDING' }, data: { status: 'REJECTED' } })
     const ownerProfile = await prisma.ownerProfile.findFirstOrThrow({ where: { kos: { some: { id: room.kosId } } } })
     await prisma.user.update({ where: { id: ownerProfile.userId }, data: { isDemo: false } })
     const owner = callerFor(ownerProfile.userId)
-    expect((await err(owner.owner.room.delete({ kosId: room.kosId, roomId: room.id })))?.code).toBe('CONFLICT')
-    expect((await err(owner.owner.kos.delete({ kosId: room.kosId })))?.code).toBe('CONFLICT')
+    expect(await owner.owner.room.delete({ kosId: room.kosId, roomId: room.id })).toEqual({ id: room.id, archived: true })
+    expect(await owner.owner.kos.delete({ kosId: room.kosId })).toEqual({ id: room.kosId, archived: true })
+    expect(await prisma.paymentRefund.count({ where: { paymentId: payment.id } })).toBe(1)
+    expect(await prisma.payment.count({ where: { id: payment.id } })).toBe(1)
   })
 
   it('simulate refuses a lapsed demo attempt instead of queuing a refund', async () => {

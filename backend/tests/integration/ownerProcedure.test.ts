@@ -61,7 +61,7 @@ describe('procedure guards', () => {
 
   it('rejects a user with no owner profile, anonymous callers and unknown kos ids', async () => {
     const { a } = await twoOwners()
-    const student = await prisma.user.findUniqueOrThrow({ where: { email: 'demo-student@kobo.test' } })
+    const student = await prisma.user.findUniqueOrThrow({ where: { email: 'dimas.pratama@kobo.test' } })
     const kosId = a.kos[0].id
     expect(await code(probeFor(student.id).renameKos({ kosId, name: 'x' }))).toBe('FORBIDDEN')
     expect(await code(probeFor(null).renameKos({ kosId, name: 'x' }))).toBe('UNAUTHORIZED')
@@ -82,7 +82,7 @@ describe('auth.me over tRPC', () => {
   })
 
   it('describes a campus-verified student', async () => {
-    const student = await prisma.user.findUniqueOrThrow({ where: { email: 'demo-student@kobo.test' } })
+    const student = await prisma.user.findUniqueOrThrow({ where: { email: 'dimas.pratama@kobo.test' } })
     expect(await callerFor(student.id).auth.me()).toMatchObject({ isOwner: false, ownerProfileId: null, campusVerified: true })
   })
 })

@@ -42,11 +42,12 @@ test('owner marks a booked room paid and opens its kuitansi', async ({ page, bro
   expect(room, 'tenant applied for a vacant room').toBeTruthy()
   await tenantCtx.close()
 
-  await page.goto(`/owner/dashboard?kos=${kos!.id}`)
+  await page.goto(`/owner/dashboard?kos=${kos!.id}&tab=tindakan`)
   const application = page.getByTestId('owner-application').filter({ hasText: `Kamar ${room!.roomNumber}` })
   await application.getByRole('button', { name: 'Terima' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Terima Pengajuan' }).click()
   await expect(application).toHaveCount(0)
+  await page.getByRole('tab', { name: 'Ringkasan' }).click()
   const row = page.getByRole('row').filter({ hasText: `Kamar ${room!.roomNumber}` })
   await expect(row.getByText('Dipesan', { exact: true })).toBeVisible()
 
@@ -79,13 +80,72 @@ test('a kos created in the owner workspace appears in Kelola Properti', async ({
   await page.goto('/owner/kos')
   const name = `Kost Uji E2E ${Date.now()}`
   await page.getByRole('button', { name: 'Tambah kos' }).first().click()
-  await page.getByLabel('Nama Properti Kos').fill(name)
-  await page.getByLabel('Alamat Lengkap Kos').fill('Jl. Uji Coba No. 1')
-  await page.getByRole('button', { name: 'Simpan Kos Baru' }).click()
+  const form = page.getByRole('dialog')
+  await form.getByLabel('Nama Properti Kos').fill(name)
+  await form.getByLabel('Kategori Penghuni').selectOption('CAMPUR')
+  await form.getByLabel('Sistem Listrik').selectOption('TOKEN')
+  await form.getByLabel('Alamat Lengkap Kos').fill('Jl. Uji Coba No. 1')
+  // Nothing is pre-filled: submitting an incomplete form shows a summary that links to what is missing.
+  await form.getByRole('button', { name: 'Simpan Kos Baru' }).click()
+  await expect(form.getByRole('alert')).toContainText('Ada isian yang perlu diperbaiki')
+  await expect(form.getByLabel('Nama Properti Kos')).toHaveValue(name)
+  // The geocoder is off in e2e, so the address is not found and the nearest-campus fallback appears.
+  await form.getByRole('button', { name: 'Cari lokasi' }).click()
+  await form.getByLabel('Pakai titik kampus terdekat').selectOption({ index: 1 })
+  await expect(form.getByText('Kampus terdekat dari lokasi ini')).toBeVisible()
+  await form.getByLabel('Kecamatan / Kelurahan').fill('Kemanggisan')
+  await form.getByLabel('Kota / Kabupaten').fill('Jakarta Barat')
+  await form.getByLabel('Jumlah Lantai').fill('2')
+  await form.getByLabel('Jumlah Kamar').fill('6')
+  await form.getByLabel('Harga Sewa per Kamar (Rp/bulan)').fill('1500000')
+  await form.getByRole('button', { name: 'Wi-Fi' }).click()
+  await form.getByRole('button', { name: 'Simpan Kos Baru' }).click()
   await expect(page.getByRole('heading', { name })).toBeVisible()
 })
 
 test('a signed-out visitor is not shown a kuitansi', async ({ page }) => {
   await page.goto('/kuitansi/1')
   await expect(page.getByRole('heading', { name: 'Masuk untuk Melihat Kuitansi' })).toBeVisible()
+})
+
+test('the room board keeps its column geometry across every status and floor tab', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await loginAs(page, 'owner')
+  await page.goto('/owner/dashboard')
+  const tabs = page.locator('[aria-label="Filter status kamar"] button, [aria-label="Filter lantai"] button')
+  await expect(tabs.first()).toBeVisible()
+  const geometry = () =>
+    page.locator('.od-board thead th').evaluateAll((els) => els.map((e) => `${Math.round(e.getBoundingClientRect().x)}:${Math.round(e.getBoundingClientRect().width)}`).join('|'))
+  const baseline = await geometry()
+  for (let i = 0; i < (await tabs.count()); i++) {
+    await tabs.nth(i).click()
+    expect(await geometry(), `tab ${i}`).toBe(baseline)
+  }
+})
+
+test('the Hunian status counts jump to the matching room filter', async ({ page }) => {
+  await loginAs(page, 'owner')
+  await page.goto('/owner/dashboard')
+  const stat = page.locator('.od-stat').first()
+  const label = (await stat.textContent())!.replace(/\d+$/, '').trim()
+  await stat.click()
+  await expect(page.locator('[aria-label="Filter status kamar"] [aria-pressed="true"]')).toContainText(label)
+})
+
+test('dashboard splits into Ringkasan and Perlu tindakan, deep-linkable, with the count on the tab', async ({ page }) => {
+  await loginAs(page, 'owner')
+  await page.goto('/owner/dashboard')
+  await expect(page.getByRole('tab', { name: 'Ringkasan' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('heading', { name: 'Terkumpul bulan ini' })).toBeVisible()
+  await expect(page.locator('table.kobo-table').first()).toBeVisible()
+
+  await page.getByRole('tab', { name: /Perlu tindakan/ }).click()
+  await expect(page).toHaveURL(/tab=tindakan/)
+  await expect(page.getByRole('heading', { name: 'Terkumpul bulan ini' })).toHaveCount(0)
+  await expect(page.locator('table.kobo-table')).toHaveCount(0)
+
+  await page.reload()
+  await expect(page.getByRole('tab', { name: /Perlu tindakan/ })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: 'Ringkasan' }).click()
+  await expect(page).not.toHaveURL(/tab=/)
 })

@@ -17,12 +17,18 @@ const env = {
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? 'e2e-secret-e2e-secret-e2e-secret-0123456789',
   PAYMENT_PROVIDER: 'mock',
   ALLOW_MOCK_PAYMENTS: '1', // e2e only: production mode normally refuses the mock provider
+  PAYMENT_RETURN_ORIGIN: '', // backend/.env may point it at production; checkout return links must come back to this server
+  ALLOW_E2E_HOOKS: '1', // e2e only: mounts /api/__e2e/* and a fake Xendit provider (backend/src/e2eHooks.ts)
   DATABASE_URL: process.env.E2E_DATABASE_URL ?? 'postgresql://kobo:kobo@localhost:5433/kobo_e2e',
   // Never hit the real email service from e2e: backend/.env may hold a Resend key, and loadEnvFile
   // does not override keys that already exist, so an empty value forces the console transport.
   RESEND_API_KEY: '',
+  ALLOW_CONSOLE_EMAIL: '1', // e2e only: production mode normally refuses to start without a mail key
   // Never reach a public geocoder from e2e; specs stub place.search where they need a hit.
   GEOCODER: 'off',
+  // Production defaults to requiring an emergency contact and the current Syarat before a first application; the e2e students do not
+  // fill them in (the rule is covered by integration tests and one dedicated spec that turns it on through the profile).
+  REQUIRE_PROFILE_CONSENTS: '0',
 }
 const tsxCli = fileURLToPath(new URL('../node_modules/tsx/dist/cli.mjs', import.meta.url))
 const prismaCli = fileURLToPath(new URL('../node_modules/prisma/build/index.js', import.meta.url))

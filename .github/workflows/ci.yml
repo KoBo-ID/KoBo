@@ -113,6 +113,14 @@ jobs:
           PGPASSWORD=kobo psql -h localhost -p 5433 -U kobo -d postgres -c 'CREATE DATABASE kobo_e2e'
           npm run e2e
 
+      # Gap project: the same production server with REQUIRE_PROFILE_CONSENTS=1, on its own database so it never truncates kobo_e2e.
+      - name: E2E consents project (Playwright, Chromium)
+        env:
+          E2E_DATABASE_URL: postgresql://kobo:kobo@localhost:5433/kobo_e2e_consents
+        run: |
+          PGPASSWORD=kobo psql -h localhost -p 5433 -U kobo -d postgres -c 'CREATE DATABASE kobo_e2e_consents'
+          npx playwright test -c e2e/gap/consents/playwright.config.ts
+
       - name: Bundle gate
         run: npm run bundle:check
 
@@ -147,8 +155,11 @@ jobs:
         run: |
           [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "invalid tag: $TAG"; exit 1; }
 
+      # A manual (re)deploy must build the tag it names, not whatever branch the workflow was dispatched on: GITHUB_REF for
+      # workflow_dispatch is the dispatched branch or tag. A tag push already checks out the tag itself.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
           persist-credentials: false
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -211,9 +222,11 @@ jobs:
           [ -n "$BASE_URL" ] || { echo "APP_URL variable is not set on the production environment"; exit 1; }
           npm ci
           npx playwright install --with-deps chromium
+          # /api/health, not /health: behind the Vercel rewrite /health is answered by the SPA fallback (HTML, 200), which
+          # would pass while the API is down. Require the API's own JSON body.
           for i in $(seq 1 30); do
-            curl -fsS "$BASE_URL/health" >/dev/null && break
-            [ "$i" = 30 ] && { echo "$BASE_URL/health never became healthy"; exit 1; }
+            curl -fsS "$BASE_URL/api/health" | grep -q '"ok":true' && break
+            [ "$i" = 30 ] && { echo "$BASE_URL/api/health never reported ok:true"; exit 1; }
             sleep 5
           done
           npm run e2e:postdeploy

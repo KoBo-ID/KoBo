@@ -1,0 +1,28 @@
+﻿import {test,expect} from '@playwright/test'
+test.beforeEach(async({page})=>{ await page.route('**/*',r=>['localhost','127.0.0.1'].includes(new URL(r.request().url()).hostname)?r.continue():r.abort()) })
+test('A1 campus chip search',async({page})=>{
+ await page.goto('/')
+ await page.getByRole('navigation',{name:'Kampus populer'}).getByRole('link',{name:'UI Depok',exact:true}).click()
+ await expect(page).toHaveURL(/\/search\?campus=ui-depok/)
+ await page.reload(); await expect(page).toHaveURL(/campus=ui-depok/)
+})
+test('A2 gender discount persist',async({page})=>{
+ await page.goto('/search')
+ await expect(page.locator('.search-cards-grid[aria-busy="false"]')).toBeVisible()
+ await page.getByRole('button',{name:'Khusus Putri'}).click()
+ await expect(page).toHaveURL(/gender=putri/)
+ await page.getByRole('button',{name:/Filter/}).click()
+ await page.getByRole('button',{name:'Diskon Mahasiswa'}).click()
+ await expect(page).toHaveURL(/discount=1/)
+ await page.reload()
+ await expect(page.getByRole('button',{name:'Khusus Putri'})).toHaveAttribute('aria-pressed','true')
+ await expect(page).toHaveURL(/discount=1/)
+})
+test('A3 detail and signed-out apply',async({page})=>{
+ await page.goto('/kos/kos-1')
+ await expect(page.getByRole('heading',{level:1})).toBeVisible()
+ await expect(page.getByRole('region',{name:'Pilihan tipe kamar & ketersediaan'})).toBeVisible()
+ await page.getByRole('button',{name:'Ajukan Sewa'}).click()
+ await expect(page).toHaveURL(/\/checkout\/kos-1\?room=/)
+ await expect(page.getByRole('button',{name:/Masuk/}).first()).toBeVisible()
+})

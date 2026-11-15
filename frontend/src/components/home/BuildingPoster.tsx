@@ -9,15 +9,17 @@ interface BuildingPosterProps {
 
 /**
  * Still frame of the live dorm-section scene, captured from the real three.js
- * render (transparent WebP, 1428x952 = the canvas at 2x DPR, ~36KB). Used as:
+ * render at its first frame (transparent WebP, 1428x952 = the 760px canvas at
+ * ~1.9x DPR, ~47KB): teal shell, warm cream rooms, lamps at their resting glow, midday
+ * light. Used as:
  *   - the loading state while the three.js chunk streams in,
  *   - the prefers-reduced-motion fallback,
  *   - the no-WebGL fallback,
  *   - and the entire render below 768px, where three.js is never fetched.
  *
- * Because it IS a frame of the scene, the cross-fade to the live canvas has no
- * composition jump. Re-capture it whenever the scene's camera, palette or
- * layout changes.
+ * Because it IS the scene's first frame (the live intro only brightens lamps,
+ * it never moves geometry), the cross-fade has no composition jump. Re-capture
+ * it whenever the scene's camera, palette, light or layout changes.
  */
 export const BuildingPoster: React.FC<BuildingPosterProps> = ({ className, decorative }) => (
   <img
@@ -26,7 +28,7 @@ export const BuildingPoster: React.FC<BuildingPosterProps> = ({ className, decor
     width={1428}
     height={952}
     decoding="async"
-    alt={decorative ? '' : 'Potongan gedung kos: kamar berperabot dengan pintu ke koridor'}
+    alt={decorative ? '' : 'Potongan gedung kos tiga lantai: kamar hangat berperabot dengan penghuni dan lampu menyala, pintu ke koridor'}
     aria-hidden={decorative || undefined}
     style={{ objectFit: 'contain' }}
   />

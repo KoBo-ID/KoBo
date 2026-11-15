@@ -1,0 +1,20 @@
+﻿import {test,expect} from '@playwright/test'
+import {writeFileSync} from 'node:fs'
+test('F3 browser offline search and slow local response',async({page})=>{
+ await page.route('**/*',r=>['localhost','127.0.0.1'].includes(new URL(r.request().url()).hostname)?r.continue():r.fulfill({status:204,body:''}))
+ await page.goto('/search');await expect(page.getByRole('combobox',{name:'Cari lokasi'})).toBeVisible()
+ await page.getByRole('combobox',{name:'Cari lokasi'}).fill('audit-offline-absent')
+ await page.context().setOffline(true)
+ await page.getByRole('button',{name:'Cari',exact:true}).click()
+ await expect(page.getByRole('alert')).toBeVisible({timeout:20000})
+ const offline=(await page.getByRole('alert').innerText()).trim()
+ await page.context().setOffline(false)
+ await page.getByRole('button',{name:'Coba Lagi'}).click()
+ await expect(page.getByText('Tidak ada kos yang cocok')).toBeVisible()
+ await page.route('**/api/trpc/kos.search*',async r=>{const response=await r.fetch();await new Promise(resolve=>setTimeout(resolve,1500));await r.fulfill({response})})
+ await page.getByRole('combobox',{name:'Cari lokasi'}).fill('audit-slow-absent')
+ await page.getByRole('button',{name:'Cari',exact:true}).click()
+ await expect(page.getByText('Memuat daftar kos')).toBeVisible()
+ await expect(page.getByText('Tidak ada kos yang cocok')).toBeVisible({timeout:20000})
+ writeFileSync('notes/analysis/2026-10-27-workflow/artifacts/offline-slow.json',JSON.stringify({offline_alert:offline,offline_retry:'empty results',slow_mock_delay_ms:1500,slow_feedback:'Memuat daftar kos',slow_outcome:'empty results'},null,2))
+})

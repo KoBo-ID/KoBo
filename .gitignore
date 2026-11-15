@@ -6,3 +6,6 @@ state/
 e2e/test-results/
 test-results/
 playwright-report/
+
+# data job: large temporary downloads
+data-work/

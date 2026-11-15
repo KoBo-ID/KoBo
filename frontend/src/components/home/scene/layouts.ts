@@ -26,6 +26,9 @@ export const CLEAR_W = HALF + CORE - WALL_T / 2;
 export const CLEAR = CLEAR_W / 1.25;
 export const FLOOR_H = CLEAR + SLAB_T;
 
+/** The room the camera is aimed at (floor 1, front-left): the scene's focal point. */
+export const HERO_ROOM = 4;
+
 // Door in the corridor wall, hinged on its +x edge so it opens flat against
 // the partition.
 export const DOOR_X1 = CORE - WALL_T / 2; // hinge meets the partition face

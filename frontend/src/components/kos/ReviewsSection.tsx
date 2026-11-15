@@ -96,16 +96,8 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   };
 
   return (
-    <section
-      className="kos-reviews"
-      style={{
-        backgroundColor: 'var(--bg-surface)',
-        borderRadius: 'var(--radius-lg)',
-        border: '1px solid var(--border-subtle)',
-        padding: '1.5rem',
-        boxShadow: 'var(--shadow-sm)',
-      }}
-    >
+    <section className="kos-reviews detail-card">
+      <h3 className="sr-only">Ulasan</h3>
       {(writable || editable) && (
         <div className="section-head" style={{ justifyContent: 'flex-end' }}>
           <Button

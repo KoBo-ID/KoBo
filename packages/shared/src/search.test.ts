@@ -35,6 +35,7 @@ describe('parseSearchParams', () => {
       lng: null,
       place: null,
       radius: null,
+      region: null,
       gender: 'putri',
       maxPrice: 2_000_000,
       discountOnly: true,
@@ -82,6 +83,7 @@ describe('serializeSearchParams', () => {
     lng: fc.option(fc.double({ min: -180, max: 180, noNaN: true }).map((n) => n + 0), { nil: null }),
     place: fc.option(fc.string({ minLength: 1, maxLength: 30 }).map((s) => s.trim()).filter((s) => s.length > 0), { nil: null }),
     radius: fc.option(fc.integer({ min: SEARCH_RADIUS_MIN, max: SEARCH_RADIUS_MAX }), { nil: null }),
+    region: fc.option(fc.constantFrom('36', '32.73', '31.74.01'), { nil: null }),
     gender: fc.constantFrom(...GENDER_FILTERS),
     maxPrice: fc.integer({ min: PRICE_MIN, max: PRICE_MAX }),
     discountOnly: fc.boolean(),
@@ -93,7 +95,7 @@ describe('serializeSearchParams', () => {
     fc.assert(
       fc.property(filters, (f: SearchFilters) => {
         const geo = f.lat !== null && f.lng !== null
-        const expected: SearchFilters = { ...f, lat: geo ? f.lat : null, lng: geo ? f.lng : null, loc: geo || f.campus ? null : f.loc, campus: geo ? null : f.campus, place: geo ? f.place : null, radius: geo ? f.radius : null }
+        const expected: SearchFilters = { ...f, lat: geo ? f.lat : null, lng: geo ? f.lng : null, loc: geo || f.campus ? null : f.loc, campus: geo ? null : f.campus, place: geo ? f.place : null, radius: geo ? f.radius : null, region: geo || f.campus || f.loc ? null : f.region }
         expect(parseSearchParams(serializeSearchParams(f))).toEqual(expected)
       }),
     )
@@ -131,5 +133,21 @@ describe('kosSearchInput', () => {
     expect(kosSearchInput.safeParse({ lat: 0, lng: 0, radius: 50_000 }).success).toBe(true)
     expect(kosSearchInput.safeParse({ sort: 'newest' }).success).toBe(false)
     expect(kosSearchInput.safeParse({ maxPrice: -1 }).success).toBe(false)
+  })
+})
+
+describe('region search', () => {
+  it('parses and serializes a region code, and drops malformed ones', () => {
+    expect(parse('region=36')).toMatchObject({ region: '36' })
+    expect(parse('region=36.74.03')).toMatchObject({ region: '36.74.03' })
+    expect(parse('region=banten')).toMatchObject({ region: null })
+    expect(serializeSearchParams({ ...DEFAULT_FILTERS, region: '36' }).toString()).toBe('region=36')
+  })
+
+  it('ranks below a pin, a campus and a preset location, and never carries a radius', () => {
+    expect(parse('region=36&lat=-6.2&lng=106.8')).toMatchObject({ region: null })
+    expect(parse('region=36&campus=ui-depok')).toMatchObject({ region: null })
+    expect(parse('region=36&loc=loc-bsd')).toMatchObject({ region: null })
+    expect(parse('region=36&r=50000')).toMatchObject({ region: '36', radius: null })
   })
 })

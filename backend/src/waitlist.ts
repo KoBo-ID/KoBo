@@ -2,6 +2,7 @@ import { compareQueue, matchOffers, OFFER_HOURS } from '@kobo/shared/domain'
 import type { PrismaClient } from './db/client.ts'
 import type { Prisma } from './generated/prisma/client.ts'
 import { enqueueEmail } from './outbox.ts'
+import { startPeriodic, type StopWorker } from './worker.ts'
 
 /*
  * Daftar tunggu engine (docs/superpowers/specs/2026-10-02-waitlist-design.md, ADR 0014). Offers are stored on the
@@ -33,6 +34,7 @@ export async function roomClaims(db: Tx, kosId: string, now: Date): Promise<Map<
   const rooms = await db.room.findMany({
     where: {
       kosId,
+      archivedAt: null,
       id: { notIn: [...claims.keys()] },
       tenancies: { none: { OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gte: now } }] } },
     },
@@ -66,6 +68,7 @@ export async function advanceWaitlist(tx: Tx, kosId: string, now: Date): Promise
   const rooms = await tx.room.findMany({
     where: {
       kosId,
+      archivedAt: null,
       tenancies: { none: { OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gte: now } }] } },
       waitlistOffers: { none: { status: 'OFFERED' } },
     },
@@ -94,24 +97,18 @@ export async function advanceWaitlist(tx: Tx, kosId: string, now: Date): Promise
 export async function advanceAllWaitlists(prisma: PrismaClient, now: Date = new Date()): Promise<number> {
   const kos = await prisma.waitlistEntry.findMany({ where: { status: { in: ['WAITING', 'OFFERED'] } }, distinct: ['kosId'], select: { kosId: true } })
   let offered = 0
-  for (const { kosId } of kos) offered += await prisma.$transaction((tx) => advanceWaitlist(tx, kosId, now))
+  for (const { kosId } of kos) {
+    try {
+      offered += await prisma.$transaction((tx) => advanceWaitlist(tx, kosId, now))
+    } catch (err) {
+      // One failing kos must not starve the rest of the tick (it is retried on the next one).
+      console.error(`[waitlist] advance failed for kos ${kosId}:`, err instanceof Error ? err.message : err)
+    }
+  }
   return offered
 }
 
 /** Start the periodic advance. Ticks never overlap within this process. Returns a stop function. */
-export function startWaitlistWorker(prisma: PrismaClient, intervalMs = 15_000): () => void {
-  let running = false
-  const tick = async () => {
-    if (running) return
-    running = true
-    try {
-      await advanceAllWaitlists(prisma)
-    } catch (err) {
-      console.error('[waitlist] advance failed:', err instanceof Error ? err.message : err)
-    } finally {
-      running = false
-    }
-  }
-  const timer = setInterval(() => void tick(), intervalMs)
-  return () => clearInterval(timer)
+export function startWaitlistWorker(prisma: PrismaClient, intervalMs = 15_000): StopWorker {
+  return startPeriodic('waitlist', intervalMs, () => advanceAllWaitlists(prisma))
 }

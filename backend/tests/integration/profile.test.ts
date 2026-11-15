@@ -22,7 +22,7 @@ describe('auth.updateProfile', () => {
   })
 
   it('accepts clearing phone and campus', async () => {
-    await callerFor(DEMO_STUDENT_ID).auth.updateProfile({ name: 'Demo Mahasiswa', phone: null, campus: null })
+    await callerFor(DEMO_STUDENT_ID).auth.updateProfile({ name: 'Dimas Pratama', phone: null, campus: null })
     expect(await prisma.user.findUniqueOrThrow({ where: { id: DEMO_STUDENT_ID } })).toMatchObject({ phone: null, campus: null })
   })
 

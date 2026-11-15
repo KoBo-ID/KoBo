@@ -50,11 +50,11 @@ export const paymentRouter = router({
   }),
 
   /**
-   * "Simulasikan Pembayaran": demo users only. Feeds a normalized completed event for the caller's own PENDING MOCK
+   * "Selesaikan Pembayaran": demo users only. Feeds a normalized completed event for the caller's own PENDING MOCK
    * attempt to the same settlement a real gateway webhook uses, so nobody can pay for someone else's booking.
    */
   simulate: authedProcedure.input(paymentIdInput).mutation(async ({ ctx, input }): Promise<{ status: 'PAID' }> => {
-    if (!ctx.user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Simulasi pembayaran hanya tersedia untuk akun demo.' })
+    if (!ctx.user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Pembayaran ini tidak dapat diselesaikan dari akun Anda.' })
     const payment = await ctx.prisma.payment.findFirst({
       where: { id: input.paymentId, provider: 'MOCK', status: 'PENDING', OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }], invoice: { tenancy: { userId: ctx.user.id } } },
       select: { id: true, amount: true, providerSessionId: true, providerBusinessId: true },

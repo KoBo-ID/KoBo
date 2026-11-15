@@ -31,6 +31,8 @@ export interface SearchFilters {
   place: string | null
   /** Search radius in metres around lat/lng; null means the default. Only with lat/lng. */
   radius: number | null
+  /** Kemendagri region code (province, regency): search inside its boundary, never a radius. Lowest precedence. */
+  region: string | null
   gender: GenderFilter
   maxPrice: number
   discountOnly: boolean
@@ -46,6 +48,7 @@ export const DEFAULT_FILTERS: SearchFilters = {
   lng: null,
   place: null,
   radius: null,
+  region: null,
   gender: 'all',
   maxPrice: PRICE_MAX,
   discountOnly: false,
@@ -70,6 +73,8 @@ export function parseSearchParams(params: URLSearchParams): SearchFilters {
   const campus = (params.get('campus') ?? '').trim().slice(0, 100) || null
   const place = (params.get('place') ?? '').trim().slice(0, 80)
   const radius = num(params.get('r'))
+  const regionRaw = params.get('region') ?? ''
+  const region = /^\d{2}(\.\d{2}){0,2}$/.test(regionRaw) ? regionRaw : null
   return {
     q: (params.get('q') ?? '').trim().slice(0, 100),
     // A geolocation pin wins over campus, which wins over a preset id.
@@ -79,6 +84,7 @@ export function parseSearchParams(params: URLSearchParams): SearchFilters {
     lng: geo ? lng : null,
     place: geo && place ? place : null,
     radius: geo && radius !== null ? Math.min(SEARCH_RADIUS_MAX, Math.max(SEARCH_RADIUS_MIN, Math.round(radius))) : null,
+    region: geo || campus || params.get('loc') ? null : region,
     gender: gender && GENDER_FILTERS.includes(gender) ? gender : DEFAULT_FILTERS.gender,
     maxPrice: price === null ? PRICE_MAX : Math.min(PRICE_MAX, Math.max(PRICE_MIN, Math.round(price))),
     discountOnly: params.get('discount') === '1',
@@ -102,6 +108,8 @@ export function serializeSearchParams(filters: SearchFilters): URLSearchParams {
     p.set('campus', filters.campus)
   } else if (filters.loc) {
     p.set('loc', filters.loc)
+  } else if (filters.region) {
+    p.set('region', filters.region)
   }
   if (filters.gender !== DEFAULT_FILTERS.gender) p.set('gender', filters.gender)
   if (filters.maxPrice < PRICE_MAX) p.set('maxPrice', String(filters.maxPrice))

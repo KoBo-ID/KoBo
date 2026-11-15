@@ -74,12 +74,13 @@ test('location filter via URL survives reload', async ({ page }) => {
 test('detail renders from kos.detail', async ({ page }) => {
   const detail = page.waitForResponse((r) => r.url().includes('/api/trpc/kos.detail') && r.status() === 200)
   await page.goto('/kos/kos-1')
-  const d = await trpcData<{ name: string; address: string; rooms: unknown[]; owner: { name: string } }>(await detail)
+  const d = await trpcData<{ name: string; address: string; rooms: { type: string }[]; owner: { name: string } }>(await detail)
   await expect(page.getByRole('heading', { level: 1, name: d.name })).toBeVisible()
   await expect(page.getByText(d.address).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: d.owner.name }).first()).toBeVisible()
   // Rooms come from the API: the picker reports the number of room types it received.
-  await expect(page.getByText(/tipe kamar tersedia/)).toBeVisible()
+  const typeCount = new Set(d.rooms.map((r) => r.type)).size
+  await expect(page.getByRole('region', { name: 'Pilihan tipe kamar & ketersediaan' }).getByText(`${typeCount} tipe kamar`, { exact: true })).toBeVisible()
 })
 
 test('detail sections expose accessible filters, complete rules, and the loaded review remainder', async ({ page }) => {
@@ -111,8 +112,14 @@ test('detail sections expose accessible filters, complete rules, and the loaded 
   await expect(page.getByText(/estimasi jarak jalan kaki riil|Bebas Macet & Hemat Ongkos/)).toHaveCount(0)
 
   const ruleButtons = page.locator('.kos-rules__toggle')
-  await expect(ruleButtons.first()).toHaveAttribute('aria-expanded', 'true')
+  // Every rule group starts collapsed; "Buka semua" opens them all.
+  await expect(ruleButtons.first()).toHaveAttribute('aria-expanded', 'false')
   await expect(ruleButtons.nth(1)).toHaveAttribute('aria-expanded', 'false')
+  await page.getByRole('button', { name: 'Buka semua' }).click()
+  await expect(ruleButtons.first()).toHaveAttribute('aria-expanded', 'true')
+  await expect(ruleButtons.nth(1)).toHaveAttribute('aria-expanded', 'true')
+  await page.getByRole('button', { name: 'Tutup semua' }).click()
+  await expect(ruleButtons.first()).toHaveAttribute('aria-expanded', 'false')
   const ruleButton = page.getByRole('button', { name: /Klausul panjang untuk pengujian/ })
   await expect(ruleButton).toHaveAttribute('aria-expanded', 'false')
   const rulePanel = page.locator(`#${await ruleButton.getAttribute('aria-controls')}`)
@@ -136,7 +143,8 @@ test('detail sections expose accessible filters, complete rules, and the loaded 
   await expect(page.getByText('Balasan pemilik untuk ulasan ketujuh.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Lihat lebih sedikit ulasan' })).toBeFocused()
   await page.getByRole('button', { name: 'Lihat lebih sedikit ulasan' }).click()
-  await expect(page.getByText(/^Ulasan uji [1-7]$/)).toHaveCount(5)
+  // The remainder stays in the DOM but hidden, so count what is visible.
+  await expect(page.getByText(/^Ulasan uji [1-7]$/).filter({ visible: true })).toHaveCount(5)
   await expect(page.getByRole('button', { name: 'Lihat ulasan lainnya (2)' })).toBeFocused()
   loadedReviews = 5
   await page.reload()

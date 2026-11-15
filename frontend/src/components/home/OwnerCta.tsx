@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useReveal } from '../../hooks/useReveal';
 import { Building2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { OwnerBoardPreview } from './OwnerBoardPreview';
@@ -10,12 +11,13 @@ const ACTIONS = [
   'Kirim pesan WhatsApp yang sudah tersusun dan cetak kuitansi digital.',
 ];
 
-export const OwnerCta: React.FC = () => (
+export const OwnerCta: React.FC = () => {
+  const ref = useReveal<HTMLDivElement>();
+  return (
   <section className="owner-cta" aria-labelledby="owner-cta-title">
-    <div className="app-container owner-cta__inner">
-      <div className="owner-cta__copy">
+    <div ref={ref} className="app-container owner-cta__inner">
+      <div className="owner-cta__copy rise">
         <h2 id="owner-cta-title" className="owner-cta__title">Kelola kamar dan pengajuan dari satu papan.</h2>
-        <p className="owner-cta__lead">Pemilik kos memantau pembayaran dan penghuni tanpa catatan terpisah.</p>
         <ul className="owner-cta__list">
           {ACTIONS.map((a) => (
             <li key={a}>{a}</li>
@@ -27,9 +29,10 @@ export const OwnerCta: React.FC = () => (
           </Button>
         </Link>
       </div>
-      <div className="owner-cta__visual reveal-on-scroll">
+      <div className="owner-cta__visual rise" style={{ transitionDelay: 'var(--stagger)' }}>
         <OwnerBoardPreview />
       </div>
     </div>
   </section>
-);
+  );
+};

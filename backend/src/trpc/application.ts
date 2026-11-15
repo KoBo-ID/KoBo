@@ -1,6 +1,9 @@
 import { addDays, todayWIB } from '@kobo/shared/domain'
 import { rentalApplicationCreateInput, rentalApplicationDecisionInput, kosIdOnly } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
+import type { Prisma } from '../generated/prisma/client.ts'
+import { assertApplicationConsents } from '../consents.ts'
+import { assertDemoIsolation } from '../demoIsolation.ts'
 import { advanceWaitlist, liveOffer } from '../waitlist.ts'
 import { CONFLICT_MESSAGE, createApprovedTenancyObligation, isRoomTakenError, OFFERED_ELSEWHERE, OFFERED_ELSEWHERE_MESSAGE } from './booking.ts'
 import { authedProcedure, ownerProcedure, router } from './trpc.ts'
@@ -32,7 +35,8 @@ export interface OwnerRentalApplication {
   occupation: string
   note: string | null
   createdAt: string
-  applicant: { name: string; phone: string | null; campus: string | null }
+  /** No phone here: the number is released only through owner.tenant.tenantProfile once the application is approved. */
+  applicant: { name: string; campus: string | null }
   room: { id: string; roomNumber: string; type: string }
 }
 
@@ -51,12 +55,26 @@ function isDuplicatePendingError(e: unknown): boolean {
   return err.code === 'P2002' || `${err.message ?? ''} ${JSON.stringify(err.meta ?? {})}`.includes('rental_application_one_pending_per_user_room')
 }
 
+const ALREADY_DECIDED = 'Pengajuan ini sudah diputuskan.'
+
+/**
+ * Compare-and-set: only a still-PENDING application can be decided. Under READ COMMITTED a second UPDATE waits for the
+ * first, re-checks `status = 'PENDING'` against the committed row and matches nothing, so exactly one decision wins.
+ * (Same pattern as waitlist leave/decline and visit cancel.)
+ */
+async function claimDecision(tx: Prisma.TransactionClient, applicationId: string, data: Prisma.RentalApplicationUncheckedUpdateManyInput) {
+  const res = await tx.rentalApplication.updateMany({ where: { id: applicationId, status: 'PENDING' }, data })
+  if (res.count === 0) throw new TRPCError({ code: 'CONFLICT', message: ALREADY_DECIDED })
+}
+
 export const applicationRouter = router({
   create: authedProcedure.input(rentalApplicationCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string; status: 'PENDING' }> => {
     const now = new Date()
     validateStartDate(input.startDate, now)
-    const room = await ctx.prisma.room.findUnique({ where: { id: input.roomId }, select: { id: true, kosId: true } })
+    const room = await ctx.prisma.room.findFirst({ where: { id: input.roomId, archivedAt: null, kos: { archivedAt: null } }, select: { id: true, kosId: true } })
     if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kamar tidak ditemukan.' })
+    await assertDemoIsolation(ctx.prisma, ctx.user, room.kosId)
+    await assertApplicationConsents(ctx.prisma, ctx.user.id)
 
     try {
       const created = await ctx.prisma.$transaction(async (tx) => {
@@ -121,7 +139,7 @@ export const applicationRouter = router({
     const rows = await ctx.prisma.rentalApplication.findMany({
       where: { room: { kosId: input.kosId }, status: 'PENDING' },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      include: { user: { select: { name: true, phone: true, campus: true } }, room: { select: { id: true, roomNumber: true, type: true } } },
+      include: { user: { select: { name: true, campus: true } }, room: { select: { id: true, roomNumber: true, type: true } } },
     })
     return rows.map((a) => ({
       id: a.id,
@@ -148,7 +166,7 @@ export const applicationRouter = router({
         if (application.status !== 'PENDING') throw new TRPCError({ code: 'CONFLICT', message: 'Pengajuan ini sudah diputuskan.' })
 
         if (input.decision === 'REJECT') {
-          await tx.rentalApplication.update({ where: { id: application.id }, data: { status: 'REJECTED', decidedAt: now } })
+          await claimDecision(tx, application.id, { status: 'REJECTED', decidedAt: now })
           return { id: application.id, status: 'REJECTED' as const, tenancyId: null }
         }
 
@@ -161,10 +179,8 @@ export const applicationRouter = router({
           now,
         })
         if (booked === OFFERED_ELSEWHERE) return OFFERED_ELSEWHERE
-        await tx.rentalApplication.update({
-          where: { id: application.id },
-          data: { status: 'APPROVED', decidedAt: now, tenancyId: booked.tenancyId },
-        })
+        // Throws (and rolls the new tenancy back) when a concurrent REJECT already took the decision.
+        await claimDecision(tx, application.id, { status: 'APPROVED', decidedAt: now, tenancyId: booked.tenancyId })
         await tx.rentalApplication.updateMany({
           where: { roomId: application.roomId, status: 'PENDING', id: { not: application.id } },
           data: { status: 'REJECTED', decidedAt: now },

@@ -16,6 +16,8 @@ export const kosSearchInput = z
     radius: z.number().int().min(SEARCH_RADIUS_MIN).max(SEARCH_RADIUS_MAX).optional(),
     /** Display label of the reference point. Not used for filtering. */
     locationLabel: z.string().max(80).optional(),
+    /** Kemendagri region code at any level ("36", "36.74", "36.74.03", "36.74.03.1001"): kos inside that area. */
+    regionCode: z.string().regex(/^\d{2}(\.\d{2}){0,2}(\.\d{4})?$/).optional(),
     gender: z.enum(GENDER_FILTERS).default('all'),
     /** At PRICE_MAX the price filter is off (kos above it still show). */
     maxPrice: z.number().int().min(0).default(PRICE_MAX),
@@ -77,10 +79,32 @@ export const recordManualInput = z
 // Owner workspace (spec sections 3 and 5). Every owner write carries `kosId`, the authorization root.
 // ---------------------------------------------------------------------------
 
+/** Registering as an owner: the WhatsApp number tenants and KoBo reach the owner on. */
+export const OWNERSHIP_TYPES = ['PEMILIK', 'PENGELOLA_KUASA', 'LAINNYA'] as const
+export const ownerRegisterInput = z.object({
+  phone: z.string().trim().regex(/^\+?[0-9][0-9 ()-]{7,18}$/, 'Nomor WhatsApp tidak valid. Contoh: 0812 3456 7890.'),
+  /** Self-declared, optional, not verified: the owner, a manager with a power of attorney, or something else. */
+  ownershipType: z.enum(OWNERSHIP_TYPES).optional(),
+})
+
+/** Abuse cap: rooms per kos, enforced at creation and on room.create. */
+export const MAX_ROOMS_PER_KOS = 40
+/** Abuse cap: kos per owner. */
+export const MAX_KOS_PER_OWNER = 5
+
 const text = (max: number) => z.string().trim().min(1).max(max)
 const rupiah = z.number().int().min(0).max(50_000_000)
 
 export const kosIdOnly = z.object({ kosId: z.string().min(1).max(64) })
+
+export const facilityItemInput = z.object({
+  label: text(60),
+  scope: z.enum(['KAMAR', 'GEDUNG']),
+  group: z.enum(['KAMAR', 'KEAMANAN', 'PARKIR', 'UTILITAS', 'LAYANAN', 'DAPUR', 'LAINNYA']),
+  status: z.enum(['INCLUDED', 'PAID']),
+  fee: z.number().int().min(0).max(10_000_000).nullable().optional(),
+  note: z.string().trim().max(80).optional(),
+})
 
 /** The kos fields the owner form edits. `applicationFee` stays untouched when omitted. */
 export const kosFieldsInput = z.object({
@@ -92,8 +116,13 @@ export const kosFieldsInput = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
   electricityType: z.enum(['INCLUDED', 'TOKEN']),
-  privateAmenities: z.array(text(60)).max(30),
-  sharedAmenities: z.array(text(60)).max(30),
+  /** Flat lists, used when `facilities` is omitted. With `facilities` the server derives both from it. */
+  privateAmenities: z.array(text(60)).max(30).default([]),
+  sharedAmenities: z.array(text(60)).max(30).default([]),
+  facilities: z.array(facilityItemInput).max(60).optional(),
+  floors: z.number().int().min(1).max(60).optional(),
+  yearBuilt: z.number().int().min(1900).max(2100).optional(),
+  buildingAreaM2: z.number().int().min(1).max(100_000).optional(),
   studentDiscountAmount: z.number().int().min(0).max(5_000_000),
   applicationFee: z.number().int().min(0).max(1_000_000).optional(),
 })
@@ -106,8 +135,8 @@ export const kosCreateInput = kosFieldsInput.extend({
     .max(500)
     .refine((v) => /^https?:\/\/\S+$/i.test(v), 'URL foto tidak valid')
     .optional(),
-  /** Optional starter rooms: numbered 101, 102, ... (4 per floor), all vacant. */
-  initialRooms: z.object({ count: z.number().int().min(1).max(50), priceMonthly: rupiah }).optional(),
+  /** Optional starter rooms, all vacant: spread over `floors` when given (numbered 101, 102, ... 201 ...), else 4 per floor. */
+  initialRooms: z.object({ count: z.number().int().min(1).max(MAX_ROOMS_PER_KOS), priceMonthly: rupiah }).optional(),
 })
 export type KosCreateInput = z.input<typeof kosCreateInput>
 
@@ -126,6 +155,14 @@ export const roomCreateInput = roomFieldsInput.extend({ kosId: z.string().min(1)
 export const roomUpdateInput = roomFieldsInput.extend({ kosId: z.string().min(1).max(64), roomId: z.string().min(1).max(64) })
 export const roomDeleteInput = z.object({ kosId: z.string().min(1).max(64), roomId: z.string().min(1).max(64) })
 export type RoomFieldsInput = z.input<typeof roomFieldsInput>
+
+export const houseRuleInput = z.object({
+  categoryTitle: text(60),
+  rules: z.array(text(140)).min(1).max(15),
+  penaltyAmount: z.number().int().min(0).max(10_000_000).optional(),
+  penaltyClause: z.string().trim().max(300).optional(),
+})
+export const rulesSetInput = z.object({ kosId: z.string().min(1).max(64), groups: z.array(houseRuleInput).max(10) })
 
 export const tenancyEndInput = z.object({ kosId: z.string().min(1).max(64), tenancyId: z.string().min(1).max(64) })
 
@@ -218,3 +255,56 @@ export const profileUpdateInput = z.object({
   campus: z.string().trim().max(80).nullable(),
 })
 export type ProfileUpdateInput = z.input<typeof profileUpdateInput>
+
+/** Emergency contact. `consent` must be true: the student agrees that KoBo may message this person about an overdue payment. */
+export const emergencyContactInput = z.object({
+  name: z.string().trim().min(2).max(80),
+  relation: z.string().trim().min(2).max(40),
+  phone: z.string().trim().regex(/^\+?[0-9][0-9 ()-]{7,18}$/, 'Nomor telepon tidak valid'),
+  consent: z.literal(true, { message: 'Persetujuan diperlukan agar kontak darurat dapat dihubungi.' }),
+})
+export type EmergencyContactInput = z.input<typeof emergencyContactInput>
+
+export const acceptTermsInput = z.object({ version: z.string().min(1).max(40) })
+export const notifyPrefInput = z.object({ optOut: z.boolean() })
+
+/** An owner opens a tenant's profile from an application or from a tenancy of their own kos. Exactly one of the two ids. */
+export const tenantProfileInput = z
+  .object({ kosId: z.string().min(1).max(64), applicationId: z.string().min(1).max(64).optional(), tenancyId: z.string().min(1).max(64).optional() })
+  .refine((v) => (v.applicationId === undefined) !== (v.tenancyId === undefined), { message: 'Pilih satu pengajuan atau satu sewa.', path: ['applicationId'] })
+
+// ---- Place catalogue (regions, nationwide campuses, places near a kos) ----
+
+const latitude = z.number().min(-11).max(6)
+const longitude = z.number().min(95).max(141)
+
+/** Owner-added place text: free text, but never contact details or links (UU PDP); the server also checks with isPhoneLike / isUrlLike. */
+const ownerPlaceText = (max: number) => z.string().trim().min(2).max(max)
+
+export const placeReverseInput = z.object({ lat: latitude, lng: longitude })
+export type PlaceReverseInput = z.input<typeof placeReverseInput>
+
+export const regionChildrenInput = z.object({ parentCode: z.string().regex(/^\d{2}(\.\d{2}){0,2}(\.\d{4})?$/).optional() })
+export const regionSearchInput = z.object({ q: z.string().trim().min(2).max(60), level: z.number().int().min(1).max(4).optional(), limit: z.number().int().min(1).max(20).default(10) })
+export const regionLookupInput = z.object({ code: z.string().regex(/^\d{2}(\.\d{2}){0,2}(\.\d{4})?$/) })
+
+export const campusBoxInput = z.object({
+  minLat: z.number().min(-12).max(8), maxLat: z.number().min(-12).max(8), minLng: z.number().min(94).max(142), maxLng: z.number().min(94).max(142),
+  limit: z.number().int().min(1).max(60).default(40),
+})
+
+export const campusSearchInput = z.object({ q: z.string().trim().min(2).max(60), limit: z.number().int().min(1).max(20).default(10) })
+
+const PLACE_CATEGORY_ENUM = ['campus', 'food', 'minimarket', 'laundry', 'print', 'atm', 'pharmacy', 'clinic', 'hospital', 'police', 'worship', 'gym', 'cafe', 'transit', 'pasar'] as const
+export const placeCategoryEnum = z.enum(PLACE_CATEGORY_ENUM)
+
+export const ownerPlaceKosInput = z.object({ kosId: z.string().min(1).max(64) })
+export const ownerPlaceRefInput = ownerPlaceKosInput.extend({ placeId: z.string().min(1).max(80) })
+export const ownerPlaceAddInput = ownerPlaceKosInput.extend({
+  name: ownerPlaceText(80),
+  category: placeCategoryEnum,
+  lat: latitude,
+  lng: longitude,
+  note: ownerPlaceText(140).optional(),
+})
+export type OwnerPlaceAddInput = z.input<typeof ownerPlaceAddInput>

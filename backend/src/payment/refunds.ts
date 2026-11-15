@@ -3,6 +3,7 @@ import type { CreateRefundInput } from './provider.ts'
 import type { PaymentService } from './service.ts'
 import { applyRefundResult } from './settlement.ts'
 import { XenditError } from './xendit.ts'
+import { startPeriodic, type StopWorker } from '../worker.ts'
 
 export const REFUND_MAX_ATTEMPTS = 8
 /** A claimed row is invisible to other workers for this long; a crash mid-call simply becomes a retry. */
@@ -130,21 +131,8 @@ export async function drainPaymentRefunds(
 }
 
 /** Not started from createApp: tests call drainPaymentRefunds() directly. Returns a stop function. */
-export function startRefundWorker(prisma: PrismaClient, service: Pick<PaymentService, 'defaultProvider' | 'mockProvider' | 'xenditWebhook'>, intervalMs = 15_000): () => void {
-  let running = false
-  const tick = async () => {
-    if (running) return
-    running = true
-    try {
-      await drainPaymentRefunds(prisma, service)
-    } catch (err) {
-      console.error('[refunds] drain failed:', err instanceof Error ? err.message : err)
-    } finally {
-      running = false
-    }
-  }
-  const timer = setInterval(() => void tick(), intervalMs)
-  return () => clearInterval(timer)
+export function startRefundWorker(prisma: PrismaClient, service: Pick<PaymentService, 'defaultProvider' | 'mockProvider' | 'xenditWebhook'>, intervalMs = 15_000): StopWorker {
+  return startPeriodic('refunds', intervalMs, () => drainPaymentRefunds(prisma, service))
 }
 
 /** Refunds that need a human: failed ones, and ones submitted long ago that no callback ever closed. */

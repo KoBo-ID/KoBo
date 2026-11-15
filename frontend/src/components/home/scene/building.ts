@@ -12,7 +12,14 @@
  * and starts at a random point in its cycle, so no two rooms ever move in step.
  * Residents path-find around their room's furniture; doors open for whoever is
  * passing and the resident waits for it. Floors occasionally do a 90deg
- * "Rubik's layer" turn on independent timers. The camera never moves.
+ * "Rubik's layer" turn on independent timers.
+ *
+ * Look: a cool teal shell around warm cream rooms, lit by a warm key and a cool
+ * fill. Each room's lamp follows who is home, so the building glows where
+ * people are. Over ~100 s the light drifts from midday to golden hour and back.
+ * The camera rests exactly where it always did (the page CSS is measured
+ * against that framing) and only sways a few degrees with the pointer. Hover a
+ * room to warm it, click to say hi. Everything is decorative.
  *
  * Units are metres.
  */
@@ -21,18 +28,24 @@ import {
   BufferGeometry,
   CapsuleGeometry,
   Color,
+  AdditiveBlending,
+  CanvasTexture,
   DirectionalLight,
   Group,
   HemisphereLight,
   Material,
   Mesh,
+  MeshBasicMaterial,
   MeshLambertMaterial,
   Object3D,
   PCFShadowMap,
   PerspectiveCamera,
+  PlaneGeometry,
+  Raycaster,
   Scene,
   SphereGeometry,
   Timer,
+  Vector2,
   WebGLRenderer,
 } from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
@@ -47,7 +60,9 @@ import {
   ENTRY,
   FLOOR_H,
   HALF,
+  HERO_ROOM,
   LAYOUTS,
+  PART_FACE,
   SLAB_T,
   WALL_T,
   buildNav,
@@ -85,38 +100,51 @@ function mulberry32(seed: number) {
   };
 }
 
-/** Pastel versions of the brand hues plus soft warm accents. */
+/** A cool teal shell around warm cream rooms, with ONE warm accent (coral) and
+ *  amber for light. Shell sits at mid lightness, interiors high, so planes and
+ *  people separate; the shell stays duller than the page's "Cari Kos" teal. */
 const PALETTE = {
-  floor: hsl(40, 45, 95),
-  slabEdge: hsl(172, 28, 80),
-  ceiling: hsl(170, 25, 97),
-  wallTints: [hsl(170, 34, 88), hsl(18, 55, 91), hsl(260, 35, 92), hsl(46, 60, 89)],
-  partition: hsl(174, 30, 82),
-  door: hsl(176, 38, 72),
-  handle: hsl(38, 60, 72),
-  wood: hsl(32, 38, 84),
-  woodDark: hsl(30, 28, 74),
-  mattress: hsl(40, 40, 98),
+  floor: hsl(36, 48, 90),
+  slabEdge: hsl(178, 30, 60),
+  ceiling: hsl(36, 40, 95),
+  wallTints: [hsl(38, 60, 93), hsl(22, 62, 91), hsl(46, 55, 91), hsl(176, 30, 92)],
+  partition: hsl(178, 28, 60),
+  door: hsl(16, 72, 66),
+  handle: hsl(40, 80, 70),
+  wood: hsl(30, 48, 70),
+  woodDark: hsl(28, 40, 52),
+  mattress: hsl(40, 40, 97),
   pillow: hsl(0, 0, 100),
-  blankets: [hsl(18, 78, 86), hsl(265, 42, 88), hsl(48, 82, 84), hsl(160, 40, 82)],
-  sofas: [hsl(200, 40, 80), hsl(18, 55, 82), hsl(265, 30, 84)],
-  rugs: [hsl(190, 50, 86), hsl(40, 55, 88), hsl(265, 35, 90), hsl(150, 30, 86)],
-  wardrobe: hsl(176, 22, 92),
-  seam: hsl(176, 18, 78),
-  chair: hsl(176, 30, 74),
-  pot: hsl(15, 42, 80),
-  leaf: hsl(150, 34, 68),
-  leafTones: [hsl(150, 34, 68), hsl(133, 28, 60), hsl(163, 26, 74), hsl(108, 24, 64)],
-  potTones: [hsl(15, 42, 80), hsl(28, 36, 86), hsl(200, 20, 82), hsl(340, 20, 88)],
-  art: hsl(176, 20, 97),
-  artInner: [hsl(200, 50, 85), hsl(18, 70, 86), hsl(265, 40, 88), hsl(48, 75, 84)],
-  books: [hsl(18, 60, 80), hsl(190, 45, 76), hsl(265, 35, 82), hsl(48, 65, 80)],
-  resident: hsl(190, 55, 64),
-  lamp: hsl(40, 90, 82),
-  screen: hsl(195, 60, 86),
-  tv: hsl(200, 30, 70),
-  coreLight: hsl(45, 80, 92),
+  blankets: [hsl(14, 76, 68), hsl(178, 38, 58), hsl(40, 85, 70), hsl(8, 60, 74)],
+  sofas: [hsl(180, 35, 56), hsl(14, 60, 68), hsl(40, 50, 70)],
+  rugs: [hsl(176, 32, 78), hsl(32, 50, 80), hsl(14, 50, 82), hsl(150, 28, 78)],
+  wardrobe: hsl(30, 42, 84),
+  seam: hsl(30, 20, 70),
+  chair: hsl(178, 32, 56),
+  pot: hsl(14, 55, 68),
+  leaf: hsl(150, 42, 56),
+  leafTones: [hsl(150, 42, 56), hsl(133, 36, 48), hsl(163, 34, 62), hsl(108, 32, 52)],
+  potTones: [hsl(14, 55, 68), hsl(32, 50, 76), hsl(178, 25, 70), hsl(8, 40, 78)],
+  art: hsl(36, 30, 97),
+  artInner: [hsl(178, 40, 62), hsl(14, 70, 70), hsl(40, 80, 70), hsl(190, 40, 70)],
+  books: [hsl(14, 62, 66), hsl(178, 38, 56), hsl(40, 75, 68), hsl(28, 30, 45)],
+  lamp: hsl(40, 100, 78),
+  screen: hsl(190, 70, 84),
+  tv: hsl(200, 25, 45),
+  coreLight: hsl(45, 90, 86),
+  // people: coral / amber / deep teal bodies, peach heads, dark teal packs
+  bodies: [hsl(14, 82, 62), hsl(38, 90, 60), hsl(188, 52, 38)],
+  head: hsl(28, 62, 80),
+  pack: hsl(190, 40, 30),
 };
+
+// Light states. Day is cool and high; dusk is a warm golden hour, still high-key
+// (never dark: the stage sits beside the search box).
+const DAY = { sun: hsl(38, 100, 95), sky: hsl(190, 50, 93), gnd: hsl(178, 42, 52), sunI: 2.5, hemiI: 1.05, sunY: 9.5 };
+const DUSK = { sun: hsl(30, 100, 76), sky: hsl(24, 85, 88), gnd: hsl(190, 44, 48), sunI: 2.3, hemiI: 0.9, sunY: 5.5 };
+const CYCLE_S = 100; // one siang -> senja -> siang loop
+const MOOD0 = 0.3; // where the cycle starts (matches the poster)
+const BASE_WARM = 0.4; // every room's resting glow (what the poster shows)
 
 /* ── Resident behaviour ──────────────────────────────────────────────────── */
 
@@ -144,6 +172,19 @@ interface Resident {
   stops: number;
   heading: number;
   stride: number;
+  hop: number; // 0..1 through a "hi" hop after a click, or -1
+  ri: number; // room index across the building (floor * 4 + quarter)
+}
+
+/** Per-room light state: the lamp follows who is home, hover and clicks add to it. */
+interface RoomLight {
+  lamp: MeshLambertMaterial;
+  screen: MeshLambertMaterial;
+  wash: MeshBasicMaterial;
+  warm: number;
+  hover: number; // 0..1, eased
+  pulse: number; // decays after a click
+  resident: Resident | null;
 }
 
 interface FloorState {
@@ -153,6 +194,21 @@ interface FloorState {
   turnIn: number;
   turning: number; // seconds into a turn, or -1
   fromY: number;
+}
+
+/** Soft round falloff for the warm wash: fully transparent at its rim. */
+function washTex() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const x = c.getContext('2d')!;
+  const g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.4, 'rgba(255,255,255,0.45)');
+  g.addColorStop(0.8, 'rgba(255,255,255,0.07)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 128, 128);
+  return new CanvasTexture(c);
 }
 
 export function start(host: HTMLElement, onFirstFrame?: () => void): () => void {
@@ -226,12 +282,23 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
     art: lam(PALETTE.art),
     artInner: PALETTE.artInner.map(lam),
     books: PALETTE.books.map(lam),
-    resident: lam(PALETTE.resident),
-    lamp: glow(PALETTE.lamp, 0.9),
-    screen: glow(PALETTE.screen, 0.45),
+    // people carry a little self-light so they stay the focal points in shade
+    bodies: PALETTE.bodies.map((c) => glow(c, 0.16)),
+    head: glow(PALETTE.head, 0.22),
+    pack: lam(PALETTE.pack),
     tv: glow(PALETTE.tv, 0.2),
     coreLight: glow(PALETTE.coreLight, 0.8),
   };
+  // Lamps and screens are per room (not shared) so each can glow on its own.
+  const lights: RoomLight[] = Array.from({ length: FLOORS * 4 }, () => ({
+    lamp: glow(PALETTE.lamp, 1),
+    screen: glow(PALETTE.screen, 0.4),
+    wash: new MeshBasicMaterial({ map: washTex(), color: hsl(34, 100, 64), transparent: true, depthWrite: false, opacity: 0 }),
+    warm: BASE_WARM,
+    hover: 0,
+    pulse: 0,
+    resident: null,
+  }));
   // Box face order: +x, -x, +y (floor), -y (ceiling), +z, -z.
   const slabEdge = lam(PALETTE.slabEdge);
   const slabMats = [slabEdge, slabEdge, lam(PALETTE.floor), lam(PALETTE.ceiling), slabEdge, slabEdge];
@@ -290,10 +357,10 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
       put(g, rbox(0.6, 0.12, 0.32, 0.06), M.pillow, 0, 0.56, -0.7);
       put(g, rbox(1.0, 0.95, 0.08, 0.03), M.woodDark, 0, 0.475, -0.96, true);
     },
-    nightstand: (g) => {
+    nightstand: (g, v) => {
       put(g, rbox(0.45, 0.5, 0.45, 0.05), M.wood, 0, 0.25, 0, true);
       put(g, rbox(0.08, 0.22, 0.08, 0.02), M.woodDark, 0, 0.61, 0);
-      put(g, rbox(0.26, 0.18, 0.26, 0.06), M.lamp, 0, 0.81, 0);
+      put(g, rbox(0.26, 0.18, 0.26, 0.06), lights[v].lamp, 0, 0.81, 0);
     },
     wardrobe: (g) => {
       put(g, rbox(1.0, 1.9, 0.6, 0.04), M.wardrobe, 0, 0.95, 0, true);
@@ -306,7 +373,7 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
       put(g, rbox(0.05, 0.72, 0.5, 0.02), M.woodDark, -0.5, 0.36, -0.275);
       put(g, rbox(0.05, 0.72, 0.5, 0.02), M.woodDark, 0.5, 0.36, -0.275);
       put(g, rbox(0.34, 0.02, 0.24, 0.008), M.seam, -0.1, 0.79, -0.28);
-      put(g, rbox(0.34, 0.22, 0.015, 0.006), M.screen, -0.1, 0.91, -0.4);
+      put(g, rbox(0.34, 0.22, 0.015, 0.006), lights[v].screen, -0.1, 0.91, -0.4);
       put(g, rbox(0.13, 0.12, 0.13, 0.025), M.potTones[v % 4], 0.4, 0.84, -0.4);
       if (v % 2) {
         // Succulent rosette
@@ -447,6 +514,10 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
     },
   };
 
+  const hitMat = new MeshBasicMaterial({ visible: false });
+  const washGeo = new PlaneGeometry(1, 1);
+  const hitBoxes: Mesh[] = [];
+
   // ── One room, in its own local frame (see layouts.ts) ──────────────────
   function buildRoom(floor: Group, quarter: number, layout: Layout, v: number): DoorState {
     const room = new Group();
@@ -488,6 +559,20 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
       room.add(g);
       KIT[item.k](g, v);
     }
+    // Lamplight pooled on the back wall (a plane ON the wall, so it can never
+    // spill past the room's cut faces onto the page) + an invisible volume for
+    // hover/click.
+    const wash = new Mesh(washGeo, lights[v].wash);
+    wash.scale.set(3.3, 2.5, 1);
+    wash.position.set((-HALF + PART_FACE) / 2, CLEAR * 0.52, BACK_FACE + 0.015);
+    wash.renderOrder = 2;
+    room.add(wash);
+    const hit = new Mesh(unitBox, hitMat);
+    hit.scale.set(HALF + PART_FACE, CLEAR, HALF - BACK_FACE);
+    hit.position.set((-HALF + PART_FACE) / 2, CLEAR / 2, (BACK_FACE + HALF) / 2);
+    hit.userData.ri = v;
+    room.add(hit);
+    hitBoxes.push(hit);
     return { pivot, value: 0, target: 0 };
   }
 
@@ -514,8 +599,9 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
       doors.push(door);
 
       const rg = new Group();
-      put(rg, bodyGeo, M.resident, 0, 0.565, 0, true);
-      put(rg, headGeo, M.resident, 0, 1.3, 0, true);
+      put(rg, bodyGeo, M.bodies[(ri + i) % 3], 0, 0.565, 0, true);
+      put(rg, headGeo, M.head, 0, 1.3, 0, true);
+      put(rg, rbox(0.26, 0.36, 0.13, 0.05), M.pack, 0, 0.78, -0.2, true); // a student's backpack
       rg.visible = false;
       g.add(rg);
 
@@ -535,9 +621,12 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
         stops: 0,
         heading: 0,
         stride: 0,
+        hop: -1,
+        ri,
       };
+      lights[ri].resident = r;
       // Some residents are already home when the scene appears.
-      if (rng() < 0.45 && nav.wander.length) {
+      if ((ri === HERO_ROOM || rng() < 0.45) && nav.wander.length) {
         r.node = nav.wander[Math.floor(rng() * nav.wander.length)];
         r.pos = [...nav.pts[r.node]] as [number, number];
         r.phase = 'pause';
@@ -552,30 +641,41 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
   }
   block(scene, slabMats, HALF * 2, SLAB_T, HALF * 2, 0, FLOORS * FLOOR_H - SLAB_T / 2, 0);
 
-  // ── Camera: fixed, isometric-like - raised and looking down at 10deg so the
-  // room floors read, aimed at the centre of the front room.
+  // ── Camera: isometric-like - raised and looking down at 10deg so the room
+  // floors read, aimed at the centre of the front room. This rest pose is what
+  // the page CSS and the poster are measured against; the pointer and a slow
+  // idle drift only sway it a few degrees around the same target.
   const target = { x: -(HALF - CORE) / 2, y: FOCUS * FLOOR_H + 1.3, z: (HALF + CORE) / 2 };
   const DIST = 22; // between the tight crop and the full pull-back
   const AZ = -45 * DEG;
   const EL = 10 * DEG;
-  camera.position.set(
-    target.x + DIST * Math.sin(AZ) * Math.cos(EL),
-    target.y + DIST * Math.sin(EL),
-    target.z + DIST * Math.cos(AZ) * Math.cos(EL)
-  );
-  camera.lookAt(target.x, target.y, target.z);
+  const aim = (az: number, el: number) => {
+    camera.position.set(
+      target.x + DIST * Math.sin(az) * Math.cos(el),
+      target.y + DIST * Math.sin(el),
+      target.z + DIST * Math.cos(az) * Math.cos(el)
+    );
+    camera.lookAt(target.x, target.y, target.z);
+  };
+  aim(AZ, EL);
 
-  // ── Light: soft pastel sky fill + one gentle shadow-casting sun from the
-  // open corner, so shadows fall back into the rooms.
-  scene.add(new HemisphereLight(0xffffff, PALETTE.partition, 1.6));
-  const sun = new DirectionalLight(0xffffff, 2.2);
-  sun.position.set(target.x - 6.5, target.y + 9, target.z + 7.5);
+  // ── Light: a warm key from the open corner (the only shadow caster), a cool
+  // sky/ground fill and a cool front fill, so lit faces run warm and shaded ones
+  // run teal. The cycle in the loop eases these between DAY and DUSK.
+  const hemi = new HemisphereLight(DAY.sky, DAY.gnd, DAY.hemiI);
+  scene.add(hemi);
+  const coolFill = new DirectionalLight(hsl(186, 60, 78), 0.5);
+  coolFill.position.set(target.x + 4, target.y + 3, target.z + 10);
+  coolFill.target.position.set(target.x, target.y, target.z);
+  scene.add(coolFill, coolFill.target);
+  const sun = new DirectionalLight(DAY.sun, DAY.sunI);
+  sun.position.set(target.x - 6.5, target.y + DAY.sunY, target.z + 7.5);
   sun.target.position.set(target.x, target.y - 0.5, target.z - 0.8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.bias = -0.0005;
   sun.shadow.normalBias = 0.05;
-  sun.shadow.intensity = 0.6; // soft pastel shadows, never black
+  sun.shadow.intensity = 0.78; // readable, but tinted by the fill, never black
   const sc = sun.shadow.camera;
   sc.left = -5.5;
   sc.right = 5.5;
@@ -585,6 +685,10 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
   sc.far = 40;
   scene.add(sun, sun.target);
 
+  const camSway = { x: 0, y: 0 };
+  // The focal room is whichever room of the focus floor currently faces the
+  // camera (floors turn), so the lit, mostly-home room never drifts out of view.
+  let hero = HERO_ROOM;
   const resize = () => {
     const w = host.clientWidth || 1;
     const h = host.clientHeight || w;
@@ -613,6 +717,47 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
   };
   mq.addEventListener('change', onMotion);
 
+  // ── Pointer: a few degrees of camera sway, hover warms a room, click says hi.
+  // Decorative only, mouse/pen only for the sway; never intercepts page clicks
+  // (listeners are passive and the hit test is against our own rooms).
+  const ray = new Raycaster();
+  const ndc = new Vector2();
+  const ptr = { x: 0, y: 0, moved: false, seen: false };
+  const sway = { x: 0, y: 0 }; // smoothed -1..1
+  let hovered = -1;
+  const pick = (cx: number, cy: number) => {
+    const r = host.getBoundingClientRect();
+    if (cx < r.left || cx > r.right || cy < r.top || cy > r.bottom) return -1;
+    ndc.set(((cx - r.left) / r.width) * 2 - 1, -(((cy - r.top) / r.height) * 2 - 1));
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObjects(hitBoxes, false)[0];
+    return hit ? (hit.object.userData.ri as number) : -1;
+  };
+  const onMove = (e: PointerEvent) => {
+    if (e.pointerType === 'touch') return;
+    ptr.x = e.clientX;
+    ptr.y = e.clientY;
+    ptr.moved = true;
+    ptr.seen = true;
+  };
+  const onLeave = () => {
+    ptr.seen = false;
+    ptr.moved = true;
+  };
+  const onClick = (e: MouseEvent) => {
+    const i = pick(e.clientX, e.clientY);
+    if (i < 0) return;
+    const l = lights[i];
+    l.pulse = 1;
+    const r = l.resident;
+    if (!r) return;
+    if (r.phase === 'away') r.t = 0; // knock: the resident comes home
+    else if (r.phase === 'pause' && r.hop < 0) r.hop = 0;
+  };
+  window.addEventListener('pointermove', onMove, { passive: true });
+  document.documentElement.addEventListener('pointerleave', onLeave, { passive: true });
+  host.addEventListener('click', onClick);
+
   // ── Behaviour ───────────────────────────────────────────────────────────
   const lerpAngle = (a: number, b: number, k: number) => {
     let d = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
@@ -623,7 +768,9 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
   const place = (r: Resident) => {
     const [fx, fz] = toFloor(r.room, r.pos[0], r.pos[1]);
     const bob = r.phase === 'walk' ? Math.abs(Math.sin(r.stride * 5.2)) * 0.035 : 0;
-    r.g.position.set(fx, bob, fz);
+    // "Hi" hop: quick rise, soft landing.
+    const hop = r.hop >= 0 ? Math.sin(Math.PI * r.hop) * 0.34 : 0;
+    r.g.position.set(fx, bob + hop, fz);
     r.g.rotation.y = r.heading + r.room * (Math.PI / 2);
   };
 
@@ -720,7 +867,7 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
               r.door.target = 0;
               r.g.visible = false;
               r.phase = 'away';
-              r.t = 2 + rng() * 11; // long, uneven absences
+              r.t = r.ri === hero ? 0.8 + rng() * 2 : 2 + rng() * 11; // long, uneven absences (short for the focal room)
               break;
           }
         }
@@ -759,6 +906,9 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
   for (const f of floors) for (const r of f.residents) place(r);
 
   const timer = new Timer();
+  let clock = 0; // simulated seconds (dt is clamped, so this never jumps)
+  const mixIn = new Color();
+  const warmCol = new Color();
   let raf = 0;
   let first = true;
   let stopped = false;
@@ -768,7 +918,74 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
     timer.update(ts);
     if (frozen || !onScreen || !tabVisible) return;
     const dt = Math.min(timer.getDelta(), 0.05);
+    clock += dt;
     for (const f of floors) stepFloor(f, dt);
+
+    // Hover (only re-tested when the pointer moved).
+    if (ptr.moved) {
+      ptr.moved = false;
+      hovered = ptr.seen ? pick(ptr.x, ptr.y) : -1;
+      host.style.cursor = hovered >= 0 ? 'pointer' : '';
+      const hr = host.getBoundingClientRect();
+      const half = Math.max(1, window.innerWidth / 2);
+      // No sway while the pointer is over the copy column (left of the stage):
+      // the building must not move while someone reads or types.
+      const t = Math.max(0, Math.min(1, (ptr.x - (hr.left - 160)) / 160));
+      const gain = ptr.seen ? t * t * (3 - 2 * t) : 0;
+      sway.x = Math.max(-1, Math.min(1, (ptr.x - (hr.left + hr.width / 2)) / half)) * gain;
+      sway.y = Math.max(-1, Math.min(1, (ptr.y - (hr.top + hr.height / 2)) / (window.innerHeight / 2))) * gain;
+    }
+
+    // Camera: eased pointer sway + a slow idle drift (both zero at t = 0, so the
+    // first frame equals the poster).
+    const ease = 1 - Math.exp(-dt * 3);
+    camSway.x += (sway.x - camSway.x) * ease;
+    camSway.y += (sway.y - camSway.y) * ease;
+    aim(
+      AZ + (camSway.x * 3.5 + Math.sin(clock * 0.21) * 1.1) * DEG,
+      EL + (-camSway.y * 1.8 + Math.sin(clock * 0.17) * 0.5) * DEG
+    );
+
+    const front = (4 - (Math.round(floors[FOCUS].group.rotation.y / (Math.PI / 2)) % 4) + 4) % 4;
+    if (FOCUS * 4 + front !== hero) {
+      hero = FOCUS * 4 + front;
+      const hr0 = lights[hero].resident;
+      if (hr0 && hr0.phase === 'away') hr0.t = Math.min(hr0.t, 1.2);
+    }
+
+    // Light cycle: midday -> golden hour -> midday, eased.
+    const mood = MOOD0 + (1 - MOOD0) * (0.5 - 0.5 * Math.cos((clock / CYCLE_S) * Math.PI * 2));
+    sun.color.copy(DAY.sun).lerp(DUSK.sun, mood);
+    sun.intensity = DAY.sunI + (DUSK.sunI - DAY.sunI) * mood;
+    sun.position.set(target.x - 6.5 + camSway.x * 1.6, target.y + DAY.sunY + (DUSK.sunY - DAY.sunY) * mood, target.z + 7.5);
+    hemi.color.copy(DAY.sky).lerp(DUSK.sky, mood);
+    hemi.groundColor.copy(DAY.gnd).lerp(DUSK.gnd, mood);
+    hemi.intensity = DAY.hemiI + (DUSK.hemiI - DAY.hemiI) * mood;
+
+    // Room lights: lamps follow who is home; hover and clicks warm a room;
+    // lamps come on one by one after the first frame (light-only intro).
+    const lk = 1 - Math.exp(-dt * 3);
+    lights.forEach((l, i) => {
+      const r = l.resident;
+      const home = r && r.g.visible && r.phase !== 'callDoor' ? 1 : 0;
+      l.hover += ((hovered === i ? 1 : 0) - l.hover) * (1 - Math.exp(-dt * 6));
+      l.pulse *= Math.exp(-dt * 1.4);
+      const on = clock > 0.8 + i * 0.1;
+      const full = BASE_WARM + 0.38 * home + 0.35 * l.hover + 0.4 * l.pulse + (i === hero ? 0.18 : 0) + 0.2 * mood;
+      l.warm += ((on ? full : BASE_WARM) - l.warm) * lk;
+      l.lamp.emissiveIntensity = 0.45 + 1.7 * l.warm;
+      l.screen.emissiveIntensity = 0.2 + 0.6 * l.warm;
+      l.wash.opacity = Math.min(0.55, 0.05 + 0.4 * l.warm);
+      if (r && r.hop >= 0) {
+        r.hop += dt / 0.7;
+        if (r.hop >= 1) r.hop = -1;
+        place(r);
+      }
+    });
+    warmCol.setHSL((34 - 6 * mood) / 360, 1, 0.64);
+    mixIn.copy(warmCol);
+    for (const l of lights) l.wash.color.copy(mixIn);
+
     renderer.render(scene, camera);
     if (first) {
       first = false;
@@ -787,6 +1004,10 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
     io.disconnect();
     document.removeEventListener('visibilitychange', onVis);
     mq.removeEventListener('change', onMotion);
+    window.removeEventListener('pointermove', onMove);
+    document.documentElement.removeEventListener('pointerleave', onLeave);
+    host.removeEventListener('click', onClick);
+    host.style.cursor = '';
     // 3. dispose geometries + materials (Sets: both are shared)
     const geos = new Set<{ dispose(): void }>();
     const mats = new Set<Material>();
@@ -799,6 +1020,10 @@ export function start(host: HTMLElement, onFirstFrame?: () => void): () => void 
     });
     geos.forEach((g) => g.dispose());
     mats.forEach((x) => x.dispose());
+    lights.forEach((l) => {
+      l.wash.map?.dispose();
+      l.wash.dispose();
+    });
     scene.clear();
     // 4. + 5. free the renderer (incl. shadow map), then release the GPU context
     renderer.dispose();

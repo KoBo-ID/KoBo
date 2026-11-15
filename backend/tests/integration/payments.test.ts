@@ -70,7 +70,7 @@ describe('POST /api/webhooks/xendit', () => {
 
     const mails = await prisma.emailOutbox.findMany({ where: { template: 'payment-received' } })
     expect(mails).toHaveLength(1)
-    expect(mails[0].to).toBe('demo-student@kobo.test')
+    expect(mails[0].to).toBe('dimas.pratama@kobo.test')
     expect((mails[0].payload as { url: string }).url).toMatch(new RegExp(`/kuitansi/${pay.receiptNo}$`))
 
     const audit = await auditRows()

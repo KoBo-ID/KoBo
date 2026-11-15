@@ -209,6 +209,7 @@ describe('releasing a room', () => {
     expect(mine.offer).toMatchObject({ roomId: f.room('S1').id, roomNumber: 'S1', priceMonthly: 1_500_000 })
     const asA = await a.c.kos.detail({ id: f.kos.id })
     expect(asA.rooms[0]).toMatchObject({ reservedForWaitlist: false, offeredToMe: true })
+    expect((await a.c.kos.list()).find((k) => k.id === f.kos.id)!.availableRooms).toBe(asA.rooms.filter((r) => r.status === 'vacant').length - 1)
     const asB = await b.c.kos.detail({ id: f.kos.id })
     expect(asB.rooms[0]).toMatchObject({ reservedForWaitlist: true, offeredToMe: false })
     const { caller } = await import('../helpers.ts')
@@ -457,8 +458,9 @@ describe('deleting with a live offer', () => {
       expect(e?.message).toBe('Masih ada penawaran daftar tunggu aktif.')
     }
     await a.c.waitlist.decline({ entryId: a.entry.id })
-    await f.owner.room.delete({ kosId: f.kos.id, roomId })
-    expect(await prisma.room.count({ where: { id: roomId } })).toBe(0)
+    // The room had a tenancy (ended above): it is archived, not deleted, once the offer is gone.
+    expect(await f.owner.room.delete({ kosId: f.kos.id, roomId })).toEqual({ id: roomId, archived: true })
+    expect((await prisma.room.findUniqueOrThrow({ where: { id: roomId } })).archivedAt).not.toBeNull()
   })
 
   it('cascades waiting entries when a kos with no live offer is deleted', async () => {

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Footprints, Send, ShieldCheck } from 'lucide-react';
@@ -13,6 +14,7 @@ import { Button } from '../components/ui/Button';
 import { BackButton } from '../components/ui/BackButton';
 import { Input } from '../components/ui/Input';
 import { Notice } from '../components/ui/Notice';
+import { Skeleton } from '../components/ui/Skeleton';
 import { ErrorState, NotFoundState } from '../components/ui/QueryState';
 import { SafeImage } from '../components/ui/SafeImage';
 import type { KosDetail } from '../../../backend/src/trpc/router';
@@ -41,7 +43,11 @@ export const Checkout: React.FC = () => {
   if (isPending) {
     return (
       <div className="app-container" role="status" aria-busy="true" aria-label="Memuat formulir pengajuan" style={{ maxWidth: '960px', paddingTop: '1.5rem', minHeight: '60vh' }}>
-        <div style={{ height: '2.4rem', width: 'min(26rem, 80%)', backgroundColor: 'var(--bg-muted)', borderRadius: 'var(--radius-md)' }} />
+        <Skeleton height="2.4rem" width="min(26rem, 80%)" borderRadius="var(--radius-md)" />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(18rem, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+          <Skeleton height="22rem" borderRadius="var(--radius-card)" />
+          <Skeleton height="16rem" borderRadius="var(--radius-card)" />
+        </div>
       </div>
     );
   }
@@ -57,6 +63,7 @@ export const Checkout: React.FC = () => {
 };
 
 const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][number] | null; initialDuration: number }> = ({ kos, room, initialDuration }) => {
+  useDocumentTitle('Pengajuan sewa');
   const trpc = useTRPC();
   const qc = useQueryClient();
   const { me } = useSession();
@@ -80,9 +87,13 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
     ? computeCheckoutTotal({ monthlyRent: room.priceMonthly, applicationFee: kos.applicationFee, discountAmount: kos.studentDiscountAmount, campusEmailVerified: !!me?.campusVerified })
     : null;
 
+  // Before a first application: the emergency contact (with consent) and the current Syarat. The server enforces it too.
+  const missingProfile = !!me && me.profileConsentsRequired && (!me.emergencyContact || !me.termsCurrent);
+
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!me) return openAuthModal();
+    if (missingProfile) return;
     if (!room) return;
     create.mutate({ roomId: room.id, startDate, durationMonths: duration, occupation, note: note.trim() || undefined });
   };
@@ -158,15 +169,20 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.875rem' }}>
                     <Row label="Sewa bulan pertama" value={formatRupiah(breakdown.rent)} />
                     {breakdown.discount > 0 && <Row tone="primary" label="Diskon mahasiswa" value={`- ${formatRupiah(breakdown.discount)}`} />}
-                    <Row label="Biaya aplikasi KoBo" value={formatRupiah(breakdown.applicationFee)} />
+                    <Row label="Biaya layanan KoBo" value={formatRupiah(breakdown.applicationFee)} />
                     <div style={{ height: '1px', backgroundColor: 'var(--border-subtle)', margin: '0.25rem 0' }} />
                     <Row label={<strong>Total perkiraan</strong>} value={formatRupiah(breakdown.total)} tone="primary" />
                   </div>
                 </div>
               )}
 
+              {missingProfile && (
+                <Notice tone="error">
+                  Sebelum mengajukan sewa, lengkapi {!me!.emergencyContact ? 'kontak darurat' : ''}{!me!.emergencyContact && !me!.termsCurrent ? ' dan ' : ''}{!me!.termsCurrent ? 'persetujuan syarat' : ''} Anda di halaman <Link to="/profile" style={{ color: 'var(--primary)', fontWeight: 700 }}>Profil</Link>.
+                </Notice>
+              )}
               {create.isError && <Notice tone="error">{messageForError(create.error)}</Notice>}
-              <Button type="submit" variant="primary" size="lg" fullWidth isLoading={create.isPending} icon={<Send size={16} />}>{me ? 'Kirim Pengajuan' : 'Masuk untuk Mengajukan'}</Button>
+              <Button type="submit" variant="primary" size="lg" fullWidth isLoading={create.isPending} disabled={missingProfile} icon={<Send size={16} />}>{me ? 'Kirim Pengajuan' : 'Masuk untuk Mengajukan'}</Button>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 <ShieldCheck size={15} color="var(--primary)" style={{ flexShrink: 0 }} />
                 <span>Pengajuan tidak menahan kamar dan tidak memindahkan uang.</span>

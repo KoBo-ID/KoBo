@@ -106,9 +106,13 @@ export interface Kos {
   priceMonthlyStart: number;
   studentDiscountAmount: number;
   studentDiscountLabel: string;
+  applicationFee: number;
   images: string[];
   privateAmenities: string[];
   sharedAmenities: string[];
+  /** Structured facilities and building facts (detail page only). */
+  facilities?: import('@kobo/shared/facilities').FacilityItem[];
+  building?: { floors: number | null; yearBuilt: number | null; areaM2: number | null; roomCount: number };
   electricityType: 'included' | 'token';
   totalRooms: number;
   availableRooms: number;

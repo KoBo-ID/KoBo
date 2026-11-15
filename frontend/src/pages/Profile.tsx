@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Building2 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,17 +10,19 @@ import { Notice } from '../components/ui/Notice';
 import { Avatar } from '../components/ui/Avatar';
 import { AccountSecurityCard } from '../components/auth/AccountSecurityCard';
 import { CampusDiscountCard } from '../components/booking/CampusDiscountCard';
+import { EmergencyContactCard, RemindersAndTermsCard } from '../components/profile/ConsentCards';
 import { useSession } from '../lib/session';
-import { useBecomeOwner } from '../lib/owner';
+import { BecomeOwnerModal } from '../components/owner/BecomeOwnerModal';
 import { useTRPC } from '../lib/trpc';
 import { messageForError } from '../lib/errors';
 
 /** Headline student discount shown on the verification card (the per-kos amount applies at checkout). */
 
 export const Profile: React.FC = () => {
+  useDocumentTitle('Profil');
   const { addToast, openAuthModal } = useAppStore();
   const { me, isLoading } = useSession();
-  const { becomeOwner, isPending, error: ownerError } = useBecomeOwner();
+  const [registering, setRegistering] = useState(false);
   const trpc = useTRPC();
   const qc = useQueryClient();
   const save = useMutation(trpc.auth.updateProfile.mutationOptions());
@@ -192,6 +195,10 @@ export const Profile: React.FC = () => {
 
         <CampusDiscountCard />
 
+        {me && !me.user.isDemo && <EmergencyContactCard />}
+
+        {me && !me.user.isDemo && <RemindersAndTermsCard />}
+
         {me && !me.user.isDemo && <AccountSecurityCard />}
 
         {me && !me.user.isDemo && (
@@ -220,8 +227,7 @@ export const Profile: React.FC = () => {
             ) : (
               <>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Kelola kamar, tagihan, dan kuitansi dari dashboard pemilik. Gratis.</p>
-                {ownerError && <Notice tone="error">{ownerError}</Notice>}
-                <Button variant="primary" size="sm" isLoading={isPending} disabled={isPending} onClick={() => void becomeOwner()}>
+                <Button variant="primary" size="sm" onClick={() => setRegistering(true)}>
                   Daftarkan diri sebagai pemilik
                 </Button>
               </>
@@ -231,6 +237,7 @@ export const Profile: React.FC = () => {
         </div>
 
       </div>
+      {registering && <BecomeOwnerModal onClose={() => setRegistering(false)} />}
     </div>
   );
 };

@@ -7,12 +7,12 @@ import {
   Star,
   LogOut,
   ChevronDown,
-  ExternalLink,
 } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
 import { useAuthActions, useSession } from '../../lib/session';
 import { useTRPC } from '../../lib/trpc';
 import { pickKos } from '../../lib/ownerWorkspace';
+import { useOwnerBadges } from '../../lib/ownerBadges';
 import type { OwnerWorkspace } from '../../lib/ownerWorkspace';
 import { ErrorState } from '../ui/QueryState';
 import { MobileNav } from './MobileNav';
@@ -34,6 +34,7 @@ export const OwnerLayout: React.FC = () => {
   };
   const navSearch = selectedKos ? `?kos=${encodeURIComponent(selectedKos.id)}` : '';
   const workspace: OwnerWorkspace = { kosList, selectedKos, selectKos };
+  const badges = useOwnerBadges(selectedKos?.id);
   const { me } = useSession();
   const { logout } = useAuthActions();
   const navigate = useNavigate();
@@ -85,7 +86,7 @@ export const OwnerLayout: React.FC = () => {
       panelClassName="kobo-menu"
       trigger={(p) => (
         <button {...p} type="button" className="kobo-control os-picker" style={{ minWidth }}>
-          <span className="truncate-1 os-picker__name">{selectedKos?.name ?? 'Belum ada kos'}</span>
+          <span className="os-picker__name" title={selectedKos?.name}>{selectedKos?.name ?? 'Belum ada kos'}</span>
           <ChevronDown size={14} />
         </button>
       )}
@@ -114,9 +115,9 @@ export const OwnerLayout: React.FC = () => {
   );
 
   const navItems = [
-    { to: '/owner/dashboard', label: 'Papan okupansi', icon: <LayoutDashboard size={18} /> },
-    { to: '/owner/kos', label: 'Kelola properti', icon: <Home size={18} /> },
-    { to: '/owner/reviews', label: 'Ulasan', icon: <Star size={18} /> },
+    { to: '/owner/dashboard', label: 'Papan okupansi', icon: <LayoutDashboard size={18} />, count: badges.dashboard, hint: 'perlu tindakan' },
+    { to: '/owner/kos', label: 'Kelola properti', icon: <Home size={18} />, count: 0, hint: '' },
+    { to: '/owner/reviews', label: 'Ulasan', icon: <Star size={18} />, count: badges.reviews, hint: 'belum dibalas' },
   ];
 
   return (
@@ -126,7 +127,11 @@ export const OwnerLayout: React.FC = () => {
 
         <div className="os-sidebar__picker">
           <span className="os-label">Properti aktif</span>
-          {renderKosPicker('0', 'kobo-popover-anchor--block')}
+          {kosList.length > 1 ? (
+            renderKosPicker('0', 'kobo-popover-anchor--block')
+          ) : (
+            <p className="os-active-name">{selectedKos?.name ?? 'Belum ada kos'}</p>
+          )}
         </div>
 
         <nav className="os-nav" aria-label="Menu pemilik">
@@ -138,6 +143,12 @@ export const OwnerLayout: React.FC = () => {
             >
               {item.icon}
               <span>{item.label}</span>
+              {item.count > 0 && (
+                <span className={`os-nav__count${item.to === '/owner/dashboard' ? ' os-nav__count--danger' : ''}`}>
+                  {item.count}
+                  <span className="os-sr"> {item.hint}</span>
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -174,11 +185,14 @@ export const OwnerLayout: React.FC = () => {
               </span>
             )}
           </div>
-          <Link to="/" className="os-site-link">
-            Lihat situs
-            <ExternalLink size={15} aria-hidden="true" />
-          </Link>
         </div>
+
+        {me?.ownerApproved === false && (
+          <div className="os-banner" role="status">
+            <strong>Akun pemilik Anda sedang diperiksa KoBo.</strong>
+            <span>Anda bisa menyiapkan kos, kamar, dan foto sekarang. Kos baru tampil di pencarian setelah akun disetujui.</span>
+          </div>
+        )}
 
         <main className="os-main-content">
           {kosQuery.isPending ? (
@@ -193,7 +207,7 @@ export const OwnerLayout: React.FC = () => {
         </main>
       </div>
 
-      <MobileNav />
+      <MobileNav ownerBadges={badges} />
     </div>
   );
 };

@@ -141,6 +141,7 @@ Railway service variables (in addition to `DATABASE_URL`, `BETTER_AUTH_SECRET`, 
 | `BETTER_AUTH_URL` | `https://<vercel-domain>` (the production domain or its custom domain; no trailing slash, no `/api`) |
 | `AUTH_IP_HEADERS` | `x-forwarded-for` (no Cloudflare in front, so the default `cf-connecting-ip` never resolves and all clients share one rate-limit bucket, e.g. 3 verification resends per minute for everyone) |
 | `TRUSTED_ORIGINS` | optional, comma-separated, e.g. `https://kobo-git-main-<team>.vercel.app`; only needed to sign in on preview domains |
+| `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` | optional, both or neither. Google Cloud OAuth client (Web application), Authorized redirect URI `https://<vercel-domain>/api/auth/callback/google` and the same origin as Authorized JavaScript origin |
 | `RESEND_API_KEY` | Resend API key (sending access is enough) |
 | `EMAIL_FROM` | `KoBo <no-reply@<verified domain>>`. Never `onboarding@resend.dev`: Resend delivers it only to the account owner (others fail with 403 and the outbox row ends `FAILED`) and it lands in spam |
 | `EMAIL_REPLY_TO` | optional, a mailbox someone reads |
@@ -177,3 +178,30 @@ UPDATE "EmailOutbox"
 SET status = 'PENDING', attempts = 0, "nextAttemptAt" = now()
 WHERE status = 'FAILED' AND template NOT IN ('verify-email', 'reset-password');
 ```
+
+## 12. Location catalogue (regions, campuses, places)
+
+Reference data for the nearby-places list, region search and nationwide campus search (ADR 0016). Migrations create the tables empty; a one-off job loads the data. **Current target: Railway** (step-by-step in the DevOps deploy guide, section 4). VPS steps are not written yet: do them when the VPS becomes the target.
+
+Any target, same job (run from a checkout with Node 24 and `npm ci`; the API image does not contain `backend/scripts` or `backend/data`, and the 384m limit rules out running it there):
+
+```bash
+cd backend
+export DATABASE_URL=<public connection string of the target database>
+npm run catalog:import -- all data/catalog --dry-run   # validates, writes nothing
+npm run catalog:import -- all data/catalog             # regions, campuses, then every places file
+npm run catalog:backfill                                # region + nearby places for existing kos
+npm run catalog:rollback -- list                        # expect 4 active versions
+```
+
+The import is repeatable: if it fails, run it again. Rollback: `npm run catalog:rollback -- <regions|places|campuses> <older file>`. Operators: `npm run places:approve -- list|approve <id>|reject <id>`.
+
+
+## Cutover from Railway and Vercel (draft, 2026-10-28)
+
+Full research, sizing, cost table, migration plan, rollback and the 11-point patch list: `notes/implementation/2026-10-28/research/R5-vps-deployment.md`. Nothing here has been run. Summary of what the runbook above already covers and what is still missing:
+
+- Already designed: cloudflared tunnel, GHCR images, forced-command SSH key, `deploy.sh` with a pre-deploy dump and automatic rollback, nightly backup to R2.
+- Still to do before cutover: provision the VPS (about 2 vCPU / 4 GB), restore-drill a backup on it, rotate every secret that appears in `notes/devops-deploy.md`, point DNS with a low TTL, keep Railway running until the drill passes, then switch and watch `/api/health`.
+- Known gap: `deploy.sh` recreates the single api container, so each deploy has a few seconds of downtime; the outbox worker was not checked for running with two replicas.
+- New env flag: `REQUIRE_PROFILE_CONSENTS` (default on in production; set `0` only to turn the emergency-contact and terms gate off). WhatsApp reminders only log to the console until a provider and keys are configured.
