@@ -61,13 +61,25 @@ export const Popover: React.FC<PopoverProps> = ({
   useLayoutEffect(() => {
     const panel = panelRef.current;
     if (!open || !panel) return;
-    const margin = 8;
-    const rect = panel.getBoundingClientRect();
-    const viewport = document.documentElement.clientWidth;
-    let shift = 0;
-    if (rect.left < margin) shift = margin - rect.left;
-    else if (rect.right > viewport - margin) shift = viewport - margin - rect.right;
-    panel.style.translate = shift ? `${shift}px 0` : '';
+    let active = true;
+    const nudge = () => {
+      if (!active) return;
+      panel.style.translate = '';
+      const margin = 8;
+      const rect = panel.getBoundingClientRect();
+      const viewport = document.documentElement.clientWidth;
+      let shift = 0;
+      if (rect.left < margin) shift = margin - rect.left;
+      else if (rect.right > viewport - margin) shift = viewport - margin - rect.right;
+      panel.style.translate = shift ? `${shift}px 0` : '';
+    };
+    nudge();
+    window.addEventListener('resize', nudge);
+    void document.fonts?.ready.then(nudge);
+    return () => {
+      active = false;
+      window.removeEventListener('resize', nudge);
+    };
   }, [open]);
 
   useEffect(() => {

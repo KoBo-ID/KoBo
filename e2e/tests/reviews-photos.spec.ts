@@ -93,11 +93,19 @@ test('a paying tenant reviews their kos, it appears on Detail, and the owner rep
   // Write the review on Detail.
   const comment = `Kamar nyaman, Wi-Fi lancar (${Date.now()})`
   await page.goto(`/kos/${kos!.id}`)
+  const revealAllReviews = async () => {
+    await expect(page.locator('.kos-reviews__item').first()).toBeVisible()
+    const more = page.getByRole('button', { name: /Lihat ulasan lainnya/ })
+    if (await more.count()) await more.click()
+  }
   await page.getByRole('button', { name: 'Tulis Ulasan Kos' }).click()
   await page.getByRole('button', { name: 'Rating keseluruhan: 4 bintang' }).click()
   await page.getByRole('button', { name: 'Kebersihan Kamar & Gedung: 5 bintang' }).click()
   await page.getByLabel('Ceritakan pengalaman tinggal Anda').fill(comment)
   await page.getByRole('button', { name: 'Kirim Ulasan' }).click()
+  // Wait for the new review to land in the refetched list; lower-rated reviews sort past the first 5 on busy kos.
+  await expect(page.locator('.kos-reviews__item').filter({ hasText: comment })).toHaveCount(1)
+  await revealAllReviews()
   await expect(page.getByText(comment)).toBeVisible()
 
   // Demo student is campus-verified, so the snapshot badge shows.
@@ -116,9 +124,7 @@ test('a paying tenant reviews their kos, it appears on Detail, and the owner rep
   // ...and the tenant sees the reply on Detail.
   await page.reload()
   // Reviews past the fifth sit behind "Lihat ulasan lainnya"; open it when the list is long.
-  await expect(page.locator('.kos-reviews__item').first()).toBeVisible()
-  const moreReviews = page.getByRole('button', { name: /Lihat ulasan lainnya/ })
-  if (await moreReviews.count()) await moreReviews.click()
+  await revealAllReviews()
   await expect(page.getByText(reply)).toBeVisible()
   await ownerCtx.close()
 })
