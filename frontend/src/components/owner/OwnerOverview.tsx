@@ -46,7 +46,7 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({ summary, onShowSta
         <h2 className="od-eyebrow">Menunggak</h2>
         {overdueAmount > 0 ? (
           <>
-            <p className="od-figure">{formatRupiah(overdueAmount)}</p>
+            <p className="od-figure od-figure--late">{formatRupiah(overdueAmount)}</p>
             <p className="od-meta od-meta--late">{counts.overdue} kamar belum membayar tepat waktu</p>
             <button type="button" className="od-link" aria-label={`Lihat ${counts.overdue} kamar menunggak, ${formatRupiah(overdueAmount)}`} onClick={() => onShowStatus('overdue')}>
               Lihat kamar

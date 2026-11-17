@@ -83,7 +83,7 @@ export const OwnerLayout: React.FC = () => {
       align="left"
       role="menu"
       label="Pilih properti aktif"
-      panelClassName="kobo-menu"
+      panelClassName="kobo-menu os-picker-menu"
       trigger={(p) => (
         <button {...p} type="button" className="kobo-control os-picker" style={{ minWidth }}>
           <span className="os-picker__name" title={selectedKos?.name}>{selectedKos?.name ?? 'Belum ada kos'}</span>
@@ -124,15 +124,6 @@ export const OwnerLayout: React.FC = () => {
     <div className="os-root">
       <aside className="os-sidebar">
         <div className="os-sidebar__brand">{brand}</div>
-
-        <div className="os-sidebar__picker">
-          <span className="os-label">Properti aktif</span>
-          {kosList.length > 1 ? (
-            renderKosPicker('0', 'kobo-popover-anchor--block')
-          ) : (
-            <p className="os-active-name">{selectedKos?.name ?? 'Belum ada kos'}</p>
-          )}
-        </div>
 
         <nav className="os-nav" aria-label="Menu pemilik">
           {navItems.map((item) => (
@@ -176,9 +167,12 @@ export const OwnerLayout: React.FC = () => {
 
         <div className="os-topbar">
           <div className="os-topbar__left">
-            {/* Below 900px the sidebar is gone, so the picker lives here. */}
-            <div className="os-topbar__picker">{renderKosPicker('0', 'kobo-popover-anchor--block')}</div>
-            {selectedKos && <span className="os-topbar__name truncate-1">{selectedKos.name}</span>}
+            {/* The active kos lives here at every width, so long names show in full. One kos: plain name. */}
+            {kosList.length > 1 ? (
+              <div className="os-topbar__picker">{renderKosPicker('0', 'kobo-popover-anchor--block')}</div>
+            ) : (
+              <span className="os-topbar__name">{selectedKos?.name ?? 'Belum ada kos'}</span>
+            )}
             {selectedKos && (
               <span className="os-badge">
                 {selectedKos.occupiedRooms}/{selectedKos.totalRooms} terisi

@@ -54,8 +54,8 @@
 /* Tables inside a container: the container is the frame, so the table wrapper drops its own border and the header becomes a soft band. */
 .os-card .kobo-table-wrap { border: 0; border-radius: 0; background: transparent; }
 .os-card .kobo-table thead th { border-bottom: 0; }
-.os-card .kobo-table thead th:first-child { border-top-left-radius: var(--radius-md); border-bottom-left-radius: var(--radius-md); }
-.os-card .kobo-table thead th:last-child { border-top-right-radius: var(--radius-md); border-bottom-right-radius: var(--radius-md); }
+.os-card .kobo-table thead th:first-child { border-top-left-radius: var(--radius-md); }
+.os-card .kobo-table thead th:last-child { border-top-right-radius: var(--radius-md); }
 .os-card .kobo-table tbody td { border-bottom: 0; }
 .os-card .kobo-table tbody tr:hover { background: var(--bg-page); }
 .os-card .kobo-table__group th { background: transparent; border: 0; padding-top: 1rem; color: var(--text-main); }

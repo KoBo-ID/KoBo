@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, X } from 'lucide-react';
+import { Check, X, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Notice } from '../ui/Notice';
@@ -70,20 +70,25 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
         <ul className="od-list">
           {applications.data.map((application) => (
             <li key={application.id} data-testid="owner-application" className="od-row">
+              {/* The name is the profile link; meta and request details read as one line each. */}
               <div className="od-row__main">
-                <span className="od-row__title">{application.applicant.name}</span>
+                <button type="button" className="od-person" aria-label={`Lihat profil ${application.applicant.name}`} onClick={() => setProfileFor(application.id)}>
+                  {application.applicant.name}
+                  <ChevronRight size={14} aria-hidden="true" />
+                </button>
                 <span className="od-row__sub">
-                  Kamar {application.room.roomNumber}, {application.room.type}
-                  {application.applicant.campus ? `, ${application.applicant.campus}` : ''}
+                  Kamar {application.room.roomNumber} · {application.room.type}
+                  {application.applicant.campus ? ` · ${application.applicant.campus}` : ''}
                 </span>
               </div>
-              <div className="od-row__due">
-                <span>Mulai {formatDate(application.startDate)}</span>
-                <span className="od-row__sub">{application.durationMonths} bulan, {application.occupation}</span>
-                {application.note && <span className="od-row__note">{application.note}</span>}
+              <div className="od-row__main">
+                <span>Mulai {formatDate(application.startDate)} · {application.durationMonths} bulan</span>
+                <span className="od-row__sub od-row__oneline" title={[application.occupation, application.note].filter(Boolean).join(' · ')}>
+                  {application.occupation}
+                  {application.note ? ` · "${application.note}"` : ''}
+                </span>
               </div>
               <div className="od-row__actions">
-                <Button variant="ghost" size="sm" aria-label={`Profil ${application.applicant.name}`} onClick={() => setProfileFor(application.id)}>Profil</Button>
                 <Button variant="outline" size="sm" icon={<X size={14} />} disabled={decide.isPending} onClick={() => act(application.id, 'REJECT', application.applicant.name)}>Tolak</Button>
                 <Button variant="primary" size="sm" icon={<Check size={14} />} disabled={decide.isPending} onClick={() => act(application.id, 'APPROVE', application.applicant.name)}>Terima</Button>
               </div>

@@ -93,8 +93,9 @@
   position: sticky; top: 60px; z-index: calc(var(--z-header) - 1); flex-shrink: 0;
 }
 .os-topbar__left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
-.os-topbar__name { font-size: 0.95rem; font-weight: 700; color: var(--text-main); min-width: 0; }
-.os-topbar__picker { display: block; min-width: 0; width: min(240px, 60vw); }
+.os-topbar__name { font-size: 1rem; font-weight: 700; color: var(--text-main); min-width: 0; }
+.os-topbar__picker { display: block; min-width: 0; width: min(28rem, 100%); }
+.os-picker-menu { min-width: min(28rem, calc(100vw - 2rem)); }
 .os-badge {
   font-size: 0.72rem; font-weight: 700; white-space: nowrap;
   background-color: var(--primary-light); color: var(--primary);
@@ -113,10 +114,6 @@
   .os-main { margin-left: var(--sidebar-width); }
   .os-mobile-header { display: none; }
   .os-topbar { top: 0; padding: 0 1.5rem; height: var(--header-height); }
-  .os-topbar__picker { display: none; }
-}
-@media (max-width: 899px) {
-  .os-topbar__name { display: none; }
 }
 
 /* Nav counts: what is waiting on the active kos. Brand tint, not red: red is reserved for overdue money, and a count must inform without alarming. */
@@ -139,3 +136,4 @@
 .os-banner { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; padding: 0.75rem 1.5rem; background: var(--primary-light); border-bottom: 1px solid hsl(176, 40%, 84%); color: var(--text-main); font-size: 0.875rem; line-height: 1.5; }
 .os-banner strong { color: var(--primary); }
 @media (max-width: 899px) { .os-banner { padding: 0.75rem 1rem; } }
+

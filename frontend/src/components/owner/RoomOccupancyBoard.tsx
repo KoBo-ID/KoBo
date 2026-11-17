@@ -135,11 +135,11 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
   };
 
   return (
-    <section aria-labelledby="room-board-title" className="od-board os-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+    <section aria-labelledby="room-board-title" className="od-board os-card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div
         style={{
           display: 'flex',
-          alignItems: 'flex-end',
+          alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: '1rem',
@@ -210,9 +210,15 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
 
             {visibleFloors.map((floor) => (
               <React.Fragment key={floor}>
-                <tr role="row" className="kobo-table__group">
-                  <th role="rowheader" colSpan={COLUMN_COUNT} scope="colgroup">Lantai {floor}</th>
-                </tr>
+                {/* Floor band: tinted, uppercase label plus room count, so it never reads as a data row. Hidden when only one floor shows. */}
+                {visibleFloors.length > 1 && (
+                  <tr role="row" className="kobo-table__group od-floor">
+                    <th role="rowheader" colSpan={COLUMN_COUNT} scope="colgroup">
+                      Lantai {floor}
+                      <span className="od-floor__count">{filteredRooms.filter((r) => r.floor === floor).length} kamar</span>
+                    </th>
+                  </tr>
+                )}
                 {filteredRooms
                   .filter((r) => r.floor === floor)
                   .map((room) => {

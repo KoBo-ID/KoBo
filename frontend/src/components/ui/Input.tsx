@@ -1,4 +1,5 @@
-import React, { useId } from 'react';
+import React, { useId, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { InfoTip } from './InfoTip';
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -28,6 +29,9 @@ export const Input: React.FC<InputProps> = ({
   const autoId = useId();
   const inputId = id || autoId;
   const noteId = `${inputId}-note`;
+  // Every password field gets a show/hide toggle on the right unless the caller supplies its own icon.
+  const isPassword = props.type === 'password' && !iconRight;
+  const [revealed, setRevealed] = useState(false);
 
   return (
     <div style={{ width: fullWidth ? '100%' : 'auto', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -77,7 +81,7 @@ export const Input: React.FC<InputProps> = ({
             width: '100%',
             padding: '0.625rem 0.875rem',
             paddingLeft: iconLeft ? '2.5rem' : '0.875rem',
-            paddingRight: iconRight ? '2.5rem' : '0.875rem',
+            paddingRight: iconRight || isPassword ? '2.75rem' : '0.875rem',
             fontSize: '0.9375rem',
             fontFamily: 'var(--font-sans)',
             backgroundColor: 'var(--bg-surface)',
@@ -88,7 +92,19 @@ export const Input: React.FC<InputProps> = ({
             ...style,
           }}
           {...props}
+          type={isPassword && revealed ? 'text' : props.type}
         />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setRevealed((v) => !v)}
+            aria-label={revealed ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+            aria-pressed={revealed}
+            style={{ position: 'absolute', right: '0.35rem', width: '2.25rem', height: '2.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', borderRadius: 'var(--radius-sm)' }}
+          >
+            {revealed ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
+          </button>
+        )}
         {iconRight && (
           <span
             style={{

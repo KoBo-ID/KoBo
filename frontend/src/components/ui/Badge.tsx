@@ -35,9 +35,9 @@ export const Badge: React.FC<BadgeProps> = ({
     switch (variant) {
       case 'campur':
         return {
-          backgroundColor: 'var(--badge-campur-bg)',
+          background: 'var(--badge-campur-bg) padding-box, var(--badge-campur-border) border-box',
           color: 'var(--badge-campur-text)',
-          border: '1px solid var(--badge-campur-border)',
+          border: '1px solid transparent',
         };
       case 'putra':
         return {

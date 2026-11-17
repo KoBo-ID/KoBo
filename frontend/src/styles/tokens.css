@@ -17,8 +17,8 @@
 
   /* Gender Badges (Mamikos familiar semantic standards elevated) */
   --badge-campur-text: hsl(271, 70%, 48%);
-  --badge-campur-bg: hsl(271, 80%, 96%);
-  --badge-campur-border: hsl(271, 60%, 88%);
+  --badge-campur-bg: linear-gradient(90deg, hsl(212, 90%, 94%), hsl(340, 80%, 94%));
+  --badge-campur-border: linear-gradient(90deg, hsl(212, 70%, 80%), hsl(340, 65%, 80%));
   --badge-putra-text: hsl(212, 85%, 40%);
   --badge-putra-bg: hsl(212, 90%, 96%);
   --badge-putra-border: hsl(212, 70%, 88%);

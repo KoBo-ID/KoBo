@@ -2,7 +2,7 @@ import '../../styles/owner-dashboard.css';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { MessageSquare, CheckCircle2 } from 'lucide-react';
+import { MessageSquare, CheckCircle2, ChevronRight } from 'lucide-react';
 import type { BoardRoom } from '../../../../backend/src/trpc/router';
 import { OwnerOverview } from '../../components/owner/OwnerOverview';
 import { RoomOccupancyBoard } from '../../components/owner/RoomOccupancyBoard';
@@ -26,8 +26,6 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const START_STEPS = ['Daftarkan kos', 'Tambah kamar dan harga', 'Terima pengajuan sewa'];
 
-const todayLabel = () =>
-  new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jakarta' });
 
 const DashboardSkeleton: React.FC = () => (
   <div className="app-container owner-page" role="status" aria-live="polite" aria-label="Memuat papan okupansi">
@@ -159,7 +157,7 @@ export const OwnerDashboard: React.FC = () => {
 
   return (
     <div className="app-container owner-page">
-      <OwnerPageHeader title="Papan okupansi" actions={<span className="od-date">{todayLabel()}</span>} />
+      <OwnerPageHeader title="Papan okupansi" />
 
       <div className="od-tabs kobo-segmented" role="tablist" aria-label="Tampilan papan">
         <button type="button" role="tab" id="od-tab-ringkasan" aria-selected={tab === 'ringkasan'} aria-controls="od-panel" onClick={() => setTab('ringkasan')}>
@@ -174,13 +172,6 @@ export const OwnerDashboard: React.FC = () => {
         {tab === 'ringkasan' ? (
           <>
             <OwnerOverview summary={summary} onShowStatus={showStatus} />
-            {actionCount > 0 && (
-              <p className="od-pending">
-                <button type="button" className="od-link" onClick={() => setTab('tindakan')}>
-                  {actionCount} hal menunggu tindakan Anda
-                </button>
-              </p>
-            )}
       {confirmingRoom && (
         <div
           ref={confirmRef}
@@ -241,15 +232,21 @@ export const OwnerDashboard: React.FC = () => {
               <li key={room.id} className="od-row od-row--attention">
                 <div className="od-row__main">
                   <span className="od-row__title">Kamar {room.roomNumber}</span>
-                  <span className="od-row__sub">{room.tenant?.name || 'Penghuni aktif'}</span>
+                  {room.tenancyId ? (
+                    <button type="button" className="od-person od-person--sub" aria-label={`Lihat profil penyewa Kamar ${room.roomNumber}`} onClick={() => setProfileTenancy(room.tenancyId!)}>
+                      {room.tenant?.name || 'Penghuni aktif'}
+                      <ChevronRight size={13} aria-hidden="true" />
+                    </button>
+                  ) : (
+                    <span className="od-row__sub">{room.tenant?.name || 'Penghuni aktif'}</span>
+                  )}
                 </div>
                 <span className="od-row__amount">{formatRupiah(room.invoice?.amount ?? room.priceMonthly)}</span>
                 <div className="od-row__due">
                   <span>Jatuh tempo {formatDueDate(room.invoice?.dueDate)}</span>
-                  {room.daysOverdue > 0 ? <span className="od-chip od-chip--late">Telat {room.daysOverdue} hari</span> : null}
+                  {room.daysOverdue > 0 ? <span className="od-row__late">Telat {room.daysOverdue} hari</span> : null}
                 </div>
                 <div className="od-row__actions">
-                  {room.tenancyId && <Button variant="ghost" size="sm" aria-label={`Profil penyewa Kamar ${room.roomNumber}`} onClick={() => setProfileTenancy(room.tenancyId!)}>Profil</Button>}
                   <Button variant="outline" size="sm" icon={<MessageSquare size={14} />} onClick={() => setWhatsAppTargetRoom(room)}>
                     Kirim tagihan
                   </Button>

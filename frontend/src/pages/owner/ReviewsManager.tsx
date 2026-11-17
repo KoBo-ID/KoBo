@@ -225,8 +225,9 @@ export const ReviewsManager: React.FC = () => {
 
       {reviews.isSuccess && all.length > 0 && (
         <>
+          {/* Three equal columns: score, spread, aspects. */}
           <section className="rv-summary" aria-label="Ringkasan ulasan">
-            <div className="rv-avg">
+            <div className="rv-summary__col rv-avg">
               <p className="rv-avg__value">
                 <span className="rv-num">{fmt(stats.avg)}</span>
                 <Star size={22} fill="currentColor" aria-hidden="true" />
@@ -234,30 +235,36 @@ export const ReviewsManager: React.FC = () => {
               <p className="rv-avg__caption">dari {all.length} ulasan</p>
             </div>
 
-            <ol className="rv-dist" aria-label="Sebaran rating">
-              {[5, 4, 3, 2, 1].map((n) => (
-                <li key={n}>
-                  <span className="rv-dist__label rv-num">{n}</span>
-                  <span className="rv-dist__bar" style={{ width: `${(stats.counts[n] / maxCount) * 100}%`, minWidth: stats.counts[n] ? 3 : 0 }} aria-hidden="true" />
-                  <span className="rv-dist__count rv-num">{stats.counts[n]}</span>
-                </li>
-              ))}
-            </ol>
+            <div className="rv-summary__col">
+              <h2 className="rv-summary__label">Sebaran rating</h2>
+              <ol className="rv-dist" aria-label="Sebaran rating">
+                {[5, 4, 3, 2, 1].map((n) => (
+                  <li key={n}>
+                    <span className="rv-dist__label rv-num">{n}</span>
+                    <span className="rv-track" aria-hidden="true">
+                      <span className="rv-track__fill rv-track__fill--accent" style={{ width: `${(stats.counts[n] / maxCount) * 100}%` }} />
+                    </span>
+                    <span className="rv-dist__count rv-num">{stats.counts[n]}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
 
-            <div className="rv-side">
-              <button type="button" className="rv-unanswered" onClick={() => setFilter('unanswered')}>
-                <span className="rv-num rv-unanswered__n">{stats.unanswered}</span>
-                <span>belum dibalas</span>
-              </button>
+            <div className="rv-summary__col">
+              <h2 className="rv-summary__label">Per aspek</h2>
               <dl className="rv-subavg">
                 {stats.subs.map((s) => (
                   <div key={s.label}>
                     <dt>{s.label}</dt>
                     <dd className="rv-num">{s.avg === null ? '-' : fmt(s.avg)}</dd>
+                    <span className="rv-track" aria-hidden="true">
+                      <span className="rv-track__fill" style={{ width: `${((s.avg ?? 0) / 5) * 100}%` }} />
+                    </span>
                   </div>
                 ))}
               </dl>
             </div>
+
           </section>
 
           <div className="rv-filters" role="group" aria-label="Filter ulasan">

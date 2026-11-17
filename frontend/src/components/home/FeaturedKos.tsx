@@ -7,7 +7,6 @@ import { ListingCard } from '../kos/ListingCard';
 import { KosCardSkeleton } from '../kos/KosCardSkeleton';
 import { Button } from '../ui/Button';
 import { useTRPC } from '../../lib/trpc';
-import { useReveal } from '../../hooks/useReveal';
 import { kosCardToKos } from '../../utils/kosCard';
 
 interface FeaturedKosProps {
@@ -16,7 +15,6 @@ interface FeaturedKosProps {
 
 export const FeaturedKos: React.FC<FeaturedKosProps> = ({ onOpenSurvey }) => {
   const trpc = useTRPC();
-  const headRef = useReveal<HTMLDivElement>();
   const { data, isPending, isError, refetch } = useQuery(trpc.kos.list.queryOptions());
   const kosList = React.useMemo(() => (data ?? []).map(kosCardToKos), [data]);
   // One full row of 4 on desktop; a 5th card would sit orphaned on row two.
@@ -30,7 +28,7 @@ export const FeaturedKos: React.FC<FeaturedKosProps> = ({ onOpenSurvey }) => {
   }, [kosList]);
   return (
         <section className="app-container">
-          <div ref={headRef} className="featured-head rise">
+          <div className="featured-head">
             <h2 className="featured-head__title">Kos yang bisa Anda survey</h2>
             <Link to="/search">
               <Button variant="outline" size="sm" icon={<ArrowRight size={16} />} iconPosition="right">

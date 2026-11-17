@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Check } from 'lucide-react';
 import { AuthForm } from '../components/auth/AuthForm';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { GOOGLE_RETURN_FLAG, takeGoogleReturnError, useSession } from '../lib/session';
+import seekerPhoto from '../assets/room-survey.webp';
+import ownerPhoto from '../assets/room-living.webp';
 import '../styles/auth-page.css';
 
 /** Only same-site paths: a `next` of `//evil.example` or `https://...` falls back to the home page. */
@@ -20,6 +22,17 @@ function safeNext(raw: string | null, fallback = '/'): string {
 }
 
 type AuthRole = 'seeker' | 'owner';
+
+const ASIDE: Record<AuthRole, { title: string; points: string[] }> = {
+  seeker: {
+    title: 'Temukan kos yang cocok, dekat kampus Anda.',
+    points: ['Ajukan sewa, bayar setelah disetujui pemilik', 'Harga dan fasilitas yang jelas', 'Kuitansi digital untuk setiap pembayaran'],
+  },
+  owner: {
+    title: 'Kelola kos Anda dengan lebih tenang.',
+    points: ['Papan okupansi dengan 5 status kamar', 'Tagihan WhatsApp sekali klik', 'Kuitansi digital sekali klik'],
+  },
+};
 
 /**
  * Full-page sign-in at /masuk: the one place to sign in or register. Gated actions (`openAuthModal`) redirect here
@@ -68,28 +81,35 @@ export const AuthPage: React.FC = () => {
 
   return (
     <div className="auth-page landing-backdrop">
-      <header className="auth-page__bar">
-        <Link to="/" className="auth-page__brand" aria-label="KoBo, ke beranda">
-          <img src="/favicon.svg" alt="" width={30} height={30} />
-          <span>
-            Ko<span style={{ color: 'var(--primary)' }}>Bo</span>
-          </span>
-        </Link>
-        <Link to={next} className="auth-page__back">
-          <ArrowLeft size={16} aria-hidden="true" />
-          Kembali
-        </Link>
-      </header>
+      <main className="auth-shell">
+        <aside className="auth-shell__aside">
+          {/* Both photos stay mounted and cross-fade with the role toggle. */}
+          <img className={`auth-shell__photo${role === 'seeker' ? ' is-on' : ''}`} src={seekerPhoto} alt="" />
+          <img className={`auth-shell__photo${role === 'owner' ? ' is-on' : ''}`} src={ownerPhoto} alt="" />
+          <Link to={next} className="auth-page__back">
+            <ArrowLeft size={16} aria-hidden="true" />
+            Kembali
+          </Link>
+          <div className="auth-shell__copy" key={role}>
+            <h2 className="auth-shell__headline">{ASIDE[role].title}</h2>
+            <ul className="auth-shell__points">
+              {ASIDE[role].points.map((p) => (
+                <li key={p}>
+                  <Check size={16} aria-hidden="true" />
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </aside>
 
-      <main className="auth-page__stage">
-        <div className="kobo-segmented auth-page__role" role="group" aria-label="Masuk sebagai">
-          <button type="button" aria-pressed={role === 'seeker'} onClick={() => setRole('seeker')}>Pencari kos</button>
-          <button type="button" aria-pressed={role === 'owner'} onClick={() => setRole('owner')}>Pemilik kos</button>
-        </div>
-        <AuthForm variant="page" role={role} onDone={() => navigate(next, { replace: true })} initialError={initialError} />
-        <p className="auth-page__legal">
-          Dengan masuk, Anda menyetujui <Link to="/syarat">Syarat Penggunaan</Link> dan <Link to="/privasi">Kebijakan Privasi</Link>.
-        </p>
+        <section className="auth-shell__panel">
+          <div className="kobo-segmented auth-page__role" data-role={role} role="group" aria-label="Masuk sebagai">
+            <button type="button" aria-pressed={role === 'seeker'} onClick={() => setRole('seeker')}>Pencari kos</button>
+            <button type="button" aria-pressed={role === 'owner'} onClick={() => setRole('owner')}>Pemilik kos</button>
+          </div>
+          <AuthForm variant="page" role={role} onDone={() => navigate(next, { replace: true })} initialError={initialError} />
+        </section>
       </main>
     </div>
   );

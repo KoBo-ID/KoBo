@@ -216,11 +216,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
       <h1 className="auth-title">
         {ownerSide ? (isRegister ? 'Daftar Akun Pemilik Kos' : 'Masuk ke Portal Pemilik Kos') : AUTH_TITLES[view]}
       </h1>
-      {ownerSide && (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: '-0.6rem' }}>
-          Akun yang sama untuk mencari kos dan mengelola kos. Setelah masuk, daftarkan kos Anda di portal pemilik.
-        </p>
-      )}
     </>
   );
   const showQuick = view === 'login' || view === 'register';
@@ -289,6 +284,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
         {errorBanner}
 
         <form onSubmit={handleSubmit} style={column('0.8rem')}>
+          {/* Register on the full page lays these four out 2x2 (auth-page.css) so the form fits one screen. */}
+          <div className={isRegister ? 'auth-fields auth-fields--reg' : 'auth-fields'} style={column('0.8rem')}>
           {isRegister && (
             <Input
               id={`${uid}-name`}
@@ -336,12 +333,13 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
             style={fieldStyle}
             required
           />
+          </div>
 
           {isRegister && (
             <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--text-main)' }}>
               <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required style={{ marginTop: '0.2rem' }} />
               <span>
-                Saya menyetujui <Link to="/syarat" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Syarat dan Ketentuan</Link> dan <Link to="/privasi" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Kebijakan Privasi</Link> (draf, versi {TERMS_VERSION}).
+                Saya menyetujui <Link to="/syarat" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Syarat dan Ketentuan</Link> dan <Link to="/privasi" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Kebijakan Privasi</Link>.
               </span>
             </label>
           )}
@@ -415,7 +413,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
           style={{ ...column('0.55rem'), paddingTop: isPage ? undefined : '1rem', borderTop: isPage ? undefined : '1px solid var(--border-subtle)' }}
         >
           <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>Coba tanpa mendaftar</span>
-          <div style={{ display: 'grid', gridTemplateColumns: 'var(--auth-quick-cols, 1fr)', gap: '0.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isPage ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(min(100%, 17rem), 1fr))', gap: '0.5rem' }}>
             <Button
               variant="outline"
               size="sm"
@@ -423,7 +421,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
               icon={<GraduationCap size={15} />}
               isLoading={busy === 'student'}
               disabled={busy !== null}
-              style={{ backgroundColor: 'var(--bg-surface)', whiteSpace: 'nowrap' }}
+              style={{ backgroundColor: 'var(--bg-surface)', whiteSpace: 'nowrap', paddingInline: '0.5rem' }}
               onClick={() => handleDemo('student')}
             >
               Masuk sebagai Mahasiswa
@@ -435,7 +433,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
               icon={<Building2 size={15} />}
               isLoading={busy === 'owner'}
               disabled={busy !== null}
-              style={{ backgroundColor: 'var(--bg-surface)', whiteSpace: 'nowrap' }}
+              style={{ backgroundColor: 'var(--bg-surface)', whiteSpace: 'nowrap', paddingInline: '0.5rem' }}
               onClick={() => handleDemo('owner')}
             >
               Masuk sebagai Pemilik

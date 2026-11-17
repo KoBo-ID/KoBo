@@ -28,9 +28,9 @@ const card: React.CSSProperties = {
 };
 
 const Row: React.FC<{ label: React.ReactNode; value: React.ReactNode; tone?: 'primary' }> = ({ label, value, tone }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', color: tone ? 'var(--primary)' : 'var(--text-muted)' }}>
+  <div className="booking-fee-row" style={{ color: tone ? 'var(--primary)' : 'var(--text-muted)' }}>
     <span>{label}</span>
-    <span style={{ fontWeight: 600, color: tone ? 'var(--primary)' : 'var(--text-main)', textAlign: 'right' }}>{value}</span>
+    <span className="booking-fee-row__value" style={{ fontWeight: 600, color: tone ? 'var(--primary)' : 'var(--text-main)', textAlign: 'right' }}>{value}</span>
   </div>
 );
 
@@ -166,11 +166,10 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
               {breakdown && (
                 <div>
                   <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.75rem' }}>Perkiraan pembayaran setelah disetujui</span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.875rem' }}>
+                  <div style={{ fontSize: '0.875rem' }}>
                     <Row label="Sewa bulan pertama" value={formatRupiah(breakdown.rent)} />
                     {breakdown.discount > 0 && <Row tone="primary" label="Diskon mahasiswa" value={`- ${formatRupiah(breakdown.discount)}`} />}
                     <Row label="Biaya layanan KoBo" value={formatRupiah(breakdown.applicationFee)} />
-                    <div style={{ height: '1px', backgroundColor: 'var(--border-subtle)', margin: '0.25rem 0' }} />
                     <Row label={<strong>Total perkiraan</strong>} value={formatRupiah(breakdown.total)} tone="primary" />
                   </div>
                 </div>

@@ -5,9 +5,9 @@
 .od-date { font-size: 0.875rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .od-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.6fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
-  align-items: start; /* height follows content: no tile is stretched to the tallest one */
+  align-items: stretch; /* equal-height tiles in a row */
   margin-bottom: 1.5rem;
 }
 .od-tile {
@@ -21,6 +21,7 @@
 .od-figure { margin: 0; color: var(--text-main); font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .od-figure span { font-size: 0.875rem; font-weight: 500; letter-spacing: 0; color: var(--text-muted); }
 .od-figure--brand { color: var(--primary); }
+.od-figure--late { color: var(--status-overdue-text); }
 .od-meta--late { color: var(--status-overdue-text); font-weight: 600; }
 .od-meta { margin: 0; font-size: 0.8125rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .od-bar { align-self: stretch; height: 0.5rem; margin-top: 0.25rem; border-radius: var(--radius-pill); background: var(--bg-muted); overflow: hidden; }
@@ -79,10 +80,19 @@
 .od-row__due { display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem; min-width: 0; }
 .od-row__late { color: var(--status-overdue-text); font-weight: 700; font-size: 0.8125rem; }
 .od-row__soon { font-weight: 700; font-size: 0.8125rem; }
-.od-chip { display: inline-flex; align-items: center; padding: 0.1rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 700; border: 1px solid transparent; }
-.od-chip--late { background: var(--status-overdue-bg); border-color: var(--status-overdue-border); color: var(--status-overdue-text); }
 .od-row__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 .od-row__note { color: var(--text-main); font-size: 0.8125rem; max-width: 60ch; margin-top: 0.2rem; }
+.od-row__oneline { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+/* A person's name that opens their profile: link colour, underline and a chevron so it reads as clickable. */
+.od-person {
+  display: inline-flex; align-items: center; gap: 0.15rem; align-self: flex-start;
+  padding: 0; background: none; border: 0; font: inherit; font-weight: 700; color: var(--primary); cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--primary-glow); text-decoration-thickness: 1.5px; text-underline-offset: 3px;
+  transition: text-decoration-color 150ms ease;
+}
+.od-person:hover { text-decoration-color: currentColor; }
+.od-person:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 2px; }
+.od-person--sub { font-size: 0.8125rem; font-weight: 600; }
 .od-row__confirm { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding-top: 0.6rem; }
 .od-row__confirm span { font-size: 0.8125rem; color: var(--text-main); }
 
@@ -149,23 +159,19 @@
 @media (min-width: 761px) {
   .od-board .kobo-table-wrap { min-height: var(--od-board-min, 0); }
   .od-board .kobo-table { table-layout: fixed; }
-  .od-col-room { width: 12rem; }
-  .od-col-price { width: 9.5rem; }
-  .od-col-due { width: 8rem; }
-  .od-col-status { width: 9rem; }
-  .od-col-actions { width: 6rem; }
+  /* Proportional tracks: spare width spreads over every column instead of one wide gap after Penghuni. */
+  .od-col-room { width: 19%; }
+  .od-col-price { width: 14%; }
+  .od-col-due { width: 14%; }
+  .od-col-status { width: 15%; }
+  .od-col-actions { width: 9%; }
+  /* Harga is right-aligned and Penghuni left-aligned: extra room so the two do not touch. */
+  .od-board .kobo-table thead th:nth-child(3), .od-board .kobo-table tbody td[data-cell='tenant'] { padding-left: 2rem; }
   .od-board .kobo-table thead th, .od-board .kobo-table tbody td { padding-left: 1rem; padding-right: 1rem; overflow: hidden; }
   .od-board .kobo-table thead th.kobo-table__right { text-align: right; }
   .od-board .kobo-table tbody tr:not(.kobo-table__group) td { height: 4rem; }
   .od-board .kobo-table tbody td.kobo-table__empty { height: 8rem; }
   .od-board .kobo-table tbody td[data-cell='actions'] { overflow: visible; }
-}
-@media (min-width: 1500px) {
-  .od-col-room { width: 20%; }
-  .od-col-price { width: 11rem; }
-  .od-col-due { width: 9.5rem; }
-  .od-col-status { width: 10rem; }
-  .od-col-actions { width: 7rem; }
 }
 @media (min-width: 761px) and (max-width: 1199px) {
   .od-board .kobo-table { min-width: 44rem; }
@@ -190,5 +196,14 @@
 .od-tabs { margin-bottom: 1.5rem; }
 .od-tabs button { gap: 0.5rem; }
 .od-tabs button[aria-selected='true'] { background-color: var(--bg-surface); color: var(--text-main); font-weight: 700; box-shadow: var(--shadow-xs); }
-.od-count-bubble { display: inline-flex; align-items: center; justify-content: center; min-width: 1.25rem; height: 1.25rem; padding: 0 0.35rem; border-radius: var(--radius-pill); background: var(--primary); color: var(--text-inverse); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.od-count-bubble { display: inline-flex; align-items: center; justify-content: center; min-width: 1.25rem; height: 1.25rem; padding: 0 0.35rem; border-radius: var(--radius-pill); background: var(--status-overdue-text); color: var(--text-inverse); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .od-pending { margin: -0.5rem 0 1.5rem; }
+
+/* Floor group rows in the room board. */
+.od-board .kobo-table .od-floor th {
+  padding: 0.5rem 1rem; background: var(--bg-page);
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);
+}
+.od-board .kobo-table tbody tr.od-floor:first-child th { border-top: 0; }
+.od-floor__count { margin-left: 0.6rem; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-muted); }

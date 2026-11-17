@@ -30,8 +30,8 @@ export const useResizeObserver = <T extends HTMLElement>(
 
     const observer = new ResizeObserver((entries) => {
       if (!entries || !entries[0]) return;
-      const { width, height } = entries[0].contentRect;
-      setDimensions({ width, height });
+      // Same measure as the initial read (padding and border included); contentRect would drop them.
+      setDimensions({ width: element.offsetWidth, height: element.offsetHeight });
     });
 
     observer.observe(element);
