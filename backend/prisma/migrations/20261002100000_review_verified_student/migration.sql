@@ -1,0 +1,1 @@
+ALTER TABLE "Review" ADD COLUMN "verifiedStudent" BOOLEAN NOT NULL DEFAULT false;

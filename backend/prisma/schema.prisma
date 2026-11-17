@@ -1,0 +1,744 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// better-auth core models (documented Prisma schema) + KoBo user fields
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String   @id @default(cuid(2))
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
+
+  // KoBo
+  phone                 String?
+  campus                String?
+  campusEmail           String?
+  campusEmailVerifiedAt DateTime? @db.Timestamptz(3)
+  isDemo                Boolean   @default(false)
+
+  // Emergency contact: required before a first application; the contact is only messaged when the student consented.
+  emergencyContactName      String?
+  emergencyContactRelation  String?
+  emergencyContactPhone     String?
+  emergencyContactConsentAt DateTime? @db.Timestamptz(3)
+  // The student switched off payment reminders to themselves (the owner can still see the invoice).
+  notifyOptOut              Boolean   @default(false)
+  // The Syarat/Privasi version this user agreed to, and when.
+  termsVersion              String?
+  termsAcceptedAt           DateTime? @db.Timestamptz(3)
+
+  sessions           Session[]
+  accounts           Account[]
+  ownerProfile       OwnerProfile?
+  tenancies          Tenancy[]
+  visits             Visit[]
+  waitlistEntries    WaitlistEntry[]
+  rentalApplications RentalApplication[]
+  recordedPayments   Payment[]           @relation("PaymentRecordedBy")
+  profileViewsMade   TenantProfileView[] @relation("ProfileViewOwner")
+  profileViewsOfMe   TenantProfileView[] @relation("ProfileViewTenant")
+}
+
+model Session {
+  id        String   @id @default(cuid(2))
+  expiresAt DateTime @db.Timestamptz(3)
+  token     String   @unique
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(cuid(2))
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(3)
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid(2))
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([identifier])
+}
+
+// ---------------------------------------------------------------------------
+// KoBo domain
+// ---------------------------------------------------------------------------
+
+enum KosGender {
+  CAMPUR
+  PUTRA
+  PUTRI
+}
+
+enum ElectricityType {
+  INCLUDED
+  TOKEN
+}
+
+enum Occupancy {
+  VACANT
+  BOOKED
+  OCCUPIED
+}
+
+enum TenancyStatus {
+  PENDING
+  ACTIVE
+  ENDED
+}
+
+enum RentalApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+}
+
+enum PaymentProvider {
+  MOCK
+  MANUAL
+  XENDIT
+}
+
+enum PaymentStatus {
+  CREATING
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  REFUND_PENDING
+  REFUNDED
+  REFUND_FAILED
+}
+
+enum GatewayFeeBearer {
+  PLATFORM
+  OWNER
+  TENANT
+}
+
+enum ManualPaymentMethod {
+  CASH
+  BANK_TRANSFER
+}
+
+enum XenditOnboardingStatus {
+  NOT_STARTED
+  PENDING
+  VERIFIED
+  RESTRICTED
+}
+
+enum PaymentWebhookResult {
+  RECEIVED
+  APPLIED
+  IGNORED
+  REJECTED
+  FAILED
+}
+
+enum PaymentRefundStatus {
+  PENDING
+  SUBMITTED
+  SUCCEEDED
+  FAILED
+}
+
+enum VisitSlot {
+  PAGI
+  SIANG
+}
+
+enum VisitStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum WaitlistStatus {
+  WAITING
+  OFFERED
+  FULFILLED
+  EXPIRED
+  DECLINED
+  LEFT
+  REMOVED
+}
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Campus {
+  id           String   @id @default(cuid(2))
+  name         String
+  shortName    String
+  city         String
+  lat          Float
+  lng          Float
+  emailDomains String[]
+
+  // Nationwide catalogue fields (null on the hand-seeded rows). Rows loaded by `catalog:import` carry dataVersion.
+  pddiktiId      String?
+  osmId          String?
+  wikidataId     String?
+  kind           String?
+  parentId       String?
+  desaCode       String?
+  gateLat        Float?
+  gateLng        Float?
+  coordMethod    String?
+  verifiedAt     DateTime? @db.Timestamptz(3)
+  website        String?
+  aliases        String[]
+  dataVersion    String?
+  // Where an imported row comes from and under which licence; derivedFromOsm marks rows that fall under the ODbL (D3).
+  source         String?
+  licence        String?
+  derivedFromOsm Boolean   @default(false)
+
+  kos Kos[]
+
+  @@index([lat, lng])
+  @@index([desaCode])
+}
+
+model OwnerProfile {
+  id                     String                 @id @default(cuid(2))
+  userId                 String                 @unique
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                    String?
+  verified               Boolean                @default(false)
+  responseRate           String?
+  memberSince            DateTime               @default(now()) @db.Timestamptz(3)
+  xenditSubaccountId     String?                @unique
+  xenditOnboardingStatus XenditOnboardingStatus @default(NOT_STARTED)
+  xenditVerifiedAt       DateTime?              @db.Timestamptz(3)
+  // Set when KoBo approves a new owner (scripts/approve-owner.ts or OWNER_AUTO_APPROVE). Until then the owner's kos are
+  // visible only to the owner. Not the `verified` badge flag, which stays hidden in the UI.
+  approvedAt             DateTime?              @db.Timestamptz(3)
+  // Self-declared: PEMILIK, PENGELOLA_KUASA (manager with a power of attorney) or LAINNYA. Not verified; a document badge is manual.
+  ownershipType          String?
+  ownershipDeclaredAt    DateTime?              @db.Timestamptz(3)
+
+  kos Kos[]
+}
+
+model Kos {
+  id       String       @id @default(cuid(2))
+  slug     String       @unique
+  name     String
+  gender   KosGender
+  address  String
+  district String
+  city     String
+  lat      Float
+  lng      Float
+  ownerId  String
+  owner    OwnerProfile @relation(fields: [ownerId], references: [id])
+
+  electricityType       ElectricityType
+  privateAmenities      String[]
+  sharedAmenities       String[]
+  studentDiscountAmount Int             @default(0)
+  applicationFee        Int             @default(25000)
+
+  // Building facts and structured facilities (Kamar / Gedung scopes). privateAmenities / sharedAmenities stay the flat
+  // search index and are rewritten from `facilities` on every owner write. Null facilities: legacy rows, read from the arrays.
+  floors         Int?
+  yearBuilt      Int?
+  buildingAreaM2 Int?
+  facilities     Json?
+
+  // Written on create / location edit only. Everything else (rating, price, rooms) is computed on read.
+  nearestCampusId     String?
+  nearestCampus       Campus? @relation(fields: [nearestCampusId], references: [id])
+  nearestCampusMeters Int?
+
+  // Finest Region code the pin resolved to (4 segments for a desa/kelurahan, 3 when only the kecamatan is known) and how
+  // sure we are: desa | kecamatan | nearest | sea_fallback. Written on create and when the point moves.
+  desaCode         String?
+  regionConfidence String?
+
+  // Set instead of deleting once the kos ever had a tenancy: it disappears from the marketplace, its paid history stays.
+  archivedAt DateTime? @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  rooms       Room[]
+  rules       HouseRule[]
+  pois        Poi[]
+  places      KosPlace[]
+  ownerPlaces OwnerPlace[]
+  overlays    PlaceOverlay[]
+  images      KosImage[]
+  visits      Visit[]
+  waitlist    WaitlistEntry[]
+
+  @@index([ownerId])
+  @@index([desaCode])
+}
+
+model Room {
+  id           String    @id @default(cuid(2))
+  kosId        String
+  kos          Kos       @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  roomNumber   String
+  floor        Int
+  type         String
+  size         String
+  bedType      String
+  priceMonthly Int
+  occupancy    Occupancy @default(VACANT)
+  // Same rule as Kos.archivedAt: a room with tenancy history is archived, never deleted.
+  archivedAt   DateTime? @db.Timestamptz(3)
+
+  tenancies          Tenancy[]
+  waitlistOffers     WaitlistEntry[]
+  rentalApplications RentalApplication[]
+
+  @@unique([kosId, roomNumber])
+}
+
+model Tenancy {
+  id             String        @id @default(cuid(2))
+  roomId         String
+  room           Room          @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  status         TenancyStatus
+  startDate      DateTime      @db.Timestamptz(3)
+  durationMonths Int
+  expiresAt      DateTime?     @db.Timestamptz(3)
+  endedAt        DateTime?     @db.Timestamptz(3)
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+
+  invoices          Invoice[]
+  review            Review?
+  rentalApplication RentalApplication?
+
+  @@index([roomId])
+  @@index([userId])
+}
+
+model RentalApplication {
+  id             String                  @id @default(cuid(2))
+  roomId         String
+  room           Room                    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         RentalApplicationStatus @default(PENDING)
+  startDate      DateTime                @db.Date
+  durationMonths Int
+  occupation     String
+  note           String?
+  tenancyId      String?                 @unique
+  tenancy        Tenancy?                @relation(fields: [tenancyId], references: [id], onDelete: SetNull)
+  decidedAt      DateTime?               @db.Timestamptz(3)
+  createdAt      DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                @updatedAt @db.Timestamptz(3)
+
+  @@index([roomId, status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Invoice {
+  id                    String           @id @default(cuid(2))
+  tenancyId             String
+  tenancy               Tenancy          @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  periodStart           DateTime         @db.Date
+  dueDate               DateTime         @db.Date
+  amount                Int
+  rentAmount            Int
+  discountAmount        Int
+  applicationFeeAmount  Int
+  ownerReceivableAmount Int
+  gatewayFeeBearer      GatewayFeeBearer
+  status                InvoiceStatus    @default(UNPAID)
+
+  payments      Payment[]
+  notifications NotificationLog[]
+
+  @@index([tenancyId])
+}
+
+model Payment {
+  id                       String               @id @default(cuid(2))
+  invoiceId                String
+  invoice                  Invoice              @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  provider                 PaymentProvider
+  externalId               String?              @unique
+  providerBusinessId       String?
+  providerSessionId        String?              @unique
+  providerPaymentRequestId String?              @unique
+  providerPaymentId        String?              @unique
+  providerSplitRuleId      String?
+  checkoutUrl              String?
+  expiresAt                DateTime?            @db.Timestamptz(3)
+  channel                  String?
+  failureCode              String?
+  manualMethod             ManualPaymentMethod?
+  manualReference          String?
+  manualNote               String?
+  recordedById             String?
+  recordedBy               User?                @relation("PaymentRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  receiptNo                Int                  @unique @default(autoincrement())
+  amount                   Int
+  status                   PaymentStatus        @default(PENDING)
+  paidAt                   DateTime?            @db.Timestamptz(3)
+  refundedAt               DateTime?            @db.Timestamptz(3)
+  /**
+   * Throttle for payment.reconcile: one provider lookup per attempt per 30 seconds.
+   */
+  lastReconciledAt         DateTime?            @db.Timestamptz(3)
+  createdAt                DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime             @updatedAt @db.Timestamptz(3)
+
+  webhookEvents PaymentWebhookEvent[]
+  refund        PaymentRefund?
+
+  @@index([invoiceId])
+  @@index([recordedById])
+}
+
+model PaymentWebhookEvent {
+  id                 String               @id @default(cuid(2))
+  provider           PaymentProvider
+  fingerprint        String               @unique
+  eventType          String
+  externalResourceId String
+  paymentId          String?
+  payment            Payment?             @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  result             PaymentWebhookResult @default(RECEIVED)
+  reason             String?
+  metadata           Json?
+  processedAt        DateTime?            @db.Timestamptz(3)
+  createdAt          DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime             @updatedAt @db.Timestamptz(3)
+
+  @@index([provider, externalResourceId])
+  @@index([paymentId])
+  @@index([result, createdAt])
+}
+
+model PaymentRefund {
+  id               String              @id @default(cuid(2))
+  paymentId        String              @unique
+  payment          Payment             @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  referenceId      String              @unique
+  amount           Int
+  reason           String
+  providerRefundId String?             @unique
+  status           PaymentRefundStatus @default(PENDING)
+  attempts         Int                 @default(0)
+  nextAttemptAt    DateTime            @default(now()) @db.Timestamptz(3)
+  lastError        String?
+  submittedAt      DateTime?           @db.Timestamptz(3)
+  succeededAt      DateTime?           @db.Timestamptz(3)
+  failedAt         DateTime?           @db.Timestamptz(3)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
+
+  @@index([status, nextAttemptAt])
+}
+
+model Review {
+  id              String    @id @default(cuid(2))
+  tenancyId       String    @unique
+  tenancy         Tenancy   @relation(fields: [tenancyId], references: [id], onDelete: Cascade)
+  rating          Int
+  cleanliness     Int?
+  wifi            Int?
+  ownerRating     Int?
+  quietness       Int?
+  comment         String
+  // Snapshot of the author's campus-email verification at write time; never recomputed.
+  verifiedStudent Boolean   @default(false)
+  ownerReply      String?
+  ownerReplyAt    DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+model HouseRule {
+  id            String   @id @default(cuid(2))
+  kosId         String
+  kos           Kos      @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  tier          Int
+  categoryTitle String
+  rules         String[]
+  penaltyAmount Int?
+  penaltyClause String?
+
+  @@index([kosId])
+}
+
+model Poi {
+  id             String @id @default(cuid(2))
+  kosId          String
+  kos            Kos    @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  category       String
+  name           String
+  distanceMeters Int
+  walkMinutes    Int
+  description    String
+
+  @@index([kosId])
+}
+
+model KosImage {
+  id     String  @id @default(cuid(2))
+  kosId  String
+  kos    Kos     @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  // Uploaded photos use `key` (R2 object key); seeded photos keep an external `url`.
+  key    String?
+  url    String?
+  order  Int
+  width  Int?
+  height Int?
+
+  @@index([kosId])
+}
+
+model Visit {
+  id        String      @id @default(cuid(2))
+  kosId     String
+  kos       Kos         @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime    @db.Date
+  timeSlot  VisitSlot
+  status    VisitStatus @default(SCHEDULED)
+  notes     String?
+  createdAt DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@index([kosId])
+  @@index([userId])
+}
+
+model WaitlistEntry {
+  id             String         @id @default(cuid(2))
+  kosId          String
+  kos            Kos            @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// null = any room type
+  roomType       String?
+  status         WaitlistStatus @default(WAITING)
+  offeredRoomId  String?
+  offeredRoom    Room?          @relation(fields: [offeredRoomId], references: [id], onDelete: SetNull)
+  offerExpiresAt DateTime?      @db.Timestamptz(3)
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  resolvedAt     DateTime?      @db.Timestamptz(3)
+
+  @@index([kosId, status, createdAt])
+  @@index([userId])
+}
+
+/// Audit row for every time an owner opens a tenant's profile (UU PDP: who looked at what, when).
+model TenantProfileView {
+  id           String   @id @default(cuid(2))
+  ownerUserId  String
+  owner        User     @relation("ProfileViewOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  tenantUserId String
+  tenant       User     @relation("ProfileViewTenant", fields: [tenantUserId], references: [id], onDelete: Cascade)
+  kosId        String
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantUserId, createdAt])
+}
+
+/// One row per payment reminder decision. The unique key makes a rescan harmless: an invoice gets each kind once per channel.
+/// kind: REMINDER_H7 | REMINDER_H3 | REMINDER_H1 | EMERGENCY_CONTACT. channel: EMAIL | WHATSAPP. status: SENT | FAILED.
+/// recipient is a role label (PENYEWA, KONTAK_DARURAT), never a phone number or address.
+model NotificationLog {
+  id        String   @id @default(cuid(2))
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  kind      String
+  channel   String
+  recipient String
+  status    String
+  reason    String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([invoiceId, kind, channel])
+  @@index([invoiceId])
+}
+
+model EmailOutbox {
+  id            String       @id @default(cuid(2))
+  to            String
+  template      String
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  attempts      Int          @default(0)
+  nextAttemptAt DateTime     @default(now()) @db.Timestamptz(3)
+  sentAt        DateTime?    @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([status, nextAttemptAt])
+}
+
+// ---------------------------------------------------------------------------
+// Location catalogue. Region, PlaceCatalog and CatalogMeta are read-only reference data loaded by `catalog:import`
+// (ADR 0016): no foreign keys to app tables, so a TRUNCATE ... CASCADE of the app never reaches them, and resetDb skips them.
+// ---------------------------------------------------------------------------
+
+model Region {
+  code              String  @id
+  level             Int
+  name              String
+  kind              String
+  parentCode        String?
+  lat               Float
+  lng               Float
+  minLat            Float?
+  maxLat            Float?
+  minLng            Float?
+  maxLng            Float?
+  postalCode        String?
+  // GeoJSON MultiPolygon coordinates ([lng, lat]); provinsi, kab/kota and kecamatan only.
+  polygon           Json?
+  polygonProvenance String?
+  dataVersion       String
+
+  @@index([level, parentCode])
+  @@index([level, minLat, maxLat])
+  @@index([name])
+}
+
+model PlaceCatalog {
+  id             String    @id
+  source         String
+  sourceId       String
+  category       String
+  subcategory    String?
+  name           String
+  nameAlt        String?
+  brand          String?
+  lat            Float
+  lng            Float
+  cell           String
+  desaCode       String?
+  hoursRaw       String?
+  website        String?
+  osmType        String?
+  osmId          BigInt?
+  score          Int
+  licence        String
+  attribution    String
+  derivedFromOsm Boolean
+  firstSeen      DateTime? @db.Timestamptz(3)
+  updatedAt      DateTime? @db.Timestamptz(3)
+  isHidden       Boolean   @default(false)
+  dataVersion    String
+
+  @@unique([source, sourceId])
+  @@index([category, cell])
+  @@index([cell])
+  @@index([source])
+  @@index([desaCode])
+}
+
+model CatalogMeta {
+  version       String   @id
+  dataset       String
+  status        String
+  rowCount      Int
+  checksum      String?
+  loadedAt      DateTime @default(now()) @db.Timestamptz(3)
+  sourceSummary Json?
+}
+
+// A snapshot of "what is near this kos": references to PlaceCatalog / OwnerPlace rows, never copies of their fields.
+model KosPlace {
+  id             String  @id @default(cuid(2))
+  kosId          String
+  kos            Kos     @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  // PlaceCatalog.id or OwnerPlace.id (no foreign key on purpose: the catalogue is reloaded by version).
+  placeId        String
+  category       String
+  distanceM      Int
+  mode           String
+  rank           Int
+  catalogVersion String
+  hiddenByOwner  Boolean @default(false)
+  addedByOwner   Boolean @default(false)
+  sourceLabel    String
+
+  @@unique([kosId, placeId])
+  @@index([kosId])
+}
+
+// An owner's decision about a place, kept across snapshot refreshes (the snapshot is rebuilt, the overlay is not).
+model PlaceOverlay {
+  id        String   @id @default(cuid(2))
+  kosId     String
+  kos       Kos      @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  placeId   String
+  override  String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([kosId, placeId, override])
+  @@index([kosId])
+}
+
+// A place an owner adds. Pending until KoBo approves it; never public before, never carries contact details.
+model OwnerPlace {
+  id        String   @id @default(cuid(2))
+  kosId     String
+  kos       Kos      @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  name      String
+  category  String
+  lat       Float
+  lng       Float
+  note      String?
+  status    String   @default("pending")
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([kosId])
+  @@index([status])
+}

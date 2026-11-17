@@ -1,0 +1,1414 @@
+/* ════════════════════════════════════════════════════════════════════
+   KoBo shared component primitives
+   ────────────────────────────────────────────────────────────────────
+   Layout and token application stay in inline styles, matching the rest
+   of the codebase. This file owns everything inline styles CANNOT
+   express: :hover, :focus-visible, [aria-*] states, media queries and
+   pseudo-elements.
+
+   Colour discipline: tables and stat tiles carry NO tinted backgrounds.
+   Status colour lives only in .kobo-status__dot.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════════════
+   VIEWPORT TIERS
+   Primary target is a NON-FULLSCREEN window: ~1280px wide, ~650px of
+   usable height. These tiers only add breathing room where the viewport
+   genuinely has it; the base layout is correct without any of them.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Taller windows: maximised on a 900p+ display, or F11 fullscreen */
+@media (min-height: 860px) {
+  :root {
+    --section-gap: 6rem;
+    --hero-canvas-max: 760px;
+    --sticky-top: calc(var(--header-height) + 2rem);
+  }
+}
+
+@media (min-height: 1040px) {
+  :root {
+    --section-gap: 7rem;
+    --hero-canvas-max: 880px;
+  }
+}
+
+/* Wide monitors: --container-max already widens to 1600px on its own,
+   so only the gutters need to grow. */
+@media (min-width: 1600px) {
+  .app-container {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   SHARED CONTROL PRIMITIVES
+   One height, one radius, one focus treatment across every filter bar,
+   toolbar and table action.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Generic trigger: popover buttons, sort buttons, select shells */
+.kobo-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: var(--control-height);
+  padding: 0 0.85rem;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out-spring),
+              background-color var(--duration-fast) var(--ease-out-spring),
+              color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-control:hover {
+  border-color: var(--border-strong);
+}
+
+.kobo-control[aria-expanded='true'],
+.kobo-control.is-active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background-color: var(--primary-subtle);
+}
+
+.kobo-control:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Numeric count bubble - a legitimate --radius-pill use */
+.kobo-control__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 0.3rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--primary);
+  color: var(--text-inverse);
+  font-size: 0.68rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Square icon-only button. ALWAYS give these an aria-label. */
+.kobo-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  flex-shrink: 0;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out-spring),
+              border-color var(--duration-fast) var(--ease-out-spring),
+              background-color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-icon-btn:hover {
+  color: var(--primary);
+  border-color: var(--border-strong);
+  background-color: var(--primary-subtle);
+}
+
+.kobo-icon-btn--sm {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+}
+
+/* Borderless variant for dense table rows */
+.kobo-icon-btn--ghost {
+  border-color: transparent;
+  background-color: transparent;
+}
+
+.kobo-icon-btn--ghost:hover {
+  border-color: var(--border-subtle);
+}
+
+/* Segmented control for a mutually exclusive choice that must stay
+   visible in a toolbar. Buttons must carry aria-pressed. */
+.kobo-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-muted);
+}
+
+.kobo-segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: calc(var(--control-height) - 8px);
+  padding: 0 0.7rem;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out-spring),
+              color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-segmented button:hover {
+  color: var(--text-main);
+}
+
+.kobo-segmented button[aria-pressed='true'] {
+  background-color: var(--bg-surface);
+  color: var(--text-main);
+  font-weight: 700;
+  box-shadow: var(--shadow-xs);
+}
+
+/* Search field shell.
+   Keep ONLY the icon, the input and a clear button inside this element.
+   Submit and geolocation buttons are SIBLINGS of this shell, never
+   nested inside it - nested borders are what made the old bar cluttered. */
+.kobo-searchfield {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 1;
+  min-width: 0;
+  height: var(--control-height-lg);
+  padding: 0 0.85rem;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--border-strong);
+  background-color: var(--bg-surface);
+  transition: border-color var(--duration-fast) var(--ease-out-spring),
+              box-shadow var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-searchfield:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.kobo-searchfield > svg {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.kobo-searchfield input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.kobo-searchfield input::placeholder {
+  color: var(--text-muted);
+}
+
+/* The shell renders the focus ring, so suppress the input's own */
+.kobo-searchfield input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.kobo-searchfield__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out-spring),
+              background-color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-searchfield__clear:hover {
+  color: var(--text-main);
+  background-color: var(--bg-muted);
+}
+
+/* CAMPUS SEARCH */
+.campus-search { position: relative; flex: 1; min-width: 0; }
+.campus-search .kobo-searchfield__clear { width: var(--control-height); height: var(--control-height); }
+.campus-search__list {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  width: 100%;
+  max-height: 60dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  z-index: var(--z-dropdown);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+  padding: 0.25rem;
+  animation: campus-search-open 150ms ease-out;
+}
+.campus-search__heading { padding: 0.45rem 0.65rem 0.2rem; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; }
+.campus-search__option {
+  display: flex;
+  min-height: var(--control-height);
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+.campus-search__option small { color: var(--text-muted); font-size: 0.75rem; }
+.campus-search__option[aria-selected="true"], .campus-search__option:hover { background: var(--primary-subtle); }
+@keyframes campus-search-open { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .campus-search__list { animation: none; } }
+
+/* Removable active-filter token */
+.kobo-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.3rem 0.25rem 0.55rem;
+  border-radius: var(--radius-badge);
+  border: 1px solid var(--primary-light);
+  background-color: var(--primary-subtle);
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.kobo-token button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-xs);
+  color: inherit;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-token button:hover {
+  background-color: var(--primary-light);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   POPOVER + MENU
+   Anchored overlay panels. The trigger must set aria-expanded and
+   aria-controls; the panel must close on Escape and on outside click,
+   and return focus to its trigger.
+   ════════════════════════════════════════════════════════════════════ */
+
+.kobo-popover-anchor {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+}
+
+/* Fills its column instead of shrinking to the trigger's content width. */
+.kobo-popover-anchor--block {
+  display: flex;
+  width: 100%;
+}
+
+.kobo-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: var(--z-dropdown);
+  min-width: 300px;
+  max-width: min(360px, calc(100vw - 2rem));
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-xl);
+}
+
+.kobo-popover--left {
+  right: auto;
+  left: 0;
+}
+
+.kobo-popover__title {
+  margin-bottom: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.kobo-popover__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Toggle row inside a popover */
+.kobo-optionrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.55rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out-spring),
+              color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-optionrow:hover {
+  background-color: var(--bg-muted);
+}
+
+.kobo-optionrow[aria-pressed='true'],
+.kobo-optionrow[aria-checked='true'] {
+  color: var(--primary);
+  background-color: var(--primary-subtle);
+}
+
+/* Dropdown menu - replaces per-row native <select> elements */
+.kobo-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 210px;
+  padding: 0.3rem;
+}
+
+.kobo-menu button,
+.kobo-menu__link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out-spring),
+              color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-menu button:hover,
+.kobo-menu__link:hover {
+  background-color: var(--bg-muted);
+}
+
+.kobo-menu button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.kobo-menu button[aria-checked='true'] {
+  color: var(--primary);
+  background-color: var(--primary-subtle);
+}
+
+.kobo-menu__sep {
+  height: 1px;
+  margin: 0.3rem 0;
+  background-color: var(--border-subtle);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   DATA TABLE
+   Restrained SaaS table. Colour is carried ONLY by .kobo-status__dot -
+   never by a row or cell background.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* NOTE on overflow: setting overflow-x alone does NOT keep the other axis
+   visible - CSS computes overflow-y to `auto` as soon as one axis is not
+   `visible`, which creates a clipping context and cuts off a row's action
+   Popover. So horizontal scrolling is enabled ONLY below the width where the
+   table genuinely needs it; on desktop the wrapper never clips. */
+.kobo-table-wrap {
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-surface);
+}
+
+@media (max-width: 1023px) {
+  .kobo-table-wrap {
+    overflow-x: auto;
+  }
+}
+
+.kobo-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.85rem;
+}
+
+.kobo-table caption {
+  padding: 0 1rem 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-align: left;
+}
+
+.kobo-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.7rem 1rem;
+  background-color: var(--bg-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  /* Sentence-case column headers: uppercase tracked micro-labels read as
+     template scaffolding and are harder to scan. */
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.kobo-table tbody td {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  vertical-align: middle;
+}
+
+.kobo-table tbody tr {
+  transition: background-color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-table tbody tr:hover {
+  background-color: var(--bg-page);
+}
+
+.kobo-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Floor / section group header row */
+.kobo-table__group th {
+  position: static;
+  padding: 0.55rem 1rem;
+  background-color: var(--bg-page);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.kobo-table tbody tr.kobo-table__group:first-child th {
+  border-top: none;
+}
+
+/* Column helpers */
+.kobo-table__num {
+  font-variant-numeric: tabular-nums;
+}
+
+.kobo-table__right {
+  text-align: right;
+}
+
+.kobo-table__muted {
+  color: var(--text-muted);
+}
+
+.kobo-table__strong {
+  font-weight: 700;
+}
+
+.kobo-table__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+}
+
+/* Actions stay fully visible on touch; they dim until hover on pointer
+   devices so a long table reads calmly. focus-within keeps them
+   reachable by keyboard. */
+@media (hover: hover) {
+  .kobo-table__actions {
+    opacity: 0.55;
+    transition: opacity var(--duration-fast) var(--ease-out-spring);
+  }
+
+  .kobo-table tbody tr:hover .kobo-table__actions,
+  .kobo-table__actions:focus-within {
+    opacity: 1;
+  }
+}
+
+.kobo-table__empty {
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* Status indicator - the ONLY place colour is allowed in a table.
+   Set the hue per row: style={{ '--dot': 'var(--status-paid)' }} */
+.kobo-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.kobo-status__dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--dot, var(--status-vacant));
+}
+
+/* Hollow dot so a vacant room reads as absence rather than a state */
+.kobo-status--hollow .kobo-status__dot {
+  background-color: transparent;
+  box-shadow: inset 0 0 0 2px var(--dot, var(--status-vacant));
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   STAT TILE
+   Neutral KPI tile: no tinted background, no coloured numeral. The
+   figure is always --text-main so the eye is not pulled by hue.
+   ════════════════════════════════════════════════════════════════════ */
+
+.kobo-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+}
+
+.kobo-stat__label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.kobo-stat__label svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.kobo-stat__value {
+  color: var(--text-main);
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.kobo-stat__meta {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+/* Thin rail for occupancy-style stats */
+.kobo-stat__rail {
+  height: 4px;
+  margin-top: 0.15rem;
+  border-radius: var(--radius-pill);
+  background-color: var(--bg-muted);
+  overflow: hidden;
+}
+
+.kobo-stat__rail > span {
+  display: block;
+  height: 100%;
+  width: var(--pct, 0%);
+  border-radius: var(--radius-pill);
+  background-color: var(--primary);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   BACK LINK
+   Sits on the same baseline as a page title. Never rendered by a layout.
+   ════════════════════════════════════════════════════════════════════ */
+
+.kobo-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-back:hover {
+  color: var(--primary);
+}
+
+.kobo-back svg {
+  transition: transform var(--duration-fast) var(--ease-out-spring);
+}
+
+.kobo-back:hover svg {
+  transform: translateX(-2px);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   HERO - split copy/canvas layout and the 3D stage
+   ════════════════════════════════════════════════════════════════════ */
+
+.kobo-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2.25rem;
+  align-items: center;
+}
+
+.kobo-hero__copy {
+  min-width: 0;
+  text-align: center;
+}
+
+.kobo-hero__title {
+  font-size: clamp(2rem, 1.2rem + 2.6vw, 3.25rem);
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  text-wrap: balance;
+  margin-bottom: 1.5rem;
+}
+
+.kobo-hero__search {
+  position: relative;
+  z-index: var(--z-dropdown);
+  max-width: 41rem;
+  margin: 0 auto;
+}
+
+.kobo-hero__campus-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 1rem;
+}
+.kobo-hero__campus-lead {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.kobo-hero__campus-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.kobo-hero__campus-chip:hover { border-color: var(--primary); color: var(--primary); }
+.kobo-hero__campus-chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media (min-width: 1024px) {
+  .kobo-hero__campus-chips { justify-content: flex-start; }
+}
+
+/* Content-sized pair, centred as a unit, so the visible composition has
+   equal outer margins. The grid centres the building's VISIBLE ink, not its
+   canvas box: see the --hero-ink-* note on .kobo-hero-canvas below. */
+@media (min-width: 1024px) {
+  .kobo-hero {
+    grid-template-columns: minmax(0, 36rem) minmax(0, calc(var(--hero-canvas-max) * var(--hero-ink-w)));
+    justify-content: center;
+    /* Visual gap is now text-to-building, no longer padded by dead canvas. */
+    gap: clamp(4rem, 8vw, 9rem);
+  }
+  .kobo-hero__copy {
+    text-align: left;
+  }
+  /* One line: "Survey dulu, Baru sewa." is ~11.4em wide, the copy column is 36rem. */
+  .kobo-hero__title {
+    white-space: nowrap;
+    font-size: clamp(1.75rem, 3.4vw, 3rem);
+  }
+  .kobo-hero__search {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+/* Square stage. aspect-ratio reserves the space so nothing shifts while
+   the three.js chunk is still in flight. */
+.kobo-hero-canvas {
+  position: relative;
+  width: 100%;
+  max-width: var(--hero-canvas-max);
+  margin-inline: auto;
+  aspect-ratio: 3 / 2; /* wider than tall, so the section reads across */
+}
+
+/* The building only fills the middle of its stage: measured at every desktop
+   tier, the visible ink spans ~70.5% of the canvas width, with ~12.2% dead on
+   the left and ~17.4% on the right (scene framing + feathered mask). The grid
+   column is sized to the ink, and the canvas overhangs it by the dead space,
+   so centring the column centres what the eye actually sees. Re-measure these
+   if the camera in scene/building.ts or the poster framing changes. */
+:root {
+  --hero-ink-w: 0.705;
+  --hero-dead-l: 0.122;
+  --hero-dead-r: 0.174;
+}
+
+@media (min-width: 1024px) {
+  #kobo-hero {
+    overflow-x: clip; /* the overhang is transparent, but never scroll for it */
+  }
+  .kobo-hero-canvas {
+    width: calc(100% / var(--hero-ink-w));
+    max-width: none;
+    margin-left: calc(-100% * var(--hero-dead-l) / var(--hero-ink-w));
+    margin-right: calc(-100% * var(--hero-dead-r) / var(--hero-ink-w));
+  }
+}
+
+/* The scene is a SECTION of a taller, wider building, so instead of a hard
+   rounded card edge, the crop feathers out into the page on all four sides -
+   the floors above and below dissolve rather than stop. Applied identically to
+   the canvas and the poster so the cross-fade between them is seamless. */
+.kobo-hero-canvas canvas,
+.kobo-hero-canvas__poster {
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent 0, #000 3%, #000 97%, transparent 100%),
+    linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to bottom, transparent 0, #000 3%, #000 97%, transparent 100%),
+    linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+  mask-composite: intersect;
+}
+
+.kobo-hero-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Poster: the loading state, the reduced-motion fallback, the no-WebGL
+   fallback and the sub-768px render, all in one element. */
+.kobo-hero-canvas__poster {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+  transition: opacity var(--duration-slow) var(--ease-in-out-smooth);
+}
+
+.kobo-hero-canvas__poster.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Below 768px the 3D chunk is never fetched - poster only, and smaller. */
+@media (max-width: 767px) {
+  .kobo-hero-canvas {
+    max-width: 430px;
+  }
+}
+
+/* A decorative WebGL canvas must never animate for reduced-motion users,
+   so the poster stays put even if a stale is-hidden class is applied. */
+@media (prefers-reduced-motion: reduce) {
+  .kobo-hero-canvas__poster.is-hidden {
+    opacity: 1;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   FEATURED KOS GRID - 1 / 2 / 4 columns, cards stretch to fill the row
+   ════════════════════════════════════════════════════════════════════ */
+.kobo-featured-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 560px) {
+  .kobo-featured-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .kobo-featured-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Kuitansi page: "Unduh PDF" is window.print(), so only the receipt may reach the paper. */
+@media print {
+  header,
+  footer,
+  .no-print,
+  .mobile-only-dock {
+    display: none !important;
+  }
+  body {
+    background: var(--bg-surface) !important;
+  }
+  .kuitansi-page {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  .kuitansi-paper {
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+}
+
+/* Per-invoice payment actions (MyKos): wraps cleanly at phone width. */
+.invoice-pay { display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem; min-width: 0; }
+.invoice-pay__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
+.invoice-pay__hint { font-size: 0.78rem; color: var(--text-muted); max-width: 22rem; text-align: right; line-height: 1.4; }
+.invoice-pay__hint:empty { display: none; }
+@media (max-width: 480px) {
+  .invoice-pay { align-items: stretch; width: 100%; }
+  .invoice-pay__actions { justify-content: stretch; }
+  .invoice-pay__actions > * { flex: 1 1 auto; }
+  .invoice-pay__hint { text-align: left; max-width: none; }
+}
+
+/* ---- Page layouts that used to be inline <style> blocks ---- */
+
+/* /kos/:id: info, then the booking card, then reviews on a phone; two columns with a sticky card from 1024px. */
+.detail-split-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2.5rem; margin-top: 2.5rem; align-items: start; }
+/* .detail-main wraps the details and the reviews so the section nav can stay sticky through both. Below the
+   two-column breakpoint it dissolves, so .detail-info / .detail-sidebar / .detail-reviews keep their phone order. */
+.detail-main { display: contents; }
+.detail-info { order: 1; display: flex; flex-direction: column; min-width: 0; }
+.detail-sidebar { order: 2; align-self: stretch; min-width: 0; }
+/* Below the two-column breakpoint the sidebar is plain flow; its inline sticky/max-height only make sense beside the details column. */
+@media (max-width: 1023px) {
+  .booking-sidebar { position: static !important; max-height: none !important; overflow: visible !important; }
+}
+.detail-reviews { order: 3; min-width: 0; }
+.detail-related-wrap { order: 4; min-width: 0; }
+@media (min-width: 1024px) {
+  .detail-split-layout { grid-template-columns: minmax(0, 1fr) 384px; gap: 3rem; }
+  .detail-info, .detail-reviews, .detail-sidebar, .detail-related-wrap { order: 0; }
+  .detail-main { display: flex; flex-direction: column; grid-column: 1; grid-row: 1; min-width: 0; }
+  .detail-sidebar { grid-column: 2; grid-row: 1; }
+  .detail-related-wrap { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* Payment breakdown: one bordered unit; every row shares the same 16px side padding. */
+.booking-lines { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; font-size: 0.875rem; }
+.booking-lines__rows { display: flex; flex-direction: column; padding: 0 1rem; }
+.booking-fee-row { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: baseline; column-gap: 0.75rem; padding: 0.875rem 0; color: var(--text-main); font-weight: 500; }
+.booking-fee-row + .booking-fee-row { border-top: 1px solid var(--border-subtle); }
+.booking-fee-row__value { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.booking-fee-row__note { grid-column: 1 / -1; margin-top: 0.3rem; font-size: 0.75rem; font-weight: 400; line-height: 1.5; color: var(--text-muted); }
+.booking-fee-row--strong { font-weight: 700; }
+.booking-lines__total { padding: 1rem; background: var(--primary-light); border-top: 1px solid var(--border-subtle); }
+.booking-lines__total-main { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; }
+.booking-lines__total small { display: block; margin-top: 0.375rem; color: var(--text-muted); font-size: 0.75rem; }
+.booking-lines__sum { padding: 0 1rem; border-top: 1px solid var(--border-subtle); }
+
+/* Short laptop windows: tighter rhythm so the whole card (every payment line) fits under the header without scrolling. */
+@media (min-width: 1024px) and (max-height: 720px) {
+  .booking-card { padding: 1.25rem !important; gap: 1rem !important; }
+  .booking-fee-row { padding-block: 0.625rem !important; }
+  .booking-lines__total { padding-block: 0.625rem !important; }
+}
+
+/* Main column: open sections divided by hairlines (the booking box is the only elevated object). The 4/8/12/16/24/32/48
+   spacing scale applies: 32px section padding, 48px from 1024px. */
+.detail-card { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 2rem 0; min-width: 0; }
+.detail-main .room-picker { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 2rem 0; }
+.detail-main .section-title { font-size: 1.375rem; letter-spacing: -0.015em; }
+.detail-main .section-head, .detail-reviews .section-head { margin-bottom: 1.5rem; }
+.detail-main, .detail-info { gap: 0; }
+.detail-info > * + *, .detail-reviews { border-top: 1px solid var(--border-subtle); }
+@media (min-width: 1024px) { .detail-card, .detail-main .room-picker { padding: 2.5rem 0; } }
+@media (max-width: 639px) { .detail-card, .detail-main .room-picker { padding: 1.5rem 0; } }
+.detail-section { scroll-margin-top: calc(var(--header-height) + 4.25rem); }
+
+/* Breadcrumb above the title. */
+.detail-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.4rem; margin: 0; padding: 0; list-style: none; font-size: 0.8125rem; color: var(--text-muted); }
+.detail-crumbs a { display: inline-flex; align-items: center; min-height: 32px; color: var(--text-muted); text-decoration: none; }
+.detail-crumbs a:hover { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.detail-crumbs li + li::before { content: '›'; margin-right: 0.4rem; color: var(--text-subtle); }
+@media (pointer: coarse), (max-width: 639px) { .detail-crumbs a { min-height: 44px; } }
+.detail-crumbs [aria-current='page'] { color: var(--text-main); font-weight: 600; max-width: 22rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Key facts: quiet chips under the title (spec row, not promotions). */
+.detail-facts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.detail-facts li { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 34px; padding: 0.25rem 0.75rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); color: var(--text-main); font-size: 0.8125rem; font-weight: 500; }
+.detail-facts li svg { flex: none; color: var(--primary); }
+.detail-facts li.is-strong { border-color: transparent; background: var(--primary-light); color: var(--primary-hover); font-weight: 700; }
+
+/* Section nav (desktop): a plain strip on the page background. A hairline runs the full column width; the current tab
+   gets a 2px underline on top of it. */
+.detail-nav { display: none; }
+@media (min-width: 1024px) {
+  .detail-nav { display: block; position: sticky; top: var(--header-height); z-index: var(--z-sticky); background: var(--bg-page); }
+  .detail-nav ul { display: flex; gap: 0.5rem; margin: 0; padding: 0; list-style: none; border-bottom: 1px solid var(--border-subtle); }
+  .detail-nav a { position: relative; display: flex; align-items: center; min-height: 52px; padding: 0 1.25rem; color: var(--text-muted); font-size: 0.9375rem; font-weight: 600; text-decoration: none; }
+  .detail-nav a::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: transparent; }
+  .detail-nav a:hover { color: var(--text-main); }
+  .detail-nav a[aria-current='true'] { color: var(--primary); }
+  .detail-nav a[aria-current='true']::after { background: var(--primary); }
+  .detail-nav a:focus-visible { outline: 3px solid var(--border-focus); outline-offset: -3px; border-radius: var(--radius-md); }
+}
+
+/* Related kos */
+.detail-related { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+@media (min-width: 640px) { .detail-related { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .detail-related { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* Room selection: names, availability and prices have separate, consistent positions. */
+.room-picker { container: room-picker / inline-size; padding: 1.5rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-card); background: var(--bg-surface); box-shadow: var(--shadow-xs); }
+.room-picker__heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 1rem; margin-bottom: 1rem; }
+.room-picker__heading h3 { margin: 0; }
+.room-picker__heading > span { color: var(--text-muted); font-size: 0.8rem; white-space: nowrap; }
+.room-picker__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; align-items: stretch; }
+.room-picker__option { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 0.5rem 1.5rem; min-width: 0; min-height: 40px; padding: 1rem 1.25rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-page); color: var(--text-main); font: inherit; text-align: left; cursor: pointer; }
+.room-picker__option.is-selected { border-color: var(--primary); background: var(--primary-subtle); }
+.room-picker__option:focus-visible { outline: 3px solid var(--border-focus); outline-offset: 3px; }
+.room-picker__option:disabled { cursor: not-allowed; }
+.room-picker__title { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem; font-size: 1rem; font-weight: 700; line-height: 1.45; }
+.room-picker__title > span { min-width: 0; overflow-wrap: anywhere; }
+.room-picker__chosen { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.1rem 0.55rem; border-radius: var(--radius-badge); background: var(--primary); color: var(--text-inverse); font-size: 0.72rem; font-weight: 700; line-height: 1.5; }
+.room-picker__chosen svg { flex-shrink: 0; }
+.room-picker__availability { color: var(--status-paid-text); font-size: 0.8125rem; font-weight: 600; line-height: 1.4; }
+.room-picker__availability > span { white-space: nowrap; }
+.room-picker__option.is-full .room-picker__availability { color: var(--text-muted); }
+.room-picker__main { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+.room-picker__details { display: flex; flex-wrap: wrap; gap: 0.1rem 1.25rem; margin: 0.1rem 0 0; color: var(--text-muted); font-size: 0.8125rem; line-height: 1.5; overflow-wrap: anywhere; }
+.room-picker__reserved { color: var(--status-booking-text); font-size: 0.75rem; line-height: 1.5; }
+.room-picker__footer { display: flex; flex-direction: column; gap: 0.25rem; padding-top: 0.6rem; border-top: 1px solid var(--border-subtle); }
+.room-picker__price { color: var(--primary); font-size: 1rem; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.room-picker__price > span { color: var(--text-muted); font-size: 0.75rem; font-weight: 400; white-space: nowrap; }
+.room-picker__waitlist { color: var(--primary); font-size: 0.8125rem; font-weight: 600; text-decoration: underline; text-underline-offset: 0.2em; }
+@container room-picker (min-width: 520px) {
+  .room-picker__option { grid-template-columns: minmax(0, 1fr) auto; }
+  .room-picker__footer { align-items: flex-end; padding-top: 0; border-top: 0; text-align: right; }
+}
+@container room-picker (min-width: 800px) {
+  .room-picker__option { padding: 1.1rem 1.5rem; }
+}
+
+/* Kos detail section layouts. Container queries follow the available column, not the viewport. */
+.kos-poi { container-type: inline-size; }
+.kos-poi__categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; margin-bottom: 1.5rem; }
+.kos-poi__category { justify-content: center; width: 100%; min-height: 44px; border: 1px solid var(--border-subtle) !important; white-space: normal !important; text-align: center; line-height: 1.35; }
+.kos-poi__category.is-selected { border-color: var(--primary) !important; box-shadow: inset 0 0 0 1px var(--primary); }
+.kos-poi__category:focus-visible, .kos-rules__toggle:focus-visible, .kos-reviews__more:focus-visible { outline: 3px solid var(--border-focus); outline-offset: 2px; }
+.kos-amenities { container: amenities / inline-size; }
+.kos-amenities__scopes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; }
+.kos-amenities h4 { margin: 0 0 1.25rem; color: var(--text-main); font-size: 1rem; font-weight: 700; }
+.kos-amenities__scope { min-width: 0; }
+.kos-amenities__list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+.kos-amenities__item { display: flex; align-items: center; gap: 0.875rem; min-width: 0; color: var(--text-main); font-size: 0.9375rem; line-height: 1.4; }
+.kos-amenities__icon { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius-md); background: var(--primary-light); color: var(--primary); }
+.kos-amenities__icon svg { width: 20px; height: 20px; stroke-width: 1.75; }
+.kos-amenities__label { min-width: 0; overflow-wrap: anywhere; }
+.kos-amenities__label small { display: block; color: var(--text-muted); font-size: 0.75rem; }
+@container amenities (min-width: 560px) {
+  .kos-amenities__scopes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
+  .kos-amenities__scope { padding-right: 2rem; }
+  .kos-amenities__scope + .kos-amenities__scope { padding-right: 0; padding-left: 2rem; border-left: 1px solid var(--border-subtle); }
+}
+.kos-rules__groups { display: flex; flex-direction: column; gap: 0.5rem; }
+.kos-rules__group { overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-page); transition: border-color var(--duration-fast) var(--ease-out-spring); }
+.kos-rules__group:hover, .kos-rules__group:focus-within { border-color: var(--border-strong); }
+.kos-rules__heading { margin: 0; font-size: inherit; }
+.kos-rules__toggle { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; min-height: 56px; padding: 0.65rem 1rem; background: transparent; color: var(--text-main); text-align: left; cursor: pointer; }
+.kos-rules__toggle > div:first-child { min-width: 0; }
+.kos-rules__title { font-size: 0.95rem; font-weight: 700; }
+.kos-rules__panel { padding: 0.85rem 1rem 1rem; border-top: 1px solid var(--border-subtle); background: var(--bg-surface); }
+.kos-rules__panel[hidden], .kos-reviews__extra[hidden] { display: none; }
+.kos-rules__panel ul { padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.4rem; margin: 0; }
+.kos-rules__panel li { font-size: 0.875rem; color: var(--text-main); line-height: 1.5; overflow-wrap: anywhere; }
+.kos-rules__clause { display: flex; align-items: flex-start; gap: 0.6rem; margin-top: 0.85rem; padding: 0.6rem 0.8rem; border: 1px solid var(--status-overdue-border); border-radius: var(--radius-sm); background: var(--status-overdue-bg); color: var(--status-overdue-text); font-size: 0.8125rem; font-weight: 600; line-height: 1.5; }
+.kos-reviews { container-type: inline-size; }
+.kos-reviews__summary { display: flex; flex-direction: column; gap: 1.25rem; padding: 1.25rem 1.5rem; margin-bottom: 0.5rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); }
+.kos-reviews__score > div { display: flex; align-items: baseline; gap: 0.35rem; }
+.kos-reviews__score strong { color: var(--text-main); font-size: 2.25rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+.kos-reviews__score span { color: var(--text-muted); font-size: 0.9rem; }
+.kos-reviews__score { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 1rem; }
+.kos-reviews__score p { margin: 0; color: var(--text-muted); font-size: 0.875rem; }
+.kos-reviews__aspects { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.25rem 2rem; padding-top: 1.25rem; border-top: 1px solid var(--border-subtle); }
+.kos-reviews__aspect { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-width: 0; min-height: 40px; padding: 0; border: 0; background: transparent; }
+.kos-reviews__aspect-label { min-width: 0; color: var(--text-main); font-size: 0.875rem; line-height: 1.4; overflow-wrap: anywhere; }
+.kos-reviews__star-meter { display: flex; flex-shrink: 0; align-items: center; gap: 0.5rem; }
+.kos-reviews__stars { display: inline-flex; gap: 0.2rem; }
+.kos-reviews__star { position: relative; display: inline-flex; width: 16px; height: 16px; }
+.kos-reviews__star-outline { color: var(--text-muted); }
+.kos-reviews__star-fill { position: absolute; inset: 0 auto 0 0; overflow: hidden; color: var(--primary); }
+.kos-reviews__star-fill svg { display: block; width: 16px; height: 16px; max-width: none; }
+.kos-reviews__aspect-score { color: var(--text-main); font-size: 0.875rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kos-reviews__unrated { color: var(--text-muted); font-size: 0.875rem; line-height: 1.5; }
+.kos-reviews__list, .kos-reviews__extra { display: flex; flex-direction: column; gap: 0; }
+.kos-reviews__item { padding: 1.25rem 0; border: 0; border-top: 1px solid var(--border-subtle); background: transparent; }
+.kos-reviews__review-header, .kos-reviews__author, .kos-reviews__author-name, .kos-reviews__rating, .kos-reviews__reply { display: flex; align-items: center; }
+.kos-reviews__review-header { justify-content: space-between; gap: 0.75rem; margin-bottom: 0.5rem; }
+.kos-reviews__author { min-width: 0; gap: 0.75rem; }
+.kos-reviews__author-name { flex-wrap: wrap; gap: 0.4rem; }
+.kos-reviews__author-name h5, .kos-reviews__author p, .kos-reviews__reply p { margin: 0; }
+.kos-reviews__author-name h5 { font-size: 0.925rem; font-weight: 700; }
+.kos-reviews__author p, .kos-reviews__reply-title span { color: var(--text-muted); font-size: 0.75rem; }
+.kos-reviews__verified { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.15rem 0.45rem; border-radius: var(--radius-badge); background: var(--primary-light); color: var(--primary); font-size: 0.7rem; font-weight: 600; }
+.kos-reviews__verified svg { flex-shrink: 0; }
+.kos-reviews__author > div { min-width: 0; }
+.kos-reviews__author-name h5 { overflow-wrap: anywhere; }
+.kos-reviews__rating { flex-shrink: 0; gap: 0.25rem; color: var(--accent-strong); font-size: 0.8125rem; font-weight: 800; }
+.kos-reviews__comment { color: var(--text-main); font-size: 0.875rem; line-height: 1.6; }
+.kos-reviews__reply { align-items: flex-start; gap: 0.65rem; margin-top: 0.6rem; padding: 0.65rem 0; border-top: 1px solid var(--border-subtle); }
+.kos-reviews__reply > svg { flex-shrink: 0; margin-top: 0.15rem; }
+.kos-reviews__reply-title { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; color: var(--primary); font-size: 0.8rem; }
+.kos-reviews__reply p { color: var(--text-muted); font-size: 0.825rem; line-height: 1.5; }
+.kos-reviews__more { min-height: 44px; margin-top: 0.75rem; padding: 0.5rem 0; color: var(--primary); font: inherit; font-weight: 700; text-align: left; text-decoration: underline; text-underline-offset: 0.2em; }
+@container (min-width: 560px) {
+  .kos-reviews__aspects { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (min-width: 600px) {
+  .kos-poi__categories { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .kos-poi__category:nth-child(-n + 4) { grid-column: span 3; }
+  .kos-poi__category:nth-child(n + 5) { grid-column: span 4; }
+}
+@media (max-width: 767px), (pointer: coarse) {
+  .kos-poi__category { min-height: 44px; }
+}
+
+/* /checkout/:id */
+.checkout-split-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; align-items: start; }
+.application-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
+@media (min-width: 640px) { .application-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .checkout-split-layout { grid-template-columns: 58fr 42fr; } }
+
+/* Mobile bottom dock hides from tablet width. !important because the dock sets display inline. */
+@media (min-width: 768px) {
+  .mobile-only-dock { display: none !important; }
+}
+
+/* /search. !important rules override layout the page still sets inline; --filter-bar-height is set on the page root. */
+.search-cards-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+@media (min-width: 560px) { .search-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* 3 across only from 1280px: at 1024px the 64% feed column is ~614px, which would squeeze each card under 200px. */
+@media (min-width: 1280px) { .search-cards-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1024px) {
+  .search-split-grid { grid-template-columns: 64fr 36fr !important; }
+  .search-feed-column { display: flex !important; }
+  .search-map-column { display: block !important; }
+  .mobile-map-toggle { display: none !important; }
+}
+@media (max-width: 640px) { .hide-on-mobile { display: none !important; } }
+@media (max-width: 1023px) {
+  .search-filter-bar { position: static !important; }
+  .search-map-column { position: static !important; height: calc(100vh - var(--header-height) - var(--filter-bar-height, 0px) - 1rem) !important; min-height: 360px; }
+}
+
+/* One page-title size for every top-level page (was 2rem, 2.1rem and 2.2rem). */
+.page-title { font-size: clamp(1.6rem, 1.2rem + 1.2vw, 2rem); font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; line-height: 1.2; }
+
+/* ════════════════════════════════════════════════════════════════════
+   RESPONSIVE LAYER (390px to 1600px)
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Modal: dvh so the mobile browser chrome never pushes the footer off screen; tighter padding on phones. */
+.kobo-modal-backdrop { position: fixed; inset: 0; z-index: var(--z-modal-backdrop); display: flex; align-items: center; justify-content: center; padding: 1.25rem; background-color: rgba(15, 23, 42, 0.65); }
+.kobo-modal { display: flex; flex-direction: column; width: 100%; max-height: 90vh; max-height: 90dvh; overflow: hidden; background-color: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); }
+.kobo-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-subtle); }
+.kobo-modal__header > div:first-child { min-width: 0; }
+.kobo-modal__body { flex: 1; min-height: 0; padding: 1.5rem; overflow-y: auto; overscroll-behavior: contain; }
+.kobo-modal__close { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: var(--control-height); height: var(--control-height); border-radius: var(--radius-sm); background-color: var(--bg-muted); color: var(--text-muted); }
+@media (max-width: 560px) {
+  .kobo-modal-backdrop { padding: 0.75rem; }
+  .kobo-modal__header { padding: 1rem; }
+  .kobo-modal__body { padding: 1rem; }
+}
+/* Sign-in dialog: compact header, body and height so the whole form fits without an inner scrollbar. */
+.kobo-modal:has(.auth-body) { max-height: 96vh; max-height: 96dvh; }
+.kobo-modal:has(.auth-body) .kobo-modal__header { padding: 0.85rem 1.25rem; }
+.kobo-modal:has(.auth-body) .kobo-modal__body { padding: 1rem 1.25rem 1.1rem; }
+/* Phone landscape and other short windows: use the full height. */
+@media (max-height: 480px) {
+  .kobo-modal-backdrop { padding: 0.5rem; }
+  .kobo-modal { max-height: 100vh; max-height: 100dvh; }
+}
+
+/* Toasts: bottom-right on desktop; full width above the dock on phones. */
+.kobo-toasts { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: var(--z-toast); display: flex; flex-direction: column; gap: 0.75rem; max-width: 420px; pointer-events: none; }
+@media (max-width: 767px) {
+  .kobo-toasts { left: 1rem; right: 1rem; max-width: none; bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
+}
+
+/* Phone booking bar (Detail): sits directly above the fixed bottom dock (4.25rem tall, below 768px). Hidden
+   once the two-column layout starts. Toasts (z-toast) still draw over it. */
+.booking-phone-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-header);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-subtle);
+  box-shadow: 0 -4px 12px hsla(222, 47%, 11%, 0.06);
+}
+.booking-phone-bar__price { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.booking-phone-bar__price strong { font-size: 1rem; color: var(--text-main); white-space: nowrap; }
+.booking-phone-bar__label { font-size: 0.72rem; color: var(--text-muted); }
+@media (max-width: 767px) {
+  .booking-phone-bar { bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px)); }
+}
+@media (min-width: 1024px) {
+  .booking-phone-bar { display: none; }
+}
+
+/* Mobile dock: equal-width 48px targets, and room for it under the page (footer included). */
+.mobile-only-dock > a { flex: 1 1 0; min-width: 0; min-height: 48px; justify-content: center; }
+@media (max-width: 767px) {
+  body:has(.mobile-only-dock) { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
+}
+/* Room for the Detail phone bar (about 3.8rem) on top of the dock, so the page end is never covered. */
+@media (max-width: 1023px) {
+  body:has(.booking-phone-bar) { padding-bottom: 4rem; }
+}
+@media (max-width: 767px) {
+  body:has(.mobile-only-dock):has(.booking-phone-bar) { padding-bottom: calc(8.25rem + env(safe-area-inset-bottom)); }
+}
+
+/* Segmented control: never wider than its container; scrolls sideways instead of breaking the page. */
+.kobo-segmented { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.kobo-segmented::-webkit-scrollbar { display: none; }
+
+/* Touch: controls reach 40px (the product floor) on phones and coarse pointers. */
+.kobo-carousel-btn { position: relative; }
+.kobo-carousel-btn::after { content: ''; position: absolute; inset: -10px; }
+.listing-card__link { color: inherit; text-decoration: none; }
+.listing-card__link::after { content: ''; position: absolute; inset: 0; z-index: 1; }
+.listing-card__link:focus-visible { outline: none; box-shadow: none; }
+.card-hover-lift:has(.listing-card__link:focus-visible) { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+@media (max-width: 767px), (pointer: coarse) {
+  header a[href='/my-kos'], .os-brand, .kobo-btn, .kobo-back, .interactive-tap:not(.kobo-carousel-btn):is(button, a) { min-height: var(--control-height); }
+  .kobo-segmented button { height: var(--control-height); }
+  .kobo-icon-btn--sm { width: var(--control-height); height: var(--control-height); }
+  button.interactive-tap.listing-card__survey { min-height: var(--control-height-lg); }
+}
+
+/* Owner room board: stacked cards on phones (the wrapper must not clip the row action menu). */
+@media (max-width: 760px) {
+  .kobo-table-wrap:has(.kobo-table--stack) { overflow: visible; }
+  .kobo-table--stack, .kobo-table--stack tbody, .kobo-table--stack tr, .kobo-table--stack td, .kobo-table--stack th { display: block; }
+  .kobo-table--stack caption { display: block; }
+  .kobo-table--stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .kobo-table--stack tbody tr:not(.kobo-table__group) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'room status' 'tenant price' 'due actions';
+    align-items: center;
+    gap: 0.4rem 1rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .kobo-table--stack tbody tr:last-child { border-bottom: none; }
+  .kobo-table--stack tbody td { padding: 0; border-bottom: none; min-width: 0; }
+  .kobo-table--stack td[data-cell='room'] { grid-area: room; }
+  .kobo-table--stack td[data-cell='status'] { grid-area: status; text-align: right; }
+  .kobo-table--stack td[data-cell='tenant'] { grid-area: tenant; }
+  .kobo-table--stack td[data-cell='price'] { grid-area: price; text-align: right; }
+  .kobo-table--stack td[data-cell='due'] { grid-area: due; }
+  .kobo-table--stack td[data-cell='due']::before { content: 'Jatuh tempo '; color: var(--text-muted); font-size: 0.75rem; }
+  .kobo-table--stack td[data-cell='actions'] { grid-area: actions; }
+}
+
+/* /my-kos invoice row: label left, amount + status + actions right; stacked under 560px. */
+.invoice-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 0.35rem 1rem; padding: 0.6rem 0; }
+.invoice-row__meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.35rem 0.75rem; min-width: 0; }
+@media (max-width: 560px) {
+  .invoice-row { grid-template-columns: minmax(0, 1fr); }
+  .invoice-row__meta { justify-content: flex-start; }
+  .invoice-row__meta .invoice-pay { flex-basis: 100%; }
+}
+
+/* /kuitansi/:receiptNo: label column shrinks on phones; the stamp sits in flow below the signature instead of over it. */
+.kuitansi-paper { padding: 1.25rem; }
+.kuitansi-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.1rem; }
+.kuitansi-stamp { display: flex; flex-direction: column; align-items: center; width: fit-content; margin: 1.5rem auto 0; padding: 0.6rem 1rem; border: 3px dashed var(--primary); border-radius: var(--radius-md); color: var(--primary); font-size: 0.85rem; font-weight: 800; text-transform: uppercase; opacity: 0.85; pointer-events: none; }
+@media (min-width: 640px) {
+  .kuitansi-paper { padding: 2rem; }
+  .kuitansi-row { grid-template-columns: 180px minmax(0, 1fr); gap: 0.5rem; }
+}
+@media (min-width: 820px) {
+  .kuitansi-stamp { position: absolute; right: 13.5rem; bottom: 1.75rem; margin: 0; }
+}
+
+/* Tables that become label/value cards on phones (data-label on each td). */
+.kobo-segmented--wrap { flex-wrap: wrap; overflow: visible; }
+@media (max-width: 760px) {
+  .kobo-table-wrap:has(.kobo-table--labels) { overflow: visible; }
+  .kobo-table--labels, .kobo-table--labels caption, .kobo-table--labels tbody { display: block; }
+  .kobo-table--labels thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .kobo-table--labels tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-subtle); }
+  .kobo-table--labels tbody tr:last-child { border-bottom: none; }
+  .kobo-table--labels tbody td { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; min-width: 0; padding: 0; border-bottom: none; }
+  .kobo-table--labels tbody td[data-label]::before { content: attr(data-label); color: var(--text-muted); font-size: 0.75rem; font-weight: 600; }
+  .kobo-table--labels tbody td:not([data-label]) { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
+  .kobo-table--labels tbody td[colspan] { display: block; grid-column: 1 / -1; padding: 0; text-align: left; }
+}
+
+/* One heading system for every card on /kos/:id (room types, amenities, radar, rules, reviews). */
+.section-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.5rem 1rem; margin-bottom: 1rem; }
+.section-title { margin: 0; color: var(--text-main); font-size: 1.25rem; font-weight: 700; line-height: 1.3; letter-spacing: -0.01em; }
+.section-sub { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; }
+.room-picker__heading { align-items: baseline; }
+.kos-rules__all { min-height: 44px; padding: 0 0.25rem; color: var(--primary); font: inherit; font-size: 0.85rem; font-weight: 600; text-decoration: underline; text-underline-offset: 0.2em; }
+.kos-rules__label { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; text-align: left; }
+.kos-rules__count { color: var(--text-muted); font-size: 0.78rem; font-weight: 500; }
+.kos-rules__aside { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+.kos-rules__fine { padding: 0.2rem 0.55rem; border: 1px solid var(--status-overdue-border); border-radius: var(--radius-badge); background: var(--status-overdue-bg); color: var(--status-overdue-text); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* /my-kos application card: details on the left, the action always on the side; stacked under 560px. */
+.application-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--bg-surface); }
+.application-card__main { display: flex; flex: 1 1 auto; align-items: center; gap: 0.85rem; min-width: 0; }
+.application-card__action { flex-shrink: 0; }
+@media (max-width: 560px) {
+  .application-card { flex-direction: column; align-items: stretch; }
+  .application-card__action > button { width: 100%; }
+}
+
+/* Narrow phones: the header's "Kos Saya" keeps its icon and count (the dock carries the label) so "Masuk" fits at 320 px. */
+@media (max-width: 389px) {
+  .kobo-nav-mykos__label { display: none; }
+}
+
+/* ── Detail page containers: every section is one container; sections are separated by space, not hairlines. ── */
+.detail-info { gap: 1.5rem; }
+.detail-main { gap: 1.5rem; }
+.detail-info > * + *, .detail-reviews { border-top: 0; }
+.detail-card, .detail-main .room-picker {
+  padding: 1.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+@media (min-width: 1024px) { .detail-card, .detail-main .room-picker { padding: 1.75rem; } }
+@media (max-width: 639px) { .detail-card, .detail-main .room-picker { padding: 1.25rem; } }
+.detail-reviews { margin-top: 1.5rem; }
+/* Inside a container the light-grey fill separates the items: rules groups and reviews. */
+.kos-rules__group { background: var(--bg-page); border-color: transparent; }
+.kos-rules__group:hover, .kos-rules__group:focus-within { border-color: var(--border-strong); }
+.kos-rules__panel { background: transparent; border-top: 0; padding-top: 0.25rem; }
+.kos-reviews__summary { padding: 0; margin: 0 0 1.25rem; border: 0; border-radius: 0; background: transparent; }
+.kos-reviews__aspects { padding-top: 0; border-top: 0; }
+.kos-reviews__list, .kos-reviews__extra { gap: 0.75rem; }
+.kos-reviews__extra { margin-top: 0.75rem; }
+.kos-reviews__item { padding: 1rem 1.25rem; border: 0; border-radius: var(--radius-lg); background: var(--bg-page); }
+.kos-reviews__reply { margin-top: 0.75rem; padding: 0.75rem 0 0; border-top: 0; }
+
+/* (i) info popover next to a field label */
+.kobo-infotip__btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; background: none; border: 0; border-radius: 50%; color: var(--text-muted); cursor: pointer; }
+.kobo-infotip__btn:hover, .kobo-infotip__btn[aria-expanded='true'] { color: var(--primary); background: var(--primary-light); }
+@media (pointer: coarse) { .kobo-infotip__btn { width: 40px; height: 40px; margin: -6px 0; } }
+.kobo-infotip { width: min(18rem, 80vw); padding: 0.75rem 0.9rem; }
+.kobo-infotip__text { margin: 0; font-size: 0.8125rem; line-height: 1.5; color: var(--text-main); font-weight: 400; }
+
+/* Fasilitas: building facts, then Kamar and Gedung, items with their inclusion status. */
+.kos-amenities__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 0.75rem; margin: 0 0 1.5rem; }
+.kos-amenities__facts > div { padding: 0.75rem 1rem; background: var(--bg-muted); border-radius: var(--radius-lg); }
+.kos-amenities__facts dt { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+.kos-amenities__facts dd { margin: 0.15rem 0 0; font-size: 1.125rem; font-weight: 800; color: var(--text-main); font-variant-numeric: tabular-nums; }
+.kos-amenities__group + .kos-amenities__group { margin-top: 1.25rem; }
+.kos-amenities__group h5 { margin: 0 0 0.6rem; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); }
+.kos-amenities__empty { margin: 0; font-size: 0.875rem; color: var(--text-muted); }
+.kos-amenities__status { margin-left: auto; flex-shrink: 0; padding: 0.15rem 0.55rem; border-radius: var(--radius-badge); background: var(--primary-light); color: var(--primary); font-size: 0.75rem; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kos-amenities__status.is-paid { background: var(--bg-muted); color: var(--text-main); }
+.kos-amenities__item { align-items: flex-start; }
+.kos-amenities__item .kos-amenities__status { align-self: center; }
+
+/* "Rute" in the nearby list: a real button, in the accent color so it does not read as plain teal text. */
+.nearby-route {
+  display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; border-radius: var(--radius-md);
+  color: var(--accent-strong); transition: background-color 0.15s;
+}
+.nearby-route:hover { background: var(--accent-light); }
+.nearby-route:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+
+/* Nearby chips: one scrollable row, never a multi-row grid. */
+.nearby-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.nearby-chip {
+  flex: 1 1 0; min-width: 2.5rem; display: inline-flex; align-items: center; justify-content: center; height: 2.75rem;
+  border: 1px solid transparent; border-radius: var(--radius-md); background: var(--bg-muted); color: var(--text-muted);
+  transition: border-color 0.15s, color 0.15s;
+}
+/* The open tab stays filled; a hovered or focused tab only gets a brand border and icon. */
+.nearby-chip.is-selected { background: var(--primary); color: var(--text-inverse); }
+@media (hover: hover) and (pointer: fine) {
+  .nearby-chip:not(.is-selected):hover { border-color: var(--primary); color: var(--primary); }
+}
+.nearby-chip:not(.is-selected):focus-visible { border-color: var(--primary); color: var(--primary); }
+.nearby-chip:focus-visible { outline: 3px solid var(--border-focus); outline-offset: 2px; }
+/* The name sits on its own line under the tabs: fixed height, so hovering never moves anything. */
+.nearby-caption { min-height: 2rem; margin: 1rem 0 0.25rem; font-size: 1.375rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.3; color: var(--text-main); }

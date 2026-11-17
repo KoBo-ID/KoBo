@@ -1,0 +1,24 @@
+{
+  "name": "kobo",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build -w frontend",
+    "dev:server": "npm run dev -w backend",
+    "db:migrate": "npm run db:migrate -w backend",
+    "db:seed": "npm run db:seed -w backend",
+    "bundle:check": "node scripts/bundle-gate.mjs",
+    "test:scripts": "node --test scripts/*.test.mjs backend/scripts/*.test.mjs",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
+    "e2e:postdeploy": "node e2e/require-base-url.mjs && playwright test -c e2e/playwright.config.ts --grep @postdeploy"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

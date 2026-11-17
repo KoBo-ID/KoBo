@@ -1,0 +1,2 @@
+import {defineConfig,devices} from '@playwright/test'
+export default defineConfig({testDir:'.',testMatch:'*.audit.spec.ts',workers:1,retries:0,timeout:90000,outputDir:'../../notes/analysis/2026-10-27-workflow/artifacts/targeted-playwright',reporter:'./safe-reporter.mjs',use:{...devices['Desktop Chrome'],baseURL:'http://localhost:3100',viewport:{width:1280,height:650},reducedMotion:'reduce',trace:'off',screenshot:'off',video:'off'}})

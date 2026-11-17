@@ -1,0 +1,170 @@
+/* Emil Kowalski Curated Motion & Easing Curves */
+:root {
+  --ease-out-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-spring: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+
+  --duration-fast: 150ms;
+  --duration-normal: 220ms;
+  --duration-slow: 350ms;
+
+  /* Landing motion system: ONE family (out for arrivals, inout for in-place
+     state change, spring for small pops), three durations, one beat. */
+  --ease-apple-out: var(--ease-out-strong);
+  --ease-apple-inout: cubic-bezier(0.4, 0, 0.6, 1);
+  --ease-spring-ish: cubic-bezier(0.34, 1.35, 0.64, 1);
+  --dur-fast: var(--duration-fast);
+  --dur-base: 560ms;
+  --dur-slow: 900ms;
+  --stagger: 80ms;
+  --rise: 20px;
+  --rise-sm: 8px;
+}
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --ease-spring-ish: linear(0, 0.124, 0.371, 0.62, 0.815, 0.943, 1.013, 1.042, 1.045, 1.037, 1.025, 1.014, 1.006, 1.001, 0.999, 0.998, 0.998, 0.998, 1);
+  }
+}
+
+/* Keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulseSubtle {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+/* Animation utility classes */
+.animate-fade-in {
+  animation: fadeIn var(--duration-fast) var(--ease-out-spring) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUpFade var(--duration-normal) var(--ease-out-spring) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--duration-fast) var(--ease-out-spring) forwards;
+}
+
+.animate-pop-in {
+  transform-origin: top center;
+  animation: popIn 180ms var(--ease-out-strong) both;
+}
+
+/* Hero page-load sequence: title, search, chips, one beat apart. Only runs
+   when motion is allowed; otherwise everything is simply visible. */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-enter {
+    animation: rise-in var(--dur-base) var(--ease-apple-out) both;
+  }
+  .hero-enter:nth-child(2) { animation-delay: var(--stagger); }
+  .hero-enter:nth-child(3) { animation-delay: calc(var(--stagger) * 2); }
+}
+
+/* Generic scroll reveal: useReveal() arms the element (or an ancestor) with
+   data-reveal="armed" before first paint and flips it to "in" once. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal='armed'].rise,
+  [data-reveal='armed'] .rise { opacity: 0; transform: translateY(var(--rise)); }
+  .rise { transition: opacity var(--dur-base) var(--ease-apple-out), transform var(--dur-base) var(--ease-apple-out); }
+}
+
+/* Button press feedback */
+.kobo-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Tactile feedback for clickable elements */
+.interactive-tap {
+  transition: transform var(--duration-fast) var(--ease-out-spring),
+              box-shadow var(--duration-fast) var(--ease-out-spring),
+              background-color var(--duration-fast) var(--ease-out-spring);
+}
+
+.interactive-tap:active {
+  transform: scale(0.98);
+}
+
+/* Card hover lift */
+.card-hover-lift {
+  transition: transform var(--duration-normal) var(--ease-out-spring),
+              box-shadow var(--duration-normal) var(--ease-out-spring),
+              border-color var(--duration-fast) var(--ease-out-spring);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card-hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+  }
+  /* The photo already carries a 0.4s transform transition (ListingCard). */
+  .kobo-featured-grid .card-hover-lift:hover img,
+  .search-cards-grid .card-hover-lift:hover img { transform: scale(1.03); }
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

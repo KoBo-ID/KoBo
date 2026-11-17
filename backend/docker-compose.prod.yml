@@ -1,0 +1,120 @@
+# Production stack (spec section 12). Lives at /opt/kobo/backend/docker-compose.prod.yml on the VPS.
+# Always run with KOBO_TAG exported (deploy.sh does this):  export KOBO_TAG=$(cat /opt/kobo/backend/state/tag)
+# No service publishes a host port: ingress is the Cloudflare Tunnel (outbound-only).
+name: kobo
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # cloudflared 2026.9.3 (looked up 2026-10-02). Tunnel ingress (public hostname -> http://api:3000)
+  # is configured in the Cloudflare dashboard (remotely-managed tunnel); only the token lives here.
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.3@sha256:072c067d25ccbe61d46e18f0d0723255f2bb5304f7317caa95b27031520ff92c
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}
+    depends_on:
+      - api
+    restart: unless-stopped
+    mem_limit: 128m
+    logging: *logging
+
+  api:
+    image: ghcr.io/kobo-id/kobo:${KOBO_TAG:?export KOBO_TAG, e.g. v0.1.0}
+    env_file: .env
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 384m
+    stop_grace_period: 10s
+    healthcheck:
+      # The runtime image has no curl; use Node's fetch. /health runs SELECT 1.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 5s
+      timeout: 4s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+  postgres:
+    # postgres 18.6 (looked up 2026-10-02). The 18+ image keeps PGDATA in a versioned subdir under
+    # /var/lib/postgresql, so the volume mounts the parent.
+    image: postgres:18.6@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      TZ: UTC
+    # Tuned for the 512 MB container limit.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - max_connections=50
+      - -c
+      - wal_compression=on
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - log_min_duration_statement=500
+      - -c
+      - timezone=UTC
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    mem_limit: 512m
+    shm_size: 128m
+    restart: unless-stopped
+    logging: *logging
+
+  # Nightly pg_dump -> R2 kobo-backups, plus restore check and Healthchecks.io pings.
+  # Also run one-off by deploy.sh:  docker compose run --rm backup /backup/backup.sh pre-deploy <tag>
+  backup:
+    build: ./deploy/backup
+    image: kobo-backup:1
+    command: ["/backup/backup.sh", "daemon"]
+    init: true
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      R2_ENDPOINT: ${R2_ENDPOINT:?set R2_ENDPOINT in .env}
+      R2_BACKUP_BUCKET: ${R2_BACKUP_BUCKET:-kobo-backups}
+      R2_BACKUP_ACCESS_KEY_ID: ${R2_BACKUP_ACCESS_KEY_ID:?set R2_BACKUP_ACCESS_KEY_ID in .env}
+      R2_BACKUP_SECRET_ACCESS_KEY: ${R2_BACKUP_SECRET_ACCESS_KEY:?set R2_BACKUP_SECRET_ACCESS_KEY in .env}
+      HEALTHCHECKS_URL: ${HEALTHCHECKS_URL:-}
+      BACKUP_HOUR_UTC: ${BACKUP_HOUR_UTC:-20}
+      DISK_FAIL_PCT: ${DISK_FAIL_PCT:-85}
+      TZ: UTC
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 128m
+    logging: *logging
+
+volumes:
+  pgdata:
