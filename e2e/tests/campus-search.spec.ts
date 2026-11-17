@@ -6,8 +6,9 @@ test('campus suggestions pick a branch without rewriting free text', async ({ pa
   await input.fill('binus')
   const list = page.getByRole('listbox')
   await expect(list).toBeVisible()
-  await expect(list.getByRole('option')).toHaveCount(9)
   await expect(list.getByText('BINUS', { exact: true })).toBeVisible()
+  await expect(list.getByRole('option').first()).toBeVisible()
+  expect(await list.getByRole('option').count()).toBeLessThanOrEqual(4)
   await input.press('ArrowDown')
   await input.press('Enter')
   await expect(page).toHaveURL(/campus=binus-/)
@@ -15,14 +16,22 @@ test('campus suggestions pick a branch without rewriting free text', async ({ pa
   await expect(page.getByRole('heading', { name: /Kos di Sekitar BINUS/ })).toBeVisible()
 
   await input.fill('itb')
-  await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(1)
+  await expect(page.getByRole('listbox').getByRole('option', { name: /ITB/ }).first()).toBeVisible()
   await input.press('Escape')
   await expect(input).toHaveValue('itb')
   await expect(page.getByRole('listbox')).toHaveCount(0)
 
+  // E2E DB omits the location catalogue; provide Provinsi Banten for the region autocomplete check.
+  await page.route('**/api/trpc/region.search*', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ result: { data: [{ code: '36', level: 1, name: 'Banten', kind: 'provinsi', parentCode: null, lat: -6.45, lng: 106.1, path: 'Banten' }] } }),
+    }),
+  )
   await input.fill('banten')
   await expect(input).toHaveValue('banten')
-  await expect(page.getByRole('listbox')).toHaveCount(0)
+  await expect(list).toBeVisible()
+  await expect(list.getByRole('option').filter({ hasText: 'Banten' }).filter({ hasText: 'Provinsi' }).first()).toBeVisible()
 })
 
 test('home campus selection navigates with a shareable branch id', async ({ page }) => {

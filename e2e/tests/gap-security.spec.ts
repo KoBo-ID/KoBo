@@ -85,6 +85,9 @@ test('[G-057][R-005] sign-up refuses a short password, a malformed email and a d
       await form.getByRole('button', { name: 'Daftar Sekarang' }).click()
     }
 
+    // F-002: the form caps the name at 80 (check before submitting, as success switches to the verify-sent screen).
+    expect(await form.getByLabel('Nama Lengkap').getAttribute('maxlength')).toBe('80')
+
     // The browser blocks a short password and a malformed address before anything is sent.
     await fill(`gap-short-${Date.now()}@example.com`, 'pendek')
     expect(await form.getByLabel('Kata Sandi').evaluate((el: HTMLInputElement) => el.validity.tooShort)).toBe(true)
@@ -106,8 +109,7 @@ test('[G-057][R-005] sign-up refuses a short password, a malformed email and a d
     const bad = await page.context().request.post('/api/auth/sign-up/email', { data: { name: 'X Y', email: 'bukan-email', password: PASSWORD }, headers })
     expect(bad.status()).toBeGreaterThanOrEqual(400)
     expect(await sql(`SELECT id FROM "User" WHERE email LIKE 'gap-api-short-%'`)).toHaveLength(0)
-    // F-002: the form caps the name at 80, and the server refuses a longer one when the form is bypassed.
-    expect(await form.getByLabel('Nama Lengkap').getAttribute('maxlength')).toBe('80')
+    // F-002: the server refuses a longer name when the form is bypassed.
     const long = await page.context().request.post('/api/auth/sign-up/email', { data: { name: 'x'.repeat(81), email: `gap-api-long-${Date.now()}@example.com`, password: PASSWORD }, headers })
     expect(long.status()).toBe(400)
     expect((await long.json()).message).toBe('Nama terlalu panjang (maksimal 80 karakter).')
