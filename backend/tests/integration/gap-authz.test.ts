@@ -20,8 +20,8 @@ const SIGNED_IN_ONLY = [
   'place.reverse', 'kuitansi.get', 'review.create', 'review.update', 'visit.create', 'visit.mine', 'visit.cancel', 'waitlist.join', 'waitlist.leave',
   'waitlist.decline', 'waitlist.mine', 'demo.reset', 'catalog.status',
 ]
-// Public procedures (14): a missing session never produces UNAUTHORIZED.
-const PUBLIC = ['auth.providers', 'auth.me', 'kos.list', 'kos.search', 'kos.detail', 'owner.publicProfile', 'place.search', 'waitlist.status', 'region.children', 'region.get', 'region.outline', 'region.search', 'campus.search', 'catalog.licenses']
+// Public procedures (15): a missing session never produces UNAUTHORIZED.
+const PUBLIC = ['auth.providers', 'auth.me', 'kos.list', 'kos.search', 'kos.detail', 'owner.publicProfile', 'place.search', 'waitlist.status', 'region.children', 'region.get', 'region.outline', 'region.search', 'campus.search', 'campus.inBox', 'catalog.licenses']
 
 describe('[G-001][R-001] application.decide across owners', () => {
   it('refuses another owner and leaves the application PENDING, with no tenancy or invoice', async () => {
@@ -127,7 +127,7 @@ describe('[G-005][R-003] signed-in-only versus public procedures', () => {
     expect(await snapshot()).toEqual(before)
   })
 
-  it('never answers UNAUTHORIZED on the 14 public procedures', async () => {
+  it('never answers UNAUTHORIZED on the 15 public procedures', async () => {
     const wrong: string[] = []
     for (const proc of PUBLIC) {
       const e = await err(call(caller, proc, { id: 'does-not-exist', kosId: 'x', code: '99', q: 'ab', parentCode: undefined, lat: -6.2, lng: 106.8 }) as Promise<unknown>)

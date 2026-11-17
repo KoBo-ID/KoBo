@@ -86,6 +86,7 @@ describe('[G-024][R-032] overdue flips at 00:00 WIB through owner.board and kos.
   it('is not overdue at 23:59:59 WIB on the due date and overdue one second later', async () => {
     const k = await makeKos([{ n: 'D1', type: 'Standar' }])
     const s = await newStudent()
+    at('2026-11-05T05:00:00.000Z')
     const a = await approveApplication(s.id, k.room('D1').id, { startDate: '2026-11-05' })
     await prisma.tenancy.update({ where: { id: a.tenancyId }, data: { status: 'ACTIVE', expiresAt: null } })
     await prisma.invoice.update({ where: { id: a.invoiceId }, data: { dueDate: new Date('2026-11-10T00:00:00Z'), status: 'UNPAID' } })
