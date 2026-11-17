@@ -1,5 +1,5 @@
 # Backup runner: same major as the server (pg_dump 18) plus rclone (R2 upload) and curl (Healthchecks.io).
-FROM postgres:18.6@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722
+FROM postgres:18.6@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42
 RUN apt-get update \
  && apt-get install -y --no-install-recommends rclone curl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
