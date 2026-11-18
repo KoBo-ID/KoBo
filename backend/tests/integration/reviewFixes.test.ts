@@ -18,7 +18,7 @@ beforeEach(() => resetDb(prisma))
 const err = async (p: Promise<unknown>) => (await p.then(() => null, (e: unknown) => e)) as TRPCError | null
 const code = async (p: Promise<unknown>) => (await err(p))?.code
 const startDate = () => addDays(todayWIB(new Date()), 5)
-const appInput = (roomId: string) => ({ roomId, startDate: startDate(), durationMonths: 3, occupation: 'Mahasiswa' })
+const appInput = (roomId: string) => ({ roomId, startDate: startDate(), durationMonths: 3 })
 
 const kosInput = (over: Record<string, unknown> = {}) => ({
   name: 'Kost Regresi',
@@ -235,7 +235,7 @@ describe('PT-001 / PT-002 photo uploads', () => {
 describe('B09-001 mail sends carry a stable idempotency key', () => {
   it('passes the outbox row id as the idempotency key, so a duplicate send is dropped by the provider', async () => {
     const sent: EmailMessage[] = []
-    await enqueueEmail(prisma, { to: 'a@example.com', template: 'verify-email', payload: { name: 'A', url: 'https://kobo.test/v' } })
+    await enqueueEmail(prisma, { to: 'a@example.com', template: 'verify-email', payload: { name: 'A', code: '123456' } })
     const row = await prisma.emailOutbox.findFirstOrThrow({ where: { to: 'a@example.com' } })
     await drainOutbox(prisma, { send: async (m) => void sent.push(m) })
     expect(sent).toHaveLength(1)

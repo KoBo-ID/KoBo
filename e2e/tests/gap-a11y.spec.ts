@@ -34,7 +34,7 @@ for (const vp of VIEWPORTS) {
 test('[G-054][R-102] the sign-in form is usable by keyboard alone: labelled fields, Enter submits', async ({ page, problems }) => {
   await page.goto('/masuk')
   const email = page.getByLabel('Email')
-  const password = page.getByLabel('Kata Sandi')
+  const password = page.getByLabel('Kata Sandi', { exact: true })
   await expect(email).toBeVisible()
   await expect(password).toBeVisible()
 

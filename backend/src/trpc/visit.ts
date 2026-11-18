@@ -2,7 +2,7 @@ import { compareDates, todayWIB } from '@kobo/shared/domain'
 import { kosIdOnly, visitCompleteInput, visitCreateInput, visitIdInput } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
 import { assertDemoIsolation } from '../demoIsolation.ts'
-import { authedProcedure, ownerProcedure, router } from './trpc.ts'
+import { authedProcedure, ownerProcedure, router, studentProcedure } from './trpc.ts'
 
 export interface MyVisit {
   id: string
@@ -35,7 +35,7 @@ const NOT_SCHEDULED = 'Survey ini sudah selesai atau dibatalkan.'
 
 export const visitRouter = router({
   /** One SCHEDULED visit per student per kos (a partial unique index backs the check). The date must be after today in WIB. */
-  create: authedProcedure.input(visitCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
+  create: studentProcedure.input(visitCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
     const parsed = new Date(`${input.date}T00:00:00Z`)
     const real = !Number.isNaN(parsed.getTime()) && isoDay(parsed) === input.date
     if (!real || compareDates(input.date, todayWIB(new Date())) <= 0) {

@@ -8,7 +8,7 @@ beforeEach(() => resetDb(prisma))
 
 const err = async (p: Promise<unknown>) => (await p.then(() => null, (e: unknown) => e)) as TRPCError | null
 const startDate = () => addDays(todayWIB(new Date()), 7)
-const inputFor = (roomId: string) => ({ roomId, startDate: startDate(), durationMonths: 6, occupation: 'Mahasiswa dan pekerja paruh waktu', note: 'Berencana tinggal sampai lulus.' })
+const inputFor = (roomId: string) => ({ roomId, startDate: startDate(), durationMonths: 6, program: 'Teknik Informatika', semester: 3, note: 'Berencana tinggal sampai lulus.' })
 
 async function ownerForRoom(room: Awaited<ReturnType<typeof vacantRoom>>) {
   const owner = await prisma.ownerProfile.findUniqueOrThrow({ where: { id: room.kos.ownerId }, select: { userId: true } })
@@ -33,7 +33,7 @@ describe('application.create and mine', () => {
     expect(await prisma.tenancy.count()).toBe(before)
     expect(await callerFor(other.id).application.mine()).toEqual([])
     expect(await callerFor(renter.id).application.mine()).toEqual([
-      expect.objectContaining({ id: created.id, status: 'PENDING', startDate: startDate(), durationMonths: 6, occupation: 'Mahasiswa dan pekerja paruh waktu', tenancyId: null }),
+      expect.objectContaining({ id: created.id, status: 'PENDING', startDate: startDate(), durationMonths: 6, occupation: 'Mahasiswa', tenancyId: null }),
     ])
   })
 
@@ -78,7 +78,7 @@ describe('application owner decisions', () => {
     await prisma.user.update({ where: { id: winner.id }, data: { campusEmailVerifiedAt: new Date() } })
     const loser = await newStudent()
     const a = await callerFor(winner.id).application.create(inputFor(room.id))
-    const b = await callerFor(loser.id).application.create({ ...inputFor(room.id), occupation: 'Karyawan' })
+    const b = await callerFor(loser.id).application.create({ ...inputFor(room.id), program: 'Hukum' })
     const owner = await ownerForRoom(room)
 
     const decided = await owner.application.decide({ kosId: room.kosId, applicationId: a.id, decision: 'APPROVE' })

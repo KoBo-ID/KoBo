@@ -7,6 +7,13 @@ import { Button } from '../ui/Button';
 import { HeroScene } from './HeroScene';
 import { CampusSearchField } from '../search/CampusSearchField';
 
+/* Entrance timing (animations.css, .hero-word / .hero-in): building rises first, the headline comes in
+   word by word, then the search and each campus chip. --i / --d set each item's delay. */
+const delay = (ms: number) => ({ '--d': `${ms}ms` }) as React.CSSProperties;
+const Word: React.FC<{ i: number; children: React.ReactNode }> = ({ i, children }) => (
+  <span className="hero-word" style={{ '--i': i } as React.CSSProperties}>{children}</span>
+);
+
 export const Hero: React.FC = () => {
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState('');
@@ -38,7 +45,7 @@ export const Hero: React.FC = () => {
     }
     navigator.geolocation.getCurrentPosition(
       (position) =>
-        navigate(`/search?lat=${position.coords.latitude}&lng=${position.coords.longitude}`),
+        navigate(`/search?lat=${position.coords.latitude}&lng=${position.coords.longitude}&sort=distance_asc`),
       () => navigate('/search'),
       { enableHighAccuracy: false, timeout: 8000 }
     );
@@ -66,12 +73,17 @@ export const Hero: React.FC = () => {
         <div className="app-container">
           <div className="kobo-hero">
             <div className="kobo-hero__copy">
-              <h1 className="kobo-hero__title hero-enter">
-                <span style={{ color: 'var(--primary)' }}>Survey dulu,</span> Baru sewa.
+              <h1 className="kobo-hero__title" aria-label="Survey dulu, Baru sewa.">
+                <span aria-hidden="true" style={{ color: 'var(--primary)' }}>
+                  <Word i={0}>Survey</Word> <Word i={1}>dulu,</Word>
+                </span>{' '}
+                <span aria-hidden="true">
+                  <Word i={2}>Baru</Word> <Word i={3}>sewa.</Word>
+                </span>
               </h1>
 
               {/* ── Location Search Bar ── */}
-              <div className="kobo-hero__search hero-enter">
+              <div className="kobo-hero__search hero-in" style={delay(220)}>
                 {/* Three SIBLING controls, matching the Search page bar:
                     the field shell holds only the icon and the input, while the
                     geolocation and submit buttons sit OUTSIDE it. Nesting
@@ -120,10 +132,17 @@ export const Hero: React.FC = () => {
                 </form>
               </div>
 
-              <nav className="kobo-hero__campus-chips hero-enter" aria-label="Kampus populer">
-                <span className="kobo-hero__campus-lead">Kos dekat kampus:</span>
-                {FEATURED_CAMPUSES.map(({ id, label }) => (
-                  <Link key={id} to={`/search?campus=${encodeURIComponent(id)}&sort=distance_asc`} className="kobo-hero__campus-chip">
+              <nav className="kobo-hero__campus-chips" aria-label="Kampus populer">
+                <span className="kobo-hero__campus-lead hero-in" style={delay(300)}>
+                  Cari Kos dekat kampus:
+                </span>
+                {FEATURED_CAMPUSES.map(({ id, label }, i) => (
+                  <Link
+                    key={id}
+                    to={`/search?campus=${encodeURIComponent(id)}&sort=distance_asc`}
+                    className="kobo-hero__campus-chip hero-in"
+                    style={delay(340 + i * 30)}
+                  >
                     {label}
                   </Link>
                 ))}

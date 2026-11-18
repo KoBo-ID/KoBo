@@ -9,7 +9,7 @@ async function tabTo(page:Page,target:Locator){
 test('F2 tab traversal for sign in, application and approval',async({page,browser,problems})=>{
  await ownIp(page);await page.goto('/masuk')
  const email=page.getByLabel('Email');await tabTo(page,email);await expect(email).toBeFocused();await page.keyboard.type('tidak-ada@example.com')
- const password=page.getByLabel('Kata Sandi');await tabTo(page,password);await page.keyboard.type('salah-salah-1')
+ const password=page.getByLabel('Kata Sandi', { exact: true });await tabTo(page,password);await page.keyboard.type('salah-salah-1')
  const submit=page.getByRole('button',{name:'Masuk ke Akun'});await tabTo(page,submit);await page.keyboard.press('Enter')
  await expect(page.getByRole('alert')).toContainText('Email atau kata sandi salah');problems.splice(0,problems.length,...problems.filter(x=>!x.includes('401')))
  const owner=await newOwnerWorld(browser,{label:'audit-tab-owner',rooms:1});const student=await newStudent(browser,{label:'audit-tab-student'})

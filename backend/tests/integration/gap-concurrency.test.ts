@@ -30,7 +30,7 @@ describe('[G-033][R-015] a double-submitted application', () => {
   it('creates exactly one PENDING application; the duplicate is a CONFLICT, not a server error', async () => {
     const room = await vacantRoom()
     const renter = callerFor((await newStudent()).id)
-    const input = { roomId: room.id, startDate: startIn(5), durationMonths: 3, occupation: 'Mahasiswa' }
+    const input = { roomId: room.id, startDate: startIn(5), durationMonths: 3 }
 
     const out = await settled(renter.application.create(input), renter.application.create(input))
 

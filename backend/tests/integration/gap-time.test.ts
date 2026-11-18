@@ -26,7 +26,7 @@ describe('[G-021][R-020] application.create startDate around WIB midnight', () =
     const apply = async (startDate: string) => {
       const r = await freshRoom()
       const s = await newStudent()
-      return err(callerFor(s.id).application.create({ roomId: r.roomId, startDate, durationMonths: 3, occupation: 'Mahasiswa' }))
+      return err(callerFor(s.id).application.create({ roomId: r.roomId, startDate, durationMonths: 3 }))
     }
 
     at('2026-11-10T16:59:59.000Z') // 23:59:59 WIB on 10 Nov
@@ -140,7 +140,7 @@ describe('[G-026][R-062][R-064] the 24-hour waitlist offer, to the millisecond',
     // a stranger cannot take the room while the offer is live, even at the deadline itself
     vi.setSystemTime(new Date(T.getTime() + 86_400_000))
     const stranger = await newStudent()
-    const live = await err(callerFor(stranger.id).application.create({ roomId: k.room('S1').id, startDate: '2026-11-13', durationMonths: 3, occupation: 'Mahasiswa' }))
+    const live = await err(callerFor(stranger.id).application.create({ roomId: k.room('S1').id, startDate: '2026-11-13', durationMonths: 3 }))
     expect(live?.code).toBe('CONFLICT')
 
     vi.setSystemTime(new Date(T.getTime() + 86_400_000 + 1))

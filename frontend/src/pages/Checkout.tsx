@@ -9,7 +9,8 @@ import { useAppStore } from '../store/AppContext';
 import { useSession } from '../lib/session';
 import { useTRPC } from '../lib/trpc';
 import { errorCode } from '../lib/queryErrors';
-import { messageForError } from '../lib/errors';
+import { isStudentGateError, messageForError } from '../lib/errors';
+import { VerifyPrompt } from '../components/booking/VerifyPrompt';
 import { Button } from '../components/ui/Button';
 import { BackButton } from '../components/ui/BackButton';
 import { Input } from '../components/ui/Input';
@@ -71,7 +72,8 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
   const today = todayWIB(new Date());
   const [startDate, setStartDate] = useState(() => addDays(today, 1));
   const [duration, setDuration] = useState(initialDuration);
-  const [occupation, setOccupation] = useState('');
+  const [program, setProgram] = useState('');
+  const [semester, setSemester] = useState('');
   const [note, setNote] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
@@ -95,7 +97,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
     if (!me) return openAuthModal();
     if (missingProfile) return;
     if (!room) return;
-    create.mutate({ roomId: room.id, startDate, durationMonths: duration, occupation, note: note.trim() || undefined });
+    create.mutate({ roomId: room.id, startDate, durationMonths: duration, program: program.trim() || undefined, semester: semester ? Number(semester) : undefined, note: note.trim() || undefined });
   };
 
   if (submitted) {
@@ -132,7 +134,8 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
         <form onSubmit={submit}>
           <div className="checkout-split-layout">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <CampusDiscountCard studentDiscountAmount={kos.studentDiscountAmount || undefined} compact />
+              <VerifyPrompt what="mengajukan sewa" />
+              <CampusDiscountCard studentDiscountAmount={kos.studentDiscountAmount || undefined} />
               <section style={card} aria-labelledby="rental-plan-title">
                 <h2 id="rental-plan-title" style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem' }}>Rencana Sewa</h2>
                 <div className="application-form-grid">
@@ -143,7 +146,9 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
                       {Array.from({ length: MAX_LEASE_MONTHS }, (_, index) => index + 1).map((months) => <option key={months} value={months}>{months} bulan</option>)}
                     </select>
                   </div>
-                  <Input label="Pekerjaan atau kegiatan utama" value={occupation} onChange={(event) => setOccupation(event.target.value)} placeholder="Contoh: Mahasiswa BINUS" maxLength={120} required />
+                  <Input label="Jurusan (opsional)" value={program} onChange={(event) => setProgram(event.target.value)} placeholder="Contoh: Teknik Informatika" maxLength={80} />
+                  <Input label="Semester (opsional)" type="number" inputMode="numeric" min={1} max={14} step={1} value={semester} onChange={(event) => setSemester(event.target.value)} placeholder="1-14" />
+                  <p style={{ gridColumn: '1 / -1', fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Kampus: <strong style={{ color: 'var(--text-main)' }}>{me?.studentVerification.campus ?? me?.user.campus ?? '-'}</strong></p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', gridColumn: '1 / -1' }}>
                     <label htmlFor="application-note" style={{ fontSize: '0.875rem', fontWeight: 600 }}>Catatan untuk pemilik <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(opsional)</span></label>
                     <textarea id="application-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={4} placeholder="Perkenalkan kebutuhan atau rencana tinggal Anda" style={{ resize: 'vertical', minHeight: '96px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', padding: '0.75rem', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', font: 'inherit' }} />
@@ -180,7 +185,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
                   Sebelum mengajukan sewa, lengkapi {!me!.emergencyContact ? 'kontak darurat' : ''}{!me!.emergencyContact && !me!.termsCurrent ? ' dan ' : ''}{!me!.termsCurrent ? 'persetujuan syarat' : ''} Anda di halaman <Link to="/profile" style={{ color: 'var(--primary)', fontWeight: 700 }}>Profil</Link>.
                 </Notice>
               )}
-              {create.isError && <Notice tone="error">{messageForError(create.error)}</Notice>}
+              {create.isError && <Notice tone="error">{messageForError(create.error)}{isStudentGateError(create.error) && <> {' '}<Link to="/profile" style={{ color: 'var(--primary)', fontWeight: 700 }}>Buka Profil</Link></>}</Notice>}
               <Button type="submit" variant="primary" size="lg" fullWidth isLoading={create.isPending} disabled={missingProfile} icon={<Send size={16} />}>{me ? 'Kirim Pengajuan' : 'Masuk untuk Mengajukan'}</Button>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 <ShieldCheck size={15} color="var(--primary)" style={{ flexShrink: 0 }} />

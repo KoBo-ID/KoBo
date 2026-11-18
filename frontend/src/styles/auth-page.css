@@ -37,6 +37,14 @@
   padding: 1.5rem clamp(1.5rem, 3vw, 2.5rem) clamp(2rem, 8vh, 4rem);
   color: var(--bg-surface);
   background: linear-gradient(160deg, hsl(176, 70%, 26%), hsl(190, 80%, 17%));
+  /* Register has more fields than login and can run past one screen. Pin the photo panel to the viewport so
+     both views keep the same left side; only the form column grows and scrolls. */
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
 }
 /* Kos photos cross-fade with the role toggle; a teal wash keeps the white copy readable. */
 .auth-shell__photo {

@@ -8,7 +8,7 @@ import { prisma } from '../helpers.ts'
 beforeEach(() => resetDb(prisma))
 
 const payload = { name: 'Sari', url: 'https://kobo.test/api/auth/verify-email?token=abc' }
-const queue = (to = 'sari@example.com') => enqueueEmail(prisma, { to, template: 'verify-email', payload })
+const queue = (to = 'sari@example.com') => enqueueEmail(prisma, { to, template: 'reset-password', payload })
 const recorder = () => {
   const sent: EmailMessage[] = []
   const transport: EmailTransport = { send: async (m) => void sent.push(m) }
@@ -108,7 +108,7 @@ describe('drainOutbox', () => {
 })
 
 describe('templates', () => {
-  it.each(['verify-email', 'reset-password'])('%s is a full Indonesian document with title, preheader, plain URL and a text part', (template) => {
+  it.each(['reset-password'])('%s is a full Indonesian document with title, preheader, plain URL and a text part', (template) => {
     const r = renderEmail(template, payload)!
     expect(r.html).toMatch(/^<!doctype html><html lang="id"><head>/)
     expect(r.html).toContain(`<title>${r.subject}</title>`)
@@ -116,6 +116,24 @@ describe('templates', () => {
     expect(r.html.split(payload.url.replace(/&/g, '&amp;')).length - 1).toBe(2) // button href + copy-paste URL
     expect(r.text).toContain(payload.url)
     expect(r.text).not.toContain('<')
+  })
+})
+
+describe('code-only templates', () => {
+  it.each(['verify-email', 'campus-email'])('%s shows the 6-digit code and contains no link at all', (template) => {
+    const r = renderEmail(template, { name: 'Sari', code: '123456' })!
+    expect(r.html).toMatch(/^<!doctype html><html lang="id"><head>/)
+    expect(r.text).toContain('123456')
+    expect(r.text).not.toMatch(/https?:|www\./i)
+    expect(r.html).not.toMatch(/https?:|href=|www\./i)
+    expect(renderEmail(template, { name: 'Sari', code: 'abc' })).toBeNull()
+  })
+
+  it('verify-email reads: Kode verifikasi KoBo Anda: 123456 ... 10 menit ... Jangan bagikan', () => {
+    const r = renderEmail('verify-email', { name: 'Sari', code: '123456' })!
+    expect(r.text).toContain('Kode verifikasi KoBo Anda: 123456')
+    expect(r.text).toContain('10 menit')
+    expect(r.text).toContain('Jangan bagikan kode ini')
   })
 })
 
@@ -145,7 +163,7 @@ describe('transports', () => {
   })
 
   it('resend: a 403 (test sender, foreign recipient) retries with backoff, then ends FAILED with a clear log', async () => {
-    await queue('mahasiswa@student.binus.ac.id')
+    await queue('mahasiswa@binus.ac.id')
     const body = '{"statusCode":403,"name":"validation_error","message":"You can only send testing emails to your own email address"}'
     const t = resendTransport({ apiKey: 'k', from: 'KoBo <onboarding@resend.dev>', fetch: (async () => new Response(body, { status: 403 })) as unknown as typeof fetch })
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -160,7 +178,7 @@ describe('transports', () => {
       const row = await prisma.emailOutbox.findFirstOrThrow()
       const last = errors.mock.calls.at(-1)!.join(' ')
       expect(last).toContain(row.id)
-      expect(last).toContain('*@student.binus.ac.id')
+      expect(last).toContain('*@binus.ac.id')
       expect(last).not.toContain('mahasiswa@')
       expect(last).toContain('403')
       expect(last).toContain('only send testing emails')

@@ -1,4 +1,4 @@
-import { competes, compareQueue, MAX_LIVE_ENTRIES, queuePosition } from '@kobo/shared/domain'
+import { competes, compareQueue, isStudentVerified, MAX_LIVE_ENTRIES, queuePosition } from '@kobo/shared/domain'
 import { kosIdOnly, ownerWaitlistRemoveInput, waitlistEntryInput, waitlistJoinInput } from '@kobo/shared/schemas'
 import type { WaitlistStatus } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
@@ -6,7 +6,7 @@ import { assertDemoIsolation } from '../demoIsolation.ts'
 import type { Prisma } from '../generated/prisma/client.ts'
 import type { Storage } from '../storage.ts'
 import { advanceWaitlist, liveOffer, roomClaims } from '../waitlist.ts'
-import { authedProcedure, ownerProcedure, publicProcedure, router } from './trpc.ts'
+import { authedProcedure, ownerProcedure, publicProcedure, router, studentProcedure } from './trpc.ts'
 
 type Tx = Prisma.TransactionClient
 
@@ -136,7 +136,7 @@ export const waitlistRouter = router({
   }),
 
   /** Join a full kos's queue. Advances the kos first, so a lapsed hold or offer is settled before "is it full?" is decided. */
-  join: authedProcedure.input(waitlistJoinInput).mutation(async ({ ctx, input }): Promise<MyWaitlistEntry> => {
+  join: studentProcedure.input(waitlistJoinInput).mutation(async ({ ctx, input }): Promise<MyWaitlistEntry> => {
     const now = new Date()
     const kos = await ctx.prisma.kos.findUnique({ where: { id: input.kosId, archivedAt: null }, select: { id: true, owner: { select: { userId: true } } } })
     if (!kos) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kos tidak ditemukan.' })
@@ -206,11 +206,12 @@ export const waitlistRouter = router({
 
 /** owner.waitlistEntries: one kos's queue (offers first, then the queue in order, then a few resolved entries). */
 export const ownerWaitlistEntries = ownerProcedure.input(kosIdOnly).query(async ({ ctx, input }): Promise<OwnerWaitlistEntry[]> => {
-  const include = { user: { select: { name: true, campus: true, image: true, campusEmailVerifiedAt: true } }, offeredRoom: { select: { roomNumber: true } } } satisfies Prisma.WaitlistEntryInclude
+  const include = { user: { select: { name: true, campus: true, image: true, campusEmailVerifiedAt: true, campusVerifiedUntil: true } }, offeredRoom: { select: { roomNumber: true } } } satisfies Prisma.WaitlistEntryInclude
   const [live, past] = await Promise.all([
     ctx.prisma.waitlistEntry.findMany({ where: { kosId: input.kosId, status: { in: [...LIVE] } }, include }),
     ctx.prisma.waitlistEntry.findMany({ where: { kosId: input.kosId, status: { notIn: [...LIVE] } }, include, orderBy: [{ resolvedAt: 'desc' }, { id: 'asc' }], take: HISTORY_LIMIT }),
   ])
+  const now = new Date()
   const waiting = live.filter((e) => e.status === 'WAITING')
   const shape = (e: (typeof live)[number]): OwnerWaitlistEntry => ({
     id: e.id,
@@ -218,7 +219,7 @@ export const ownerWaitlistEntries = ownerProcedure.input(kosIdOnly).query(async 
     status: e.status,
     roomType: e.roomType,
     createdAt: e.createdAt.toISOString(),
-    user: { name: e.user.name, campus: e.user.campus, image: e.user.image, campusVerified: e.user.campusEmailVerifiedAt !== null },
+    user: { name: e.user.name, campus: e.user.campus, image: e.user.image, campusVerified: isStudentVerified(e.user, now) },
     offer: e.status === 'OFFERED' && e.offeredRoom && e.offerExpiresAt ? { roomNumber: e.offeredRoom.roomNumber, expiresAt: e.offerExpiresAt.toISOString() } : null,
   })
   const ordered = [...live.filter((e) => e.status === 'OFFERED').sort(compareQueue), ...[...waiting].sort(compareQueue)]

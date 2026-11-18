@@ -30,6 +30,7 @@ const env = {
   // Production defaults to requiring an emergency contact and the current Syarat before a first application; the e2e students do not
   // fill them in (the rule is covered by integration tests and one dedicated spec that turns it on through the profile).
   REQUIRE_PROFILE_CONSENTS: process.env.GAP_REQUIRE_CONSENTS ?? '0',
+  REQUIRE_STUDENT_VERIFICATION: process.env.GAP_REQUIRE_STUDENT ?? '0',
 }
 const tsxCli = fileURLToPath(new URL('../../node_modules/tsx/dist/cli.mjs', import.meta.url))
 const prismaCli = fileURLToPath(new URL('../../node_modules/prisma/build/index.js', import.meta.url))

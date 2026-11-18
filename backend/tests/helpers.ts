@@ -10,6 +10,7 @@ import { PaymentService } from '../src/payment/service.ts'
 import { applyPaymentEventTx } from '../src/payment/settlement.ts'
 import type { RateLimiter } from '../src/rateLimit.ts'
 import { createFakeStorage } from '../src/storage.ts'
+import type { SheerIdService } from '../src/sheerid.ts'
 import { createCallerFactory } from '../src/trpc/trpc.ts'
 import type { Context } from '../src/trpc/trpc.ts'
 import { appRouter } from '../src/trpc/router.ts'
@@ -32,11 +33,13 @@ interface CallerOptions {
   paymentService?: PaymentService
   geocoder?: Geocoder
   limiter?: RateLimiter
+  /** SheerID (dev/test only). Absent = off, like an unset SHEERID_ENABLED. */
+  sheerid?: SheerIdService | null
 }
 
 function contextFor(userId: string | null, options: CallerOptions = {}): Context {
   const session = userId ? ({ user: { id: userId, isDemo: options.isDemo ?? false }, session: { userId } } as never) : null
-  return { prisma, auth, storage, paymentService: options.paymentService ?? paymentService, geocoder: options.geocoder ?? new NoGeocoder(), limiter: options.limiter, headers: new Headers(), resHeaders: new Headers(), getSession: async () => session }
+  return { prisma, auth, storage, paymentService: options.paymentService ?? paymentService, geocoder: options.geocoder ?? new NoGeocoder(), limiter: options.limiter, sheerid: options.sheerid ?? null, headers: new Headers(), resHeaders: new Headers(), getSession: async () => session }
 }
 
 /** tRPC caller with no session. */
@@ -86,16 +89,21 @@ export function pathOf(url: string): string {
 
 export async function lastEmail(template: string, to?: string) {
   const rows = await prisma.emailOutbox.findMany({ where: { template, ...(to ? { to } : {}) }, orderBy: { createdAt: 'desc' }, take: 1 })
-  return rows[0] ? { ...rows[0], payload: rows[0].payload as { url: string; name: string } } : undefined
+  return rows[0] ? { ...rows[0], payload: rows[0].payload as { url: string; name: string; code: string } } : undefined
 }
 
-/** Register a password account and verify it through the emailed link. Returns a signed-in session cookie. */
+/** Verify a freshly registered account with the 6-digit code from its newest verify-email mail. Returns the raw response (sets the session cookie). */
+export async function verifyEmailWithCode(email: string, ip = nextIp()) {
+  const mail = await lastEmail('verify-email', email)
+  if (!mail) throw new Error('no verification email queued')
+  return request('/api/auth/email-otp/verify-email', { ip, body: { email, otp: mail.payload.code } })
+}
+
+/** Register a password account and verify it with the emailed code. Returns a signed-in session cookie. */
 export async function registerAndSignIn(email: string, password = 'Sandi-rahasia-123', name = 'Penguji') {
   const up = await request('/api/auth/sign-up/email', { body: { name, email, password } })
   if (up.status !== 200) throw new Error(`sign-up failed: ${up.status} ${await up.text()}`)
-  const mail = await lastEmail('verify-email', email)
-  if (!mail) throw new Error('no verification email queued')
-  const verify = await request(pathOf(mail.payload.url))
+  const verify = await verifyEmailWithCode(email)
   if (verify.status >= 400) throw new Error(`verify failed: ${verify.status} ${await verify.text()}`)
   const inn = await request('/api/auth/sign-in/email', { body: { email, password } })
   if (inn.status !== 200) throw new Error(`sign-in failed: ${inn.status} ${await inn.text()}`)
@@ -182,7 +190,6 @@ export async function newStudent() {
 interface ApprovalFixtureOptions {
   startDate?: string
   durationMonths?: number
-  occupation?: string
   note?: string
 }
 
@@ -197,7 +204,6 @@ export async function approveApplication(userId: string, roomId: string, options
     roomId,
     startDate: options.startDate ?? addDays(todayWIB(new Date()), 3),
     durationMonths: options.durationMonths ?? 3,
-    occupation: options.occupation ?? 'Mahasiswa',
     note: options.note,
   })
   const decision = await callerFor(room.kos.owner.userId).application.decide({

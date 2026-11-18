@@ -32,7 +32,7 @@ interface RowProps {
 }
 
 const Row: React.FC<RowProps> = ({ n, title, children, stage, flip }) => {
-  const ref = useReveal<HTMLElement>();
+  const ref = useReveal<HTMLElement>({ at: 'bottom' });
   return (
   <article ref={ref} className={`whyr__row${flip ? ' whyr__row--flip' : ''}`}>
     <div className="whyr__text">

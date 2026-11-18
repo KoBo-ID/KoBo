@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
-import { outboxLink, uniqueIp } from './accounts'
+import { outboxCode, uniqueIp } from './accounts'
 import { expireSession, hold, newContext, newOwnerWorld, newStudent, sql, trpcPost, trpcRaw, watch, expectHttpErrors } from './seams'
 
 // Edge cases around the booking flow: signed-out visitors, a session that dies mid-form, read-only demo accounts,
@@ -44,6 +44,8 @@ test('scenario 27: signed-out visitors are asked to sign in on /my-kos, /checkou
   try {
     await test.step('/my-kos', async () => {
       await page.goto('/my-kos')
+      await expect(page.getByRole('heading', { name: 'Masuk untuk melihat jadwal survey Anda' })).toBeVisible()
+      await page.getByRole('tab', { name: /Kamar yang Disewa/ }).click()
       await expect(page.getByRole('heading', { name: 'Masuk untuk Melihat Kos Anda' })).toBeVisible()
       await page.getByRole('tab', { name: /Pengajuan Sewa/ }).click()
       await expect(page.getByRole('heading', { name: 'Masuk untuk melihat pengajuan Anda' })).toBeVisible()
@@ -63,7 +65,7 @@ test('scenario 27: signed-out visitors are asked to sign in on /my-kos, /checkou
     })
 
     await test.step('the API says the same', async () => {
-      const refused = await trpcRaw(visitor.ctx, 'application.create', { roomId: owner.rooms[0].id, startDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), durationMonths: 3, occupation: 'Mahasiswa' })
+      const refused = await trpcRaw(visitor.ctx, 'application.create', { roomId: owner.rooms[0].id, startDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), durationMonths: 3, program: 'Mahasiswa' })
       expect([refused.status, refused.message]).toEqual([401, 'Silakan masuk terlebih dahulu.'])
       expect(await sql('SELECT id FROM "RentalApplication" WHERE "roomId" = $1', [owner.rooms[0].id])).toHaveLength(0)
     })
@@ -81,7 +83,7 @@ test('scenario 27: a session that ends while the form is open is refused politel
   const room = owner.rooms[0]
   try {
     await page.goto(`/checkout/${owner.kosId}?room=${room.id}`)
-    await page.getByLabel('Pekerjaan atau kegiatan utama').fill('Mahasiswa')
+    await page.getByLabel('Jurusan').fill('Mahasiswa')
     await expect(page.getByRole('button', { name: 'Kirim Pengajuan' })).toBeVisible()
 
     await expireSession(student.userId)
@@ -110,7 +112,7 @@ test('scenario 27: a demo account cannot change its password or campus e-mail, a
       const pw = await demo.ctx.request.post('/api/auth/change-password', { data: change, headers })
       expect(pw.status()).toBe(403)
       expect(await pw.json()).toMatchObject({ code: 'DEMO_ACCOUNT_READONLY', message: 'Akun ini bersifat hanya-baca: kata sandi, email, dan penghapusan akun tidak dapat diubah.' })
-      const campus = await demo.ctx.request.post('/api/auth/campus-email/request', { data: { email: 'demo@student.binus.ac.id' }, headers })
+      const campus = await demo.ctx.request.post('/api/auth/campus-email/request', { data: { email: 'demo@binus.ac.id' }, headers })
       expect(campus.status()).toBe(403)
       expect(await campus.json()).toMatchObject({ code: 'DEMO_ACCOUNT_READONLY' })
     })
@@ -144,35 +146,38 @@ test('scenario 27: an unverified e-mail cannot sign in, can ask for a new link, 
 
     await test.step('sign-in is stopped with a clear explanation', async () => {
       await page.goto(`/checkout/${owner.kosId}?room=${owner.rooms[0].id}`)
-      await page.getByLabel('Pekerjaan atau kegiatan utama').fill('Mahasiswa')
+      await page.getByLabel('Jurusan').fill('Mahasiswa')
       await page.getByRole('button', { name: 'Masuk untuk Mengajukan' }).click()
       const dialog = page.locator('main')
       await dialog.getByLabel('Email').fill(email)
-      await dialog.getByLabel('Kata Sandi').fill(password)
+      await dialog.getByLabel('Kata Sandi', { exact: true }).fill(password)
       await dialog.getByRole('button', { name: 'Masuk ke Akun' }).click()
-      await expect(dialog).toContainText(`Akun ${email} belum diverifikasi. Buka tautan di email pendaftaran, atau kirim ulang tautannya.`)
-      await expect(dialog.getByRole('button', { name: 'Kirim ulang email verifikasi' })).toBeVisible()
+      await expect(dialog).toContainText(`Masukkan kode 6 digit yang kami kirim ke ${email}. Berlaku 10 menit.`)
+      await expect(dialog.getByRole('button', { name: /Kirim ulang kode/ })).toBeVisible()
       expectHttpErrors(problems, 403)
     })
 
     await test.step('there is no session, so the API refuses an application', async () => {
-      const refused = await trpcRaw(visitor.ctx, 'application.create', { roomId: owner.rooms[0].id, startDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), durationMonths: 3, occupation: 'Mahasiswa' })
+      const refused = await trpcRaw(visitor.ctx, 'application.create', { roomId: owner.rooms[0].id, startDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), durationMonths: 3, program: 'Mahasiswa' })
       expect(refused.status).toBe(401)
       expectHttpErrors(problems, 401)
     })
 
-    await test.step('asking for a new link says so', async () => {
-      await page.getByRole('button', { name: 'Kirim ulang email verifikasi' }).click()
-      await expect(page.locator('main')).toContainText('Tautan verifikasi dikirim ulang. Periksa kotak masuk dan folder spam Anda.')
+    await test.step('a wrong code is refused and says so', async () => {
+      const dialog = page.locator('main')
+      await dialog.getByLabel('Kode verifikasi').fill('000000')
+      await dialog.getByRole('button', { name: 'Verifikasi', exact: true }).click()
+      await expect(dialog.getByRole('alert')).toContainText('Kode salah atau sudah kedaluwarsa.')
+      expectHttpErrors(problems, 400)
     })
 
-    await test.step('after following the link the account can apply', async () => {
-      const link = await outboxLink(email, 'verify-email')
-      const verified = await visitor.ctx.request.get(link, { headers: { 'cf-connecting-ip': uniqueIp() } })
+    await test.step('with the emailed code the account can apply', async () => {
+      const otp = await outboxCode(email, 'verify-email')
+      const verified = await visitor.ctx.request.post('/api/auth/email-otp/verify-email', { data: { email, otp }, headers: { ...origin(), 'cf-connecting-ip': uniqueIp() } })
       expect(verified.ok()).toBe(true)
       const [user] = await sql<{ id: string; emailVerified: boolean }>('SELECT id, "emailVerified" FROM "User" WHERE email = $1', [email])
       expect(user.emailVerified).toBe(true)
-      const app = await trpcPost<{ id: string; status: string }>(visitor.ctx, 'application.create', { roomId: owner.rooms[0].id, startDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), durationMonths: 3, occupation: 'Mahasiswa' })
+      const app = await trpcPost<{ id: string; status: string }>(visitor.ctx, 'application.create', { roomId: owner.rooms[0].id, startDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), durationMonths: 3, program: 'Mahasiswa' })
       expect(app.status).toBe('PENDING')
     })
   } finally {
@@ -191,7 +196,9 @@ test('scenario 27: the detail sidebar, checkout total and first invoice agree', 
       await plain.page.goto(`/kos/${owner.kosId}`)
       expect(digits(await sidebarFirst(plain.page).textContent())).toBe(1_525_000)
       await expect(plain.page.getByText(/potongan Rp\s100\.000 di pembayaran pertama/)).toBeVisible()
-      await plain.page.getByRole('button', { name: 'Ajukan Sewa' }).click()
+      // An unverified student is steered to /profile by the sidebar button; the form itself stays reachable.
+      await expect(plain.page.getByRole('link', { name: 'Verifikasi status mahasiswa' })).toBeVisible()
+      await plain.page.goto(`/checkout/${owner.kosId}?room=${owner.rooms[0].id}`)
       await expect(checkoutTotal(plain.page)).toBeVisible()
       expect(digits(await checkoutTotal(plain.page).textContent())).toBe(1_525_000)
       const held = await hold(owner, plain, owner.rooms[0].id, { months: 1 })

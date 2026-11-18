@@ -61,7 +61,7 @@ if (isResendTestSender(from!)) {
 // 2. Send the real template. Capture Resend's response id through a wrapped fetch.
 const rendered = renderEmail('verify-email', {
   name: 'Penguji KoBo',
-  url: `${baseURL}/api/auth/verify-email?token=SMOKE-TEST-TOKEN&callbackURL=%2Fverifikasi-email`,
+  code: '123456',
 })!
 let responseBody = ''
 const recordingFetch: typeof fetch = async (input, init) => {

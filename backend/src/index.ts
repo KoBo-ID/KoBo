@@ -10,6 +10,9 @@ import { startOutboxWorker, transportFromEnv } from './outbox.ts'
 import { startPaymentSweep } from './payment/reconcile.ts'
 import { startRefundWorker } from './payment/refunds.ts'
 import { paymentServiceFromEnv } from './payment/service.ts'
+import { storageFromEnv } from './storage.ts'
+import { startStudentDocRetention } from './studentDocRetention.ts'
+import { startUnverifiedCleanup } from './unverifiedCleanup.ts'
 import { startWaitlistWorker } from './waitlist.ts'
 
 const prisma = createPrisma(requireEnv('DATABASE_URL'))
@@ -22,7 +25,8 @@ const distDir =
 // Test/e2e only (ALLOW_E2E_HOOKS=1, guarded in env.ts): swaps in a fake Xendit provider and mounts /api/__e2e/*.
 const e2eHooks = e2eHooksEnabled() ? createE2eHooks(prisma) : null
 const paymentService = e2eHooks?.paymentService ?? paymentServiceFromEnv()
-const server = serve({ fetch: createApp({ prisma, distDir, paymentService, e2eHooks }).fetch, port }, (info) => {
+const storage = storageFromEnv()
+const server = serve({ fetch: createApp({ prisma, distDir, paymentService, e2eHooks, storage }).fetch, port }, (info) => {
   console.log(`KoBo server listening on :${info.port}${distDir ? ` (serving ${distDir})` : ''}`)
 })
 
@@ -45,6 +49,12 @@ const stopWaitlist = startWaitlistWorker(prisma)
 // e2e: a 03:30 reset would wipe rows mid-suite.
 const stopDemoReset: () => void = e2eHooks ? () => {} : startDemoReset(prisma)
 
+// Also not started from createApp: tests call purgeStudentDocuments() directly. Deletes KTM photos 30 days after a decision.
+// e2e: skipped, the fake private storage is in memory.
+const stopStudentDocs: () => void = e2eHooks ? () => {} : startStudentDocRetention(prisma, storage)
+// Daily purge of sign-ups that never verified their email (7 days). Not started from createApp; e2e keeps its seeded users.
+const stopUnverified: () => void = e2eHooks ? () => {} : startUnverifiedCleanup(prisma)
+
 // Compose gives the container 10 s (stop_grace_period). Stop taking requests, let the running ticks and in-flight
 // requests finish (max 8 s), then close the pool, so a refund or email send is not cut off between the provider call
 // and the row update.
@@ -54,7 +64,7 @@ const shutdown = async () => {
   if (shuttingDown) return
   shuttingDown = true
   const httpClosed = new Promise<void>((resolve) => server.close(() => resolve()))
-  const workers = [stopOutbox(), stopNotifications(), stopRefunds(), stopPaymentSweep(), stopWaitlist(), Promise.resolve(stopDemoReset())]
+  const workers = [stopOutbox(), stopNotifications(), stopRefunds(), stopPaymentSweep(), stopWaitlist(), Promise.resolve(stopDemoReset()), Promise.resolve(stopStudentDocs()), Promise.resolve(stopUnverified())]
   await Promise.race([Promise.allSettled([httpClosed, ...workers]), new Promise((resolve) => setTimeout(resolve, SHUTDOWN_WAIT_MS).unref())])
   await prisma.$disconnect().catch(() => undefined)
   process.exit(0)

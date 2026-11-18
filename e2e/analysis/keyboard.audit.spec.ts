@@ -5,7 +5,7 @@ import {newOwnerWorld,newStudent,apply} from '../tests/seams'
 test('F2 keyboard sign in, application and owner approval',async({page,browser,problems})=>{
  await ownIp(page); await page.goto('/masuk')
  const email=page.getByLabel('Email'); await email.focus(); await page.keyboard.type('tidak-ada@example.com')
- await page.keyboard.press('Tab'); await expect(page.getByLabel('Kata Sandi')).toBeFocused()
+ await page.keyboard.press('Tab'); await expect(page.getByLabel('Kata Sandi', { exact: true })).toBeFocused()
  await page.keyboard.type('salah-salah-1')
  const submit=page.getByRole('button',{name:'Masuk ke Akun'});await submit.focus();await page.keyboard.press('Enter')
  await expect(page.getByRole('alert')).toContainText('Email atau kata sandi salah')

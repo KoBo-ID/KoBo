@@ -11,7 +11,7 @@ const settle = (p: Promise<unknown>) => p.then(() => null, (e: unknown) => e as 
 const startDate = () => addDays(todayWIB(new Date()), 3)
 
 describe('booking race', () => {
-  const apply = (userId: string, roomId: string) => callerFor(userId).application.create({ roomId, startDate: startDate(), durationMonths: 6, occupation: 'Mahasiswa' })
+  const apply = (userId: string, roomId: string) => callerFor(userId).application.create({ roomId, startDate: startDate(), durationMonths: 6 })
   const ownerFor = async (room: Awaited<ReturnType<typeof vacantRoom>>) => {
     const owner = await prisma.ownerProfile.findUniqueOrThrow({ where: { id: room.kos.ownerId }, select: { userId: true } })
     return callerFor(owner.userId)

@@ -6,15 +6,18 @@ import type { PrismaClient } from '../db/client.ts'
 import type { PaymentService } from '../payment/service.ts'
 import type { RateLimiter } from '../rateLimit.ts'
 import type { Storage } from '../storage.ts'
+import { assertStudentVerified } from '../studentGate.ts'
+import type { SheerIdService } from '../sheerid.ts'
 
 export type Session = NonNullable<Awaited<ReturnType<Auth['api']['getSession']>>>
-
 export interface Context {
   prisma: PrismaClient
   auth: Auth
   storage: Storage
   paymentService: PaymentService
   geocoder: Geocoder
+  /** SheerID (dev/test only; null/absent = off). See backend/src/sheerid.ts. */
+  sheerid?: SheerIdService | null
   /** Rate limiter; absent means the shared one (rateLimit.ts). Tests inject their own. */
   limiter?: RateLimiter
   /** Request headers (for forwarding to better-auth). */
@@ -53,6 +56,12 @@ export const authedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!session) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Silakan masuk terlebih dahulu.' })
   const user = session.user as typeof session.user & { isDemo?: boolean }
   return next({ ctx: { ...ctx, user, paymentProvider: ctx.paymentService.providerFor({ isDemo: user.isDemo === true }) } })
+})
+
+/** Signed-in AND a currently verified student (when REQUIRE_STUDENT_VERIFICATION is on). Only for new rental starts. */
+export const studentProcedure = authedProcedure.use(async ({ ctx, next }) => {
+  await assertStudentVerified(ctx.prisma, ctx.user.id, new Date())
+  return next()
 })
 
 /**

@@ -46,7 +46,7 @@ test('demo student queues for a full kos, gets the room when the owner frees it,
   const startDate = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
   for (const room of kos.rooms) {
     const submitted = await tenantCtx.request.post('/api/trpc/application.create', {
-      data: { roomId: room.id, startDate, durationMonths: 3, occupation: 'Mahasiswa' },
+      data: { roomId: room.id, startDate, durationMonths: 3, program: 'Mahasiswa' },
       headers: origin,
     })
     if (!submitted.ok()) {

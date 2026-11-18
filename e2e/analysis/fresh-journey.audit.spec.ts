@@ -11,7 +11,7 @@ test('E2 fresh registration to mocked settlement and receipts',async({page,brows
     await page.getByRole('button',{name:'Daftar baru'}).click()
     await page.getByLabel('Nama Lengkap').fill('Penguji Audit')
     await page.getByLabel('Email').fill(email)
-    await page.getByLabel('Kata Sandi').fill('Sandi-rahasia-123')
+    await page.getByLabel('Kata Sandi', { exact: true }).fill('Sandi-rahasia-123')
     await page.getByLabel(/Saya menyetujui/).check()
     await page.getByRole('button',{name:'Daftar Sekarang'}).click()
     await expect(page.getByText('Cek email Anda').first()).toBeVisible()

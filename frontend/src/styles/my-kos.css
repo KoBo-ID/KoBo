@@ -1,0 +1,238 @@
+/* /my-kos ("Kos Saya") and the student shell fold fix. Tokens only. */
+
+/* The main region is at least one screen minus the sticky navbar, so a short page never shows the footer's top edge. */
+.student-main {
+  flex: 1 0 auto;
+  min-height: calc(100vh - var(--header-height));
+  min-height: calc(100dvh - var(--header-height));
+}
+
+
+.app-container.my-kos {
+  display: flex;
+  flex-direction: column;
+  /* Same fold height as .student-main, so the page container itself fills the screen. */
+  min-height: calc(100vh - var(--header-height));
+  min-height: calc(100dvh - var(--header-height));
+  max-width: 960px;
+  padding-top: 2.5rem;
+  padding-bottom: 4rem;
+}
+.mk-head { margin-bottom: 1.5rem; }
+
+/* Tabs */
+.mk-tabs {
+  position: relative;
+  display: flex;
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.mk-tabs::-webkit-scrollbar { display: none; }
+.mk-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.75rem 0.25rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+}
+.mk-tab:hover { color: var(--text-main); }
+.mk-tab[aria-selected='true'] { font-weight: 700; color: var(--primary); }
+.mk-tab:focus-visible { outline: 2px solid var(--border-focus); outline-offset: -2px; }
+@media (min-width: 640px) {
+  .mk-tabs { gap: 0; overflow-x: visible; }
+  .mk-tab { flex: 1 1 0; min-width: 0; justify-content: center; }
+}
+.mk-count {
+  min-width: 1.5rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: var(--radius-pill);
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.mk-tab[aria-selected='true'] .mk-count { background: var(--primary-light); color: var(--primary); }
+.mk-tabs__indicator {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--primary);
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mk-tabs__indicator--ready {
+    transition: transform 220ms cubic-bezier(0.25, 1, 0.5, 1), width 220ms cubic-bezier(0.25, 1, 0.5, 1);
+  }
+}
+
+/* Panel: fills the fold so every tab has the same height */
+.mk-panel { flex: 1 0 auto; display: flex; flex-direction: column; padding-top: 2rem; }
+.mk-panel__body { flex: 1 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
+@keyframes mk-panel-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mk-panel-enter { animation: mk-panel-in 180ms cubic-bezier(0.25, 1, 0.5, 1); }
+}
+.mk-list { display: flex; flex-direction: column; gap: 0.75rem; }
+
+/* Empty and signed-out state: open two-column composition */
+.mk-empty {
+  /* margin:auto centers the card both ways in the flex:1 panel body; lists and skeletons are unaffected. */
+  margin: auto;
+  width: 100%;
+  max-width: 880px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 24rem);
+  gap: 2.5rem;
+  align-items: center;
+  padding: 2.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+.mk-empty__lead { display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; min-width: 0; }
+.mk-empty__head { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.mk-empty__icon { display: flex; flex-shrink: 0; color: var(--primary); }
+.mk-empty__title { min-width: 0; font-size: 1.25rem; font-weight: 800; color: var(--text-main); line-height: 1.3; }
+.mk-empty__body { font-size: 0.95rem; color: var(--text-muted); max-width: 48ch; }
+.mk-empty__action { margin-top: 0.5rem; }
+@media (max-width: 760px) {
+  .mk-empty { grid-template-columns: minmax(0, 1fr); gap: 2rem; padding: 1.5rem; align-items: start; }
+}
+
+/* Lifecycle strip */
+.mk-steps { list-style: none; display: flex; flex-direction: column; }
+.mk-step { position: relative; display: grid; grid-template-columns: 1.75rem minmax(0, 1fr); gap: 0 0.9rem; padding-bottom: 1.5rem; }
+.mk-step:last-child { padding-bottom: 0; }
+.mk-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: calc(0.875rem - 0.5px);
+  top: 1.75rem;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-subtle);
+}
+.mk-step__num {
+  display: flex; align-items: center; justify-content: center;
+  width: 1.75rem; height: 1.75rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-page);
+  color: var(--text-muted);
+  font-size: 0.8rem; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.mk-step__label { font-size: 0.95rem; font-weight: 700; color: var(--text-muted); line-height: 1.75rem; }
+.mk-step__text { grid-column: 2; font-size: 0.85rem; color: var(--text-muted); max-width: 40ch; }
+.mk-step--active .mk-step__num { background: var(--primary); border-color: var(--primary); color: var(--text-inverse); }
+.mk-step--active .mk-step__label { color: var(--text-main); }
+
+/* Badges */
+.mk-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+.mk-badge--paid { background: var(--status-paid-bg); color: var(--status-paid-text); }
+.mk-badge--due { background: var(--status-due-bg); color: var(--status-due-text); }
+.mk-badge--overdue { background: var(--status-overdue-bg); color: var(--status-overdue-text); }
+.mk-badge--primary { background: var(--primary-light); color: var(--primary); }
+
+/* Tenancy ("lease pass") card: border only, it is not a link */
+.mk-pass {
+  display: flex; flex-direction: column; gap: 1.25rem;
+  padding: 1.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+.mk-pass__head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.mk-pass__id { display: flex; gap: 1.25rem; min-width: 0; }
+.mk-pass__img { width: 96px; height: 96px; border-radius: var(--radius-md); object-fit: cover; flex-shrink: 0; }
+.mk-pass__name { font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-top: 0.35rem; }
+.mk-pass__meta { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.15rem; }
+.mk-pass__price { text-align: right; }
+.mk-pass__price-label { display: block; font-size: 0.75rem; color: var(--text-muted); }
+.mk-pass__price-value { font-size: 1.25rem; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; }
+
+.mk-facts {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);
+}
+.mk-fact { padding: 1rem 1rem; min-width: 0; }
+.mk-fact:first-child { padding-left: 0; }
+.mk-fact + .mk-fact { border-left: 1px solid var(--border-subtle); }
+.mk-fact__label { display: block; font-size: 0.75rem; color: var(--text-muted); }
+.mk-fact__value { font-size: 0.9rem; font-weight: 700; color: var(--text-main); overflow-wrap: anywhere; }
+.mk-fact__value--strong { font-weight: 800; color: var(--status-due-text); }
+@media (max-width: 760px) {
+  .mk-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mk-fact:first-child { padding-left: 1rem; }
+  .mk-fact:nth-child(odd) { border-left: 0; padding-left: 0; }
+  .mk-fact:nth-child(n + 3) { border-top: 1px solid var(--border-subtle); }
+}
+
+.mk-timeline { display: flex; flex-direction: column; gap: 0.4rem; }
+.mk-timeline__bars { display: flex; gap: 3px; }
+.mk-timeline__bar { flex: 1 1 0; height: 6px; border-radius: var(--radius-xs); background: var(--border-strong); }
+.mk-timeline__bar--paid { background: var(--status-paid); }
+.mk-timeline__bar--due { background: var(--status-due); }
+.mk-timeline__bar--ended { background: var(--bg-muted); }
+.mk-timeline__labels { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); }
+
+.mk-invoices { display: flex; flex-direction: column; font-size: 0.85rem; }
+.mk-invoice-status { font-weight: 600; color: var(--text-muted); }
+.mk-invoice-status--paid { color: var(--status-paid-text); }
+.mk-link { color: var(--primary); font-weight: 600; }
+
+.mk-pass__foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; }
+.mk-pass__note { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--primary); font-weight: 600; }
+.mk-pass__actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.mk-wa { text-decoration: none; }
+@media (max-width: 560px) {
+  .mk-pass { padding: 1.1rem; }
+  .mk-pass__id { gap: 0.9rem; }
+  .mk-pass__img { width: 72px; height: 72px; }
+  .mk-pass__price { text-align: left; }
+}
+
+/* Application and visit rows share the application-card frame */
+.mk-row.application-card { border-radius: var(--radius-card); }
+.mk-row__thumb { width: 52px; height: 52px; border-radius: var(--radius-md); object-fit: cover; flex-shrink: 0; }
+.mk-row__icon {
+  width: 52px; height: 52px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-md); background: var(--primary-light); color: var(--primary);
+}
+.mk-row__title { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.mk-row__meta { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem; }
+.mk-row__note { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.15rem; }
+.mk-row__note--good { color: var(--status-paid-text); }
+.mk-row__actions { display: flex; gap: 0.5rem; flex-shrink: 0; flex-wrap: wrap; }
+@media (max-width: 560px) {
+  .mk-row__actions { justify-content: stretch; }
+  .mk-row__actions > * { flex: 1 1 0; }
+  .mk-row__actions button { width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .app-container.my-kos { padding-top: 1.5rem; padding-bottom: 2rem; }
+}

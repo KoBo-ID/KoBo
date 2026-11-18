@@ -30,7 +30,7 @@ test('owner marks a booked room paid and opens its kuitansi', async ({ page, bro
   let room: Room | undefined
   for (const candidate of [...vacant].sort(() => Math.random() - 0.5)) {
     const res = await tenantCtx.request.post('/api/trpc/application.create', {
-      data: { roomId: candidate.id, startDate, durationMonths: 3, occupation: 'Mahasiswa penguji' },
+      data: { roomId: candidate.id, startDate, durationMonths: 3, program: 'Mahasiswa penguji' },
       headers: { origin: new URL(baseURL).origin },
     })
     if (res.ok()) {

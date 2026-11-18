@@ -246,7 +246,7 @@ export async function newStudent(browser: Browser, opts: { label: string; demo?:
   const [{ id: userId }] = await sql<{ id: string }>('SELECT id FROM "User" WHERE email = $1', [email])
   if (opts.demo) await sql('UPDATE "User" SET "isDemo" = true WHERE id = $1', [userId])
   if (opts.campus) {
-    await sql('UPDATE "User" SET campus = $2, "campusEmail" = $3, "campusEmailVerifiedAt" = now() WHERE id = $1', [userId, 'BINUS', `${opts.label}${Date.now()}@student.binus.ac.id`])
+    await sql('UPDATE "User" SET campus = $2, "campusEmail" = $3, "campusEmailVerifiedAt" = now() WHERE id = $1', [userId, 'BINUS', `${opts.label}${Date.now()}@binus.ac.id`])
   }
   return { ctx, page, email, userId }
 }
@@ -289,10 +289,10 @@ export async function newOwnerWorld(browser: Browser, opts: { label: string; roo
 }
 
 /** Submit a rental application as `student`. Returns the application id. */
-export async function apply(student: Student | BrowserContext, roomId: string, opts: { startInDays?: number; months?: number; occupation?: string } = {}) {
+export async function apply(student: Student | BrowserContext, roomId: string, opts: { startInDays?: number; months?: number; program?: string } = {}) {
   const who = 'ctx' in student ? student.ctx : student
   const startDate = new Date(Date.now() + (opts.startInDays ?? 3) * 86_400_000).toISOString().slice(0, 10)
-  const app = await trpcPost<{ id: string }>(who, 'application.create', { roomId, startDate, durationMonths: opts.months ?? 3, occupation: opts.occupation ?? 'Mahasiswa' })
+  const app = await trpcPost<{ id: string }>(who, 'application.create', { roomId, startDate, durationMonths: opts.months ?? 3, program: opts.program ?? 'Mahasiswa' })
   return app.id
 }
 

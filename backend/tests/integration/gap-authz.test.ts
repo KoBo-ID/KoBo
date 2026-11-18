@@ -19,6 +19,8 @@ const SIGNED_IN_ONLY = [
   'application.create', 'application.mine', 'booking.mine', 'payment.start', 'payment.status', 'payment.reconcile', 'payment.simulate', 'place.resolveAddress',
   'place.reverse', 'kuitansi.get', 'review.create', 'review.update', 'visit.create', 'visit.mine', 'visit.cancel', 'waitlist.join', 'waitlist.leave',
   'waitlist.decline', 'waitlist.mine', 'demo.reset', 'catalog.status',
+  'studentVerification.status', 'studentVerification.ktmPresign', 'studentVerification.ktmConfirm', 'studentVerification.ktmWithdraw',
+  'studentVerification.sheeridStart', 'studentVerification.sheeridRefresh',
 ]
 // Public procedures (15): a missing session never produces UNAUTHORIZED.
 const PUBLIC = ['auth.providers', 'auth.me', 'kos.list', 'kos.search', 'kos.detail', 'owner.publicProfile', 'place.search', 'waitlist.status', 'region.children', 'region.get', 'region.outline', 'region.search', 'campus.search', 'campus.inBox', 'catalog.licenses']

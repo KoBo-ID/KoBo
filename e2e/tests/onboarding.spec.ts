@@ -1,5 +1,5 @@
 import { test, expect, loginAs } from './fixtures'
-import { outboxCount, outboxLink, ownIp, signUpVerified } from './accounts'
+import { outboxCode, outboxLink, ownIp, signUpVerified } from './accounts'
 
 test('unknown URL shows the Indonesian 404 with a link home', async ({ page }) => {
   await page.goto('/halaman-yang-tidak-ada')
@@ -8,58 +8,74 @@ test('unknown URL shows the Indonesian 404 with a link home', async ({ page }) =
   await expect(page).toHaveURL(/\/$/)
 })
 
-test('sign-up shows the "cek email" state and the emailed link confirms verification', async ({ page }) => {
+async function startSignUp(page: import('@playwright/test').Page, prefix: string) {
   await ownIp(page)
   await page.goto('/')
   await page.getByRole('button', { name: 'Masuk', exact: true }).click()
   const dialog = page.locator('main')
   await dialog.getByRole('button', { name: 'Daftar baru' }).click()
-  const email = `daftar-${Date.now()}@example.com`
+  const email = `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`
   await dialog.getByLabel('Nama Lengkap').fill('Calon Penyewa')
   await dialog.getByLabel('Email').fill(email)
-  await dialog.getByLabel('Kata Sandi').fill('Sandi-rahasia-123')
+  await dialog.getByLabel('Kata Sandi', { exact: true }).fill('Sandi-rahasia-123')
   await dialog.getByLabel(/Saya menyetujui/).check()
   await dialog.getByRole('button', { name: 'Daftar Sekarang' }).click()
-  await expect(dialog.getByText('Cek email Anda').first()).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Kirim ulang email verifikasi' })).toBeVisible()
+  await expect(dialog.getByText(`Masukkan kode 6 digit yang kami kirim ke ${email}. Berlaku 10 menit.`)).toBeVisible()
+  return { dialog, email }
+}
 
-  await page.goto(await outboxLink(email, 'verify-email'))
-  await expect(page).toHaveURL(/\/verifikasi-email/)
-  await expect(page.getByRole('heading', { name: 'Email berhasil diverifikasi' })).toBeVisible()
+test('sign-up shows the code step; a wrong code is refused, the emailed code verifies and signs in', async ({ page, problems }) => {
+  const { dialog, email } = await startSignUp(page, 'daftar')
+  const input = dialog.getByLabel('Kode verifikasi')
+  await expect(input).toHaveAttribute('autocomplete', 'one-time-code')
+  await expect(input).toHaveAttribute('inputmode', 'numeric')
+  await expect(input).toHaveAttribute('maxlength', '6')
+  await expect(dialog.getByRole('button', { name: /Kirim ulang kode/ })).toBeDisabled()
+
+  const real = await outboxCode(email, 'verify-email')
+  await input.fill(real === '000000' ? '111111' : '000000')
+  await dialog.getByRole('button', { name: 'Verifikasi', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toContainText('Kode salah atau sudah kedaluwarsa.')
+  expect(problems.filter((p) => p.includes('400'))).toHaveLength(1)
+  problems.splice(0)
+
+  await input.fill(real)
+  await dialog.getByRole('button', { name: 'Verifikasi', exact: true }).click()
+  await expect(page.getByText('Email terverifikasi. Selamat datang di KoBo!')).toBeVisible()
 })
 
-test('"Kirim ulang email verifikasi" queues a fresh link that verifies the account', async ({ page }) => {
-  await ownIp(page)
-  await page.goto('/')
-  await page.getByRole('button', { name: 'Masuk', exact: true }).click()
-  const dialog = page.locator('main')
-  await dialog.getByRole('button', { name: 'Daftar baru' }).click()
-  const email = `ulang-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`
-  await dialog.getByLabel('Nama Lengkap').fill('Calon Penyewa')
-  await dialog.getByLabel('Email').fill(email)
-  await dialog.getByLabel('Kata Sandi').fill('Sandi-rahasia-123')
-  await dialog.getByLabel(/Saya menyetujui/).check()
-  await dialog.getByRole('button', { name: 'Daftar Sekarang' }).click()
-  await expect(dialog.getByText('Cek email Anda').first()).toBeVisible()
-  const firstLink = await outboxLink(email, 'verify-email')
-
-  // The verification link is a token with second-resolution timestamps: a resend inside the same second is the same link.
-  await page.waitForTimeout(1100)
-  await dialog.getByRole('button', { name: 'Kirim ulang email verifikasi' }).click()
-  await expect(dialog.getByText('Tautan verifikasi dikirim ulang.', { exact: false })).toBeVisible()
-  await expect.poll(() => outboxCount(email, 'verify-email')).toBe(2)
-  const latest = await outboxLink(email, 'verify-email')
-  expect(latest).not.toBe(firstLink)
-
-  await page.goto(latest)
-  await expect(page).toHaveURL(/\/verifikasi-email/)
-  await expect(page.getByRole('heading', { name: 'Email berhasil diverifikasi' })).toBeVisible()
+test('an unverified password sign-in shows the code step with a fresh code', async ({ page, problems }) => {
+  const { email } = await startSignUp(page, 'belum')
+  const first = await outboxCode(email, 'verify-email')
+  await page.goto('/masuk')
+  const form = page.locator('main')
+  await form.getByLabel('Email').fill(email)
+  await form.getByLabel('Kata Sandi', { exact: true }).fill('Sandi-rahasia-123')
+  await form.getByRole('button', { name: 'Masuk ke Akun' }).click()
+  await expect(form.getByText(`Masukkan kode 6 digit yang kami kirim ke ${email}. Berlaku 10 menit.`)).toBeVisible()
+  expect(problems.filter((p) => p.includes('403'))).toHaveLength(1)
+  problems.splice(0)
+  const fresh = await outboxCode(email, 'verify-email', first)
+  await form.getByLabel('Kode verifikasi').fill(fresh)
+  await form.getByRole('button', { name: 'Verifikasi', exact: true }).click()
+  await expect(page.getByText('Email terverifikasi. Selamat datang di KoBo!')).toBeVisible()
 })
 
-test('a bad verification link says so in Indonesian', async ({ page }) => {
-  await page.goto('/verifikasi-email?error=invalid_token')
-  await expect(page.getByRole('heading', { name: 'Verifikasi gagal' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Kirim Ulang Email Verifikasi' })).toBeVisible()
+test('/verifikasi-email without an email never claims success and links to sign-in', async ({ page }) => {
+  await page.goto('/verifikasi-email')
+  await expect(page.getByText('Email berhasil diverifikasi')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Ke Halaman Masuk' })).toHaveAttribute('href', '/masuk')
+  await page.goto('/verifikasi-email?token=abc')
+  await expect(page.getByText('Email berhasil diverifikasi')).toHaveCount(0)
+})
+
+test('/verifikasi-email?email= renders the code step and verifies', async ({ page }) => {
+  const { email } = await startSignUp(page, 'halaman')
+  await page.goto(`/verifikasi-email?email=${encodeURIComponent(email)}`)
+  await expect(page.getByText(`Masukkan kode 6 digit yang kami kirim ke ${email}`)).toBeVisible()
+  await page.getByLabel('Kode verifikasi').fill(await outboxCode(email, 'verify-email'))
+  await page.getByRole('button', { name: 'Verifikasi', exact: true }).click()
+  await expect(page).toHaveURL(/\/$/)
 })
 
 test('forgot password shows a confirmation, and the emailed link sets a new password', async ({ page }) => {
@@ -87,40 +103,40 @@ test('the reset page rejects a missing token', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Tautan tidak valid' })).toBeVisible()
 })
 
-test('campus-email form shows for a real student and rejects a non-.ac.id address', async ({ page, problems }) => {
+test('campus-email form shows for a real student and rejects a domain that is not a campus', async ({ page, problems }) => {
   await signUpVerified(page, 'kampus')
   await page.goto('/profile')
   await expect(page.getByLabel('Email Kampus')).toBeVisible()
   await page.getByLabel('Email Kampus').fill('budi@gmail.com')
-  await page.getByRole('button', { name: 'Kirim Tautan Verifikasi' }).click()
-  await expect(page.getByRole('alert')).toContainText('.ac.id')
+  await page.getByRole('button', { name: 'Kirim kode' }).click()
+  await expect(page.getByRole('alert')).toContainText('belum terdaftar')
   // The browser logs the 400 as a console error; it is the expected outcome here.
   expect(problems.filter((p) => p.includes('400'))).toHaveLength(1)
   problems.splice(0)
 })
 
-test('campus-email link verifies the student and the profile shows it', async ({ page }) => {
+test('campus-email code verifies the student and the profile shows it', async ({ page }) => {
   await signUpVerified(page, 'kampus2')
   await page.goto('/profile')
-  const campus = `mhs-${Date.now()}@student.binus.ac.id`
+  const campus = `mhs-${Date.now()}@binus.ac.id`
   await page.getByLabel('Email Kampus').fill(campus)
-  await page.getByRole('button', { name: 'Kirim Tautan Verifikasi' }).click()
-  await expect(page.getByText(`Tautan verifikasi terkirim ke ${campus}`)).toBeVisible()
-  await page.goto(await outboxLink(campus, 'campus-email'))
-  await expect(page).toHaveURL(/\/profile\?campus=verified/)
-  await expect(page.getByText('Email kampus terverifikasi').first()).toBeVisible()
+  await page.getByRole('button', { name: 'Kirim kode' }).click()
+  await expect(page.getByText(`Kode dikirim ke ${campus}`)).toBeVisible()
+  await page.getByLabel('Kode 6 digit').fill(await outboxCode(campus, 'campus-email'))
+  await page.getByRole('button', { name: 'Verifikasi', exact: true }).click()
+  await expect(page.getByText('Terverifikasi lewat').first()).toBeVisible()
 })
 
 test('an invalid campus link shows an error on the profile form', async ({ page }) => {
   await signUpVerified(page, 'kampus3')
   await page.goto('/profile?campus=invalid')
-  await expect(page.getByRole('alert')).toContainText('tidak valid')
+  await expect(page.getByRole('alert')).toContainText('tidak berhasil')
 })
 
 test('the demo student has no campus form (pre-verified)', async ({ page }) => {
   await loginAs(page, 'student')
   await page.goto('/profile')
-  await expect(page.getByText('Email kampus terverifikasi').first()).toBeVisible()
+  await expect(page.getByText('Terverifikasi lewat').first()).toBeVisible()
   await expect(page.getByLabel('Email Kampus')).toHaveCount(0)
 })
 

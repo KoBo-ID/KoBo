@@ -10,20 +10,20 @@ import { GOOGLE_RETURN_FLAG, useAuthActions } from '../../lib/session';
 import { useTRPC } from '../../lib/trpc';
 import { TERMS_VERSION } from '@kobo/shared/domain';
 import { messageForError } from '../../lib/errors';
+import { VerifyCodeStep } from './VerifyCodeStep';
 
 export type AuthView = 'login' | 'register' | 'verify-sent' | 'unverified' | 'forgot' | 'forgot-sent';
 
 export const AUTH_TITLES: Record<AuthView, string> = {
   login: 'Masuk ke Akun KoBo',
   register: 'Daftar Akun KoBo',
-  'verify-sent': 'Cek email Anda',
+  'verify-sent': 'Verifikasi email Anda',
   unverified: 'Email belum diverifikasi',
   forgot: 'Lupa Kata Sandi',
   'forgot-sent': 'Cek email Anda',
 };
 
-/** Where the emailed links land (both are lazy SPA pages). */
-const VERIFY_CALLBACK = '/verifikasi-email';
+/** Where the emailed password-reset link lands (a lazy SPA page). */
 const RESET_REDIRECT = '/reset-password';
 
 const GoogleMark: React.FC = () => (
@@ -66,7 +66,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
   const uid = useId();
 
   const [view, setViewState] = useState<AuthView>('login');
-  const [busy, setBusy] = useState<'form' | 'student' | 'owner' | 'resend' | 'google' | null>(null);
+  const [busy, setBusy] = useState<'form' | 'student' | 'owner' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(initialError);
   const providers = useQuery({ ...trpc.auth.providers.queryOptions(), staleTime: Infinity });
   const [notice, setNotice] = useState<string | null>(null);
@@ -150,34 +150,16 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
           name: name.trim(),
           email: email.trim(),
           password,
-          callbackURL: VERIFY_CALLBACK,
           ...({ phone: phone.trim(), termsVersion: TERMS_VERSION } as object),
         });
         if (err) setError(messageForError(err));
         else setView('verify-sent');
       } else {
-        const { data, error: err } = await authClient.signIn.email({ email: email.trim(), password, callbackURL: VERIFY_CALLBACK });
+        const { data, error: err } = await authClient.signIn.email({ email: email.trim(), password });
         if (err?.code === 'EMAIL_NOT_VERIFIED') setView('unverified');
         else if (err || !data) setError(messageForError(err));
         else await finish('Selamat datang kembali di KoBo!');
       }
-    } catch (err) {
-      setError(messageForError(err));
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  /** Re-send the verification link. Rate limited server-side (3 per minute), surfaced as a 429 message. */
-  const handleResend = async () => {
-    setBusy('resend');
-    setError(null);
-    setNotice(null);
-    try {
-      const { authClient } = await import('../../lib/authClient');
-      const { error: err } = await authClient.sendVerificationEmail({ email: email.trim(), callbackURL: VERIFY_CALLBACK });
-      if (err) setError(messageForError(err));
-      else setNotice('Tautan verifikasi dikirim ulang. Periksa kotak masuk dan folder spam Anda.');
     } catch (err) {
       setError(messageForError(err));
     } finally {
@@ -223,32 +205,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
   let main: React.ReactNode;
   if (view === 'verify-sent' || view === 'unverified') {
     main = (
-      <div style={{ ...column('1.25rem'), textAlign: 'center', alignItems: 'center' }}>
-        <MailCheck size={40} color="var(--primary)" />
-        <p style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: 1.55 }}>
-          {view === 'verify-sent' ? (
-            <>
-              Kami mengirim tautan verifikasi ke <strong>{email}</strong>. Buka email tersebut untuk mengaktifkan akun, lalu masuk.
-            </>
-          ) : (
-            <>
-              Akun <strong>{email}</strong> belum diverifikasi. Buka tautan di email pendaftaran, atau kirim ulang tautannya.
-            </>
-          )}
-        </p>
-        <div style={{ ...column('0.6rem'), width: '100%', textAlign: 'left' }}>
-          {errorBanner}
-          {noticeBanner}
-        </div>
-        <div style={{ ...column('0.6rem'), width: '100%' }}>
-          <Button variant="primary" fullWidth onClick={() => switchView('login')}>
-            Lanjut ke Masuk
-          </Button>
-          <Button variant="outline" fullWidth isLoading={busy === 'resend'} disabled={busy !== null} onClick={handleResend}>
-            Kirim ulang email verifikasi
-          </Button>
-        </div>
-      </div>
+      <VerifyCodeStep
+        email={email.trim()}
+        onBack={() => switchView('login')}
+        onVerified={() => finish('Email terverifikasi. Selamat datang di KoBo!')}
+      />
     );
   } else if (view === 'forgot-sent') {
     main = (

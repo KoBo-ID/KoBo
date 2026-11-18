@@ -14,7 +14,7 @@ test('B4 local unconfigured Google and failure fallback', async ({page}) => {
 test('B2 unknown login', async ({page}) => {
   await page.goto('/masuk')
   await page.getByLabel('Email').fill('tidak-ada@example.com')
-  await page.getByLabel('Kata Sandi').fill('salah-salah-1')
+  await page.getByLabel('Kata Sandi', { exact: true }).fill('salah-salah-1')
   await page.getByRole('button',{name:'Masuk ke Akun'}).click()
   await expect(page.getByRole('alert')).toContainText('Email atau kata sandi salah')
 })

@@ -6,7 +6,7 @@ Product UI first. KoBo is a working rental marketplace and owner workspace, not 
 
 ## Users
 
-- Students and young workers seeking a kos near campus.
+- Mahasiswa (verified university students) seeking a kos near campus. KoBo is mahasiswa-only for renters since 2026-11-17; anyone may browse, only verified students may apply, book, visit or join a waitlist.
 - Kos owners and managers operating one or more properties.
 
 ## Purpose

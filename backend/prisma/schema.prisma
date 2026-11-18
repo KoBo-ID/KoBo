@@ -27,6 +27,11 @@ model User {
   campusEmail           String?
   campusEmailVerifiedAt DateTime? @db.Timestamptz(3)
   isDemo                Boolean   @default(false)
+  // How and until when the student status was verified. Entra tid / "google:<hd>" and oid / sub; unique together (hand SQL index).
+  campusVerifiedVia     CampusVerifyMethod?
+  campusVerifiedUntil   DateTime?           @db.Timestamptz(3)
+  campusIdpTenant       String?
+  campusIdpSubject      String?
 
   // Emergency contact: required before a first application; the contact is only messaged when the student consented.
   emergencyContactName      String?
@@ -49,6 +54,95 @@ model User {
   recordedPayments   Payment[]           @relation("PaymentRecordedBy")
   profileViewsMade   TenantProfileView[] @relation("ProfileViewOwner")
   profileViewsOfMe   TenantProfileView[] @relation("ProfileViewTenant")
+  studentDocuments      StudentDocument[]
+  campusEmailChallenges CampusEmailChallenge[]
+  sheeridVerifications  SheerIdVerification[]
+}
+
+enum CampusVerifyMethod {
+  EMAIL
+  MICROSOFT
+  GOOGLE
+  KTM
+  SHEERID
+}
+
+enum SheerIdStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+/// One SheerID verification session (DEV/TEST ONLY: see sheerIdEnv; refused in production until the legal gate in
+/// .orchestration/web-research/all-campus-verification/sheerid-implementation.md is green). Holds no personal data:
+/// SheerID collects it on its hosted form; KoBo keeps only the opaque verificationId and the outcome.
+model SheerIdVerification {
+  id             String        @id @default(cuid(2))
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verificationId String        @unique
+  // No FK: Campus is reference data (ADR 0016).
+  campusId       String?
+  status         SheerIdStatus @default(PENDING)
+  lastStep       String?
+  errorIds       String[]      @default([])
+  consentVersion String
+  consentAt      DateTime      @db.Timestamptz(3)
+  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  decidedAt      DateTime?     @db.Timestamptz(3)
+  purgedAt       DateTime?     @db.Timestamptz(3)
+
+  @@index([userId, createdAt])
+}
+
+enum StudentDocumentKind {
+  KTM
+}
+
+enum StudentDocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model StudentDocument {
+  id          String                @id @default(cuid(2))
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // No FK: Campus is reference data (ADR 0016).
+  campusId    String?
+  kind        StudentDocumentKind   @default(KTM)
+  key         String
+  contentType String
+  status      StudentDocumentStatus @default(PENDING)
+  nim         String?
+  nameOnCard  String?
+  validUntil  DateTime?             @db.Date
+  reviewer    String?
+  reason      String?
+  consentAt   DateTime              @db.Timestamptz(3)
+  createdAt   DateTime              @default(now()) @db.Timestamptz(3)
+  decidedAt   DateTime?             @db.Timestamptz(3)
+  deleteAfter DateTime?             @db.Timestamptz(3)
+  deletedAt   DateTime?             @db.Timestamptz(3)
+
+  // Hand-written in the migration: unique ("userId") WHERE status = 'PENDING' AND "deletedAt" IS NULL.
+  @@index([status, createdAt])
+  @@index([deleteAfter])
+}
+
+model CampusEmailChallenge {
+  id         String    @id @default(cuid(2))
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email      String
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime  @db.Timestamptz(3)
+  consumedAt DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, createdAt])
 }
 
 model Session {
@@ -219,6 +313,9 @@ model Campus {
   lat          Float
   lng          Float
   emailDomains String[]
+  // Curated student mail domains (exact match; also matched against a Google hd) and Microsoft Entra tenant ids.
+  studentEmailDomains String[] @default([])
+  entraTenantIds      String[] @default([])
 
   // Nationwide catalogue fields (null on the hand-seeded rows). Rows loaded by `catalog:import` carry dataVersion.
   pddiktiId      String?
@@ -373,7 +470,9 @@ model RentalApplication {
   status         RentalApplicationStatus @default(PENDING)
   startDate      DateTime                @db.Date
   durationMonths Int
-  occupation     String
+  occupation     String?
+  program        String?
+  semester       Int?
   note           String?
   tenancyId      String?                 @unique
   tenancy        Tenancy?                @relation(fields: [tenancyId], references: [id], onDelete: SetNull)

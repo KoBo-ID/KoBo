@@ -54,7 +54,7 @@ test('the owner opens the tenant profile: phone and emergency contact appear onl
     )
     const applicationId = await apply(student, owner.rooms[0].id)
     await owner.page.goto(`/owner/dashboard?kos=${owner.kosId}&tab=tindakan`)
-    await owner.page.getByRole('button', { name: /^Profil Penguji E2E/ }).click()
+    await owner.page.getByRole('button', { name: /^Lihat profil Penguji E2E/ }).click()
     const dialog = owner.page.getByTestId('tenant-profile')
     await expect(dialog).toContainText('Email kampus terverifikasi')
     await expect(dialog).toContainText('Terbuka setelah disetujui')

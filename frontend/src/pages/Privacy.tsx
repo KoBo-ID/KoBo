@@ -30,7 +30,7 @@ export const Privacy: React.FC = () => {
             'Untuk pemilik kos: jenis kepemilikan yang Anda nyatakan sendiri',
           ]}
         />
-        <p>KoBo belum meminta foto atau nomor KTP. Bila fitur itu ditambahkan, KoBo akan meminta persetujuan terpisah dan menyimpannya di penyimpanan privat, tidak di alamat publik.</p>
+        <p>KoBo belum meminta foto atau nomor KTP. Foto kartu mahasiswa (KTM) hanya dipakai untuk verifikasi status mahasiswa, lihat bagian 11.</p>
       </InfoSection>
       <InfoSection heading="3. Tujuan dan dasar pemrosesan">
         <InfoList
@@ -77,6 +77,17 @@ export const Privacy: React.FC = () => {
       </InfoSection>
       <InfoSection heading="10. Perubahan">
         <p>Bila kebijakan berubah secara berarti, versi baru ditampilkan dan persetujuan Anda diminta lagi.</p>
+      </InfoSection>
+      <InfoSection heading="11. Verifikasi status mahasiswa">
+        <InfoList
+          items={[
+            'Email kampus: KoBo hanya menyimpan alamat email kampus dan waktu verifikasinya.',
+            'Akun kampus Microsoft atau Google: KoBo hanya menyimpan domain atau tenant kampus dan pengenal akun. Kata sandi dan isi kotak masuk tidak pernah kami simpan, dan email dari akun kampus tidak dipakai.',
+            'Foto KTM disimpan di penyimpanan privat dan hanya dapat dilihat peninjau KoBo lewat tautan sementara. Foto dihapus 30 hari setelah keputusan peninjauan, atau segera saat Anda membatalkan verifikasi atau menghapus akun.',
+            'KoBo tetap menyimpan keputusan peninjau (diterima atau ditolak) beserta tanggal berlakunya.',
+            'Pemilik kos hanya melihat keterangan "Mahasiswa terverifikasi" beserta kampus dan metode verifikasi yang dipakai.',
+          ]}
+        />
       </InfoSection>
     </InfoPage>
   );

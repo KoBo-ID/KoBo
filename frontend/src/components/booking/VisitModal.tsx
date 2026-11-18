@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { addDays, todayWIB } from '@kobo/shared/domain';
 import { Calendar, Clock, Phone, CheckCircle2, ShieldCheck } from 'lucide-react';
@@ -9,7 +10,8 @@ import { Input } from '../ui/Input';
 import { Notice } from '../ui/Notice';
 import { useSession } from '../../lib/session';
 import { useTRPC } from '../../lib/trpc';
-import { messageForError } from '../../lib/errors';
+import { isStudentGateError, messageForError } from '../../lib/errors';
+import { VerifyPrompt } from './VerifyPrompt';
 import { useAppStore } from '../../store/AppContext';
 
 interface VisitModalProps {
@@ -41,6 +43,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
   const [phoneInput, setPhoneInput] = useState<string | undefined>(undefined);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [gateError, setGateError] = useState(false);
 
   const updateProfile = useMutation(trpc.auth.updateProfile.mutationOptions());
   const create = useMutation(trpc.visit.create.mutationOptions());
@@ -63,6 +66,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
       onClose();
     } catch (err) {
       setError(messageForError(err));
+      setGateError(isStudentGateError(err));
     }
   };
 
@@ -80,6 +84,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
       maxWidth="md"
     >
       <form onSubmit={(e) => void handleSubmit(e)} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <VerifyPrompt what="menjadwalkan survey" />
         {/* Zero-Commitment Trust Ribbon */}
         <div
           style={{
@@ -233,7 +238,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
           />
         </div>
 
-        {error && <Notice tone="error">{error}</Notice>}
+        {error && <Notice tone="error">{error}{gateError && <> {' '}<Link to="/profile" style={{ color: 'var(--primary)', fontWeight: 700 }}>Buka Profil</Link></>}</Notice>}
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>

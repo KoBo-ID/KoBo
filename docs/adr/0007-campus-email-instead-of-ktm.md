@@ -1,5 +1,7 @@
 # 0007. Campus-email verification instead of KTM scans
 
+Partly superseded by ADR 0018.
+
 **Context.** The student discount needs proof of enrolment. KTM scans need a private bucket, an admin role and UI, Cloudflare Access and handling of national-ID images (about 25-30 hours, plus risk).
 
 **Decision.** A student verifies a `*.ac.id` address matching a known campus domain by clicking a signed emailed link, which sets `campusEmailVerifiedAt`. The server alone computes the discount. The seeded demo student is pre-verified so the discount works even if campus mail quarantines us.

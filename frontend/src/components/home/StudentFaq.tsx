@@ -9,8 +9,9 @@ const STEPS: { title: string; text: React.ReactNode }[] = [
 ];
 
 const FAQ: { q: string; a: React.ReactNode }[] = [
+  { q: 'Siapa yang bisa menyewa di KoBo?', a: 'Hanya mahasiswa yang status kampusnya terverifikasi. Verifikasi lewat email mahasiswa, akun Microsoft/Google kampus, atau unggah kartu mahasiswa (KTM) jika keduanya tidak tersedia. Siapa pun bisa melihat-lihat kos tanpa verifikasi.' },
   { q: 'Kenapa perlu email kampus?', a: <>Email kampus (.ac.id) yang terverifikasi membuka diskon mahasiswa di pembayaran pertama. Verifikasinya di halaman <Link to="/profile" className="mhs-link">Profil</Link>.</> },
-  { q: 'Bagaimana jika belum punya email kampus?', a: 'Kamu tetap bisa mencari, survey, dan mengajukan sewa tanpa diskon. Verifikasi dengan kartu mahasiswa segera hadir.' },
+  { q: 'Bagaimana jika belum punya email kampus?', a: 'Kamu tetap bisa mencari, survey, dan mengajukan sewa tanpa diskon. Kamu juga bisa memverifikasi dengan unggah kartu mahasiswa (KTM).' },
   { q: 'Apakah orang tua bisa membayar?', a: 'Saat ini pembayaran dilakukan dari akunmu. Orang tua dapat membayar lewat metode yang tersedia di halaman pembayaran (misalnya transfer atau e-wallet) memakai tagihan atas namamu. Tautan bayar khusus orang tua belum tersedia.' },
   { q: 'Bayar per bulan atau per semester?', a: 'Harga ditampilkan per bulan. Pilihan 1, 3, atau 12 bulan ada di halaman kos; pembayaran pertama dan tagihan berikutnya tampil sebelum kamu mengajukan.' },
   { q: 'Kenapa diminta kontak darurat?', a: 'Sebelum pengajuan pertama kami meminta satu kontak (misalnya orang tua). Dengan izinmu, kami hanya menghubunginya bila sewa terlambat lebih dari seminggu.' },

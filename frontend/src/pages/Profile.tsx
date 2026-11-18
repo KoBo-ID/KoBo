@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Building2 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/AppContext';
@@ -9,12 +9,12 @@ import { Input } from '../components/ui/Input';
 import { Notice } from '../components/ui/Notice';
 import { Avatar } from '../components/ui/Avatar';
 import { AccountSecurityCard } from '../components/auth/AccountSecurityCard';
-import { CampusDiscountCard } from '../components/booking/CampusDiscountCard';
+import { StudentVerificationCard } from '../components/profile/StudentVerificationCard';
 import { EmergencyContactCard, RemindersAndTermsCard } from '../components/profile/ConsentCards';
 import { useSession } from '../lib/session';
 import { BecomeOwnerModal } from '../components/owner/BecomeOwnerModal';
 import { useTRPC } from '../lib/trpc';
-import { messageForError } from '../lib/errors';
+import { CAMPUS_RETURN_MESSAGES, messageForError } from '../lib/errors';
 
 /** Headline student discount shown on the verification card (the per-kos amount applies at checkout). */
 
@@ -32,6 +32,26 @@ export const Profile: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [campus, setCampus] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // The campus email link and the campus-account sign-in come back here as /profile?campus=<result>.
+  const [params, setParams] = useSearchParams();
+  const campusResult = params.get('campus');
+  const [campusNotice, setCampusNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  const signedIn = !!me;
+  useEffect(() => {
+    if (!campusResult || !signedIn) return;
+    const known = CAMPUS_RETURN_MESSAGES[campusResult];
+    if (known) {
+      setCampusNotice(known);
+      if (known.tone === 'success') {
+        addToast(known.text, 'success');
+        void qc.invalidateQueries({ queryKey: trpc.auth.me.queryKey() });
+      }
+    }
+    const next = new URLSearchParams(params);
+    next.delete('campus');
+    setParams(next, { replace: true });
+  }, [campusResult, signedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!me) {
     return (
@@ -78,7 +98,7 @@ export const Profile: React.FC = () => {
           Profil Akun & Verifikasi Kampus
         </h1>
         <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-          Kelola informasi identitas dan verifikasi email kampus (.ac.id) untuk klaim diskon sewa.
+          Kelola informasi identitas dan verifikasi status mahasiswa Anda.
         </p>
       </div>
 
@@ -132,7 +152,7 @@ export const Profile: React.FC = () => {
                   }}
                 >
                   <ShieldCheck size={14} />
-                  <span>Email Kampus Terverifikasi</span>
+                  <span>Mahasiswa Terverifikasi</span>
                 </div>
               )}
             </div>
@@ -193,7 +213,8 @@ export const Profile: React.FC = () => {
           )}
         </div>
 
-        <CampusDiscountCard />
+        {campusNotice && <Notice tone={campusNotice.tone}>{campusNotice.text}</Notice>}
+        <StudentVerificationCard />
 
         {me && !me.user.isDemo && <EmergencyContactCard />}
 

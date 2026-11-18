@@ -56,7 +56,7 @@ test('wrong password shows an inline Indonesian error', async ({ page, problems 
   await page.getByRole('button', { name: 'Masuk', exact: true }).click()
   const dialog = page.locator('main')
   await dialog.getByLabel('Email').fill('tidak-ada@example.com')
-  await dialog.getByLabel('Kata Sandi').fill('salah-salah-1')
+  await dialog.getByLabel('Kata Sandi', { exact: true }).fill('salah-salah-1')
   await dialog.getByRole('button', { name: 'Masuk ke Akun' }).click()
   await expect(dialog.getByRole('alert')).toContainText('Email atau kata sandi salah')
   // The browser logs the 401 as a console error; it is the expected outcome here, so drain it.

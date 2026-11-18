@@ -23,14 +23,14 @@ const ownerRow = (page: Page, text: string) => page.getByTestId('owner-applicati
 const boardRow = (page: Page, roomNumber: string) => page.getByRole('row').filter({ hasText: `Kamar ${roomNumber}` })
 const checkoutTotal = (page: Page) => page.getByText('Total perkiraan', { exact: true }).locator('xpath=../..')
 
-async function fillApplication(page: Page, occupation: string, note?: string) {
-  await page.getByLabel('Pekerjaan atau kegiatan utama').fill(occupation)
+async function fillApplication(page: Page, program: string, note?: string) {
+  await page.getByLabel('Jurusan').fill(program)
   if (note) await page.getByLabel(/Catatan untuk pemilik/).fill(note)
 }
 
 test('scenario 1: the room picker shows vacant, held, full, reserved-for-queue and offered-to-me rooms', async ({ browser, problems }) => {
   const owner = await newOwnerWorld(browser, { label: 'avail', rooms: 2 })
-  const viewer = await newStudent(browser, { label: 'avail-view' })
+  const viewer = await newStudent(browser, { label: 'avail-view', campus: true })
   const holderA = await newStudent(browser, { label: 'avail-a' })
   const holderB = await newStudent(browser, { label: 'avail-b' })
   const waiter = await newStudent(browser, { label: 'avail-wait' })
@@ -138,15 +138,13 @@ test('scenario 2: a signed-out visitor signs in from the checkout and can apply 
     await expect(page).toHaveURL(/[/]masuk[?]next=/)
     const form = page.locator('main')
     await form.getByLabel('Email').fill(account.email)
-    await form.getByLabel('Kata Sandi').fill(PASSWORD)
+    await form.getByLabel('Kata Sandi', { exact: true }).fill(PASSWORD)
     await form.getByRole('button', { name: 'Masuk ke Akun' }).click()
 
-    // KNOWN DEFECT (audit): signing in with a password sends the browser to the e-mail verification landing page
-    // (AuthForm.tsx passes callbackURL '/verifikasi-email'), so the visitor leaves the checkout and is told "Email berhasil
-    // diverifikasi" although nothing was verified. The room is only kept because it lives in the checkout URL.
-    await test.step('password sign-in leaves the checkout for the verification page (current behaviour)', async () => {
-      await expect(page).toHaveURL(/\/verifikasi-email/)
-      await expect(page.getByRole('heading', { name: 'Email berhasil diverifikasi' })).toBeVisible()
+    // Password sign-in no longer detours through a verification page; it follows ?next= back to the checkout.
+    await test.step('password sign-in does not land on the verification page', async () => {
+      await expect(page.getByRole('heading', { name: 'Masuk ke Akun KoBo' })).toHaveCount(0)
+      await expect(page).not.toHaveURL(/verifikasi-email/)
     })
 
     await test.step('opening the same checkout address again keeps the room and lets the signed-in student submit', async () => {
@@ -182,10 +180,12 @@ test('scenario 3: form limits stop bad input in the browser and the server refus
     const submit = page.getByRole('button', { name: 'Kirim Pengajuan' })
     const date = page.getByLabel('Tanggal Mulai Sewa')
 
-    await test.step('occupation is required: no request is sent', async () => {
+    await test.step('semester outside 1 to 14 is blocked by the number field: no request is sent', async () => {
+      await page.getByLabel('Semester').fill('15')
       await submit.click()
-      expect(await page.getByLabel('Pekerjaan atau kegiatan utama').evaluate((el) => (el as HTMLInputElement).validity.valueMissing)).toBe(true)
+      expect(await page.getByLabel('Semester').evaluate((el) => (el as HTMLInputElement).validity.rangeOverflow)).toBe(true)
       expect(created).toHaveLength(0)
+      await page.getByLabel('Semester').fill('')
     })
 
     await test.step('a past start date is blocked by the date field', async () => {
@@ -211,16 +211,8 @@ test('scenario 3: form limits stop bad input in the browser and the server refus
       await page.getByLabel(/Catatan untuk pemilik/).fill('')
     })
 
-    await test.step('a one-character occupation passes the browser and the server answers with the generic copy', async () => {
-      await fillApplication(page, 'A')
-      await submit.click()
-      await expect(page.getByRole('alert')).toContainText('Data yang dikirim tidak valid. Periksa kembali isian Anda.')
-      expect(created).toHaveLength(1)
-      expectHttpErrors(problems, 400)
-    })
-
     await test.step('the server itself refuses past, far, long and out-of-range input', async () => {
-      const base = { roomId: room.id, startDate: wibToday(3), durationMonths: 3, occupation: 'Mahasiswa' }
+      const base = { roomId: room.id, startDate: wibToday(3), durationMonths: 3, program: 'Mahasiswa' }
       const past = await trpcRaw(student.ctx, 'application.create', { ...base, startDate: wibToday(-2) })
       expect([past.status, past.message]).toEqual([400, 'Tanggal mulai tidak boleh di masa lalu.'])
       const far = await trpcRaw(student.ctx, 'application.create', { ...base, startDate: wibToday(400) })
@@ -228,7 +220,7 @@ test('scenario 3: form limits stop bad input in the browser and the server refus
       expect((await trpcRaw(student.ctx, 'application.create', { ...base, durationMonths: 13 })).status).toBe(400)
       expect((await trpcRaw(student.ctx, 'application.create', { ...base, durationMonths: 0 })).status).toBe(400)
       expect((await trpcRaw(student.ctx, 'application.create', { ...base, note: 'x'.repeat(501) })).status).toBe(400)
-      expect((await trpcRaw(student.ctx, 'application.create', { ...base, occupation: ' ' })).status).toBe(400)
+      expect((await trpcRaw(student.ctx, 'application.create', { ...base, semester: 15 })).status).toBe(400)
       expect((await trpcRaw(student.ctx, 'application.create', { ...base, roomId: 'tidak-ada' })).message).toBe('Kamar tidak ditemukan.')
       expect(await sql('SELECT id FROM "RentalApplication" WHERE "userId" = $1', [student.userId])).toHaveLength(0)
     })
@@ -287,7 +279,7 @@ test('scenario 3: a second application for the same room by the same student is 
 
 test('scenario 4: a submitted application reads "Menunggu Pemilik" for the student and is listed for the owner', async ({ browser, problems }) => {
   const owner = await newOwnerWorld(browser, { label: 'peng', rooms: 1 })
-  const student = await newStudent(browser, { label: 'peng-stu' })
+  const student = await newStudent(browser, { label: 'peng-stu', campus: true })
   watch(student.page, problems)
   const room = owner.rooms[0]
   const note = `Saya mahasiswa semester 3 (${Date.now()})`
@@ -319,8 +311,9 @@ test('scenario 4: a submitted application reads "Menunggu Pemilik" for the stude
       await ownerInbox(owner)
       const row = ownerRow(owner.page, 'Mahasiswa BINUS')
       await expect(row).toContainText('Penguji E2E')
-      await expect(row).toContainText(`Kamar ${room.roomNumber}, Standar`)
-      await expect(row).toContainText('1 bulan, Mahasiswa BINUS')
+      await expect(row).toContainText(`Kamar ${room.roomNumber} · Standar`)
+      await expect(row).toContainText('1 bulan')
+      await expect(row).toContainText('Mahasiswa terverifikasi')
       await expect(row).toContainText(note)
       await expect(row.getByRole('button', { name: 'Terima' })).toBeEnabled()
       await expect(row.getByRole('button', { name: 'Tolak' })).toBeEnabled()
@@ -447,8 +440,8 @@ test('scenario 8: approving one of two applicants rejects the other, and a stale
   watch(stale, problems)
   const room = owner.rooms[0]
   try {
-    const appA = await apply(a, room.id, { occupation: 'Pelamar Pertama' })
-    const appB = await apply(b, room.id, { occupation: 'Pelamar Kedua' })
+    const appA = await apply(a, room.id, { program: 'Pelamar Pertama' })
+    const appB = await apply(b, room.id, { program: 'Pelamar Kedua' })
 
     await test.step('the owner sees both and keeps a second window open on the same list', async () => {
       await ownerInbox(owner)
@@ -512,7 +505,7 @@ test('scenario 9: approving an application for a room already offered to a queue
   watch(stale, problems)
   const room = owner.rooms[0]
   try {
-    const applicationId = await apply(applicant, room.id, { occupation: 'Pelamar Awal' })
+    const applicationId = await apply(applicant, room.id, { program: 'Pelamar Awal' })
     // The room is vacant with a pending application when the queue is handed it (the only way to reach this state: an offer
     // needs a freed room, and a freed room cannot be applied for first).
     await sql(

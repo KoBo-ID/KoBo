@@ -154,7 +154,7 @@ Resend domain (Resend -> Domains -> Add domain; a subdomain such as `mail.<domai
 2. MX on the same bounce subdomain, pointing at the `feedback-smtp.<region>.amazonses.com` host shown.
 3. DKIM: `TXT` `resend._domainkey.<domain>` with the long `p=...` key.
 4. DMARC: `TXT` `_dmarc.<domain>` = `v=DMARC1; p=none;` (tighten to `quarantine` once reports look clean).
-5. Domain settings: turn **off** click tracking and open tracking. Rewritten tracking links and pixels hurt deliverability, and click tracking wraps the verify link.
+5. Domain settings: turn **off** click tracking and open tracking. Rewritten tracking links and pixels hurt deliverability, and click tracking wraps links.
 
 Smoke test (sends one real email; never in CI). With the Railway values in your shell or `backend/.env`:
 
@@ -162,9 +162,9 @@ Smoke test (sends one real email; never in CI). With the Railway values in your 
 npm run email:smoke -w backend -- you@example.com
 ```
 
-It lists the account's domains and their status (a sending-only key cannot, and it says so), warns if `EMAIL_FROM`'s domain is not verified or is `resend.dev`, sends the real `verify-email` template with a sample link on `BETTER_AUTH_URL`, and prints Resend's email id or the error status and body. Check the message headers in the inbox for `spf=pass`, `dkim=pass`, `dmarc=pass`. On Railway, failed sends log `[outbox] <id>: verify-email to *@<domain> failed (attempt n/5): Resend responded <status>: <body>`, and startup warns about a `resend.dev` sender.
+It lists the account's domains and their status (a sending-only key cannot, and it says so), warns if `EMAIL_FROM`'s domain is not verified or is `resend.dev`, sends the real `verify-email` template with a sample 6-digit code, and prints Resend's email id or the error status and body. Check the message headers in the inbox for `spf=pass`, `dkim=pass`, `dmarc=pass`. On Railway, failed sends log `[outbox] <id>: verify-email to *@<domain> failed (attempt n/5): Resend responded <status>: <body>`, and startup warns about a `resend.dev` sender.
 
-Requeue failed email (`EmailOutbox`, enum `OutboxStatus` = `PENDING | SENT | FAILED`). Links are baked into `payload.url` at enqueue time, so first fix the origin of rows queued under a wrong `BETTER_AUTH_URL`, and do not requeue `verify-email` / `reset-password` rows: their tokens expire after an hour, so ask the user to press resend instead (`campus-email` links last 24 h, `waitlist-offer` until the offer deadline).
+Requeue failed email (`EmailOutbox`, enum `OutboxStatus` = `PENDING | SENT | FAILED`). Links are baked into `payload.url` at enqueue time, so first fix the origin of rows queued under a wrong `BETTER_AUTH_URL`. Do not requeue `verify-email` (a 6-digit code valid 10 minutes, no link) or `reset-password` (token valid one hour) rows: ask the user to press resend instead. `campus-email` is also a code (no link); `waitlist-offer` links last until the offer deadline.
 
 ```sql
 -- inspect

@@ -742,26 +742,29 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   margin-top: 1rem;
 }
 .kobo-hero__campus-lead {
-  font-size: 0.85rem;
+  font-size: 0.8125rem;
   color: var(--text-muted);
 }
+/* Secondary shortcut, so a small pill. The ::before keeps a 44px tap target around the 32px chip. */
 .kobo-hero__campus-chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: var(--radius-btn);
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   color: var(--text-main);
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.8125rem;
+  font-weight: 500;
   text-decoration: none;
 }
+.kobo-hero__campus-chip::before { content: ''; position: absolute; inset: -6px -3px; }
 .kobo-hero__campus-chip:hover { border-color: var(--primary); color: var(--primary); }
 .kobo-hero__campus-chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 @media (min-width: 1024px) {
@@ -1418,3 +1421,41 @@
 .nearby-chip:focus-visible { outline: 3px solid var(--border-focus); outline-offset: 2px; }
 /* The name sits on its own line under the tabs: fixed height, so hovering never moves anything. */
 .nearby-caption { min-height: 2rem; margin: 1rem 0 0.25rem; font-size: 1.375rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.3; color: var(--text-main); }
+
+/* Student verification (profile card, prompts) */
+.verify-prompt { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.85rem 1rem; border-radius: var(--radius-md); background-color: var(--primary-light); border: 1px solid var(--primary); }
+.student-verif__methods { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.student-verif__link { background: none; border: 0; padding: 0; min-height: var(--control-height); color: var(--primary); font-weight: 600; font-size: 0.85rem; text-decoration: underline; cursor: pointer; text-align: left; }
+.student-verif__link:hover { color: var(--primary-dark, var(--primary)); }
+.student-verif__option { display: block; width: 100%; min-height: var(--control-height); padding: 0 0.75rem; text-align: left; background: var(--bg-surface); border: 0; border-top: 1px solid var(--border-subtle); cursor: pointer; font: inherit; font-size: 0.85rem; }
+.student-verif__option:hover { background-color: var(--bg-muted); }
+@media (max-width: 480px) { .student-verif__methods > * { flex: 1 1 100%; } }
+
+/* Six-digit email verification step (components/auth/VerifyCodeStep) */
+.verify-code { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; text-align: center; }
+.verify-code__text { font-size: 0.95rem; color: var(--text-main); line-height: 1.55; }
+.verify-code__stack { display: flex; flex-direction: column; gap: 0.6rem; width: 100%; text-align: left; }
+.verify-code__back { color: var(--primary); font-weight: 700; text-decoration: underline; font-size: 0.85rem; align-self: center; }
+
+/* One-time-code field (ui/OtpInput): six boxes over one transparent input. */
+.otp { display: flex; flex-direction: column; gap: 6px; }
+.otp__boxes { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; width: 80%; margin: 0 auto; cursor: text; }
+.otp__box {
+  aspect-ratio: 4 / 5; display: grid; place-items: center;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-input);
+  background: var(--bg-surface); color: var(--text-main);
+  font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.otp__box--filled { border-color: var(--text-muted); }
+.otp__box--active { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--primary-glow); }
+.otp__input {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; border: 0; padding: 0; margin: 0;
+  font-size: 16px; /* no iOS zoom on focus */
+  color: transparent; caret-color: transparent; background: transparent;
+}
+.otp__input:disabled { cursor: not-allowed; }
+.otp__help { margin: 0; font-size: 0.8rem; color: var(--text-muted); text-align: center; }
+@media (max-width: 400px) { .otp__boxes { gap: 6px; } .otp__box { font-size: 1.25rem; } }
+@media (prefers-reduced-motion: reduce) { .otp__box { transition: none; } }

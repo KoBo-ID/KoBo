@@ -7,6 +7,7 @@ import type { WaitlistStatusResult } from '../../../../../backend/src/trpc/route
 import { Room, Kos } from '../../../types';
 import { Button } from '../../ui/Button';
 import { JoinCard, OfferBanner, QueuedCard } from './WaitlistBox';
+import { useNeedsVerification, VerifyPrompt } from '../../booking/VerifyPrompt';
 import { formatRupiah } from '../../../lib/format';
 
 interface StickyBookingSidebarProps {
@@ -45,6 +46,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
 }) => {
   const { me, isLoading: sessionLoading } = useSession();
   const verified = !!me?.campusVerified;
+  const needsVerification = useNeedsVerification();
   const isVacant = selectedRoom.status === 'vacant' && !selectedRoom.reservedForWaitlist;
   const hasDiscount = kos.studentDiscountAmount > 0;
   const quoteInput = {
@@ -138,7 +140,10 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
         {offerEntry && <OfferBanner entry={offerEntry} onBook={waitlist.onBookOffer} />}
         {queuedEntry && <QueuedCard entry={queuedEntry} />}
         {showJoin && status && (
+          <>
+          <VerifyPrompt what="masuk daftar tunggu" />
           <JoinCard key={String(waitlist.joinType)} kosId={kos.id} status={status} initialType={waitlist.joinType ?? null} onBack={full ? undefined : waitlist.onBackToBooking} />
+          </>
         )}
 
         {showBooking && (<>
@@ -231,7 +236,14 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
 
         {/* Strict CTA Visual Hierarchy: Exactly ONE Dominant Primary CTA (with an offer, the banner's "Pesan Sekarang" is it) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {showBooking && !offerEntry && (
+          {showBooking && !offerEntry && needsVerification && isVacant && (
+            <Link to="/profile" style={{ display: 'block' }}>
+              <Button variant="primary" size="lg" fullWidth icon={<GraduationCap size={18} />} style={{ minHeight: '44px', padding: '0.65rem 1.25rem' }}>
+                Verifikasi status mahasiswa
+              </Button>
+            </Link>
+          )}
+          {showBooking && !offerEntry && !(needsVerification && isVacant) && (
             <Button
               variant="primary"
               size="lg"
@@ -276,9 +288,13 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
         <Button variant="outline" size="md" onClick={onOpenSurveyModal} style={{ minHeight: '44px' }}>
           Survey
         </Button>
-        <Button variant="primary" size="md" onClick={onGoToCheckout} style={{ minHeight: '44px' }}>
-          Ajukan
-        </Button>
+        {needsVerification ? (
+          <Link to="/profile"><Button variant="primary" size="md" style={{ minHeight: '44px' }}>Verifikasi</Button></Link>
+        ) : (
+          <Button variant="primary" size="md" onClick={onGoToCheckout} style={{ minHeight: '44px' }}>
+            Ajukan
+          </Button>
+        )}
       </div>
     )}
     </>

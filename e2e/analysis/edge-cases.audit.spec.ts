@@ -44,6 +44,8 @@ test('scenario 27: signed-out visitors are asked to sign in on /my-kos, /checkou
   try {
     await test.step('/my-kos', async () => {
       await page.goto('/my-kos')
+      await expect(page.getByRole('heading', { name: 'Masuk untuk melihat jadwal survey Anda' })).toBeVisible()
+      await page.getByRole('tab', { name: /Kamar yang Disewa/ }).click()
       await expect(page.getByRole('heading', { name: 'Masuk untuk Melihat Kos Anda' })).toBeVisible()
       await page.getByRole('tab', { name: /Pengajuan Sewa/ }).click()
       await expect(page.getByRole('heading', { name: 'Masuk untuk melihat pengajuan Anda' })).toBeVisible()
@@ -148,7 +150,7 @@ test('scenario 27: an unverified e-mail cannot sign in, can ask for a new link, 
       await page.getByRole('button', { name: 'Masuk untuk Mengajukan' }).click()
       const dialog = page.locator('main')
       await dialog.getByLabel('Email').fill(email)
-      await dialog.getByLabel('Kata Sandi').fill(password)
+      await dialog.getByLabel('Kata Sandi', { exact: true }).fill(password)
       await dialog.getByRole('button', { name: 'Masuk ke Akun' }).click()
       await expect(dialog).toContainText(`Akun ${email} belum diverifikasi. Buka tautan di email pendaftaran, atau kirim ulang tautannya.`)
       await expect(dialog.getByRole('button', { name: 'Kirim ulang email verifikasi' })).toBeVisible()

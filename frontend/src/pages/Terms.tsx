@@ -26,7 +26,7 @@ const SECTIONS: { heading: string; items: React.ReactNode[] }[] = [
   {
     heading: 'Definisi dan ruang lingkup',
     items: [
-      'KoBo adalah sistem elektronik yang mempertemukan pencari kos (terutama mahasiswa) dengan pemilik atau pengelola kos. KoBo bukan pemilik, pengelola, atau pihak dalam perjanjian sewa antara penyewa dan pemilik.',
+      'KoBo adalah sistem elektronik yang mempertemukan mahasiswa pencari kos dengan pemilik atau pengelola kos. KoBo bukan pemilik, pengelola, atau pihak dalam perjanjian sewa antara penyewa dan pemilik.',
       'Pemilik kos yang meninjau, menyetujui, atau menolak pengajuan sewa. Hubungan sewa terjadi antara penyewa dan pemilik.',
     ],
   },
@@ -43,7 +43,7 @@ const SECTIONS: { heading: string; items: React.ReactNode[] }[] = [
       'Satu akun dipakai untuk mencari kos dan, bila Anda mendaftar sebagai pemilik, mengelola kos.',
       'Data yang Anda isi harus benar dan menjadi tanggung jawab Anda. Jaga kerahasiaan kata sandi.',
       'Pengguna berusia 18 tahun ke atas. Pengguna di bawah 18 tahun memakai KoBo hanya dengan persetujuan dan pendampingan orang tua atau wali.',
-      'Diskon mahasiswa hanya berlaku setelah email kampus (.ac.id) Anda terverifikasi.',
+      'Diskon mahasiswa hanya berlaku setelah status mahasiswa Anda terverifikasi.',
     ],
   },
   {
@@ -74,6 +74,8 @@ const SECTIONS: { heading: string; items: React.ReactNode[] }[] = [
     items: [
       'Memberikan data yang benar, mematuhi tata tertib kos, dan membayar tepat waktu.',
       'Sebelum pengajuan pertama, penyewa mengisi kontak darurat dan, bila setuju, memberi izin agar KoBo menghubunginya jika pembayaran terlambat lebih dari 7 hari. Izin ini dapat dicabut kapan saja di halaman Profil.',
+      'Penyewa wajib mahasiswa terverifikasi. Verifikasi berlaku paling lama 12 bulan dan perlu diperbarui setelah itu.',
+      'Menyalahgunakan akun atau dokumen orang lain, termasuk kartu mahasiswa, dilarang.',
     ],
   },
   {

@@ -49,6 +49,8 @@ export function authEnv(env: NodeJS.ProcessEnv = process.env) {
   }
 
   const ipHeaders = parseList(env.AUTH_IP_HEADERS).map((h) => h.toLowerCase())
+  const google = googleEnv(env)
+  const campusMs = campusMsEnv(env)
 
   return {
     baseURL,
@@ -59,7 +61,10 @@ export function authEnv(env: NodeJS.ProcessEnv = process.env) {
     // Unset: createAuth's default (cf-connecting-ip in production). Behind Vercel -> Railway use x-forwarded-for.
     ipAddressHeaders: ipHeaders.length > 0 ? ipHeaders : undefined,
     // Optional Google sign-in; throws when only one of the two variables is set, so a half-configured deploy fails at boot.
-    google: googleEnv(env) ?? undefined,
+    google: google ?? undefined,
+    // Campus-account verification (OIDC). Microsoft has its own app registration; Google reuses the sign-in client.
+    campusMs: campusMs ?? undefined,
+    campusIdpProviders: { microsoft: campusMs !== null, google: google !== null },
   }
 }
 
@@ -73,6 +78,20 @@ export function googleEnv(env: NodeJS.ProcessEnv = process.env): { clientId: str
   if (!clientId && !clientSecret) return null
   if (!clientId || !clientSecret) {
     throw new Error(`[auth] Google sign-in needs both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET; only ${clientId ? 'GOOGLE_CLIENT_ID' : 'GOOGLE_CLIENT_SECRET'} is set.`)
+  }
+  return { clientId, clientSecret }
+}
+
+/**
+ * Microsoft campus-account verification is optional, with its own multi-tenant Entra app. Both CAMPUS_MS_CLIENT_ID and
+ * CAMPUS_MS_CLIENT_SECRET -> enabled; neither -> off (null); exactly one -> refuse to start.
+ */
+export function campusMsEnv(env: NodeJS.ProcessEnv = process.env): { clientId: string; clientSecret: string } | null {
+  const clientId = env.CAMPUS_MS_CLIENT_ID?.trim() ?? ''
+  const clientSecret = env.CAMPUS_MS_CLIENT_SECRET?.trim() ?? ''
+  if (!clientId && !clientSecret) return null
+  if (!clientId || !clientSecret) {
+    throw new Error(`[auth] Microsoft campus verification needs both CAMPUS_MS_CLIENT_ID and CAMPUS_MS_CLIENT_SECRET; only ${clientId ? 'CAMPUS_MS_CLIENT_ID' : 'CAMPUS_MS_CLIENT_SECRET'} is set.`)
   }
   return { clientId, clientSecret }
 }

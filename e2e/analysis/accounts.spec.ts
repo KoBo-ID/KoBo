@@ -11,7 +11,7 @@ test('B1 register and verify through outbox', async ({page}) => {
   const email = `audit-${Date.now()}@example.com`
   await page.getByLabel('Nama Lengkap').fill('Penguji Audit')
   await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Kata Sandi').fill('Sandi-rahasia-123')
+  await page.getByLabel('Kata Sandi', { exact: true }).fill('Sandi-rahasia-123')
   await page.getByLabel(/Saya menyetujui/).check()
   await page.getByRole('button',{name:'Daftar Sekarang'}).click()
   await expect(page.getByText('Cek email Anda').first()).toBeVisible()
@@ -33,7 +33,7 @@ test('B3 password reset and old password invalidation', async ({page}) => {
   await expect(page.getByRole('heading',{name:'Kata sandi diperbarui'})).toBeVisible()
   await page.goto('/masuk')
   await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Kata Sandi').fill('Sandi-rahasia-123')
+  await page.getByLabel('Kata Sandi', { exact: true }).fill('Sandi-rahasia-123')
   await page.getByRole('button',{name:'Masuk ke Akun'}).click()
   await expect(page.getByRole('alert')).toContainText('Email atau kata sandi salah')
 })

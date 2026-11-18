@@ -89,9 +89,9 @@ function seedInput(): SeedInput {
 }
 
 const EMAIL_DOMAINS: Record<string, string[]> = {
-  'binus-syahdan': ['binus.ac.id', 'student.binus.ac.id'],
-  'binus-anggrek': ['binus.ac.id', 'student.binus.ac.id'],
-  'binus-kijang': ['binus.ac.id', 'student.binus.ac.id'],
+  'binus-syahdan': ['binus.ac.id'],
+  'binus-anggrek': ['binus.ac.id'],
+  'binus-kijang': ['binus.ac.id'],
   'ui-depok': ['ui.ac.id'],
   'itb-ganesha': ['itb.ac.id', 'students.itb.ac.id'],
   'ipb-dramaga': ['apps.ipb.ac.id'],
@@ -102,11 +102,41 @@ const EMAIL_DOMAINS: Record<string, string[]> = {
   'uns-kentingan': ['student.uns.ac.id'],
   'its-sukolilo': ['student.its.ac.id'],
   'ub-malang': ['student.ub.ac.id'],
-  'untirta-serang': ['untirta.ac.id', 'students.untirta.ac.id'],
+  'untirta-serang': ['untirta.ac.id'],
   'unsil-tasikmalaya': ['student.unsil.ac.id'],
   'unsoed-purwokerto': ['mhs.unsoed.ac.id'],
   'uksw-salatiga': ['student.uksw.edu'],
-  'unej-jember': ['mail.unej.ac.id', 'students.unej.ac.id'],
+  'unej-jember': ['mail.unej.ac.id'],
+}
+
+/** Curated student mail domains (research D). Only domains confirmed as student mail with an MX record; ui, untirta and unej stay empty. */
+const STUDENT_EMAIL_DOMAINS: Record<string, string[]> = {
+  'binus-syahdan': ['binus.ac.id'],
+  'binus-anggrek': ['binus.ac.id'],
+  'binus-kijang': ['binus.ac.id'],
+  'itb-ganesha': ['students.itb.ac.id'],
+  'ipb-dramaga': ['apps.ipb.ac.id'],
+  'umn-gading-serpong': ['student.umn.ac.id'],
+  'ugm-bulaksumur': ['mail.ugm.ac.id'],
+  'uns-kentingan': ['student.uns.ac.id'],
+  'its-sukolilo': ['student.its.ac.id'],
+  'ub-malang': ['student.ub.ac.id'],
+  'unsoed-purwokerto': ['student.unsoed.ac.id', 'mhs.unsoed.ac.id'],
+  'undip-tembalang': ['students.undip.ac.id'],
+  'president-university': ['student.president.ac.id'],
+  'unsil-tasikmalaya': ['student.unsil.ac.id'],
+  'uksw-salatiga': ['student.uksw.edu'],
+}
+
+/** Microsoft Entra tenant ids of campuses with a confirmed tenant. */
+const BINUS_TENANT = '3485b963-82ba-4a6f-810f-b5cc226ff898'
+const ENTRA_TENANT_IDS: Record<string, string[]> = {
+  'binus-syahdan': [BINUS_TENANT],
+  'binus-anggrek': [BINUS_TENANT],
+  'binus-kijang': [BINUS_TENANT],
+  'itb-ganesha': ['db6e1183-4c65-405c-82ce-7cd53fa6e9dc'],
+  'undip-tembalang': ['03290435-ff74-45d1-aeaa-173677221cf8'],
+  'its-sukolilo': ['1d5169ac-c7cb-4275-9764-bf8c9c364a4c'],
 }
 
 const MONTHS: Record<string, number> = {
@@ -182,6 +212,8 @@ export function buildSeed(now: Date): SeedRows {
     lat: c.coordinates.lat,
     lng: c.coordinates.lng,
     emailDomains: EMAIL_DOMAINS[c.id] ?? [],
+    studentEmailDomains: STUDENT_EMAIL_DOMAINS[c.id] ?? [],
+    entraTenantIds: ENTRA_TENANT_IDS[c.id] ?? [],
   }))
 
   // ---- users
@@ -195,6 +227,8 @@ export function buildSeed(now: Date): SeedRows {
     campus?: string
     campusEmail?: string
     campusEmailVerifiedAt?: Date
+    campusVerifiedVia?: 'EMAIL' | 'MICROSOFT' | 'GOOGLE' | 'KTM'
+    campusVerifiedUntil?: Date
     isDemo?: boolean
     createdAt: Date
   }
@@ -232,8 +266,11 @@ export function buildSeed(now: Date): SeedRows {
     email: DEMO_EMAILS.student,
     emailVerified: true,
     campus: 'Binus Syahdan',
-    campusEmail: 'dimas.pratama@student.binus.ac.id',
+    campusEmail: 'dimas.pratama@binus.ac.id',
     campusEmailVerifiedAt: baseCreated,
+    campusVerifiedVia: 'EMAIL',
+    // From the real "now", not baseCreated: the seed dates are fixed in the past and the demo student must stay verified.
+    campusVerifiedUntil: new Date(now.getTime() + 365 * 86_400_000),
     isDemo: true,
     createdAt: baseCreated,
   })

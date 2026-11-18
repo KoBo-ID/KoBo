@@ -279,7 +279,7 @@ describe('booking guard', () => {
   it("refuses another student's booking of the offered room, including the next in line", async () => {
     const { a, b, roomId } = await offered()
     for (const who of [b.c, callerFor((await newStudent()).id)]) {
-      const e = await err(who.application.create({ roomId, startDate: startDate(), durationMonths: 3, occupation: 'Mahasiswa' }))
+      const e = await err(who.application.create({ roomId, startDate: startDate(), durationMonths: 3 }))
       expect(e?.code).toBe('CONFLICT')
       expect(e?.message).toBe('Kamar ini sedang ditawarkan ke pengantre lain.')
     }
@@ -305,7 +305,7 @@ describe('booking guard', () => {
     expect((await entryRow(a.entry.id)).status).toBe('WAITING')
 
     const stranger = await newStudent()
-    const e = await err(callerFor(stranger.id).application.create({ roomId: f.room('S1').id, startDate: startDate(), durationMonths: 3, occupation: 'Mahasiswa' }))
+    const e = await err(callerFor(stranger.id).application.create({ roomId: f.room('S1').id, startDate: startDate(), durationMonths: 3 }))
     expect(e?.code).toBe('CONFLICT')
     expect(e?.message).toBe('Kamar ini sedang ditawarkan ke pengantre lain.')
     // The advance committed even though the booking was refused: #1 now holds the offer and the email is queued.
@@ -320,7 +320,7 @@ describe('booking guard', () => {
     await f.owner.tenancy.end({ kosId: f.kos.id, tenancyId: f.tenancies.S1 })
     expect((await entryRow(behind.entry.id)).status).toBe('OFFERED')
     // The Deluxe waiter takes the Standar room that was nobody's... it is offered to `behind`, so they cannot.
-    expect(await code(deluxe.c.application.create({ roomId: f.room('S1').id, startDate: startDate(), durationMonths: 3, occupation: 'Mahasiswa' }))).toBe('CONFLICT')
+    expect(await code(deluxe.c.application.create({ roomId: f.room('S1').id, startDate: startDate(), durationMonths: 3 }))).toBe('CONFLICT')
 
     const g = await fullKos([{ n: 'S1', type: 'Standar' }, { n: 'D1', type: 'Deluxe' }])
     const wantsDeluxe = await join(g.kos.id, 'Deluxe')

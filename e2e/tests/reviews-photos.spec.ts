@@ -63,7 +63,7 @@ test('a paying tenant reviews their kos, it appears on Detail, and the owner rep
   let invoiceId = ''
   for (const room of kos!.rooms.filter((r) => r.status === 'vacant').sort(() => Math.random() - 0.5)) {
     const submitted = await page.request.post('/api/trpc/application.create', {
-      data: { roomId: room.id, startDate, durationMonths: 3, occupation: 'Mahasiswa' },
+      data: { roomId: room.id, startDate, durationMonths: 3, program: 'Mahasiswa' },
       headers: { origin },
     })
     if (submitted.ok()) {

@@ -17,7 +17,7 @@ test('sign-up shows the "cek email" state and the emailed link confirms verifica
   const email = `daftar-${Date.now()}@example.com`
   await dialog.getByLabel('Nama Lengkap').fill('Calon Penyewa')
   await dialog.getByLabel('Email').fill(email)
-  await dialog.getByLabel('Kata Sandi').fill('Sandi-rahasia-123')
+  await dialog.getByLabel('Kata Sandi', { exact: true }).fill('Sandi-rahasia-123')
   await dialog.getByLabel(/Saya menyetujui/).check()
   await dialog.getByRole('button', { name: 'Daftar Sekarang' }).click()
   await expect(dialog.getByText('Cek email Anda').first()).toBeVisible()
@@ -37,7 +37,7 @@ test('"Kirim ulang email verifikasi" queues a fresh link that verifies the accou
   const email = `ulang-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`
   await dialog.getByLabel('Nama Lengkap').fill('Calon Penyewa')
   await dialog.getByLabel('Email').fill(email)
-  await dialog.getByLabel('Kata Sandi').fill('Sandi-rahasia-123')
+  await dialog.getByLabel('Kata Sandi', { exact: true }).fill('Sandi-rahasia-123')
   await dialog.getByLabel(/Saya menyetujui/).check()
   await dialog.getByRole('button', { name: 'Daftar Sekarang' }).click()
   await expect(dialog.getByText('Cek email Anda').first()).toBeVisible()

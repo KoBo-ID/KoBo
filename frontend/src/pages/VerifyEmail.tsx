@@ -1,50 +1,46 @@
-import React, { useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { MailCheck, ShieldAlert } from 'lucide-react';
+import React from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { MailCheck } from 'lucide-react';
 import { AuthCard } from '../components/auth/AuthCard';
-import { EmailActionForm } from '../components/auth/EmailActionForm';
+import { VerifyCodeStep } from '../components/auth/VerifyCodeStep';
 import { Button } from '../components/ui/Button';
 import { useAuthActions } from '../lib/session';
+import { useAppStore } from '../store/AppContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
-/** Landing page of the emailed verification link: /verifikasi-email (success) or ?error=... (failure). */
+/** /verifikasi-email?email=...: the 6-digit code step. Without an email there is nothing to verify, so it points to sign-in. */
 export const VerifyEmail: React.FC = () => {
   useDocumentTitle('Verifikasi email');
   const [params] = useSearchParams();
-  const failed = params.get('error');
+  const email = params.get('email')?.trim() ?? '';
   const { refreshSession } = useAuthActions();
+  const { addToast } = useAppStore();
+  const navigate = useNavigate();
 
-  // A successful link signs the user in server-side (autoSignInAfterVerification); pick that up.
-  useEffect(() => {
-    if (!failed) void refreshSession();
-  }, [failed, refreshSession]);
-
-  if (!failed) {
+  if (!email) {
     return (
-      <AuthCard icon={<MailCheck size={40} color="var(--primary)" />} title="Email berhasil diverifikasi">
-        <p style={{ color: 'var(--text-muted)', lineHeight: 1.55 }}>Akun KoBo Anda sudah aktif. Selamat mencari kos!</p>
-        <Link to="/">
+      <AuthCard icon={<MailCheck size={40} color="var(--primary)" />} title="Verifikasi email">
+        <p style={{ color: 'var(--text-muted)', lineHeight: 1.55 }}>
+          Verifikasi email memakai kode 6 digit yang dikirim saat Anda mendaftar atau masuk. Masuk untuk menerima kode baru.
+        </p>
+        <Link to="/masuk">
           <Button variant="primary" fullWidth>
-            Ke Beranda
+            Ke Halaman Masuk
           </Button>
         </Link>
       </AuthCard>
     );
   }
 
-  const expired = /expired/i.test(failed);
   return (
-    <AuthCard icon={<ShieldAlert size={40} color="var(--status-overdue)" />} title="Verifikasi gagal">
-      <p style={{ color: 'var(--text-muted)', lineHeight: 1.55 }}>
-        {expired ? 'Tautan verifikasi sudah kedaluwarsa.' : 'Tautan verifikasi tidak valid atau sudah dipakai.'} Minta tautan baru di bawah.
-      </p>
-      <EmailActionForm
-        submitLabel="Kirim Ulang Email Verifikasi"
-        successText="Tautan verifikasi baru sudah dikirim. Periksa kotak masuk dan folder spam Anda."
-        send={async (email) => {
-          const { authClient } = await import('../lib/authClient');
-          const { error: err } = await authClient.sendVerificationEmail({ email, callbackURL: '/verifikasi-email' });
-          return err ?? null;
+    <AuthCard icon={null} title="Verifikasi email">
+      <VerifyCodeStep
+        email={email}
+        onBack={() => navigate('/masuk')}
+        onVerified={async () => {
+          await refreshSession();
+          addToast('Email terverifikasi. Selamat datang di KoBo!', 'success');
+          navigate(params.get('next')?.startsWith('/') && !params.get('next')?.startsWith('//') ? params.get('next')! : '/');
         }}
       />
     </AuthCard>

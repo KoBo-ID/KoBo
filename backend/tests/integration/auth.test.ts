@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TERMS_VERSION } from '@kobo/shared/domain'
 import { createAuth } from '../../src/auth.ts'
 import { resetDb } from '../../src/db/seed.ts'
-import { baseURL, cookieFrom, demoCookie, lastEmail, me, nextIp, pathOf, prisma, registerAndSignIn, request, secret } from '../helpers.ts'
+import { baseURL, cookieFrom, demoCookie, lastEmail, me, nextIp, pathOf, prisma, registerAndSignIn, request, secret, verifyEmailWithCode } from '../helpers.ts'
 
 beforeEach(() => resetDb(prisma))
 
@@ -14,7 +14,8 @@ describe('email + password sign-up', () => {
     expect(res.status).toBe(200)
     const row = await lastEmail('verify-email', 'sari@example.com')
     expect(row?.status).toBe('PENDING')
-    expect(row?.payload.url).toContain('/api/auth/verify-email?token=')
+    expect(row?.payload.code).toMatch(/^\d{6}$/)
+    expect(row?.payload.url).toBeUndefined()
     expect(row?.payload.name).toBe('Sari')
   })
 
@@ -34,9 +35,8 @@ describe('email + password sign-up', () => {
     expect(early.status).toBe(403)
     expect(cookieFrom(early)).toBe('')
 
-    const mail = await lastEmail('verify-email', 'sari@example.com')
-    const verify = await request(pathOf(mail!.payload.url))
-    expect(verify.status).toBeLessThan(400)
+    const verify = await verifyEmailWithCode('sari@example.com')
+    expect(verify.status).toBe(200)
 
     const ok = await request('/api/auth/sign-in/email', { body: { email: 'sari@example.com', password: PASSWORD } })
     expect(ok.status).toBe(200)
@@ -57,7 +57,7 @@ describe('email + password sign-up', () => {
 })
 
 describe('resending the verification email', () => {
-  it('queues a NEW verify-email row whose link verifies the account', async () => {
+  it('queues a NEW verify-email row with a fresh code that verifies the account', async () => {
     await request('/api/auth/sign-up/email', { body: { name: 'Sari', email: 'sari@example.com', password: PASSWORD } })
     const first = await lastEmail('verify-email', 'sari@example.com')
 
@@ -67,45 +67,101 @@ describe('resending the verification email', () => {
     const second = await lastEmail('verify-email', 'sari@example.com')
     expect(second?.id).not.toBe(first?.id)
     expect(second?.status).toBe('PENDING')
+    expect(second?.payload.url).toBeUndefined()
 
-    const click = await request(pathOf(second!.payload.url))
-    expect(click.status).toBe(302)
-    expect(new URL(click.headers.get('location')!, baseURL).pathname).toBe('/verifikasi-email')
+    expect((await verifyEmailWithCode('sari@example.com')).status).toBe(200)
     expect((await prisma.user.findUniqueOrThrow({ where: { email: 'sari@example.com' } })).emailVerified).toBe(true)
   })
 })
 
 describe('emailed links', () => {
-  // A link built on the wrong origin (e.g. localhost on Railway) "goes nowhere"; every auth mail must use baseURL.
-  const startsAtBase = (url: string | undefined) => {
-    expect(url?.startsWith(`${baseURL}/`), url).toBe(true)
-  }
-
-  it('verify-email, reset-password and campus-email links all start with the configured baseURL', async () => {
-    const cookie = await registerAndSignIn('sari@example.com')
-    startsAtBase((await lastEmail('verify-email', 'sari@example.com'))?.payload.url)
-
+  // A link built on the wrong origin (e.g. localhost on Railway) "goes nowhere"; the reset link must use baseURL.
+  it('the reset-password link starts with the configured baseURL; verify-email carries a code and no link', async () => {
+    await registerAndSignIn('sari@example.com')
     await request('/api/auth/request-password-reset', { body: { email: 'sari@example.com', redirectTo: '/reset-password' } })
-    startsAtBase((await lastEmail('reset-password', 'sari@example.com'))?.payload.url)
+    expect((await lastEmail('reset-password', 'sari@example.com'))?.payload.url.startsWith(`${baseURL}/`)).toBe(true)
+    expect((await lastEmail('verify-email', 'sari@example.com'))?.payload.url).toBeUndefined()
+  })
+})
 
-    const campus = await request('/api/auth/campus-email/request', { cookie, body: { email: 'sari@student.binus.ac.id' } })
-    expect(campus.status).toBe(200)
-    startsAtBase((await lastEmail('campus-email', 'sari@student.binus.ac.id'))?.payload.url)
+describe('code-only email verification', () => {
+  const signUp = (email = 'sari@example.com') => request('/api/auth/sign-up/email', { body: { name: 'Sari', email, password: PASSWORD } })
+  const otp = (body: object, ip = nextIp()) => request('/api/auth/email-otp/verify-email', { ip, body })
+  const verified = async () => (await prisma.user.findUniqueOrThrow({ where: { email: 'sari@example.com' } })).emailVerified
+
+  it('a correct code verifies, signs in and sets the session cookie', async () => {
+    await signUp()
+    const res = await verifyEmailWithCode('sari@example.com')
+    expect(res.status).toBe(200)
+    expect(cookieFrom(res)).not.toBe('')
+    expect((await me(cookieFrom(res)))?.user.email).toBe('sari@example.com')
+    expect(await verified()).toBe(true)
   })
 
-  it('a custom baseURL (the Vercel origin) is what the links use', async () => {
-    const vercel = 'https://kobo-test.vercel.app'
-    const vercelAuth = createAuth({ prisma, baseURL: vercel, secret })
-    const res = await vercelAuth.handler(
-      new Request(`${vercel}/api/auth/sign-up/email`, {
-        method: 'POST',
-        headers: { origin: vercel, 'content-type': 'application/json', 'cf-connecting-ip': nextIp() },
-        body: JSON.stringify({ name: 'Budi', email: 'budi@example.com', password: PASSWORD, callbackURL: '/verifikasi-email' }),
-      }),
-    )
-    expect(res.status).toBe(200)
-    const url = (await lastEmail('verify-email', 'budi@example.com'))?.payload.url
-    expect(url?.startsWith(`${vercel}/api/auth/verify-email?token=`), url).toBe(true)
+  it('a wrong code 5 times kills the code, even the right one', async () => {
+    await signUp()
+    const good = (await lastEmail('verify-email', 'sari@example.com'))!.payload.code
+    const wrong = good === '000000' ? '111111' : '000000'
+    for (let i = 0; i < 5; i++) expect((await otp({ email: 'sari@example.com', otp: wrong })).status).toBe(400)
+    expect((await otp({ email: 'sari@example.com', otp: good })).status).toBe(403) // TOO_MANY_ATTEMPTS: the code is dead
+    expect(await verified()).toBe(false)
+  })
+
+  it('an expired code is refused', async () => {
+    await signUp()
+    const good = (await lastEmail('verify-email', 'sari@example.com'))!.payload.code
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 11 * 60 * 1000 })
+    try {
+      expect((await otp({ email: 'sari@example.com', otp: good })).status).toBe(400)
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(await verified()).toBe(false)
+  })
+
+  it('sign-in while unverified is refused and queues a fresh code', async () => {
+    await signUp()
+    const before = await prisma.emailOutbox.count({ where: { template: 'verify-email', to: 'sari@example.com' } })
+    const res = await request('/api/auth/sign-in/email', { body: { email: 'sari@example.com', password: PASSWORD } })
+    expect(res.status).toBe(403)
+    expect(cookieFrom(res)).toBe('')
+    expect(await prisma.emailOutbox.count({ where: { template: 'verify-email', to: 'sari@example.com' } })).toBe(before + 1)
+    expect((await verifyEmailWithCode('sari@example.com')).status).toBe(200)
+  })
+
+  it('send-verification-otp accepts only type email-verification', async () => {
+    await signUp()
+    for (const type of ['sign-in', 'forget-password', 'change-email']) {
+      const res = await request('/api/auth/email-otp/send-verification-otp', { body: { email: 'sari@example.com', type } })
+      expect(res.status, type).toBe(400)
+    }
+    const ok = await request('/api/auth/email-otp/send-verification-otp', { body: { email: 'sari@example.com', type: 'email-verification' } })
+    expect(ok.status).toBe(200)
+    expect(await prisma.emailOutbox.count({ where: { template: 'verify-email', to: 'sari@example.com' } })).toBe(2)
+  })
+
+  it('a verified account is never sent a code, and unknown addresses get none', async () => {
+    await registerAndSignIn('sari@example.com')
+    const before = await prisma.emailOutbox.count({ where: { template: 'verify-email' } })
+    for (const email of ['sari@example.com', 'ghost@example.com']) {
+      const ok = await request('/api/auth/email-otp/send-verification-otp', { body: { email, type: 'email-verification' } })
+      expect(ok.status).toBe(200)
+    }
+    expect(await prisma.emailOutbox.count({ where: { template: 'verify-email' } })).toBe(before)
+  })
+
+  it.each([
+    '/api/auth/sign-in/email-otp',
+    '/api/auth/forget-password/email-otp',
+    '/api/auth/email-otp/request-password-reset',
+    '/api/auth/email-otp/reset-password',
+    '/api/auth/email-otp/request-email-change',
+    '/api/auth/email-otp/change-email',
+    '/api/auth/email-otp/check-verification-otp',
+  ])('%s is refused with 404 and creates nothing', async (path) => {
+    const res = await request(path, { body: { email: 'new@example.com', otp: '123456', type: 'sign-in', newEmail: 'x@example.com', password: PASSWORD } })
+    expect(res.status).toBe(404)
+    expect(await prisma.user.count({ where: { email: 'new@example.com' } })).toBe(0)
   })
 })
 
@@ -238,13 +294,21 @@ describe('demo guards', () => {
     for (const [path, body] of [
       ['/api/auth/change-email', { newEmail: 'baru@example.com' }],
       ['/api/auth/delete-user', {}],
-      ['/api/auth/campus-email/request', { email: 'x@student.binus.ac.id' }],
+      ['/api/auth/campus-email/request', { email: 'x@binus.ac.id' }],
+      ['/api/auth/campus-email/confirm', { code: '123456' }],
     ] as const) {
       const res = await request(path, { cookie, body })
       expect(res.status, path).toBe(403)
       expect(((await res.json()) as { code: string }).code, path).toBe('DEMO_ACCOUNT_READONLY')
     }
     expect(await prisma.user.count({ where: { email: 'dimas.pratama@kobo.test' } })).toBe(1)
+  })
+
+  it('blocks campus-account verification start for demo users', async () => {
+    const cookie = await demoCookie('student')
+    const res = await request('/api/auth/campus-idp/start?provider=google', { cookie })
+    expect(res.status).toBe(403)
+    expect(((await res.json()) as { code: string }).code).toBe('DEMO_ACCOUNT_READONLY')
   })
 
   it('does not email password-reset links for demo accounts', async () => {
@@ -261,6 +325,19 @@ describe('demo guards', () => {
       body: { currentPassword: PASSWORD, newPassword: 'Sandi-baru-12345', revokeOtherSessions: false },
     })
     expect(res.status).toBe(200)
+  })
+})
+
+describe('server-controlled verification fields', () => {
+  it('/update-user cannot set campusVerifiedVia, campusVerifiedUntil or the campus-account identity', async () => {
+    const cookie = await registerAndSignIn('sari@example.com')
+    const res = await request('/api/auth/update-user', {
+      cookie,
+      body: { name: 'Sari', campusVerifiedVia: 'KTM', campusVerifiedUntil: new Date(Date.now() + 86_400_000).toISOString(), campusIdpTenant: 'x', campusIdpSubject: 'y' },
+    })
+    expect(res.status).toBeLessThan(500)
+    const row = await prisma.user.findUniqueOrThrow({ where: { email: 'sari@example.com' } })
+    expect([row.campusVerifiedVia, row.campusVerifiedUntil, row.campusIdpTenant, row.campusIdpSubject]).toEqual([null, null, null, null])
   })
 })
 

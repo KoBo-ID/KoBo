@@ -26,7 +26,7 @@ export const startIn = (days: number, now = new Date()) => addDays(todayWIB(now)
 /** An application by a fresh student for `roomId`, left PENDING. */
 export async function pendingApplication(roomId: string, over: { startDate?: string; durationMonths?: number } = {}) {
   const renter = await newStudent()
-  const created = await callerFor(renter.id).application.create({ roomId, startDate: over.startDate ?? startIn(5), durationMonths: over.durationMonths ?? 3, occupation: 'Mahasiswa', note: 'Uji.' })
+  const created = await callerFor(renter.id).application.create({ roomId, startDate: over.startDate ?? startIn(5), durationMonths: over.durationMonths ?? 3, note: 'Uji.' })
   return { renter, applicationId: created.id }
 }
 

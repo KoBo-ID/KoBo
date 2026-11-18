@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { authEnv, googleEnv, paymentEnv } from '../../src/env.ts'
+import { authEnv, campusMsEnv, googleEnv, paymentEnv } from '../../src/env.ts'
 
 const secret = 'test-secret-test-secret-test-secret-0123456789'
 const prod = (extra: Record<string, string>) => ({ NODE_ENV: 'production', BETTER_AUTH_SECRET: secret, ...extra })
@@ -161,5 +161,24 @@ describe('googleEnv', () => {
   it('fails fast when exactly one is set, naming the one that is present', () => {
     expect(() => googleEnv({ GOOGLE_CLIENT_ID: 'id' })).toThrow(/only GOOGLE_CLIENT_ID is set/)
     expect(() => googleEnv({ GOOGLE_CLIENT_SECRET: 'secret' })).toThrow(/only GOOGLE_CLIENT_SECRET is set/)
+  })
+})
+
+describe('campusMsEnv and campusIdpProviders', () => {
+  it('is off (null) with no variables, trims, and refuses a half-set pair', () => {
+    expect(campusMsEnv({})).toBeNull()
+    expect(campusMsEnv({ CAMPUS_MS_CLIENT_ID: ' ', CAMPUS_MS_CLIENT_SECRET: '' })).toBeNull()
+    expect(campusMsEnv({ CAMPUS_MS_CLIENT_ID: ' app-id ', CAMPUS_MS_CLIENT_SECRET: 's' })).toEqual({ clientId: 'app-id', clientSecret: 's' })
+    expect(() => campusMsEnv({ CAMPUS_MS_CLIENT_ID: 'id' })).toThrow(/only CAMPUS_MS_CLIENT_ID is set/)
+    expect(() => campusMsEnv({ CAMPUS_MS_CLIENT_SECRET: 's' })).toThrow(/only CAMPUS_MS_CLIENT_SECRET is set/)
+  })
+
+  it('authEnv reports which campus-account providers are configured (Google reuses the sign-in client)', () => {
+    const base = { BETTER_AUTH_URL: 'http://localhost:5173', BETTER_AUTH_SECRET: 'x'.repeat(40) }
+    expect(authEnv(base).campusIdpProviders).toEqual({ microsoft: false, google: false })
+    expect(authEnv({ ...base, GOOGLE_CLIENT_ID: 'g', GOOGLE_CLIENT_SECRET: 's' }).campusIdpProviders).toEqual({ microsoft: false, google: true })
+    const both = authEnv({ ...base, GOOGLE_CLIENT_ID: 'g', GOOGLE_CLIENT_SECRET: 's', CAMPUS_MS_CLIENT_ID: 'm', CAMPUS_MS_CLIENT_SECRET: 'ms' })
+    expect(both.campusIdpProviders).toEqual({ microsoft: true, google: true })
+    expect(both.campusMs).toEqual({ clientId: 'm', clientSecret: 'ms' })
   })
 })

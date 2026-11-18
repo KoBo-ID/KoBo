@@ -12,6 +12,14 @@ import { useTRPC } from '../../lib/trpc';
 const formatDate = (date: string) =>
   new Date(`${date}T00:00:00+07:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
+// SHEERID (dev/test only) is never named to owners: SheerID's VSA §3.2(e) bars passing its Result to third parties.
+const VIA_LABEL = { EMAIL: 'email kampus', MICROSOFT: 'akun Microsoft', GOOGLE: 'akun Google', KTM: 'KTM', SHEERID: 'dokumen' } as const;
+/** Program and semester for new applications; old rows only have the free-text occupation. */
+const detail = (a: { program: string | null; semester: number | null; occupation: string | null }) => {
+  const parts = [a.program, a.semester ? `Semester ${a.semester}` : null].filter(Boolean);
+  return parts.length ? parts.join(' · ') : (a.occupation ?? '');
+};
+
 export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
   const trpc = useTRPC();
   const qc = useQueryClient();
@@ -83,9 +91,14 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
               </div>
               <div className="od-row__main">
                 <span>Mulai {formatDate(application.startDate)} · {application.durationMonths} bulan</span>
-                <span className="od-row__sub od-row__oneline" title={[application.occupation, application.note].filter(Boolean).join(' · ')}>
-                  {application.occupation}
-                  {application.note ? ` · "${application.note}"` : ''}
+                <span className="od-row__sub">
+                  {application.student.verified
+                    ? `Mahasiswa terverifikasi · ${application.student.campus ?? '-'}${application.student.via ? ` · ${VIA_LABEL[application.student.via]}` : ''}`
+                    : 'Belum terverifikasi'}
+                </span>
+                <span className="od-row__sub od-row__oneline" title={[detail(application), application.note].filter(Boolean).join(' · ')}>
+                  {detail(application)}
+                  {application.note ? `${detail(application) ? ' · ' : ''}"${application.note}"` : ''}
                 </span>
               </div>
               <div className="od-row__actions">

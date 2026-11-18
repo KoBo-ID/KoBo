@@ -12,7 +12,7 @@ afterEach(() => {
 const code = async (p: Promise<unknown>) => ((await p.then(() => null, (e: unknown) => e)) as TRPCError | null)?.code
 const contact = { name: 'Ibu Sari', relation: 'Ibu', phone: '0812 3456 7890', consent: true as const }
 const apply = (userId: string, roomId: string) =>
-  callerFor(userId).application.create({ roomId, startDate: addDays(todayWIB(new Date()), 3), durationMonths: 3, occupation: 'Mahasiswa' })
+  callerFor(userId).application.create({ roomId, startDate: addDays(todayWIB(new Date()), 3), durationMonths: 3 })
 
 describe('emergency contact and terms', () => {
   it('stores the contact only with consent, shows it in auth.me, and can withdraw it', async () => {

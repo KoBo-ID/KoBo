@@ -15,8 +15,9 @@ import { geocoderFromEnv, type Geocoder } from './geocode.ts'
 import { paymentServiceFromEnv } from './payment/service.ts'
 import type { PaymentService } from './payment/service.ts'
 import { handleXenditWebhook, MAX_WEBHOOK_BYTES } from './payment/webhook.ts'
+import { settleSheerId, sheerIdServiceFromEnv, verifySheerIdSignature, type SheerIdService } from './sheerid.ts'
 import type { RateLimiter } from './rateLimit.ts'
-import { DEV_UPLOAD_PREFIX, storageFromEnv } from './storage.ts'
+import { DEV_PRIVATE_PREFIX, DEV_UPLOAD_PREFIX, PRIVATE_PREFIX, storageFromEnv } from './storage.ts'
 import type { FakeStorage, Storage } from './storage.ts'
 import { appRouter } from './trpc/router.ts'
 import type { Context, Session } from './trpc/trpc.ts'
@@ -36,6 +37,8 @@ export interface AppOptions {
   limiter?: RateLimiter
   /** Test/e2e only (ALLOW_E2E_HOOKS=1, see e2eHooks.ts). Mounts /api/__e2e/*; absent in every real deployment. */
   e2eHooks?: E2eHooks | null
+  /** Defaults to sheerIdServiceFromEnv(): null unless SHEERID_ENABLED=1, and refused in production. Dev/test only. */
+  sheerid?: SheerIdService | null
 }
 
 /** Largest tRPC request body. Real inputs are a few KB; 256 KiB leaves room for long text fields. */
@@ -74,7 +77,7 @@ async function readIfFile(root: string, urlPath: string): Promise<Uint8Array<Arr
   }
 }
 
-export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...authEnv() }), storage = storageFromEnv(), paymentService = paymentServiceFromEnv(), geocoder = geocoderFromEnv(), limiter, e2eHooks = null }: AppOptions) {
+export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...authEnv() }), storage = storageFromEnv(), paymentService = paymentServiceFromEnv(), geocoder = geocoderFromEnv(), limiter, e2eHooks = null, sheerid = sheerIdServiceFromEnv() }: AppOptions) {
   const app = new Hono()
 
   // Response hardening for the SPA and the API (OWASP HTTP Headers Cheat Sheet; Hono secureHeaders defaults otherwise).
@@ -132,6 +135,31 @@ export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...auth
     },
   )
 
+  // SheerID callback (dev/test only): authenticated by X-SheerID-Signature over the raw body. The payload carries only
+  // verificationId + notifierEventType; the result is always re-read from SheerID, never trusted from the body.
+  app.post(
+    '/api/webhooks/sheerid',
+    bodyLimit({ maxSize: 16 * 1024, onError: (c) => c.json({ ok: false }, 413) }),
+    async (c) => {
+      if (!sheerid?.webhookSecret) return c.json({ error: 'Not found' }, 404)
+      const raw = await c.req.text()
+      if (!verifySheerIdSignature(raw, c.req.header('x-sheerid-signature'), sheerid.webhookSecret)) return c.json({ ok: false }, 401)
+      let verificationId: unknown
+      try {
+        verificationId = (JSON.parse(raw) as { verificationId?: unknown }).verificationId
+      } catch {
+        return c.json({ ok: false }, 400)
+      }
+      if (typeof verificationId !== 'string' || verificationId.length === 0 || verificationId.length > 100) return c.json({ ok: false }, 400)
+      try {
+        await settleSheerId(prisma, sheerid.client, verificationId)
+      } catch {
+        return c.json({ ok: false }, 502) // non-2xx: SheerID retries (+1h, +3h, +7h)
+      }
+      return c.json({ ok: true })
+    },
+  )
+
   // Dev/e2e only: the fake storage's presigned URLs point here. Never mounted when R2 is configured.
   if (storage.kind === 'fake') mountDevUploads(app, storage as FakeStorage)
 
@@ -160,6 +188,7 @@ export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...auth
           paymentService,
           geocoder,
           limiter,
+          sheerid,
           headers: req.headers,
           resHeaders,
           getSession: () => (session ??= auth.api.getSession({ headers: req.headers })),
@@ -212,8 +241,29 @@ function mountDevUploads(app: Hono, fake: FakeStorage) {
     return c.body(null, 200)
   })
   app.get(`${DEV_UPLOAD_PREFIX}*`, (c) => {
-    const o = fake.get(decodeURIComponent(c.req.path.slice(DEV_UPLOAD_PREFIX.length)))
+    const key = decodeURIComponent(c.req.path.slice(DEV_UPLOAD_PREFIX.length))
+    // Private objects are never served from the public route (they only live in the private map anyway).
+    if (key.startsWith(PRIVATE_PREFIX)) return c.json({ error: 'Not found' }, 404)
+    const o = fake.get(key)
     if (!o) return c.json({ error: 'Not found' }, 404)
     return c.body(o.bytes as Uint8Array<ArrayBuffer>, 200, { 'Content-Type': o.contentType, 'Cache-Control': 'public, max-age=31536000, immutable' })
+  })
+  // Private (KTM) objects: PUT needs the signed upload URL, GET needs a signed read URL that expires; never cached.
+  app.put(`${DEV_PRIVATE_PREFIX}*`, async (c) => {
+    const key = decodeURIComponent(c.req.path.slice(DEV_PRIVATE_PREFIX.length))
+    const q = c.req.query()
+    const bytes = new Uint8Array(await c.req.arrayBuffer())
+    const type = c.req.header('content-type') ?? ''
+    if (!fake.verifyPrivateUpload(key, q)) return c.json({ error: 'Signature mismatch' }, 403)
+    if (type !== q.ct || bytes.byteLength !== Number(q.len)) return c.json({ error: 'Signature mismatch' }, 403)
+    fake.putPrivate(key, bytes, type)
+    return c.body(null, 200)
+  })
+  app.get(`${DEV_PRIVATE_PREFIX}*`, (c) => {
+    const key = decodeURIComponent(c.req.path.slice(DEV_PRIVATE_PREFIX.length))
+    if (!fake.verifyPrivateGet(key, c.req.query())) return c.json({ error: 'Signature mismatch' }, 403)
+    const o = fake.getPrivate(key)
+    if (!o) return c.json({ error: 'Not found' }, 404)
+    return c.body(o.bytes as Uint8Array<ArrayBuffer>, 200, { 'Content-Type': o.contentType, 'Cache-Control': 'no-store' })
   })
 }

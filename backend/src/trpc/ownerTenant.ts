@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server'
-import { compareDates, todayWIB } from '@kobo/shared/domain'
+import { compareDates, isStudentVerified, todayWIB } from '@kobo/shared/domain'
 import { tenantProfileInput } from '@kobo/shared/schemas'
 import { z } from 'zod'
 import { ownerProcedure, router } from './trpc.ts'
@@ -70,7 +70,7 @@ export const ownerTenantRouter = router({
     const u = await ctx.prisma.user.findUniqueOrThrow({
       where: { id: userId },
       select: {
-        name: true, campus: true, phone: true, campusEmailVerifiedAt: true,
+        name: true, campus: true, phone: true, campusEmailVerifiedAt: true, campusVerifiedUntil: true,
         emergencyContactName: true, emergencyContactRelation: true, emergencyContactPhone: true, emergencyContactConsentAt: true,
       },
     })
@@ -100,7 +100,7 @@ export const ownerTenantRouter = router({
     return {
       name: u.name,
       campus: u.campus,
-      campusVerified: u.campusEmailVerifiedAt !== null,
+      campusVerified: isStudentVerified(u, new Date()),
       phone: accepted ? u.phone : null,
       basis,
       accepted,

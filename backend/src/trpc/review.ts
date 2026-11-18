@@ -1,3 +1,4 @@
+import { isStudentVerified } from '@kobo/shared/domain'
 import { reviewCreateInput, reviewReplyInput, reviewUpdateInput } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
 import { authedProcedure, ownerProcedure, router } from './trpc.ts'
@@ -35,7 +36,7 @@ export const reviewRouter = router({
     if (!reviewEligible(tenancy)) throw new TRPCError({ code: 'FORBIDDEN', message: 'Ulasan baru dapat ditulis setelah pembayaran sewa berhasil.' })
     const conflict = new TRPCError({ code: 'CONFLICT', message: 'Anda sudah mengulas sewa ini' })
     if (tenancy.review) throw conflict
-    const author = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id }, select: { campusEmailVerifiedAt: true } })
+    const author = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id }, select: { campusEmailVerifiedAt: true, campusVerifiedUntil: true } })
     try {
       return await ctx.prisma.review.create({
         data: {
@@ -43,7 +44,7 @@ export const reviewRouter = router({
           rating: input.rating,
           ...subColumns(input.subRatings),
           comment: input.comment,
-          verifiedStudent: author.campusEmailVerifiedAt !== null,
+          verifiedStudent: isStudentVerified(author, new Date()),
         },
         select: { id: true },
       })

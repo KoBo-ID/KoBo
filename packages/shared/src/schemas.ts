@@ -39,9 +39,31 @@ export const bookingCreateInput = z.object({
 export type BookingCreateInput = z.input<typeof bookingCreateInput>
 
 export const rentalApplicationCreateInput = bookingCreateInput.extend({
-  occupation: z.string().trim().min(2).max(120),
+  program: z.string().trim().max(80).optional(),
+  semester: z.number().int().min(1).max(14).optional(),
   note: z.string().trim().max(500).optional(),
 })
+
+/** KTM upload: the student's card photo goes to private storage. */
+export const ktmPresignInput = z.object({
+  contentType: z.enum(['image/jpeg', 'image/webp']),
+  contentLength: z.number().int().min(1).max(3_000_000),
+})
+/** SheerID (dev/test only): the student picks a campus and gives the separate cross-border transfer consent. */
+export const sheeridStartInput = z.object({
+  campusId: z.string().min(1),
+  consent: z.literal(true),
+})
+export type SheeridStartInput = z.infer<typeof sheeridStartInput>
+
+export const ktmConfirmInput = z.object({
+  key: z.string(),
+  campusId: z.string().min(1),
+  nim: z.string().trim().min(3).max(30),
+  nameOnCard: z.string().trim().min(2).max(80),
+  consent: z.literal(true),
+})
+export const campusEmailCodeInput = z.object({ code: z.string().regex(/^\d{6}$/) })
 
 export const rentalApplicationDecisionInput = z.object({
   kosId: z.string().min(1).max(64),

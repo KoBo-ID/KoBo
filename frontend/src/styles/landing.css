@@ -449,6 +449,8 @@
    transform/opacity move; the dotted route is wiped with clip-path (a
    dashoffset would slide the dots) and two small colour fades mark "selected". */
 @media (prefers-reduced-motion: no-preference) {
+  /* About 25% quicker than the site-wide beat, so each row's story finishes in roughly a second. */
+  .whyr { --dur-base: 440ms; --dur-slow: 700ms; --stagger: 60ms; }
   [data-reveal='armed'] .whyr__promise { opacity: 0; transform: translateY(var(--rise)); }
   .whyr__promise { transition: opacity var(--dur-base) var(--ease-apple-out), transform var(--dur-base) var(--ease-apple-out); }
   [data-reveal='armed'] .whyr__stage { opacity: 0; transform: translateY(var(--rise)) scale(0.985); }
@@ -461,11 +463,14 @@
   .whyr__picker { transition: opacity var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 4), transform var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 4); }
   .whyr__chip, .whyr__seg span { transition: background-color var(--dur-fast) var(--ease-apple-inout), border-color var(--dur-fast) var(--ease-apple-inout), color var(--dur-fast) var(--ease-apple-inout), box-shadow var(--dur-fast) var(--ease-apple-inout); }
   [data-reveal='armed'] .whyr__chip--on { background: transparent; border-color: var(--border-strong); color: var(--text-main); }
-  .whyr__chip--on { transition-delay: calc(var(--stagger) * 11); }
+  .whyr__chip--on { transition-delay: calc(var(--stagger) * 8); }
   [data-reveal='armed'] .whyr__seg .whyr__seg-on { background: transparent; box-shadow: none; color: var(--text-muted); }
-  .whyr__seg .whyr__seg-on { transition-delay: calc(var(--stagger) * 13); }
+  .whyr__seg .whyr__seg-on { transition-delay: calc(var(--stagger) * 10); }
   [data-reveal='armed'] .whyr__confirm { opacity: 0; transform: translateY(calc(var(--rise-sm) * -1)); }
-  .whyr__confirm { transition: opacity var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 15), transform var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 15); }
+  .whyr__confirm { transition: opacity var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 5), transform var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 5); }
+
+  [data-reveal='armed'] .whyr__picker-btn { opacity: 0.3; transform: scale(0.97); }
+  .whyr__picker-btn { transition: opacity var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 12), transform var(--dur-base) var(--ease-apple-out) calc(var(--stagger) * 12); }
 
   /* Row 2: back cards settle, price slides in, Hemat pops (individual scale leaves rotate(3deg) alone) */
   [data-reveal='armed'] .whyr__card--back { opacity: 0; transform: rotate(-3deg) translateY(12px); }
@@ -506,7 +511,7 @@
    Steps are a real sequence, so they sit on a rail (dots, no numerals: the promises section above already numbers its rows).
    The FAQ is one hairline-divided list beside its heading, no outer box; the open state shows through the plus turning
    into a minus and the row tint, not through color alone. */
-.mhs { display: flex; flex-direction: column; gap: 4rem; }
+.mhs { display: flex; flex-direction: column; gap: clamp(5rem, 9vw, 7.5rem); }
 .mhs__title { font-size: var(--landing-h2); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; margin: 0; text-wrap: balance; }
 .mhs-link { color: var(--primary); font-weight: 600; text-decoration: underline; text-underline-offset: 0.2em; }
 

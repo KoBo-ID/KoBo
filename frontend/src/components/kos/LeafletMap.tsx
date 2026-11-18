@@ -13,6 +13,7 @@ import { CAMPUSES } from '../../data/campuses';
 import { formatDistance, haversineMeters } from '../../utils/geo';
 import { SafeImage } from '../ui/SafeImage';
 import { formatRupiah } from '../../lib/format';
+import { SEARCH_RADIUS_METERS } from '@kobo/shared/search';
 
 /** A searched province / regency: its boundary (when one is stored) and bounding box, from region.outline. */
 export interface RegionOutline {
@@ -25,6 +26,8 @@ interface LeafletMapProps {
   kosList: Kos[];
   regionOutline?: RegionOutline | null;
   activeLocation: LocationPin | null;
+  isLoading?: boolean;
+  fitKey?: number;
   hoveredKosId?: string | null;
   onHoverKos?: (id: string | null) => void;
   style?: React.CSSProperties;
@@ -32,9 +35,8 @@ interface LeafletMapProps {
 }
 
 const PIN_ZOOM = 15;
-const RADIUS_METERS = 500;
 /** Above the default search radius a pin is a region and the map fits its whole extent. */
-const REGION_RADIUS_METERS = 5000;
+const REGION_RADIUS_METERS = SEARCH_RADIUS_METERS;
 const NEARBY_CAMPUS_METERS = 3000;
 
 const gradCapSvg = `
@@ -61,7 +63,9 @@ const MapViewportController: React.FC<{
   kosList: Kos[];
   campuses: Campus[];
   region: RegionOutline | null;
-}> = ({ pin, kosList, campuses, region }) => {
+  isLoading: boolean;
+  fitKey: number;
+}> = ({ pin, kosList, campuses, region, isLoading, fitKey }) => {
   const map = useMap();
   const [viewportVersion, setViewportVersion] = useState(0);
   const kosListRef = useRef(kosList);
@@ -79,8 +83,12 @@ const MapViewportController: React.FC<{
   const pinLng = pin?.coordinates.lng ?? null;
   const pinRadius = pin?.radiusMeters ?? 0;
   const pinKey = pinLat !== null && pinLng !== null ? `${pinLat},${pinLng},${pinRadius}` : 'none';
+  const kosKey = useMemo(
+    () => kosList.map((k) => `${k.id}:${k.coordinates.lat},${k.coordinates.lng}`).join('|'),
+    [kosList],
+  );
 
-  // Re-run fit only when the container transitions from hidden/zero-size to visible
+  // Re-run fit when the container transitions from hidden/zero-size to visible
   useEffect(() => {
     const container = map.getContainer();
     let wasVisible = container.clientWidth > 0 && container.clientHeight > 0;
@@ -88,9 +96,9 @@ const MapViewportController: React.FC<{
     const observer = new ResizeObserver(() => {
       const isVisible = container.clientWidth > 0 && container.clientHeight > 0;
       if (isVisible && !wasVisible) {
-        wasVisible = true;
         setViewportVersion((version) => version + 1);
       }
+      wasVisible = isVisible;
     });
     observer.observe(container);
 
@@ -117,21 +125,51 @@ const MapViewportController: React.FC<{
     }
 
     if (pinLat !== null && pinLng !== null) {
-      map.flyTo([pinLat, pinLng], PIN_ZOOM, {
-        duration: 1,
-        easeLinearity: 0.3,
-      });
+      const effectiveRadius = pinRadius > 0 ? pinRadius : SEARCH_RADIUS_METERS;
+      if (isLoading) {
+        // Fresh results for this pin are still loading; frame the search radius immediately
+        // instead of fitting stale kos from the previous search.
+        map.fitBounds(L.latLng(pinLat, pinLng).toBounds(effectiveRadius * 2), {
+          padding: [24, 24],
+          maxZoom: PIN_ZOOM,
+          animate: true,
+        });
+        return;
+      }
+
+      const kosPoints = kosListRef.current.map(
+        (k) => [k.coordinates.lat, k.coordinates.lng] as [number, number],
+      );
+      if (kosPoints.length > 0) {
+        map.fitBounds(L.latLngBounds([[pinLat, pinLng], ...kosPoints]), {
+          paddingTopLeft: [72, 60],
+          paddingBottomRight: [56, 36],
+          maxZoom: PIN_ZOOM,
+          animate: true,
+        });
+      } else {
+        map.fitBounds(L.latLng(pinLat, pinLng).toBounds(effectiveRadius * 2), {
+          padding: [32, 32],
+          maxZoom: PIN_ZOOM,
+          animate: true,
+        });
+      }
       return;
     }
 
-    const points: [number, number][] = [
-      ...kosListRef.current.map((k) => [k.coordinates.lat, k.coordinates.lng] as [number, number]),
-      ...campusesRef.current.map((c) => [c.coordinates.lat, c.coordinates.lng] as [number, number]),
-    ];
+    if (isLoading) return;
+
+    const kosPoints = kosListRef.current.map(
+      (k) => [k.coordinates.lat, k.coordinates.lng] as [number, number],
+    );
+    const points: [number, number][] =
+      kosPoints.length > 0
+        ? kosPoints
+        : campusesRef.current.map((c) => [c.coordinates.lat, c.coordinates.lng] as [number, number]);
     if (points.length > 0) {
       map.fitBounds(L.latLngBounds(points), { padding: [36, 36], maxZoom: 13 });
     }
-  }, [pinKey, pinLat, pinLng, pinRadius, map, viewportVersion, region]);
+  }, [pinKey, pinLat, pinLng, pinRadius, kosKey, isLoading, fitKey, map, viewportVersion, region]);
 
   return null;
 };
@@ -140,6 +178,8 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   kosList,
   activeLocation,
   regionOutline = null,
+  isLoading = false,
+  fitKey = 0,
   hoveredKosId,
   onHoverKos,
   style,
@@ -201,7 +241,14 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         style={{ width: '100%', height: '100%', background: 'var(--bg-muted)' }}
         attributionControl={false}
       >
-        <MapViewportController pin={activeLocation} kosList={kosList} campuses={nearbyCampuses} region={regionOutline} />
+        <MapViewportController
+          pin={activeLocation}
+          kosList={kosList}
+          campuses={nearbyCampuses}
+          region={regionOutline}
+          isLoading={isLoading}
+          fitKey={fitKey}
+        />
 
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -217,11 +264,13 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           />
         )}
 
-        {activeLocation && (
+        {activeLocation && (() => {
+          const activeRadius = activeLocation.radiusMeters ?? SEARCH_RADIUS_METERS;
+          return (
           <>
             <Circle
               center={[activeLocation.coordinates.lat, activeLocation.coordinates.lng]}
-              radius={activeLocation.radiusMeters ?? RADIUS_METERS}
+              radius={activeRadius}
               pathOptions={{
                 color: 'hsl(190, 95%, 42%)',
                 weight: 1.5,
@@ -255,7 +304,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
                     {nearbyCampuses.length > 0 && (
                       <>
                         {' '}dan <strong style={{ color: 'var(--text-main)' }}>{nearbyCampuses.length} kampus</strong> di radius {Math.round(
-                          RADIUS_METERS / 1000
+                          activeRadius / 1000
                         )} km.
                       </>
                     )}
@@ -264,7 +313,8 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
               </Popup>
             </Marker>
           </>
-        )}
+          );
+        })()}
 
         {nearbyCampuses.map((campus) => (
           <Marker

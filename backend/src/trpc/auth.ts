@@ -1,6 +1,8 @@
 import { TRPCError } from '@trpc/server'
 import { consentsRequired } from '../consents.ts'
-import { TERMS_VERSION } from '@kobo/shared/domain'
+import { isStudentVerified, TERMS_VERSION } from '@kobo/shared/domain'
+import type { StudentVerificationStatus } from '@kobo/shared/types'
+import { getStudentVerificationStatus } from '../studentVerification/verifier.ts'
 import { acceptTermsInput, emergencyContactInput, notifyPrefInput, profileUpdateInput } from '@kobo/shared/schemas'
 import { authedProcedure, publicProcedure, router } from './trpc.ts'
 
@@ -12,6 +14,8 @@ export interface MeResult {
   /** False while a newly registered owner waits for KoBo's approval; their kos are not public yet. Null for non-owners. */
   ownerApproved: boolean | null
   campusVerified: boolean
+  /** Full verification state for the Profil card. Never carries a document key. */
+  studentVerification: StudentVerificationStatus
   /** The caller's own emergency contact (null until filled in with consent). */
   emergencyContact: { name: string; relation: string; phone: string } | null
   /** True when the caller agreed to the current Syarat/Privasi version. */
@@ -36,12 +40,16 @@ export const authRouter = router({
     if (!session) return null
     const u = await ctx.prisma.user.findUnique({ where: { id: session.user.id }, include: { ownerProfile: { select: { id: true, approvedAt: true } } } })
     if (!u) return null
+    const now = new Date()
+    const providers = { ...ctx.auth.campusIdpProviders, sheerid: !!ctx.sheerid }
+    const studentVerification = await getStudentVerificationStatus(ctx.prisma, u.id, now, providers)
     return {
       user: { id: u.id, name: u.name, email: u.email, image: u.image, phone: u.phone, campus: u.campus, campusEmail: u.campusEmail, isDemo: u.isDemo },
       isOwner: u.ownerProfile !== null,
       ownerProfileId: u.ownerProfile?.id ?? null,
       ownerApproved: u.ownerProfile ? u.ownerProfile.approvedAt !== null : null,
-      campusVerified: u.campusEmailVerifiedAt !== null,
+      campusVerified: isStudentVerified(u, now),
+      studentVerification,
       emergencyContact: u.emergencyContactName && u.emergencyContactPhone && u.emergencyContactConsentAt
         ? { name: u.emergencyContactName, relation: u.emergencyContactRelation ?? '', phone: u.emergencyContactPhone }
         : null,

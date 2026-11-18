@@ -108,14 +108,30 @@
   animation: popIn 180ms var(--ease-out-strong) both;
 }
 
-/* Hero page-load sequence: title, search, chips, one beat apart. Only runs
-   when motion is allowed; otherwise everything is simply visible. */
+/* Hero page-load sequence (components/home/Hero): the building rises, the headline comes in word by word
+   (--i), then the search and each campus chip (--d). Only runs when motion is allowed; otherwise
+   everything is simply visible. */
 @media (prefers-reduced-motion: no-preference) {
-  .hero-enter {
-    animation: rise-in var(--dur-base) var(--ease-apple-out) both;
+  #kobo-hero .kobo-hero-canvas { animation: hero-building 600ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .hero-word {
+    display: inline-block;
+    animation: hero-word 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(40ms + var(--i, 0) * 50ms);
   }
-  .hero-enter:nth-child(2) { animation-delay: var(--stagger); }
-  .hero-enter:nth-child(3) { animation-delay: calc(var(--stagger) * 2); }
+  .hero-in { animation: hero-in 400ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--d, 0ms); }
+}
+/* Transform + opacity only (no blur filter): stays crisp mid-animation and composites on the GPU. */
+@keyframes hero-building {
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes hero-word {
+  from { opacity: 0; transform: translateY(0.3em); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes hero-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
 }
 
 /* Generic scroll reveal: useReveal() arms the element (or an ancestor) with

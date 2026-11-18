@@ -141,10 +141,12 @@ describe('[G-013][R-057][R-058] review text limits', () => {
 describe('[G-014][R-019][R-020] application.create bounds', () => {
   it('refuses each violation and creates no application; accepts the exact limits', async () => {
     const room = await vacantRoom()
-    const base = { roomId: room.id, startDate: startIn(5), durationMonths: 3, occupation: 'Mahasiswa' }
+    const base = { roomId: room.id, startDate: startIn(5), durationMonths: 3 }
     const bad: [string, Record<string, unknown>][] = [
-      ['occupation 1 char', { occupation: 'a' }],
-      ['occupation 121 chars', { occupation: 'a'.repeat(121) }],
+      ['program 81 chars', { program: 'a'.repeat(81) }],
+      ['semester 0', { semester: 0 }],
+      ['semester 15', { semester: 15 }],
+      ['semester 1.5', { semester: 1.5 }],
       ['note 501 chars', { note: 'n'.repeat(501) }],
       ['0 months', { durationMonths: 0 }],
       ['13 months', { durationMonths: 13 }],
@@ -161,9 +163,9 @@ describe('[G-014][R-019][R-020] application.create bounds', () => {
     expect([far?.code, far?.message]).toEqual(['BAD_REQUEST', 'Tanggal mulai terlalu jauh dari hari ini.'])
     expect(await prisma.rentalApplication.count({ where: { roomId: room.id } })).toBe(0)
 
-    const a = await callerFor((await newStudent()).id).application.create({ ...base, occupation: 'ab', durationMonths: 12, note: 'n'.repeat(500) })
+    const a = await callerFor((await newStudent()).id).application.create({ ...base, program: 'ab', semester: 14, durationMonths: 12, note: 'n'.repeat(500) })
     expect(a.status).toBe('PENDING')
-    const b = await callerFor((await newStudent()).id).application.create({ ...base, occupation: 'o'.repeat(120), durationMonths: 1 })
+    const b = await callerFor((await newStudent()).id).application.create({ ...base, program: 'o'.repeat(80), semester: 1, durationMonths: 1 })
     expect(b.status).toBe('PENDING')
   })
 })

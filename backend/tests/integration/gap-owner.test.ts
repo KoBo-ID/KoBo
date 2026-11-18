@@ -11,7 +11,7 @@ describe('[G-037][R-074] deleting a kos or room that still has a pending applica
     const kos = await o.c.owner.kos.create(kosInput() as never)
     const room = await o.c.owner.room.create({ ...roomInput(), kosId: kos.id } as never)
     const renter = await newStudent()
-    const app = await callerFor(renter.id).application.create({ roomId: room.id, startDate: startIn(4), durationMonths: 3, occupation: 'Mahasiswa' })
+    const app = await callerFor(renter.id).application.create({ roomId: room.id, startDate: startIn(4), durationMonths: 3 })
 
     const roomE = await err(o.c.owner.room.delete({ kosId: kos.id, roomId: room.id }))
     const kosE = await err(o.c.owner.kos.delete({ kosId: kos.id }))

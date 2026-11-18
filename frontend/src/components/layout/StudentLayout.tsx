@@ -11,7 +11,8 @@ export const StudentLayout: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navbar onOpenAuth={openAuthModal} />
-      <main style={{ flex: 1 }}>
+      {/* min-height is one screen minus the navbar (see my-kos.css), so the footer starts at the fold. */}
+      <main className="student-main">
         <Outlet />
       </main>
       <Footer />

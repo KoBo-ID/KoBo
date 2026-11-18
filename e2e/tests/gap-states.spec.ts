@@ -96,14 +96,14 @@ test('[G-046][R-103] when application.create fails the page says so in Indonesia
   await page.route('**/api/trpc/application.create*', (route) => (fail ? route.fulfill(serverError) : route.fallback()))
   try {
     await page.goto(`/checkout/${owner.kosId}?room=${owner.rooms[0].id}`)
-    const occupation = page.getByLabel('Pekerjaan atau kegiatan utama')
-    await occupation.fill('Mahasiswa BINUS')
+    const program = page.getByLabel('Jurusan')
+    await program.fill('Mahasiswa BINUS')
     await page.getByRole('button', { name: 'Kirim Pengajuan' }).click()
 
     const alert = page.getByRole('alert')
     await expect(alert).toBeVisible()
     expect(await alert.textContent()).toMatch(/coba lagi|kesalahan|gagal/i)
-    await expect(occupation).toHaveValue('Mahasiswa BINUS')
+    await expect(program).toHaveValue('Mahasiswa BINUS')
     await expect(page.getByRole('button', { name: 'Kirim Pengajuan' })).toBeEnabled()
     expect(await sql('SELECT id FROM "RentalApplication" WHERE "userId" = $1', [student.userId])).toHaveLength(0)
 

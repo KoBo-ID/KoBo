@@ -1,4 +1,4 @@
-import { addDays, todayWIB } from '@kobo/shared/domain'
+import { addDays, isStudentVerified, todayWIB } from '@kobo/shared/domain'
 import { rentalApplicationCreateInput, rentalApplicationDecisionInput, kosIdOnly } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
 import type { Prisma } from '../generated/prisma/client.ts'
@@ -6,7 +6,8 @@ import { assertApplicationConsents } from '../consents.ts'
 import { assertDemoIsolation } from '../demoIsolation.ts'
 import { advanceWaitlist, liveOffer } from '../waitlist.ts'
 import { CONFLICT_MESSAGE, createApprovedTenancyObligation, isRoomTakenError, OFFERED_ELSEWHERE, OFFERED_ELSEWHERE_MESSAGE } from './booking.ts'
-import { authedProcedure, ownerProcedure, router } from './trpc.ts'
+import type { CampusVerifyMethod } from '@kobo/shared/types'
+import { authedProcedure, ownerProcedure, router, studentProcedure } from './trpc.ts'
 
 const MAX_START_AHEAD_DAYS = 120
 const ROOM_UNAVAILABLE = Symbol('room-unavailable')
@@ -18,7 +19,8 @@ export interface MyRentalApplication {
   status: ApplicationStatus
   startDate: string
   durationMonths: number
-  occupation: string
+  /** Snapshot such as "Mahasiswa BINUS"; null on very old rows. */
+  occupation: string | null
   note: string | null
   createdAt: string
   decidedAt: string | null
@@ -32,7 +34,12 @@ export interface OwnerRentalApplication {
   status: ApplicationStatus
   startDate: string
   durationMonths: number
-  occupation: string
+  /** Kept for old rows; new rows carry a "Mahasiswa <campus>" snapshot. */
+  occupation: string | null
+  program: string | null
+  semester: number | null
+  /** Verified at the time the owner looks (expiry-aware). */
+  student: { verified: boolean; via: CampusVerifyMethod | null; campus: string | null }
   note: string | null
   createdAt: string
   /** No phone here: the number is released only through owner.tenant.tenantProfile once the application is approved. */
@@ -68,13 +75,15 @@ async function claimDecision(tx: Prisma.TransactionClient, applicationId: string
 }
 
 export const applicationRouter = router({
-  create: authedProcedure.input(rentalApplicationCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string; status: 'PENDING' }> => {
+  create: studentProcedure.input(rentalApplicationCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string; status: 'PENDING' }> => {
     const now = new Date()
     validateStartDate(input.startDate, now)
     const room = await ctx.prisma.room.findFirst({ where: { id: input.roomId, archivedAt: null, kos: { archivedAt: null } }, select: { id: true, kosId: true } })
     if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kamar tidak ditemukan.' })
     await assertDemoIsolation(ctx.prisma, ctx.user, room.kosId)
     await assertApplicationConsents(ctx.prisma, ctx.user.id)
+    const me = await ctx.prisma.user.findUnique({ where: { id: ctx.user.id }, select: { campus: true } })
+    const occupation = `Mahasiswa ${me?.campus ?? ''}`.trim()
 
     try {
       const created = await ctx.prisma.$transaction(async (tx) => {
@@ -95,7 +104,9 @@ export const applicationRouter = router({
             userId: ctx.user.id,
             startDate: new Date(`${input.startDate}T00:00:00Z`),
             durationMonths: input.durationMonths,
-            occupation: input.occupation,
+            occupation,
+            program: input.program || null,
+            semester: input.semester ?? null,
             note: input.note || null,
           },
           select: { id: true },
@@ -139,17 +150,21 @@ export const applicationRouter = router({
     const rows = await ctx.prisma.rentalApplication.findMany({
       where: { room: { kosId: input.kosId }, status: 'PENDING' },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      include: { user: { select: { name: true, campus: true } }, room: { select: { id: true, roomNumber: true, type: true } } },
+      include: { user: { select: { name: true, campus: true, campusEmailVerifiedAt: true, campusVerifiedUntil: true, campusVerifiedVia: true } }, room: { select: { id: true, roomNumber: true, type: true } } },
     })
+    const now = new Date()
     return rows.map((a) => ({
       id: a.id,
       status: a.status,
       startDate: dateOnly(a.startDate),
       durationMonths: a.durationMonths,
       occupation: a.occupation,
+      program: a.program,
+      semester: a.semester,
+      student: { verified: isStudentVerified(a.user, now), via: a.user.campusVerifiedVia, campus: a.user.campus },
       note: a.note,
       createdAt: a.createdAt.toISOString(),
-      applicant: a.user,
+      applicant: { name: a.user.name, campus: a.user.campus },
       room: a.room,
     }))
   }),
@@ -160,7 +175,7 @@ export const applicationRouter = router({
       const result = await ctx.prisma.$transaction(async (tx) => {
         const application = await tx.rentalApplication.findFirst({
           where: { id: input.applicationId, room: { kosId: input.kosId } },
-          include: { room: { include: { kos: true } }, user: { select: { campusEmailVerifiedAt: true } } },
+          include: { room: { include: { kos: true } }, user: { select: { campusEmailVerifiedAt: true, campusVerifiedUntil: true } } },
         })
         if (!application) throw new TRPCError({ code: 'NOT_FOUND', message: 'Pengajuan tidak ditemukan.' })
         if (application.status !== 'PENDING') throw new TRPCError({ code: 'CONFLICT', message: 'Pengajuan ini sudah diputuskan.' })
@@ -174,7 +189,8 @@ export const applicationRouter = router({
           userId: application.userId,
           startDate: dateOnly(application.startDate),
           durationMonths: application.durationMonths,
-          campusEmailVerified: application.user.campusEmailVerifiedAt !== null,
+          // The student discount is judged at DECIDE time (the moment the price is fixed), expiry-aware.
+          campusEmailVerified: isStudentVerified(application.user, now),
           room: application.room,
           now,
         })

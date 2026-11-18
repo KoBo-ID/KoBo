@@ -16,6 +16,7 @@
     "email:smoke": "tsx scripts/email-smoke.ts",
     "refunds:admin": "tsx scripts/refund-admin.ts",
     "owners:approve": "tsx scripts/approve-owner.ts",
+    "students:review": "tsx scripts/review-students.ts",
     "places:approve": "tsx scripts/approve-places.ts",
     "catalog:import": "tsx scripts/catalog-import.ts",
     "catalog:rollback": "tsx scripts/catalog-rollback.ts",
@@ -45,6 +46,7 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@types/pg": "^8.23.1",
+    "jose": "^6.2.12",
     "tsx": "^4.23.15",
     "typescript": "~6.0.2",
     "vitest": "^4.0.0"

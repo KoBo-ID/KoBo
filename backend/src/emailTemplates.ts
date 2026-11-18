@@ -1,4 +1,4 @@
-/** Indonesian copy for every outbox template. Payload shape per template: { name: string, url: string }; waitlist-offer adds { kosName, roomNumber, expiresAt }. */
+/** Indonesian copy for every outbox template. Payload shape per template: { name: string, url: string }, except verify-email and campus-email which are code-only { name, code } (no link: mail scanners open links); waitlist-offer adds { kosName, roomNumber, expiresAt }. */
 export interface RenderedEmail {
   subject: string
   html: string
@@ -27,23 +27,11 @@ interface Copy {
 }
 
 const COPY: Record<string, Copy> = {
-  'verify-email': {
-    subject: 'Verifikasi email KoBo Anda',
-    intro: 'Terima kasih sudah mendaftar di KoBo. Satu langkah lagi: konfirmasi bahwa ini memang email Anda.',
-    action: 'Verifikasi Email',
-    outro: 'Jika Anda tidak merasa mendaftar di KoBo, abaikan saja email ini.',
-  },
   'reset-password': {
     subject: 'Atur ulang kata sandi KoBo',
     intro: 'Kami menerima permintaan untuk mengatur ulang kata sandi akun KoBo Anda.',
     action: 'Atur Ulang Kata Sandi',
     outro: 'Tautan ini berlaku satu jam. Jika bukan Anda yang meminta, abaikan email ini dan kata sandi Anda tetap aman.',
-  },
-  'campus-email': {
-    subject: 'Verifikasi email kampus Anda di KoBo',
-    intro: 'Konfirmasi email kampus ini untuk mendapatkan potongan harga mahasiswa di KoBo.',
-    action: 'Verifikasi Email Kampus',
-    outro: 'Tautan ini berlaku 24 jam. Jika Anda tidak memintanya, abaikan email ini.',
   },
   'payment-received': {
     subject: 'Pembayaran diterima - KoBo',
@@ -51,6 +39,50 @@ const COPY: Record<string, Copy> = {
     action: 'Lihat Kuitansi',
     outro: 'Simpan email ini sebagai bukti pembayaran. Tagihan bulan berikutnya tersedia di halaman Kos Saya.',
   },
+}
+
+/** Code-only mails (sign-up and campus-email verification). There is deliberately no URL, button or link in them. */
+const CODE_COPY: Record<string, Copy> = {
+  'verify-email': {
+    subject: 'Kode verifikasi KoBo Anda',
+    intro: 'Terima kasih sudah mendaftar di KoBo. Masukkan kode ini di KoBo untuk memverifikasi email Anda.',
+    action: '',
+    outro: 'Berlaku 10 menit. Jangan bagikan kode ini. Jika Anda tidak merasa mendaftar di KoBo, abaikan saja email ini.',
+  },
+  'campus-email': {
+    subject: 'Kode verifikasi email kampus Anda di KoBo',
+    intro: 'Masukkan kode ini di halaman Profil KoBo untuk memverifikasi status mahasiswa Anda.',
+    action: '',
+    outro: 'Berlaku 10 menit dan hanya bisa dipakai sekali. Jangan bagikan kode ini. Jika Anda tidak memintanya, abaikan email ini.',
+  },
+}
+
+function renderCodeEmail(copy: Copy, p: { name?: unknown; code?: unknown }): RenderedEmail | null {
+  if (typeof p.code !== 'string' || !/^\d{6}$/.test(p.code)) return null
+  const name = typeof p.name === 'string' && p.name.trim() ? p.name.trim() : 'Pengguna KoBo'
+  const text = `Halo ${name},
+
+${copy.intro}
+
+Kode verifikasi KoBo Anda: ${p.code}
+
+${copy.outro}
+
+Tim KoBo`
+  const html = `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(copy.subject)}</title></head>
+<body style="margin:0;background:#f6f8f8;font-family:Arial,Helvetica,sans-serif;color:#1b2a2a">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">Kode verifikasi KoBo Anda: ${esc(p.code)}</div>
+<div style="max-width:480px;margin:0 auto;padding:32px 20px">
+<p style="font-size:22px;font-weight:800;margin:0 0 24px">Ko<span style="color:#0f9d92">Bo</span></p>
+<div style="background:#ffffff;border-radius:12px;padding:28px;border:1px solid #e3eaea">
+<p style="margin:0 0 12px">Halo ${esc(name)},</p>
+<p style="margin:0 0 16px;line-height:1.55">${esc(copy.intro)}</p>
+<p style="margin:0 0 4px;font-size:13px;color:#5b6b6b">Kode verifikasi KoBo Anda:</p>
+<p style="margin:0 0 20px;font-size:32px;font-weight:800;letter-spacing:8px">${esc(p.code)}</p>
+<p style="margin:16px 0 0;font-size:13px;color:#5b6b6b;line-height:1.5">${esc(copy.outro)}</p>
+<p style="margin:16px 0 0">Tim KoBo</p>
+</div></div></body></html>`
+  return { subject: copy.subject, html, text }
 }
 
 const WIB_DATE = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'long', year: 'numeric' })
@@ -119,6 +151,8 @@ function reminderCopy(p: Partial<ReminderPayload>): Copy | null {
 }
 
 export function renderEmail(template: string, payload: unknown): RenderedEmail | null {
+  const codeCopy = CODE_COPY[template]
+  if (codeCopy) return payload && typeof payload === 'object' ? renderCodeEmail(codeCopy, payload) : null
   const p = payload as (Partial<OfferPayload> & Partial<OwnerPaymentPayload> & Partial<ReminderPayload>) | null
   const copy = template === 'waitlist-offer' ? (p ? offerCopy(p) : null) : template === 'payment-received-owner' ? (p ? ownerPaymentCopy(p) : null) : template === 'invoice-reminder' ? (p ? reminderCopy(p) : null) : COPY[template]
   if (!copy || !p || typeof p.url !== 'string') return null

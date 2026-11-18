@@ -139,8 +139,7 @@ export function App() {
           <Routes>
             {/* Tenant / Student Portal Route Tree */}
             <Route element={<StudentLayout />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/search" element={<Search />} />
+              <Route path="/" element={<Home />} />              <Route path="/search" element={<Search />} />
               <Route path="/kos/:id" element={<Detail />} />
               <Route path="/checkout/:id" element={<Checkout />} />
               <Route path="/my-kos" element={<MyKos />} />

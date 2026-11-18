@@ -15,7 +15,7 @@ test('demo student applies, gets owner approval, pays and sees an active rental'
   await page.getByRole('button', { name: 'Ajukan Sewa' }).click()
   await expect(page).toHaveURL(new RegExp(`/checkout/${kos!.id}\\?room=`))
 
-  await page.getByLabel('Pekerjaan atau kegiatan utama').fill('Mahasiswa BINUS')
+  await page.getByLabel('Jurusan').fill('Mahasiswa BINUS')
   await page.getByRole('button', { name: 'Kirim Pengajuan' }).click()
   await expect(page.getByRole('heading', { name: 'Pengajuan Terkirim' })).toBeVisible()
   await page.getByRole('link', { name: 'Pantau Pengajuan' }).click()

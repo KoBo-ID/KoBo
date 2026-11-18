@@ -148,7 +148,7 @@ test('footer links open the draft Contact, Terms and Privacy pages', async ({ pa
 
 test('on a phone, a booking bar appears above the dock once the booking box is out of view', async ({ browser }) => {
   const owner = await newOwnerWorld(browser, { label: 'revamp-bar', rooms: 1 })
-  const student = await newStudent(browser, { label: 'revamp-bar-stu' })
+  const student = await newStudent(browser, { label: 'revamp-bar-stu', campus: true })
   try {
     const page = student.page
     await page.setViewportSize({ width: 390, height: 844 })

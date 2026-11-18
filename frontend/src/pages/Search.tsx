@@ -75,6 +75,7 @@ export const Search: React.FC = () => {
   // What the user has typed into the search field; null means "show the active location's label".
   const [typedInput, setTypedInput] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [mapFitVersion, setMapFitVersion] = useState(0);
   const [priceDraft, setPriceDraft] = useState<number | null>(null);
   const priceTimer = useRef<number | undefined>(undefined);
   const filterBarRef = useRef<HTMLDivElement>(null);
@@ -289,6 +290,7 @@ export const Search: React.FC = () => {
       radius: null,
       region: null,
       ...(clearQuery ? { q: '' } : {}),
+      ...(location && !searchParams.has('sort') ? { sort: 'distance_asc' as const } : {}),
     });
   };
 
@@ -301,17 +303,21 @@ export const Search: React.FC = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setIsLocating(false);
-        applyLocation({
-          id: 'geo-me',
-          label: 'Lokasi Saya',
-          area: 'Sekitar Anda',
-          city: 'Radius 5 km',
-          coordinates: {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
+        setMapFitVersion((v) => v + 1);
+        applyLocation(
+          {
+            id: 'geo-me',
+            label: 'Lokasi Saya',
+            area: 'Sekitar Anda',
+            city: `Radius ${Math.round(SEARCH_RADIUS_METERS / 1000)} km`,
+            coordinates: {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            },
+            source: 'geolocation',
           },
-          source: 'geolocation',
-        });
+          true,
+        );
       },
       () => {
         setIsLocating(false);
@@ -739,6 +745,8 @@ export const Search: React.FC = () => {
               kosList={sortedKos}
               activeLocation={activeLocation}
               regionOutline={regionOutline.data ?? null}
+              isLoading={searchPending || search.isPlaceholderData}
+              fitKey={mapFitVersion}
               hoveredKosId={hoveredKosId}
               onHoverKos={setHoveredKosId}
             />

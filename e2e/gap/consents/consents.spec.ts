@@ -12,9 +12,9 @@ test('[G-058][R-091][R-092] without an emergency contact and the current terms t
   const applications = () => sql('SELECT id FROM "RentalApplication" WHERE "userId" = $1', [student.userId])
   const openForm = async () => {
     await page.goto(`/checkout/${owner.kosId}?room=${room.id}`)
-    await page.getByLabel('Pekerjaan atau kegiatan utama').fill('Mahasiswa BINUS')
+    await page.getByLabel('Jurusan').fill('Mahasiswa BINUS')
   }
-  const direct = () => trpcRaw(student.ctx, 'application.create', { roomId: room.id, startDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), durationMonths: 3, occupation: 'Mahasiswa' })
+  const direct = () => trpcRaw(student.ctx, 'application.create', { roomId: room.id, startDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), durationMonths: 3, program: 'Mahasiswa' })
   try {
     await openForm()
     await expect(page.getByRole('alert')).toContainText('kontak darurat dan persetujuan syarat')

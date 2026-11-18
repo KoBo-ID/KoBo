@@ -9,11 +9,12 @@ import { ownerRouter } from './owner.ts'
 import { paymentRouter } from './payment.ts'
 import { placeRouter } from './place.ts'
 import { reviewRouter } from './review.ts'
+import { studentVerificationRouter } from './studentVerification.ts'
 import { router } from './trpc.ts'
 import { visitRouter } from './visit.ts'
 import { waitlistRouter } from './waitlist.ts'
 
-export const appRouter = router({ auth: authRouter, kos: kosRouter, owner: ownerRouter, application: applicationRouter, booking: bookingRouter, payment: paymentRouter, place: placeRouter, kuitansi: kuitansiRouter, review: reviewRouter, visit: visitRouter, waitlist: waitlistRouter, demo: demoRouter, region: regionRouter, campus: campusRouter, catalog: catalogRouter })
+export const appRouter = router({ auth: authRouter, kos: kosRouter, owner: ownerRouter, application: applicationRouter, booking: bookingRouter, payment: paymentRouter, place: placeRouter, kuitansi: kuitansiRouter, review: reviewRouter, visit: visitRouter, waitlist: waitlistRouter, demo: demoRouter, region: regionRouter, campus: campusRouter, catalog: catalogRouter, studentVerification: studentVerificationRouter })
 export type AppRouter = typeof appRouter
 export type { Place } from '../geocode.ts'
 export type { RegionView, CampusView, CatalogStatus } from './location.ts'
@@ -24,6 +25,7 @@ export type { KosCard, KosSearchCard, KosDetail, RoomView, ReviewView, OwnerPubl
 export type { OwnerPublicProfile, OwnerKos, OwnerBoard, BoardRoom, BoardSummary, OwnerReview, OwnerImage, ImagePresign } from './owner.ts'
 export type { KuitansiView } from './kuitansi.ts'
 export type { MeResult } from './auth.ts'
+export type { KtmPresign } from './studentVerification.ts'
 export type { ApprovedTenancyObligation, BookingBreakdown, MyTenancy, MyInvoice, MyReview } from './booking.ts'
 export type { MyRentalApplication, OwnerRentalApplication } from './application.ts'
 export type { PaymentStatusResult } from './payment.ts'

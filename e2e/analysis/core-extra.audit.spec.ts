@@ -6,7 +6,7 @@ test('B2 verified sign in returns to next and persists',async({page})=>{
  await page.context().clearCookies()
  await page.goto('/masuk?next=%2Fprofile')
  await page.getByLabel('Email').fill(email)
- await page.getByLabel('Kata Sandi').fill('Sandi-rahasia-123')
+ await page.getByLabel('Kata Sandi', { exact: true }).fill('Sandi-rahasia-123')
  await page.getByRole('button',{name:'Masuk ke Akun'}).click()
  await expect(page).toHaveURL(/\/profile$/)
  await page.reload()

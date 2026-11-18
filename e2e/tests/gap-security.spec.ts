@@ -17,7 +17,7 @@ test('[G-055][R-014] a sign-in with an external ?next= stays on the app origin',
       watch(visitor.page, problems)
       await visitor.page.goto(`/masuk?next=${encodeURIComponent(next)}`)
       await visitor.page.getByLabel('Email').fill(account.email)
-      await visitor.page.getByLabel('Kata Sandi').fill(PASSWORD)
+      await visitor.page.getByLabel('Kata Sandi', { exact: true }).fill(PASSWORD)
       await visitor.page.getByRole('button', { name: 'Masuk ke Akun' }).click()
       await expect(visitor.page).not.toHaveURL(/\/masuk/)
       const here = new URL(visitor.page.url())
@@ -79,7 +79,7 @@ test('[G-057][R-005] sign-up refuses a short password, a malformed email and a d
     const fill = async (email: string, password: string) => {
       await form.getByLabel('Nama Lengkap').fill('Calon Penyewa')
       await form.getByLabel('Email').fill(email)
-      await form.getByLabel('Kata Sandi').fill(password)
+      await form.getByLabel('Kata Sandi', { exact: true }).fill(password)
       const consent = form.getByLabel(/Saya menyetujui/)
       if (!(await consent.isChecked())) await consent.check()
       await form.getByRole('button', { name: 'Daftar Sekarang' }).click()
@@ -90,14 +90,14 @@ test('[G-057][R-005] sign-up refuses a short password, a malformed email and a d
 
     // The browser blocks a short password and a malformed address before anything is sent.
     await fill(`gap-short-${Date.now()}@example.com`, 'pendek')
-    expect(await form.getByLabel('Kata Sandi').evaluate((el: HTMLInputElement) => el.validity.tooShort)).toBe(true)
+    expect(await form.getByLabel('Kata Sandi', { exact: true }).evaluate((el: HTMLInputElement) => el.validity.tooShort)).toBe(true)
     await fill('bukan-email', PASSWORD)
     expect(await form.getByLabel('Email').evaluate((el: HTMLInputElement) => el.validity.typeMismatch)).toBe(true)
-    await expect(form.getByText('Cek email Anda')).toHaveCount(0)
+    await expect(form.getByText(/Masukkan kode 6 digit/)).toHaveCount(0)
 
     // A duplicate address shows the same neutral screen as a new one (no account enumeration; documented in ADR 0017).
     await fill(existing.email, PASSWORD)
-    await expect(form.getByText('Cek email Anda')).toBeVisible()
+    await expect(form.getByText(/Masukkan kode 6 digit/)).toBeVisible()
     await expect(form.getByRole('alert')).toHaveCount(0)
     expect(await sql('SELECT id FROM "User" WHERE email = $1', [existing.email])).toHaveLength(1)
     expect(await sql(`SELECT id FROM "User" WHERE email = 'bukan-email'`)).toHaveLength(0)

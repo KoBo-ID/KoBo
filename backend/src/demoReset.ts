@@ -133,6 +133,10 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
             campus: (u.campus as string | undefined) ?? null,
             campusEmail: (u.campusEmail as string | undefined) ?? null,
             campusEmailVerifiedAt: (u.campusEmailVerifiedAt as Date | undefined) ?? null,
+            campusVerifiedVia: (u.campusVerifiedVia as 'EMAIL' | undefined) ?? null,
+            campusVerifiedUntil: (u.campusVerifiedUntil as Date | undefined) ?? null,
+            campusIdpTenant: null,
+            campusIdpSubject: null,
           },
         })
       }

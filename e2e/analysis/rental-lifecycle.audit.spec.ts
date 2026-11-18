@@ -138,7 +138,7 @@ test('scenario 2: a signed-out visitor signs in from the checkout and can apply 
     await expect(page).toHaveURL(/[/]masuk[?]next=/)
     const form = page.locator('main')
     await form.getByLabel('Email').fill(account.email)
-    await form.getByLabel('Kata Sandi').fill(PASSWORD)
+    await form.getByLabel('Kata Sandi', { exact: true }).fill(PASSWORD)
     await form.getByRole('button', { name: 'Masuk ke Akun' }).click()
 
     // KNOWN DEFECT (audit): signing in with a password sends the browser to the e-mail verification landing page

@@ -1,41 +1,29 @@
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHmac, randomInt, timingSafeEqual } from 'node:crypto'
+import { resolveMx } from 'node:dns/promises'
 
 /*
- * Signed, expiring campus-email link tokens: base64url(JSON claim) "." base64url(HMAC-SHA256).
- * The key is derived from the auth secret with a purpose label, so a token minted here can never be
- * replayed against better-auth's own signed values.
+ * Campus-email verification helpers.
+ *  - Code only, no emailed link: mail scanners open links, which would verify an address with no human involved.
+ *  - The 6-digit code is stored only as an HMAC, keyed from the auth secret with a purpose label, so a value minted here can
+ *    never be replayed against better-auth's own signed values.
+ *  - Single use, the 10 minute lifetime and the attempt limit are enforced by the challenge row.
  */
 
-export interface CampusClaim {
-  userId: string
-  email: string
-}
+export const CAMPUS_CHALLENGE_TTL_SECONDS = 10 * 60
+export const CAMPUS_CODE_MAX_ATTEMPTS = 5
 
-export const CAMPUS_TOKEN_TTL_SECONDS = 24 * 3600
+const keyFor = (secret: string, purpose: string) => createHmac('sha256', secret).update(purpose).digest()
+/** Uniformly random 6-digit code, leading zeros kept. */
+export const generateCampusCode = () => String(randomInt(0, 1_000_000)).padStart(6, '0')
 
-const sign = (secret: string, body: string) =>
-  createHmac('sha256', createHmac('sha256', secret).update('kobo:campus-email').digest()).update(body).digest('base64url')
+/** HMAC of the code, bound to its challenge id so a hash cannot be moved between rows. */
+export const hashCampusCode = (secret: string, challengeId: string, code: string) =>
+  createHmac('sha256', keyFor(secret, 'kobo:campus-code')).update(`${challengeId}:${code}`).digest('hex')
 
-export function signCampusToken(secret: string, claim: CampusClaim, ttlSeconds = CAMPUS_TOKEN_TTL_SECONDS): string {
-  const body = Buffer.from(JSON.stringify({ u: claim.userId, e: claim.email, x: Math.floor(Date.now() / 1000) + ttlSeconds })).toString('base64url')
-  return `${body}.${sign(secret, body)}`
-}
-
-/** Returns the claim, or null for a malformed, forged or expired token. */
-export function verifyCampusToken(secret: string, token: string): CampusClaim | null {
-  const [body, sig, extra] = token.split('.')
-  if (!body || !sig || extra !== undefined) return null
-  const expected = Buffer.from(sign(secret, body))
-  const given = Buffer.from(sig)
-  if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null
-  try {
-    const { u, e, x } = JSON.parse(Buffer.from(body, 'base64url').toString()) as { u?: unknown; e?: unknown; x?: unknown }
-    if (typeof u !== 'string' || typeof e !== 'string' || typeof x !== 'number') return null
-    if (x < Math.floor(Date.now() / 1000)) return null
-    return { userId: u, email: e }
-  } catch {
-    return null
-  }
+export function codeMatches(secret: string, challengeId: string, code: string, storedHash: string): boolean {
+  const a = Buffer.from(hashCampusCode(secret, challengeId, code))
+  const b = Buffer.from(storedHash)
+  return a.length === b.length && timingSafeEqual(a, b)
 }
 
 /** Domain part of an address, lower-cased, or null if it is not a single `local@domain`. */
@@ -44,8 +32,37 @@ export function emailDomain(email: string): string | null {
   return parts.length === 2 && parts[0] && parts[1] ? parts[1].toLowerCase() : null
 }
 
-/** Indonesian academic domains end in `.ac.id`; "fake-ac.id" and "x.ac.id.evil.com" do not qualify. */
-export const isAcademicDomain = (domain: string) => domain.endsWith('.ac.id') && domain.length > '.ac.id'.length
+/** Exact (lower-cased) match against a curated Campus.studentEmailDomains list. No .ac.id wildcard, no subdomain wildcard. */
+export function campusForDomain<T extends { studentEmailDomains: string[] }>(domain: string, campuses: T[]): T | undefined {
+  const d = domain.toLowerCase()
+  return campuses.find((c) => c.studentEmailDomains.some((x) => x.toLowerCase() === d))
+}
 
-/** True when `domain` equals a campus domain or is a subdomain of it (student.binus.ac.id under binus.ac.id). */
-export const domainMatches = (domain: string, campusDomain: string) => domain === campusDomain || domain.endsWith(`.${campusDomain}`)
+/** True when the domain can receive mail. */
+export type CampusMxResolver = (domain: string) => Promise<boolean>
+
+const MX_TIMEOUT_MS = 3000
+
+/** Real DNS MX lookup, 3 s timeout. NXDOMAIN, no records and timeout all mean "cannot receive mail". */
+export const dnsMxResolver: CampusMxResolver = async (domain) => {
+  let timer: NodeJS.Timeout | undefined
+  try {
+    const records = await Promise.race([
+      resolveMx(domain),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('mx timeout')), MX_TIMEOUT_MS)
+      }),
+    ])
+    return records.length > 0
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** Tests and the e2e server never touch the network: the fake accepts every domain the curated-list check already passed. */
+export const fakeMxResolver: CampusMxResolver = async () => true
+
+export const defaultMxResolver = (): CampusMxResolver =>
+  process.env.NODE_ENV === 'test' || process.env.ALLOW_E2E_HOOKS === '1' ? fakeMxResolver : dnsMxResolver
