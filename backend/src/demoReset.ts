@@ -106,8 +106,10 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
       await tx.poi.createMany({ data: inKos(seed.pois) as never })
 
       // 5. Rooms: drop the ones the owner added (unless a real user rents them), restore the seeded ones.
-      await tx.room.deleteMany({ where: { kosId: { in: seedKosIds }, id: { notIn: seedRoomIds }, tenancies: { none: {} } } })
-      for (const { id, ...fields } of seedRooms) await tx.room.upsert({ where: { id }, create: { id, ...fields } as never, update: fields as never })
+      // (B-12: also keep a room an outside applicant applied to; deleting it would cascade the real person's application away.)
+      await tx.room.deleteMany({ where: { kosId: { in: seedKosIds }, id: { notIn: seedRoomIds }, tenancies: { none: {} }, rentalApplications: { none: {} } } })
+      // A-010: a seeded room the owner archived comes back.
+      for (const { id, ...fields } of seedRooms) await tx.room.upsert({ where: { id }, create: { id, ...fields } as never, update: { ...fields, archivedAt: null } as never })
 
       // 6. Seeded tenants come back, except into a room a real user holds now.
       const held = new Set(

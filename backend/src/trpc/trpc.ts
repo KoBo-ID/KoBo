@@ -58,9 +58,25 @@ export const authedProcedure = t.procedure.use(async ({ ctx, next }) => {
   return next({ ctx: { ...ctx, user, paymentProvider: ctx.paymentService.providerFor({ isDemo: user.isDemo === true }) } })
 })
 
-/** Signed-in AND a currently verified student (when REQUIRE_STUDENT_VERIFICATION is on). Only for new rental starts. */
-export const studentProcedure = authedProcedure.use(async ({ ctx, next }) => {
+/**
+ * Signed-in AND a currently verified student (when REQUIRE_STUDENT_VERIFICATION is on). Only for new rental starts
+ * (application.create, visit.create, waitlist.join).
+ *
+ * A-005: the kos the student targets (input `kosId`, or the kos of input `roomId`) must belong to an approved owner, the same rule
+ * that hides unapproved owners from search. Unknown ids fall through so each procedure keeps its own NOT_FOUND message.
+ */
+export const studentProcedure = authedProcedure.use(async ({ ctx, next, getRawInput }) => {
   await assertStudentVerified(ctx.prisma, ctx.user.id, new Date())
+  const raw = (await getRawInput()) as { kosId?: unknown; roomId?: unknown } | null | undefined
+  const kosId = typeof raw?.kosId === 'string' ? raw.kosId : undefined
+  const roomId = typeof raw?.roomId === 'string' ? raw.roomId : undefined
+  if (kosId || roomId) {
+    const unapproved = await ctx.prisma.kos.findFirst({
+      where: kosId ? { id: kosId, owner: { approvedAt: null } } : { rooms: { some: { id: roomId } }, owner: { approvedAt: null } },
+      select: { id: true },
+    })
+    if (unapproved) throw new TRPCError({ code: 'NOT_FOUND', message: roomId && !kosId ? 'Kamar tidak ditemukan.' : 'Kos tidak ditemukan.' })
+  }
   return next()
 })
 

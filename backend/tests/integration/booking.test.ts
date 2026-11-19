@@ -100,16 +100,18 @@ describe('booking.mine and payment.status', () => {
 
   it("never shows someone else's tenancies", async () => {
     const room = await vacantRoom()
-    await approveApplication('user-student-3', room.id, { startDate: startDate(), durationMonths: 3 })
+    const renter = await newStudent()
+    await approveApplication(renter.id, room.id, { startDate: startDate(), durationMonths: 3 })
     const other = await newStudent()
     expect(await callerFor(other.id).booking.mine()).toEqual([])
   })
 
   it('payment.status is only visible to the payer', async () => {
     const room = await vacantRoom()
-    const res = await approveApplication('user-student-3', room.id, { startDate: startDate(), durationMonths: 3 })
+    const renter = await newStudent()
+    const res = await approveApplication(renter.id, room.id, { startDate: startDate(), durationMonths: 3 })
     const payment = await createPendingMockPayment(res.invoiceId)
-    expect(await callerFor('user-student-3').payment.status({ paymentId: payment.id })).toMatchObject({ status: 'PENDING', tenancyStatus: 'PENDING', receiptNumber: null })
+    expect(await callerFor(renter.id).payment.status({ paymentId: payment.id })).toMatchObject({ status: 'PENDING', tenancyStatus: 'PENDING', receiptNumber: null })
     expect((await err(callerFor('user-student-4').payment.status({ paymentId: payment.id })))?.code).toBe('NOT_FOUND')
     expect((await err(caller.payment.status({ paymentId: payment.id })))?.code).toBe('UNAUTHORIZED')
   })

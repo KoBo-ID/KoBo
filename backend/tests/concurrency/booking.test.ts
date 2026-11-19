@@ -2,7 +2,7 @@ import type { TRPCError } from '@trpc/server'
 import { addDays, todayWIB } from '@kobo/shared/domain'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetDb } from '../../src/db/seed.ts'
-import { callerFor, DEMO_STUDENT_ID, prisma, vacantRoom } from '../helpers.ts'
+import { callerFor, newStudent, prisma, vacantRoom } from '../helpers.ts'
 
 // Real commits (no per-test rollback): transactions race for one room and the partial unique index decides.
 beforeEach(() => resetDb(prisma))
@@ -20,7 +20,9 @@ describe('booking race', () => {
   it('two simultaneous approvals for one room: exactly one wins', async () => {
     for (let round = 0; round < 3; round++) {
       const room = await vacantRoom(round)
-      const applications = await Promise.all([apply(DEMO_STUDENT_ID, room.id), apply('user-student-1', room.id)])
+      // Fresh students: a seed student may already rent in this kos, and a renter cannot apply in the same kos (G2-05).
+      const [a, b] = [await newStudent(), await newStudent()]
+      const applications = await Promise.all([apply(a.id, room.id), apply(b.id, room.id)])
       const owner = await ownerFor(room)
       const results = await Promise.all([
         settle(owner.application.decide({ kosId: room.kosId, applicationId: applications[0].id, decision: 'APPROVE' })),
@@ -36,7 +38,8 @@ describe('booking race', () => {
 
   it('many simultaneous approvals still produce one winner', async () => {
     const room = await vacantRoom()
-    const applications = await Promise.all([1, 2, 3, 4, 5].map((i) => apply(`user-student-${i}`, room.id)))
+    const students = await Promise.all([1, 2, 3, 4, 5].map(() => newStudent()))
+    const applications = await Promise.all(students.map((s) => apply(s.id, room.id)))
     const owner = await ownerFor(room)
     const results = await Promise.all(applications.map((application) => settle(owner.application.decide({ kosId: room.kosId, applicationId: application.id, decision: 'APPROVE' }))))
     expect(results.filter((r) => r === null)).toHaveLength(1)
@@ -48,7 +51,7 @@ describe('booking race', () => {
     await prisma.tenancy.create({
       data: { roomId: room.id, userId: 'user-student-2', status: 'PENDING', startDate: new Date(), durationMonths: 6, expiresAt: new Date(Date.now() - 1000) },
     })
-    const application = await apply(DEMO_STUDENT_ID, room.id)
+    const application = await apply((await newStudent()).id, room.id)
     const res = await (await ownerFor(room)).application.decide({ kosId: room.kosId, applicationId: application.id, decision: 'APPROVE' })
     expect(res.tenancyId).toBeTruthy()
   })

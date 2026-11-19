@@ -61,7 +61,7 @@ describe('[G-022][R-051] visit.create is strictly after today in WIB', () => {
 })
 
 describe('[G-023][R-016][R-033] the 24-hour hold, to the millisecond', () => {
-  it('sets expiresAt to approval + 24 h and flips booking -> vacant only after that instant', async () => {
+  it('sets expiresAt to approval + 24 h and flips booking -> vacant at that instant', async () => {
     const T = new Date('2026-11-10T03:00:00.000Z')
     const k = await makeKos([{ n: 'H1', type: 'Standar' }])
     const s = await newStudent()
@@ -77,7 +77,8 @@ describe('[G-023][R-016][R-033] the 24-hour hold, to the millisecond', () => {
       return detail.rooms.find((r) => r.roomNumber === 'H1')!.status
     }
     expect(await statusAt(86_400_000 - 1000)).toBe('booking')
-    expect(await statusAt(86_400_000)).toBe('booking')
+    // A-015: the hold is expired at exactly approval + 24 h.
+    expect(await statusAt(86_400_000)).toBe('vacant')
     expect(await statusAt(86_400_000 + 1)).toBe('vacant')
   })
 })

@@ -74,6 +74,7 @@ describe('[G-011][R-071] room.create and room.update bounds', () => {
     ['floor 0', { floor: 0 }],
     ['floor 61', { floor: 61 }],
     ['price -1', { priceMonthly: -1 }],
+    ['price 0', { priceMonthly: 0 }],
     ['price 50,000,001', { priceMonthly: 50_000_001 }],
     ['price 1000.5', { priceMonthly: 1000.5 }],
     ['empty type', { type: '' }],
@@ -305,7 +306,7 @@ describe('[G-010][R-095] over HTTP every bound collapses to the one generic Indo
     expect(((await q.json()) as { error: { message: string } }).error.message).toBe(GENERIC_VALIDATION)
 
     const cookie = await demoCookie('owner')
-    const kos = await prisma.kos.findFirstOrThrow({ where: { owner: { user: { email: { contains: 'demo' } } } } }).catch(() => prisma.kos.findFirstOrThrow())
+    const kos = await prisma.kos.findFirstOrThrow({ where: { owner: { user: { isDemo: true } } } })
     const m = await request('/api/trpc/owner.room.create', { cookie, body: { ...roomInput({ floor: 61 }), kosId: kos.id } })
     expect(m.status).toBe(400)
     const text = await m.text()
@@ -325,8 +326,16 @@ describe('[G-009][R-082][R-083] region.get and owner.places.preview succeed', ()
       expect(await caller.region.get({ code: '98' })).toBeNull()
 
       const { a } = await twoOwners()
-      const view = await callerFor(a.userId).owner.places.preview({ kosId: a.kos[0]!.id })
-      expect(view === null || typeof view === 'object').toBe(true)
+      const own = callerFor(a.userId)
+      const kosId = a.kos[0]!.id
+      // No snapshot yet: nothing to preview.
+      expect(await own.owner.places.preview({ kosId })).toBeNull()
+      const place = await prisma.placeCatalog.findFirstOrThrow({ where: { category: 'food', name: 'Warung Bu Sri' } })
+      await prisma.kosPlace.create({ data: { kosId, placeId: place.id, category: 'food', distanceM: 100, mode: 'walk', rank: 1, catalogVersion: 'fixture', sourceLabel: 'OpenStreetMap' } })
+      const view = await own.owner.places.preview({ kosId })
+      expect(view?.groups.map((g) => g.category)).toEqual(['food'])
+      expect(view?.groups[0]?.items).toMatchObject([{ id: place.id, name: 'Warung Bu Sri', distanceM: 100 }])
+      expect(view?.attributions.length).toBeGreaterThan(0)
     } finally {
       await removeFixtureCatalog(prisma)
     }

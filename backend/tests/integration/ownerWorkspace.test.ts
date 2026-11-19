@@ -197,6 +197,7 @@ describe('owner.kos.create / update / delete', () => {
 describe('owner.room.create / update / delete', () => {
   it('creates, updates and deletes a room of the own kos', async () => {
     const { a } = await twoOwners()
+    await prisma.user.update({ where: { id: a.userId }, data: { isDemo: false } }) // room delete is demo-blocked (A-010)
     const owner = callerFor(a.userId)
     const r = await owner.owner.room.create({ ...roomInput(), kosId: 'kos-1' })
     expect(await prisma.room.findUniqueOrThrow({ where: { id: r.id } })).toMatchObject({ kosId: 'kos-1', roomNumber: 'Z99', occupancy: 'VACANT' })
@@ -216,6 +217,7 @@ describe('owner.room.create / update / delete', () => {
 
   it("rejects another owner's kos and a room that belongs to a different kos (cross-owner)", async () => {
     const { a, b } = await twoOwners()
+    await prisma.user.update({ where: { id: a.userId }, data: { isDemo: false } }) // room delete is demo-blocked (A-010)
     const victimRoom = await prisma.room.findFirstOrThrow({ where: { kosId: b.kos[0].id } })
     expect(await code(callerFor(a.userId).owner.room.create({ ...roomInput(), kosId: b.kos[0].id }))).toBe('FORBIDDEN')
     expect(await code(callerFor(a.userId).owner.room.update({ ...roomInput({ priceMonthly: 1 }), kosId: b.kos[0].id, roomId: victimRoom.id }))).toBe('FORBIDDEN')
@@ -228,6 +230,7 @@ describe('owner.room.create / update / delete', () => {
 
   it('refuses to delete a room with an ACTIVE or live PENDING tenancy', async () => {
     const { a } = await twoOwners()
+    await prisma.user.update({ where: { id: a.userId }, data: { isDemo: false } }) // room delete is demo-blocked (A-010)
     const owner = callerFor(a.userId)
     const board = await owner.owner.board({ kosId: 'kos-1' })
     for (const status of ['paid', 'booking'] as const) {

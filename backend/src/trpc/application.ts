@@ -1,16 +1,17 @@
-import { addDays, isStudentVerified, todayWIB } from '@kobo/shared/domain'
+import { addDays, isCalendarDay, isStudentVerified, todayWIB } from '@kobo/shared/domain'
 import { rentalApplicationCreateInput, rentalApplicationDecisionInput, kosIdOnly } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
 import type { Prisma } from '../generated/prisma/client.ts'
 import { assertApplicationConsents } from '../consents.ts'
 import { assertDemoIsolation } from '../demoIsolation.ts'
-import { advanceWaitlist, liveOffer } from '../waitlist.ts'
+import { advanceWaitlist, liveOffer, lockKos } from '../waitlist.ts'
 import { CONFLICT_MESSAGE, createApprovedTenancyObligation, isRoomTakenError, OFFERED_ELSEWHERE, OFFERED_ELSEWHERE_MESSAGE } from './booking.ts'
 import type { CampusVerifyMethod } from '@kobo/shared/types'
 import { authedProcedure, ownerProcedure, router, studentProcedure } from './trpc.ts'
 
 const MAX_START_AHEAD_DAYS = 120
 const ROOM_UNAVAILABLE = Symbol('room-unavailable')
+const ALREADY_RENTING = Symbol('already-renting')
 
 type ApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN'
 
@@ -50,19 +51,28 @@ export interface OwnerRentalApplication {
 const dateOnly = (d: Date) => d.toISOString().slice(0, 10)
 
 function validateStartDate(startDate: string, now: Date) {
+  // B-07: a real calendar day (the Zod schema refines it too; `new Date('2026-11-31')` would roll over to 1 December).
+  if (!isCalendarDay(startDate)) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tanggal mulai tidak valid.' })
   const today = todayWIB(now)
   if (startDate < today) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tanggal mulai tidak boleh di masa lalu.' })
   if (startDate > addDays(today, MAX_START_AHEAD_DAYS)) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tanggal mulai terlalu jauh dari hari ini.' })
-  if (Number.isNaN(new Date(`${startDate}T00:00:00Z`).getTime())) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tanggal mulai tidak valid.' })
 }
 
-function isDuplicatePendingError(e: unknown): boolean {
-  const err = e as { code?: string; message?: string; meta?: unknown } | null
+/** A-013: only the one-pending-per-user-room index means "duplicate application"; any other unique violation is a real error. */
+export function isDuplicatePendingError(e: unknown): boolean {
+  const err = e as { message?: string; meta?: unknown } | null
   if (!err) return false
-  return err.code === 'P2002' || `${err.message ?? ''} ${JSON.stringify(err.meta ?? {})}`.includes('rental_application_one_pending_per_user_room')
+  return `${err.message ?? ''} ${JSON.stringify(err.meta ?? {})}`.includes('rental_application_one_pending_per_user_room')
 }
 
 const ALREADY_DECIDED = 'Pengajuan ini sudah diputuskan.'
+
+/**
+ * Live (ACTIVE, or unexpired PENDING hold) tenancies this user has in the kos. Same rule as waitlist.join's `rentingInKos`
+ * (trpc/waitlist.ts does not export it, so the one-liner is repeated here): paying first never buys a second room in a kos.
+ */
+const rentingInKos = (tx: Prisma.TransactionClient, userId: string, kosId: string, now: Date) =>
+  tx.tenancy.count({ where: { userId, room: { kosId }, OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gt: now } }] } })
 
 /**
  * Compare-and-set: only a still-PENDING application can be decided. Under READ COMMITTED a second UPDATE waits for the
@@ -78,8 +88,9 @@ export const applicationRouter = router({
   create: studentProcedure.input(rentalApplicationCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string; status: 'PENDING' }> => {
     const now = new Date()
     validateStartDate(input.startDate, now)
-    const room = await ctx.prisma.room.findFirst({ where: { id: input.roomId, archivedAt: null, kos: { archivedAt: null } }, select: { id: true, kosId: true } })
+    const room = await ctx.prisma.room.findFirst({ where: { id: input.roomId, archivedAt: null, kos: { archivedAt: null } }, select: { id: true, kosId: true, kos: { select: { owner: { select: { userId: true } } } } } })
     if (!room) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kamar tidak ditemukan.' })
+    if (room.kos.owner.userId === ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: 'Anda tidak bisa menyewa kamar di kos Anda sendiri.' })
     await assertDemoIsolation(ctx.prisma, ctx.user, room.kosId)
     await assertApplicationConsents(ctx.prisma, ctx.user.id)
     const me = await ctx.prisma.user.findUnique({ where: { id: ctx.user.id }, select: { campus: true } })
@@ -87,15 +98,17 @@ export const applicationRouter = router({
 
     try {
       const created = await ctx.prisma.$transaction(async (tx) => {
+        await lockKos(tx, room.kosId)
         await tx.tenancy.updateMany({
-          where: { roomId: room.id, status: 'PENDING', expiresAt: { lt: now } },
+          where: { roomId: room.id, status: 'PENDING', expiresAt: { lte: now } },
           data: { status: 'ENDED', endedAt: now },
         })
         await advanceWaitlist(tx, room.kosId, now)
-        const offer = await tx.waitlistEntry.findFirst({ where: { offeredRoomId: room.id, ...liveOffer(now) }, select: { userId: true } })
+        if ((await rentingInKos(tx, ctx.user.id, room.kosId, now)) > 0) return ALREADY_RENTING
+        const offer = await tx.waitlistEntry.findFirst({ where: { offeredRoomId: room.id, ...liveOffer(now) }, select: { id: true, userId: true, applicationId: true } })
         if (offer && offer.userId !== ctx.user.id) return OFFERED_ELSEWHERE
         const liveTenancy = await tx.tenancy.count({
-          where: { roomId: room.id, OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gte: now } }] },
+          where: { roomId: room.id, OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gt: now } }] },
         })
         if (liveTenancy > 0) return ROOM_UNAVAILABLE
         const application = await tx.rentalApplication.create({
@@ -111,9 +124,12 @@ export const applicationRouter = router({
           },
           select: { id: true },
         })
+        // A-007: the offeree's application holds the offer while the owner reviews it (see liveOffer / advanceWaitlist).
+        if (offer && !offer.applicationId) await tx.waitlistEntry.update({ where: { id: offer.id }, data: { applicationId: application.id } })
         return { id: application.id, status: 'PENDING' as const }
       })
       if (created === OFFERED_ELSEWHERE) throw new TRPCError({ code: 'CONFLICT', message: OFFERED_ELSEWHERE_MESSAGE })
+      if (created === ALREADY_RENTING) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Anda sudah menyewa kamar di kos ini.' })
       if (created === ROOM_UNAVAILABLE) throw new TRPCError({ code: 'CONFLICT', message: 'Kamar ini sudah tidak tersedia untuk pengajuan.' })
       return created
     } catch (e) {
@@ -173,6 +189,8 @@ export const applicationRouter = router({
     const now = new Date()
     try {
       const result = await ctx.prisma.$transaction(async (tx) => {
+        // Kos lock first (A-001 lock order); input.kosId is the caller's own kos and the application is looked up inside it.
+        await lockKos(tx, input.kosId)
         const application = await tx.rentalApplication.findFirst({
           where: { id: input.applicationId, room: { kosId: input.kosId } },
           include: { room: { include: { kos: true } }, user: { select: { campusEmailVerifiedAt: true, campusVerifiedUntil: true } } },
@@ -182,7 +200,19 @@ export const applicationRouter = router({
 
         if (input.decision === 'REJECT') {
           await claimDecision(tx, application.id, { status: 'REJECTED', decidedAt: now })
+          // A rejected offeree application ends the offer at once (A-007): hand the room to the next waiter in the same tx.
+          const linked = await tx.waitlistEntry.count({ where: { applicationId: application.id, status: 'OFFERED' } })
+          if (linked > 0) await advanceWaitlist(tx, input.kosId, now)
           return { id: application.id, status: 'REJECTED' as const, tenancyId: null }
+        }
+
+        // S-2: the start date was only checked when the student applied; an old application must not become an overdue invoice.
+        if (dateOnly(application.startDate) < todayWIB(now)) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tanggal mulai pengajuan ini sudah lewat. Tolak pengajuan ini dan minta penyewa mengajukan ulang.' })
+        }
+        // G2-05: the student may have been approved into another room of this kos since they applied.
+        if ((await rentingInKos(tx, application.userId, input.kosId, now)) > 0) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Penyewa ini sudah menyewa kamar lain di kos ini.' })
         }
 
         const booked = await createApprovedTenancyObligation(tx, {

@@ -1,9 +1,9 @@
-import { computeCheckoutTotal, deriveRoomStatus, formatReceiptNo, todayWIB } from '@kobo/shared/domain'
+import { addMonths, computeCheckoutTotal, deriveRoomStatus, formatReceiptNo, todayWIB } from '@kobo/shared/domain'
 import type { RoomStatus } from '@kobo/shared/types'
 import type { Prisma } from '../generated/prisma/client.ts'
 import { isLiveAttempt, toPaymentSummary } from '../payment/summary.ts'
 import type { PaymentSummary } from '../payment/summary.ts'
-import { advanceWaitlist, liveOffer } from '../waitlist.ts'
+import { advanceWaitlist, liveOffer, lockKos } from '../waitlist.ts'
 import { reviewEditable, reviewEligible } from './review.ts'
 import { authedProcedure, router } from './trpc.ts'
 
@@ -67,15 +67,31 @@ export interface MyTenancy {
   derivedStatus: RoomStatus
   startDate: string
   durationMonths: number
+  /** YYYY-MM-DD (WIB calendar day): startDate + durationMonths. Nothing ends the tenancy that day; the owner does. */
+  leaseEndDate: string
   expiresAt: string | null
   /** When the tenancy ended (owner move-out or booking cancelled); null while it is live. */
   endedAt: string | null
+  /**
+   * Why a tenancy is over (A-011), derived from existing columns: the 24 h hold ran out (also a PENDING row past its deadline
+   * that the sweep has not ended yet), the owner cancelled the booking before the deadline, or an activated rental ended
+   * (move-out). Null while the tenancy is live.
+   */
+  endCause: 'HOLD_LAPSED' | 'CANCELLED_BY_OWNER' | 'MOVED_OUT' | null
   kos: { id: string; name: string; address: string; image: string | null; ownerName: string; ownerPhone: string | null }
   room: { id: string; roomNumber: string; floor: number; type: string; priceMonthly: number }
   invoices: MyInvoice[]
   /** Activated (ACTIVE, or ENDED after a paid invoice) and not yet reviewed. */
   canReview: boolean
   review: MyReview | null
+}
+
+function endCause(t: { status: 'PENDING' | 'ACTIVE' | 'ENDED'; expiresAt: Date | null; endedAt: Date | null }, now: Date): MyTenancy['endCause'] {
+  if (t.status === 'ACTIVE') return null
+  if (t.status === 'PENDING') return t.expiresAt && t.expiresAt <= now ? 'HOLD_LAPSED' : null
+  // ENDED: activation clears expiresAt, so a row that still has one never became a rental.
+  if (!t.expiresAt) return 'MOVED_OUT'
+  return t.endedAt && t.endedAt < t.expiresAt ? 'CANCELLED_BY_OWNER' : 'HOLD_LAPSED'
 }
 
 export const OFFERED_ELSEWHERE = Symbol('offered-elsewhere')
@@ -89,6 +105,15 @@ export function isRoomTakenError(e: unknown): boolean {
   if (err.code === 'P2002') return true
   const text = `${err.message ?? ''} ${JSON.stringify(err.meta ?? {})}`
   return text.includes('tenancy_one_active_per_room') || text.includes('23505')
+}
+
+/** Invoice #1 is never below this (or below rent + fee when that is smaller): Rp 0 cannot be paid online or recorded by the owner. */
+export const MIN_FIRST_INVOICE = 10_000
+
+/** G2-02: a student discount at or above the rent would leave invoice #1 at Rp 0 (fee 0). Cap it so the invoice stays payable. */
+export function clampDiscount(rent: number, applicationFee: number, discount: number): number {
+  const gross = Math.max(0, rent) + Math.max(0, applicationFee)
+  return Math.min(discount, Math.max(0, gross - Math.min(gross, MIN_FIRST_INVOICE)))
 }
 
 interface ApprovedTenancyInput {
@@ -111,16 +136,17 @@ export async function createApprovedTenancyObligation(
   input: ApprovedTenancyInput,
 ): Promise<ApprovedTenancyObligation | typeof OFFERED_ELSEWHERE> {
   const { room, now } = input
+  await lockKos(tx, room.kosId)
   const breakdown = computeCheckoutTotal({
     monthlyRent: room.priceMonthly,
     applicationFee: room.kos.applicationFee,
-    discountAmount: room.kos.studentDiscountAmount,
+    discountAmount: clampDiscount(room.priceMonthly, room.kos.applicationFee, room.kos.studentDiscountAmount),
     campusEmailVerified: input.campusEmailVerified,
   })
   const dueDate = new Date(`${input.startDate}T00:00:00Z`)
 
   await tx.tenancy.updateMany({
-    where: { roomId: room.id, status: 'PENDING', expiresAt: { lt: now } },
+    where: { roomId: room.id, status: 'PENDING', expiresAt: { lte: now } },
     data: { status: 'ENDED', endedAt: now },
   })
   await advanceWaitlist(tx, room.kosId, now)
@@ -134,6 +160,7 @@ export async function createApprovedTenancyObligation(
       status: 'PENDING',
       startDate: new Date(`${input.startDate}T00:00:00+07:00`),
       durationMonths: input.durationMonths,
+      agreedMonthlyRent: breakdown.rent,
       expiresAt: new Date(now.getTime() + HOLD_HOURS * 3600_000),
     },
   })
@@ -182,13 +209,13 @@ export const bookingRouter = router({
       orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
       include: {
         room: { include: { kos: { include: { images: { orderBy: { order: 'asc' }, take: 1 }, owner: { include: { user: { select: { name: true, phone: true } } } } } } } },
-        invoices: { orderBy: [{ dueDate: 'asc' }, { id: 'asc' }], include: { payments: { orderBy: { createdAt: 'asc' } } } },
+        invoices: { orderBy: [{ dueDate: 'asc' }, { id: 'asc' }], include: { payments: { orderBy: { createdAt: 'asc' }, include: { refund: { select: { status: true, reason: true } } } } } },
         review: true,
       },
     })
     return rows.map((t): MyTenancy => {
       const oldestUnpaid = t.invoices.find((i) => i.status === 'UNPAID')
-      const live = t.status === 'PENDING' && t.expiresAt !== null && t.expiresAt.getTime() >= now.getTime()
+      const live = t.status === 'PENDING' && t.expiresAt !== null && t.expiresAt.getTime() > now.getTime()
       const img = t.room.kos.images[0]
       return {
         id: t.id,
@@ -201,8 +228,10 @@ export const bookingRouter = router({
         }),
         startDate: todayWIB(t.startDate),
         durationMonths: t.durationMonths,
+        leaseEndDate: addMonths(todayWIB(t.startDate), t.durationMonths),
         expiresAt: t.expiresAt?.toISOString() ?? null,
         endedAt: t.endedAt?.toISOString() ?? null,
+        endCause: endCause(t, now),
         kos: {
           id: t.room.kos.id,
           name: t.room.kos.name,

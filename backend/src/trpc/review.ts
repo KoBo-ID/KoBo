@@ -30,9 +30,10 @@ export const reviewRouter = router({
   create: authedProcedure.input(reviewCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
     const tenancy = await ctx.prisma.tenancy.findUnique({
       where: { id: input.tenancyId },
-      select: { userId: true, status: true, invoices: { select: { status: true } }, review: { select: { id: true } } },
+      select: { userId: true, status: true, room: { select: { kos: { select: { owner: { select: { userId: true } } } } } }, invoices: { select: { status: true } }, review: { select: { id: true } } },
     })
     if (!tenancy || tenancy.userId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: 'Anda hanya dapat mengulas kos yang pernah Anda sewa.' })
+    if (tenancy.room.kos.owner.userId === ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: 'Anda tidak bisa mengulas kos Anda sendiri.' })
     if (!reviewEligible(tenancy)) throw new TRPCError({ code: 'FORBIDDEN', message: 'Ulasan baru dapat ditulis setelah pembayaran sewa berhasil.' })
     const conflict = new TRPCError({ code: 'CONFLICT', message: 'Anda sudah mengulas sewa ini' })
     if (tenancy.review) throw conflict

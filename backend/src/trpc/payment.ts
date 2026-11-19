@@ -22,7 +22,7 @@ export interface PaymentStatusResult extends PaymentSummary {
 async function statusFor(prisma: PrismaClient, userId: string, paymentId: string, now = new Date()): Promise<PaymentStatusResult> {
   const p = await prisma.payment.findFirst({
     where: { id: paymentId, invoice: { tenancy: { userId } } },
-    include: { invoice: { include: { tenancy: { select: { status: true } } } }, refund: { select: { status: true } } },
+    include: { invoice: { include: { tenancy: { select: { status: true } } } }, refund: { select: { status: true, reason: true } } },
   })
   if (!p) throw new TRPCError({ code: 'NOT_FOUND', message: 'Pembayaran tidak ditemukan.' })
   return {

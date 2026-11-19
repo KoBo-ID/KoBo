@@ -89,6 +89,7 @@ describe('application owner decisions', () => {
     expect(tenancy).toMatchObject({ roomId: room.id, userId: winner.id, status: 'PENDING', durationMonths: 6 })
     expect(tenancy.expiresAt!.getTime()).toBeGreaterThan(Date.now() + 23 * 3600_000)
     expect(tenancy.invoices).toHaveLength(1)
+    expect(tenancy.agreedMonthlyRent).toBe(tenancy.invoices[0].rentAmount)
     const discount = Math.min(room.kos.studentDiscountAmount, room.priceMonthly + room.kos.applicationFee)
     expect(tenancy.invoices[0]).toMatchObject({
       rentAmount: room.priceMonthly,

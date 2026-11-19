@@ -118,7 +118,7 @@ describe('[G-004][R-003] owner-only procedures without a kosId', () => {
 })
 
 describe('[G-005][R-003] signed-in-only versus public procedures', () => {
-  it('answers UNAUTHORIZED "Silakan masuk terlebih dahulu." to a signed-out caller on all 27 signed-in-only procedures', async () => {
+  it('answers UNAUTHORIZED "Silakan masuk terlebih dahulu." to a signed-out caller on every signed-in-only procedure', async () => {
     const before = await snapshot()
     const wrong: string[] = []
     for (const proc of SIGNED_IN_ONLY) {

@@ -1,4 +1,4 @@
-import { compareDates, todayWIB } from '@kobo/shared/domain'
+import { compareDates, isCalendarDay, todayWIB } from '@kobo/shared/domain'
 import { kosIdOnly, visitCompleteInput, visitCreateInput, visitIdInput } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
 import { assertDemoIsolation } from '../demoIsolation.ts'
@@ -37,13 +37,19 @@ export const visitRouter = router({
   /** One SCHEDULED visit per student per kos (a partial unique index backs the check). The date must be after today in WIB. */
   create: studentProcedure.input(visitCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
     const parsed = new Date(`${input.date}T00:00:00Z`)
-    const real = !Number.isNaN(parsed.getTime()) && isoDay(parsed) === input.date
+    const real = isCalendarDay(input.date) && isoDay(parsed) === input.date
     if (!real || compareDates(input.date, todayWIB(new Date())) <= 0) {
       throw new TRPCError({ code: 'BAD_REQUEST', message: 'Tanggal survey harus setelah hari ini.' })
     }
-    const kos = await ctx.prisma.kos.findUnique({ where: { id: input.kosId, archivedAt: null }, select: { id: true } })
+    const kos = await ctx.prisma.kos.findUnique({ where: { id: input.kosId, archivedAt: null }, select: { id: true, owner: { select: { userId: true } } } })
     if (!kos) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kos tidak ditemukan.' })
+    if (kos.owner.userId === ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: 'Anda tidak bisa menjadwalkan survey di kos Anda sendiri.' })
     await assertDemoIsolation(ctx.prisma, ctx.user, kos.id)
+    // S-4: a SCHEDULED visit whose day has passed never resolves on its own; it would block the one-active-visit rule (and its unique index) forever.
+    await ctx.prisma.visit.updateMany({
+      where: { userId: ctx.user.id, kosId: kos.id, status: 'SCHEDULED', date: { lt: new Date(`${todayWIB(new Date())}T00:00:00Z`) } },
+      data: { status: 'CANCELLED' },
+    })
     const conflict = new TRPCError({ code: 'CONFLICT', message: ALREADY_SCHEDULED })
     if ((await ctx.prisma.visit.count({ where: { userId: ctx.user.id, kosId: kos.id, status: 'SCHEDULED' } })) > 0) throw conflict
     try {

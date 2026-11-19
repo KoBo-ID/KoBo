@@ -35,7 +35,7 @@ describe('owner.publicProfile', () => {
 
   it('works for an owner with no kos', async () => {
     const user = await prisma.user.findFirstOrThrow({ where: { ownerProfile: null } })
-    const o = await prisma.ownerProfile.create({ data: { userId: user.id } })
+    const o = await prisma.ownerProfile.create({ data: { userId: user.id, approvedAt: new Date() } }) // unapproved owners are NOT_FOUND (A-005)
     const res = await caller.owner.publicProfile({ id: o.id })
     expect(res.kos).toEqual([])
     expect(res.owner.totalProperties).toBe(0)

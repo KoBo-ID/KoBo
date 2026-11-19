@@ -181,7 +181,7 @@ describe('B03-002 one verified campus mailbox per account', () => {
 describe('B13-004 / B13-003 / B13-002 response hardening', () => {
   it('sends security headers on API and health responses, and no-store on every RPC response', async () => {
     const health = await request('/api/health')
-    expect(await health.json()).toEqual({ ok: true })
+    expect(await health.json()).toMatchObject({ ok: true }) // E-08 adds db/workers fields
     expect((await request('/health')).status).toBe(200)
     expect(health.headers.get('x-frame-options')).toBe('DENY')
     expect(health.headers.get('x-content-type-options')).toBe('nosniff')

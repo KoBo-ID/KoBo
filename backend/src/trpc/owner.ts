@@ -18,7 +18,7 @@ import { ownerTenantRouter } from './ownerTenant.ts'
 import type { OwnerImage } from './ownerImages.ts'
 import { ownerVisitRouter, ownerVisits } from './visit.ts'
 import { ownerWaitlistEntries, ownerWaitlistRouter } from './waitlist.ts'
-import { advanceWaitlist, liveOffer } from '../waitlist.ts'
+import { advanceWaitlist, liveOffer, lockKos } from '../waitlist.ts'
 import { authedProcedure, ownerOnlyProcedure, ownerProcedure, publicProcedure, router } from './trpc.ts'
 
 export type { BoardRoom, BoardSummary } from '../ownerBoard.ts'
@@ -79,7 +79,7 @@ export interface OwnerBoard {
 }
 
 /** A tenancy that still holds its room: ACTIVE, or PENDING and not yet expired (an expired hold reads as vacant). */
-const live = (now: Date): Prisma.TenancyWhereInput => ({ OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gte: now } }] })
+const live = (now: Date): Prisma.TenancyWhereInput => ({ OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gt: now } }] })
 
 function isUniqueViolation(e: unknown): boolean {
   const err = e as { code?: string; message?: string; meta?: unknown } | null
@@ -142,8 +142,13 @@ export const ownerRouter = router({
   /** What /owner/:id renders. `id` is the OwnerProfile id (the same one Kos.ownerId points at). */
   publicProfile: publicProcedure.input(idInput).query(async ({ ctx, input }): Promise<OwnerPublicProfile> => {
     const owner = await ctx.prisma.ownerProfile.findUnique({ where: { id: input.id }, include: { user: true } })
+    // A-005: an owner KoBo has not approved (or revoked) is not public; only they themselves can open the page.
+    if (owner && owner.approvedAt === null) {
+      const session = await ctx.getSession()
+      if (session?.user.id !== owner.userId) throw new TRPCError({ code: 'NOT_FOUND', message: 'Pemilik tidak ditemukan.' })
+    }
     if (!owner) throw new TRPCError({ code: 'NOT_FOUND', message: 'Pemilik tidak ditemukan.' })
-    const kos = await queryCards(ctx.prisma, { mediaBase: ctx.storage.publicUrl(''), where: Prisma.sql`k."ownerId" = ${owner.id}`, limit: 200 })
+    const kos = await queryCards(ctx.prisma, { mediaBase: ctx.storage.publicUrl(''), where: Prisma.sql`k."ownerId" = ${owner.id}`, limit: 200, viewerOwnerId: owner.id })
     return {
       owner: {
         id: owner.id,
@@ -327,7 +332,7 @@ export const ownerRouter = router({
       const user = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id }, select: { isDemo: true } })
       if (user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Akun ini bersifat hanya-baca dan tidak dapat menghapus kos.' })
       return ctx.prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT id FROM "Kos" WHERE id = ${input.kosId} FOR UPDATE`
+        await lockKos(tx, input.kosId)
         const now = new Date()
         const busy = await tx.tenancy.count({ where: { room: { kosId: input.kosId }, ...live(now) } })
         if (busy > 0) throw new TRPCError({ code: 'CONFLICT', message: 'Kos ini masih memiliki sewa atau booking aktif. Akhiri sewa tersebut terlebih dahulu.' })
@@ -335,6 +340,9 @@ export const ownerRouter = router({
         if ((await tx.waitlistEntry.count({ where: { kosId: input.kosId, ...liveOffer(now) } })) > 0) throw new TRPCError({ code: 'CONFLICT', message: OFFER_ACTIVE })
         if ((await tx.tenancy.count({ where: { room: { kosId: input.kosId } } })) > 0) {
           await tx.kos.update({ where: { id: input.kosId }, data: { archivedAt: now } })
+          // A-002: the rooms go with it, and nobody keeps queueing for a kos that no longer exists (no more offers or emails).
+          await tx.room.updateMany({ where: { kosId: input.kosId, archivedAt: null }, data: { archivedAt: now } })
+          await tx.waitlistEntry.updateMany({ where: { kosId: input.kosId, status: { in: ['WAITING', 'OFFERED'] } }, data: { status: 'REMOVED', resolvedAt: now } })
           return { id: input.kosId, archived: true }
         }
         await tx.kos.delete({ where: { id: input.kosId } })
@@ -386,6 +394,9 @@ export const ownerRouter = router({
 
     /** Same rule as kos.delete: a room with tenancy history is archived (hidden, history kept), an unused room is deleted. */
     delete: ownerProcedure.input(roomDeleteInput).mutation(async ({ ctx, input }): Promise<{ id: string; archived: boolean }> => {
+      // A-010: like kos.delete. A demo owner archiving a seeded room would otherwise outlive the nightly reset.
+      const user = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id }, select: { isDemo: true } })
+      if (user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Akun ini bersifat hanya-baca dan tidak dapat menghapus kamar.' })
       return ctx.prisma.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT id FROM "Kos" WHERE id = ${input.kosId} FOR UPDATE`
         const room = await tx.room.findFirst({ where: { id: input.roomId, kosId: input.kosId, archivedAt: null }, select: { id: true } })
@@ -435,7 +446,8 @@ export const ownerRouter = router({
       return ctx.prisma.$transaction(async (tx) => {
         const t = await tx.tenancy.findFirst({ where: { id: input.tenancyId, room: { kosId: input.kosId } }, select: { id: true, roomId: true } })
         if (!t) throw new TRPCError({ code: 'NOT_FOUND', message: 'Sewa tidak ditemukan.' })
-        // Same lock order as settlement and recordManual: Invoices, then their attempts, then the Tenancy.
+        // Kos first (A-001), then the same order as settlement and recordManual: Invoices, their attempts, the Tenancy.
+        await lockKos(tx, input.kosId)
         await tx.$queryRaw`SELECT id FROM "Invoice" WHERE "tenancyId" = ${t.id} ORDER BY id FOR UPDATE`
         await tx.payment.updateMany({
           where: { invoice: { tenancyId: t.id }, provider: { in: ['MOCK', 'XENDIT'] }, status: { in: ['CREATING', 'PENDING'] } },
