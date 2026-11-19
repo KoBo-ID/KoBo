@@ -6,6 +6,7 @@ import { VerifyCodeStep } from '../components/auth/VerifyCodeStep';
 import { Button } from '../components/ui/Button';
 import { useAuthActions } from '../lib/session';
 import { useAppStore } from '../store/AppContext';
+import { safeNext } from '../lib/safeNext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 /** /verifikasi-email?email=...: the 6-digit code step. Without an email there is nothing to verify, so it points to sign-in. */
@@ -40,7 +41,7 @@ export const VerifyEmail: React.FC = () => {
         onVerified={async () => {
           await refreshSession();
           addToast('Email terverifikasi. Selamat datang di KoBo!', 'success');
-          navigate(params.get('next')?.startsWith('/') && !params.get('next')?.startsWith('//') ? params.get('next')! : '/');
+          navigate(safeNext(params.get('next')), { replace: true });
         }}
       />
     </AuthCard>

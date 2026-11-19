@@ -10,6 +10,7 @@ import { GOOGLE_RETURN_FLAG, useAuthActions } from '../../lib/session';
 import { useTRPC } from '../../lib/trpc';
 import { TERMS_VERSION } from '@kobo/shared/domain';
 import { messageForError } from '../../lib/errors';
+import { safeNext } from '../../lib/safeNext';
 import { VerifyCodeStep } from './VerifyCodeStep';
 
 export type AuthView = 'login' | 'register' | 'verify-sent' | 'unverified' | 'forgot' | 'forgot-sent';
@@ -37,7 +38,7 @@ const GoogleMark: React.FC = () => (
 
 const linkButton: React.CSSProperties = { color: 'var(--primary)', fontWeight: 700, textDecoration: 'underline' };
 /** 16px on phones: anything smaller makes iOS zoom the page on focus. */
-const fieldStyle: React.CSSProperties = { fontSize: '1rem' };
+const fieldStyle: React.CSSProperties = { fontSize: 'var(--step-0)' };
 const column = (gap: string): React.CSSProperties => ({ display: 'flex', flexDirection: 'column', gap });
 
 interface AuthFormProps {
@@ -89,11 +90,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
     await refreshSession();
     const me = qc.getQueryData(trpc.auth.me.queryKey());
     addToast(welcome, 'success');
-    // Read before onDone navigates away. An owner lands in their workspace (or on the owner page they were sent
-    // from); everyone else stays where they were.
-    const wantsOwnerPage = isPage && new URLSearchParams(window.location.search).get('next')?.startsWith('/owner/');
+    // Read before onDone navigates away. An owner lands in their workspace unless the page they were sent from
+    // (`?next`, anything but the plain home page) says otherwise; everyone else stays where they were.
+    const nextParam = isPage ? new URLSearchParams(window.location.search).get('next') : null;
+    const hasOwnNext = safeNext(nextParam) !== '/';
     onDone();
-    if (me?.isOwner && !wantsOwnerPage) navigate('/owner/dashboard');
+    if (me?.isOwner && !hasOwnNext) navigate('/owner/dashboard');
   };
 
   /** Full-page round trip to Google and back to this page. better-auth stays out of the initial chunk. */
@@ -215,7 +217,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
     main = (
       <div style={{ ...column('1.25rem'), textAlign: 'center', alignItems: 'center' }}>
         <MailCheck size={40} color="var(--primary)" />
-        <p style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: 1.55 }}>
+        <p style={{ fontSize: 'var(--step-0)', color: 'var(--text-main)', lineHeight: 1.55 }}>
           Jika <strong>{email}</strong> terdaftar, kami telah mengirim tautan untuk mengatur ulang kata sandi. Tautan berlaku satu jam.
         </p>
         <Button variant="primary" fullWidth onClick={() => switchView('login')}>
@@ -226,7 +228,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
   } else if (view === 'forgot') {
     main = (
       <form onSubmit={handleSubmit} style={column('1.25rem')}>
-        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: 1.55 }}>
+        <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', lineHeight: 1.55 }}>
           Masukkan email akun Anda. Kami akan mengirim tautan untuk membuat kata sandi baru.
         </p>
         {errorBanner}
@@ -234,7 +236,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
         <Button type="submit" variant="primary" fullWidth isLoading={busy === 'form'} disabled={busy !== null}>
           Kirim Tautan Atur Ulang
         </Button>
-        <button type="button" onClick={() => switchView('login')} style={{ ...linkButton, fontSize: '0.85rem' }}>
+        <button type="button" onClick={() => switchView('login')} style={{ ...linkButton, fontSize: 'var(--step--1)' }}>
           Kembali ke Masuk
         </button>
       </form>
@@ -297,7 +299,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
           </div>
 
           {isRegister && (
-            <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--text-main)' }}>
+            <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: 'var(--step--1)', lineHeight: 1.5, color: 'var(--text-main)' }}>
               <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} required style={{ marginTop: '0.2rem' }} />
               <span>
                 Saya menyetujui <Link to="/syarat" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Syarat dan Ketentuan</Link> dan <Link to="/privasi" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Kebijakan Privasi</Link>.
@@ -309,7 +311,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
             <button
               type="button"
               onClick={() => switchView('forgot')}
-              style={{ ...linkButton, alignSelf: 'flex-end', marginTop: '-0.4rem', fontWeight: 600, fontSize: '0.8rem' }}
+              style={{ ...linkButton, alignSelf: 'flex-end', marginTop: '-0.4rem', fontWeight: 600, fontSize: 'var(--step--1)' }}
             >
               Lupa kata sandi?
             </button>
@@ -321,7 +323,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
         </form>
 
         {/* Email and password stay the default path; Google is the alternative below the divider. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-muted)', fontSize: 'var(--step--2)' }}>
           <span style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
           <span>atau</span>
           <span style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
@@ -338,7 +340,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
           Lanjutkan dengan Google
         </Button>
 
-        <div style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+        <div style={{ textAlign: 'center', fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>
           {isRegister ? (
             <span>
               Sudah punya akun?{' '}
@@ -373,8 +375,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
           className="auth-quick"
           style={{ ...column('0.55rem'), paddingTop: isPage ? undefined : '1rem', borderTop: isPage ? undefined : '1px solid var(--border-subtle)' }}
         >
-          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>Coba tanpa mendaftar</span>
-          <div style={{ display: 'grid', gridTemplateColumns: isPage ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(min(100%, 17rem), 1fr))', gap: '0.5rem' }}>
+          <span style={{ fontSize: 'var(--step--2)', fontWeight: 700, color: 'var(--text-muted)' }}>Coba tanpa mendaftar</span>
+          {/* On the page the grid comes from auth-page.css (two columns when they fit, stacked otherwise). */}
+          <div
+            className="auth-quick__grid"
+            style={{ display: 'grid', gridTemplateColumns: isPage ? undefined : 'repeat(auto-fit, minmax(min(100%, 17rem), 1fr))', gap: '0.5rem' }}
+          >
             <Button
               variant="outline"
               size="sm"

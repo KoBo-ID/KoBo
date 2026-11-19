@@ -20,7 +20,7 @@ export const AuthCard: React.FC<{ icon: React.ReactNode; title: string; children
       }}
     >
       {icon}
-      <h1 style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em' }}>{title}</h1>
+      <h1 style={{ fontSize: 'var(--step-2)', fontWeight: 800, letterSpacing: '-0.02em' }}>{title}</h1>
       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>{children}</div>
     </div>
   </div>

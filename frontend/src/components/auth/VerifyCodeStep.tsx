@@ -52,6 +52,8 @@ export const VerifyCodeStep: React.FC<VerifyCodeStepProps> = ({ email, onVerifie
     const err = await postAuth('/api/auth/email-otp/verify-email', { email, otp: code });
     if (err) {
       setError(messageForError(err));
+      // Clear the refused code: the field is full (maxLength 6, caret kept at the end), so retyping would be blocked.
+      setCode('');
       setBusy(null);
       return;
     }

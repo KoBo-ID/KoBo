@@ -50,7 +50,7 @@ export const AccountSecurityCard: React.FC = () => {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <KeyRound size={18} color="var(--primary)" />
-        <h2 id="account-security-title" style={{ fontSize: '1rem', fontWeight: 700 }}>Keamanan akun</h2>
+        <h2 id="account-security-title" style={{ fontSize: 'var(--step-0)', fontWeight: 700 }}>Keamanan akun</h2>
       </div>
       {error && <Notice tone="error">{error}</Notice>}
       <Input label="Kata sandi saat ini" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />

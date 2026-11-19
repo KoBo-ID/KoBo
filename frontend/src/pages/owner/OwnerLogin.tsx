@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Notice } from '../../components/ui/Notice';
-import { useSession } from '../../lib/session';
+import { useAuthActions, useSession } from '../../lib/session';
 import { BecomeOwnerModal } from '../../components/owner/BecomeOwnerModal';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
@@ -16,6 +16,7 @@ export const OwnerLogin: React.FC = () => {
   useDocumentTitle('Masuk pemilik');
   const navigate = useNavigate();
   const { me, isLoading } = useSession();
+  const { logout } = useAuthActions();
   const [registering, setRegistering] = useState(false);
   const isDemo = !!me?.user.isDemo;
 
@@ -25,6 +26,12 @@ export const OwnerLogin: React.FC = () => {
     if (!me) navigate('/masuk?peran=pemilik&next=%2Fowner%2Flogin');
     else if (me.isOwner) navigate('/owner/dashboard');
     else setRegistering(true);
+  };
+
+  // The Demo Student cannot register as an owner: offer the way forward (sign out, then the owner side of the sign-in page).
+  const switchToOwner = async () => {
+    await logout();
+    navigate('/masuk?peran=pemilik&next=%2Fowner%2Fdashboard');
   };
 
   const features = [
@@ -47,7 +54,7 @@ export const OwnerLogin: React.FC = () => {
             padding: 'clamp(1.5rem, 5vw, 2rem)',
           }}
         >
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.25, marginBottom: '1.5rem' }}>
+          <h1 style={{ fontSize: 'var(--step-2)', fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1.25, marginBottom: '1.5rem' }}>
             Masuk ke Portal Pemilik Kos
           </h1>
           {/* Feature highlights */}
@@ -62,7 +69,7 @@ export const OwnerLogin: React.FC = () => {
             {features.map((f, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                 <span style={{ color: 'var(--primary)', flexShrink: 0 }}>{f.icon}</span>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                <span style={{ fontSize: 'var(--step--1)', fontWeight: 600, color: 'var(--text-main)' }}>
                   {f.text}
                 </span>
               </div>
@@ -85,13 +92,18 @@ export const OwnerLogin: React.FC = () => {
 
           <p
             style={{
-              fontSize: '0.8125rem',
+              fontSize: 'var(--step--1)',
               color: 'var(--text-muted)',
               marginTop: '1rem',
             }}
           >
             {isDemo && !me?.isOwner ? 'Akun ini tidak dapat didaftarkan. Masuk dengan akun Anda sendiri.' : 'Akun Anda tetap sama untuk mencari kos dan mengelola kos.'}
           </p>
+          {isDemo && !me?.isOwner && (
+            <Button id="owner-login-switch" variant="outline" style={{ width: '100%', justifyContent: 'center', marginTop: '0.75rem' }} onClick={() => void switchToOwner()}>
+              Keluar dan masuk sebagai pemilik
+            </Button>
+          )}
         </div>
       </div>
       {registering && <BecomeOwnerModal onClose={() => setRegistering(false)} />}

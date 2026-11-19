@@ -15,7 +15,7 @@ export const OwnerGuard: React.FC = () => {
   if (isLoading) {
     return (
       <div role="status" aria-live="polite" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Memeriksa sesi…</span>
+        <span style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Memeriksa sesi…</span>
       </div>
     );
   }

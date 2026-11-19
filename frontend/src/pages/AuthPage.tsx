@@ -3,25 +3,16 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Check } from 'lucide-react';
 import { AuthForm } from '../components/auth/AuthForm';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { safeNext } from '../lib/safeNext';
 import { GOOGLE_RETURN_FLAG, takeGoogleReturnError, useSession } from '../lib/session';
 import seekerPhoto from '../assets/room-survey.webp';
 import ownerPhoto from '../assets/room-living.webp';
 import '../styles/auth-page.css';
 
-/** Only same-site paths: a `next` of `//evil.example` or `https://...` falls back to the home page. */
-function safeNext(raw: string | null, fallback = '/'): string {
-  if (!raw) return fallback;
-  try {
-    // Parse instead of prefix-matching: browsers read "/\evil.example" as "//evil.example".
-    const u = new URL(raw, window.location.origin);
-    if (u.origin !== window.location.origin || u.pathname.startsWith('/masuk')) return fallback;
-    return u.pathname + u.search + u.hash;
-  } catch {
-    return fallback;
-  }
-}
+/** The routes behind OwnerGuard (/owner/login and /owner/:id are public student-layout pages). */
+const OWNER_WORKSPACE = /^\/owner\/(dashboard|kos|reviews)(?:[/?#]|$)/;
 
-type AuthRole = 'seeker' | 'owner';
+type AuthRole ='seeker' | 'owner';
 
 const ASIDE: Record<AuthRole, { title: string; points: string[] }> = {
   seeker: {
@@ -45,6 +36,9 @@ export const AuthPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const role: AuthRole = params.get('peran') === 'pemilik' ? 'owner' : 'seeker';
   const next = safeNext(params.get('next'), role === 'owner' ? '/owner/login' : '/');
+  // "Kembali" must never land on a page that bounces straight back here: the owner workspace is behind OwnerGuard,
+  // so a visitor sent from it goes home instead (F-08).
+  const backTo = OWNER_WORKSPACE.test(next) ? '/' : next;
   const { me, isLoading } = useSession();
   const setRole = (r: AuthRole) =>
     setParams(
@@ -84,9 +78,10 @@ export const AuthPage: React.FC = () => {
       <main className="auth-shell">
         <aside className="auth-shell__aside">
           {/* Both photos stay mounted and cross-fade with the role toggle. */}
-          <img className={`auth-shell__photo${role === 'seeker' ? ' is-on' : ''}`} src={seekerPhoto} alt="" />
-          <img className={`auth-shell__photo${role === 'owner' ? ' is-on' : ''}`} src={ownerPhoto} alt="" />
-          <Link to={next} className="auth-page__back">
+          {/* Lazy: below 860px this panel is display:none, so the browser never fetches them there. Intrinsic sizes avoid layout shift. */}
+          <img className={`auth-shell__photo${role === 'seeker' ? ' is-on' : ''}`} src={seekerPhoto} alt="" width={1400} height={1042} loading="lazy" decoding="async" />
+          <img className={`auth-shell__photo${role === 'owner' ? ' is-on' : ''}`} src={ownerPhoto} alt="" width={1200} height={800} loading="lazy" decoding="async" />
+          <Link to={backTo} className="auth-page__back">
             <ArrowLeft size={16} aria-hidden="true" />
             Kembali
           </Link>
@@ -104,6 +99,19 @@ export const AuthPage: React.FC = () => {
         </aside>
 
         <section className="auth-shell__panel">
+          {/* Narrow screens only (the aside above is hidden there): back link and brand. */}
+          <div className="auth-page__mobilebar">
+            <Link to={backTo} className="auth-page__back">
+              <ArrowLeft size={16} aria-hidden="true" />
+              Kembali
+            </Link>
+            <Link to="/" className="auth-page__brand" aria-label="KoBo, ke beranda">
+              <img src="/favicon.svg" alt="" width={28} height={28} />
+              <span>
+                Ko<span style={{ color: 'var(--primary)' }}>Bo</span>
+              </span>
+            </Link>
+          </div>
           <div className="kobo-segmented auth-page__role" data-role={role} role="group" aria-label="Masuk sebagai">
             <button type="button" aria-pressed={role === 'seeker'} onClick={() => setRole('seeker')}>Pencari kos</button>
             <button type="button" aria-pressed={role === 'owner'} onClick={() => setRole('owner')}>Pemilik kos</button>
