@@ -102,8 +102,8 @@ function offerCopy(p: Partial<OfferPayload>): Copy | null {
   if (!deadline) return null
   return {
     subject: `Kamar di ${p.kosName} tersedia untukmu`,
-    intro: `Kabar baik: kamar ${p.roomNumber} di ${p.kosName} sekarang tersedia dan kami simpan khusus untukmu. Pesan sebelum ${deadline}, setelah itu kamar ditawarkan ke pengantre berikutnya.`,
-    action: 'Pesan Kamar',
+    intro: `Kabar baik: kamar ${p.roomNumber} di ${p.kosName} sekarang tersedia dan kami simpan khusus untukmu. Ajukan sewa sebelum ${deadline}. Tawaran ini ditahan selama pemilik meninjau pengajuan Anda; jika tidak ada pengajuan sampai batas itu, kamar ditawarkan ke pengantre berikutnya.`,
+    action: 'Ajukan Sewa',
     outro: 'Anda tidak perlu membalas email ini. Jika sudah tidak berminat, abaikan saja atau pilih Lewati di halaman kos.',
   }
 }

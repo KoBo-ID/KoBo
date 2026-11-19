@@ -5,7 +5,7 @@ import { TRPCError } from '@trpc/server'
 import { assertDemoIsolation } from '../demoIsolation.ts'
 import type { Prisma } from '../generated/prisma/client.ts'
 import type { Storage } from '../storage.ts'
-import { advanceWaitlist, liveOffer, roomClaims } from '../waitlist.ts'
+import { advanceWaitlist, liveOffer, lockKos, roomClaims } from '../waitlist.ts'
 import { authedProcedure, ownerProcedure, publicProcedure, router, studentProcedure } from './trpc.ts'
 
 type Tx = Prisma.TransactionClient
@@ -69,7 +69,7 @@ export async function bookableRooms(db: Tx, kosId: string, now: Date): Promise<{
     where: {
       kosId,
       archivedAt: null,
-      tenancies: { none: { OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gte: now } }] } },
+      tenancies: { none: { OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gt: now } }] } },
       waitlistOffers: { none: liveOffer(now) },
     },
     select: { id: true, type: true },
@@ -78,11 +78,12 @@ export async function bookableRooms(db: Tx, kosId: string, now: Date): Promise<{
 
 /** Live (ACTIVE, or unexpired PENDING hold) tenancies this user has in the kos. */
 const rentingInKos = (db: Tx, userId: string, kosId: string, now: Date) =>
-  db.tenancy.count({ where: { userId, room: { kosId }, OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gte: now } }] } })
+  db.tenancy.count({ where: { userId, room: { kosId }, OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gt: now } }] } })
 
 const entryInclude = {
   kos: { select: { id: true, slug: true, name: true, images: { orderBy: { order: 'asc' }, take: 1, select: { url: true, key: true } } } },
   offeredRoom: { select: { id: true, roomNumber: true, priceMonthly: true } },
+  application: { select: { status: true } },
 } satisfies Prisma.WaitlistEntryInclude
 type EntryRow = Prisma.WaitlistEntryGetPayload<{ include: typeof entryInclude }>
 
@@ -91,7 +92,9 @@ async function toMyEntries(db: Tx, storage: Storage, rows: EntryRow[], now: Date
   const kosIds = [...new Set(rows.map((r) => r.kosId))]
   const waiting = await db.waitlistEntry.findMany({ where: { kosId: { in: kosIds }, status: 'WAITING' }, select: { id: true, kosId: true, roomType: true, createdAt: true } })
   return rows.map((r): MyWaitlistEntry => {
-    const lapsed = r.status === 'OFFERED' && (r.offerExpiresAt === null || r.offerExpiresAt < now)
+    // A PENDING application for the offered room holds the offer past its deadline (A-007); a dead one ends it.
+    const appStatus = r.application?.status
+    const lapsed = r.status === 'OFFERED' && (appStatus === 'REJECTED' || appStatus === 'WITHDRAWN' || (appStatus !== 'PENDING' && (r.offerExpiresAt === null || r.offerExpiresAt < now)))
     const status: WaitlistStatus = lapsed ? 'EXPIRED' : r.status
     const img = r.kos.images[0]
     return {
@@ -144,6 +147,7 @@ export const waitlistRouter = router({
     await assertDemoIsolation(ctx.prisma, ctx.user, kos.id)
     try {
       return await ctx.prisma.$transaction(async (tx) => {
+        await lockKos(tx, kos.id)
         await advanceWaitlist(tx, kos.id, now)
         // Paying first never buys a queue place: a student who rents here already has their room.
         if ((await rentingInKos(tx, ctx.user.id, kos.id, now)) > 0) throw new TRPCError({ code: 'BAD_REQUEST', message: ALREADY_RENTING })
@@ -167,8 +171,11 @@ export const waitlistRouter = router({
   /** Own WAITING or OFFERED entry. Leaving a live offer passes the room on. */
   leave: authedProcedure.input(waitlistEntryInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
     return ctx.prisma.$transaction(async (tx) => {
-      const entry = await tx.waitlistEntry.findUnique({ where: { id: input.entryId }, select: { userId: true, kosId: true, status: true } })
-      if (!entry || entry.userId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: NOT_OWN })
+      // Kos lock first (A-001); the entry's kos never changes, so the unlocked read is safe. Status is re-read under the lock.
+      const unlocked = await tx.waitlistEntry.findUnique({ where: { id: input.entryId }, select: { userId: true, kosId: true } })
+      if (!unlocked || unlocked.userId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: NOT_OWN })
+      await lockKos(tx, unlocked.kosId)
+      const entry = await tx.waitlistEntry.findUniqueOrThrow({ where: { id: input.entryId }, select: { userId: true, kosId: true, status: true } })
       if (entry.status !== 'WAITING' && entry.status !== 'OFFERED') throw new TRPCError({ code: 'CONFLICT', message: NOT_LIVE })
       const now = new Date()
       const res = await tx.waitlistEntry.updateMany({ where: { id: input.entryId, status: entry.status }, data: { status: 'LEFT', resolvedAt: now } })
@@ -183,6 +190,7 @@ export const waitlistRouter = router({
     return ctx.prisma.$transaction(async (tx) => {
       const entry = await tx.waitlistEntry.findUnique({ where: { id: input.entryId }, select: { userId: true, kosId: true } })
       if (!entry || entry.userId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: NOT_OWN })
+      await lockKos(tx, entry.kosId)
       const now = new Date()
       const res = await tx.waitlistEntry.updateMany({ where: { id: input.entryId, status: 'OFFERED' }, data: { status: 'DECLINED', resolvedAt: now } })
       if (res.count === 0) throw new TRPCError({ code: 'CONFLICT', message: 'Penawaran ini sudah tidak berlaku.' })
@@ -230,6 +238,7 @@ export const ownerWaitlistEntries = ownerProcedure.input(kosIdOnly).query(async 
 export const ownerWaitlistRouter = router({
   remove: ownerProcedure.input(ownerWaitlistRemoveInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
     return ctx.prisma.$transaction(async (tx) => {
+      await lockKos(tx, input.kosId)
       const entry = await tx.waitlistEntry.findFirst({ where: { id: input.entryId, kosId: input.kosId }, select: { id: true, status: true } })
       if (!entry) throw new TRPCError({ code: 'NOT_FOUND', message: 'Antrean tidak ditemukan.' })
       if (entry.status !== 'WAITING' && entry.status !== 'OFFERED') throw new TRPCError({ code: 'CONFLICT', message: NOT_LIVE })

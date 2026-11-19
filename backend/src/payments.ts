@@ -40,17 +40,19 @@ export async function settleInvoice(tx: Tx, invoiceId: string, paymentId: string
   await tx.tenancy.update({ where: { id: tenancy.id }, data: { status: 'ACTIVE', expiresAt: null } })
   await tx.room.update({ where: { id: tenancy.roomId }, data: { occupancy: 'OCCUPIED' } })
   const first = todayWIB(tenancy.startDate)
+  // The rent agreed at approval, never the live room price (the owner may have changed it since). Null only on rows from before the snapshot existed.
+  const rent = tenancy.agreedMonthlyRent ?? tenancy.room.priceMonthly
   const later = Array.from({ length: tenancy.durationMonths - 1 }, (_, i) => {
     const due = new Date(`${addMonths(first, i + 1)}T00:00:00Z`)
     return {
       tenancyId: tenancy.id,
       periodStart: due,
       dueDate: due,
-      amount: tenancy.room.priceMonthly,
-      rentAmount: tenancy.room.priceMonthly,
+      amount: rent,
+      rentAmount: rent,
       discountAmount: 0,
       applicationFeeAmount: 0,
-      ownerReceivableAmount: tenancy.room.priceMonthly,
+      ownerReceivableAmount: rent,
       gatewayFeeBearer: 'PLATFORM' as const,
     }
   })

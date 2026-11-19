@@ -3,6 +3,7 @@ import type { CreateRefundInput } from './provider.ts'
 import type { PaymentService } from './service.ts'
 import { applyRefundResult } from './settlement.ts'
 import { XenditError } from './xendit.ts'
+import { heartbeatJob } from '../health.ts'
 import { startPeriodic, type StopWorker } from '../worker.ts'
 
 export const REFUND_MAX_ATTEMPTS = 8
@@ -132,7 +133,7 @@ export async function drainPaymentRefunds(
 
 /** Not started from createApp: tests call drainPaymentRefunds() directly. Returns a stop function. */
 export function startRefundWorker(prisma: PrismaClient, service: Pick<PaymentService, 'defaultProvider' | 'mockProvider' | 'xenditWebhook'>, intervalMs = 15_000): StopWorker {
-  return startPeriodic('refunds', intervalMs, () => drainPaymentRefunds(prisma, service))
+  return startPeriodic('refunds', intervalMs, heartbeatJob('refunds', intervalMs, () => drainPaymentRefunds(prisma, service)))
 }
 
 /** Refunds that need a human: failed ones, and ones submitted long ago that no callback ever closed. */

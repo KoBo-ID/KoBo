@@ -1,7 +1,7 @@
 import type { PrismaClient } from '../db/client.ts'
 import type { Prisma } from '../generated/prisma/client.ts'
 import { settleInvoice } from '../payments.ts'
-import { liveOffer } from '../waitlist.ts'
+import { liveOffer, lockKos } from '../waitlist.ts'
 import type { NormalizedPaymentEvent } from './provider.ts'
 
 type Tx = Prisma.TransactionClient
@@ -28,15 +28,17 @@ const reject = (paymentId: string, reason: string): SettlementResult => ({ outco
  * record the webhook fingerprint atomically. Validation failures are returned, never thrown: the caller still audits
  * the event and answers 200 so the provider does not retry forever. Only transient database errors throw.
  *
- * Lock order is Invoice, Payment, Tenancy. That is the order payment.start and recordManual already use, so a webhook
- * racing either of them cannot deadlock. An attempt's invoiceId never changes, so reading it unlocked is safe.
+ * Lock order is Kos (completed events only: they may claim a room), Invoice, Payment, Tenancy (A-001). Kos first matches
+ * advanceWaitlist and every waitlist write, so settlement and the waitlist cannot deadlock or both claim a room. An
+ * attempt's invoice, and its room's kos, never change, so resolving the kos from an unlocked read is safe.
  */
 export async function applyPaymentEvent(tx: Tx, opts: SettlementOptions, event: NormalizedPaymentEvent): Promise<SettlementResult> {
   const now = opts.now ?? new Date()
   if (event.kind === 'REFUND_SUCCEEDED' || event.kind === 'REFUND_FAILED') return applyRefundEvent(tx, opts, event)
 
-  const ref = await tx.payment.findUnique({ where: { id: event.referenceId }, select: { invoiceId: true } })
+  const ref = await tx.payment.findUnique({ where: { id: event.referenceId }, select: { invoiceId: true, invoice: { select: { tenancy: { select: { room: { select: { kosId: true } } } } } } } })
   if (!ref) return { outcome: 'UNMATCHED', paymentId: null }
+  if (event.kind === 'SESSION_COMPLETED') await lockKos(tx, ref.invoice.tenancy.room.kosId)
   await tx.$queryRaw`SELECT id FROM "Invoice" WHERE id = ${ref.invoiceId} FOR UPDATE`
   await tx.$queryRaw`SELECT id FROM "Payment" WHERE id = ${event.referenceId} FOR UPDATE`
   const payment = await tx.payment.findUniqueOrThrow({ where: { id: event.referenceId } })

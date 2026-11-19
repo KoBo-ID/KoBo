@@ -1,7 +1,7 @@
 import { compareQueue, matchOffers, OFFER_HOURS } from '@kobo/shared/domain'
 import type { PrismaClient } from './db/client.ts'
 import type { Prisma } from './generated/prisma/client.ts'
-import { enqueueEmail } from './outbox.ts'
+import { heartbeatJob } from './health.ts'
 import { startPeriodic, type StopWorker } from './worker.ts'
 
 /*
@@ -12,8 +12,22 @@ import { startPeriodic, type StopWorker } from './worker.ts'
 
 type Tx = Prisma.TransactionClient
 
-/** A live offer: OFFERED and not past its deadline. */
-export const liveOffer = (now: Date): Prisma.WaitlistEntryWhereInput => ({ status: 'OFFERED', offerExpiresAt: { gte: now } })
+/**
+ * Lock order (A-001): Kos FOR UPDATE → Invoice → Payment → PaymentRefund → Tenancy → WaitlistEntry writes. Any tx that may change room availability or waitlist rows calls lockKos first; resolve kosId with an unlocked read beforehand.
+ */
+export async function lockKos(tx: Tx, kosId: string): Promise<void> {
+  await tx.$queryRaw`SELECT 1 FROM "Kos" WHERE id = ${kosId} FOR UPDATE`
+}
+
+/**
+ * A live offer (A-007): OFFERED and either inside its deadline or held by a PENDING application the offeree filed for
+ * the offered room. A rejected or withdrawn application ends the offer at once, whatever the deadline says.
+ */
+export const liveOffer = (now: Date): Prisma.WaitlistEntryWhereInput => ({
+  status: 'OFFERED',
+  NOT: { application: { status: { in: ['REJECTED', 'WITHDRAWN'] } } },
+  OR: [{ offerExpiresAt: { gte: now } }, { application: { status: 'PENDING' } }],
+})
 
 /**
  * Read-only: which user each room is held for right now. A live offer, or the first waiter that advanceWaitlist()
@@ -26,7 +40,7 @@ export async function roomClaims(db: Tx, kosId: string, now: Date): Promise<Map<
   for (const o of offers) if (o.offeredRoomId) claims.set(o.offeredRoomId, o.userId)
 
   const waiting = await db.waitlistEntry.findMany({
-    where: { kosId, status: 'WAITING' },
+    where: { kosId, status: 'WAITING', kos: { archivedAt: null } },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     select: { id: true, userId: true, roomType: true, createdAt: true },
   })
@@ -35,8 +49,9 @@ export async function roomClaims(db: Tx, kosId: string, now: Date): Promise<Map<
     where: {
       kosId,
       archivedAt: null,
+      kos: { archivedAt: null },
       id: { notIn: [...claims.keys()] },
-      tenancies: { none: { OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gte: now } }] } },
+      tenancies: { none: { OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gt: now } }] } },
     },
     orderBy: { roomNumber: 'asc' },
     select: { id: true, type: true },
@@ -51,12 +66,24 @@ export async function roomClaims(db: Tx, kosId: string, now: Date): Promise<Map<
  * concurrent runs for one kos serialise. Returns the number of new offers. Must run inside a transaction.
  */
 export async function advanceWaitlist(tx: Tx, kosId: string, now: Date): Promise<number> {
-  await tx.$queryRaw`SELECT id FROM "Kos" WHERE id = ${kosId} FOR UPDATE`
+  await lockKos(tx, kosId)
 
+  // Resolve offers that are no longer live (A-007). An offer past its deadline lapses unless the offeree's application
+  // for the room is still PENDING (the owner is reviewing it); an approved one is accepted, a rejected or withdrawn
+  // one ends at once so the room moves on in this same pass.
+  await tx.waitlistEntry.updateMany({ where: { kosId, status: 'OFFERED', application: { status: 'APPROVED' } }, data: { status: 'FULFILLED', resolvedAt: now } })
   await tx.waitlistEntry.updateMany({
-    where: { kosId, status: 'OFFERED', offerExpiresAt: { lt: now } },
+    where: {
+      kosId,
+      status: 'OFFERED',
+      OR: [{ application: { status: { in: ['REJECTED', 'WITHDRAWN'] } } }, { offerExpiresAt: { lt: now }, NOT: { application: { status: 'PENDING' } } }],
+    },
     data: { status: 'EXPIRED', resolvedAt: now },
   })
+
+  // An archived (deleted) kos never hands out offers (A-002).
+  const kos = await tx.kos.findUnique({ where: { id: kosId }, select: { archivedAt: true } })
+  if (!kos || kos.archivedAt) return 0
 
   const waiting = await tx.waitlistEntry.findMany({
     where: { kosId, status: 'WAITING' },
@@ -69,7 +96,7 @@ export async function advanceWaitlist(tx: Tx, kosId: string, now: Date): Promise
     where: {
       kosId,
       archivedAt: null,
-      tenancies: { none: { OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gte: now } }] } },
+      tenancies: { none: { OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gt: now } }] } },
       waitlistOffers: { none: { status: 'OFFERED' } },
     },
     orderBy: { roomNumber: 'asc' },
@@ -80,16 +107,16 @@ export async function advanceWaitlist(tx: Tx, kosId: string, now: Date): Promise
 
   const origin = (process.env.BETTER_AUTH_URL ?? '').replace(/\/+$/, '')
   const offerExpiresAt = new Date(now.getTime() + OFFER_HOURS * 3600_000)
-  for (const o of offers) {
-    const entry = waiting.find((w) => w.id === o.entryId)!
-    const room = rooms.find((r) => r.id === o.roomId)!
-    await tx.waitlistEntry.update({ where: { id: entry.id }, data: { status: 'OFFERED', offeredRoomId: room.id, offerExpiresAt } })
-    await enqueueEmail(tx, {
+  // Each entry gets its own room, so the updates cannot be one updateMany; run them together, and the emails as one insert (H-002).
+  const planned = offers.map((o) => ({ entry: waiting.find((w) => w.id === o.entryId)!, room: rooms.find((r) => r.id === o.roomId)! }))
+  await Promise.all(planned.map(({ entry, room }) => tx.waitlistEntry.update({ where: { id: entry.id }, data: { status: 'OFFERED', offeredRoomId: room.id, offerExpiresAt } })))
+  await tx.emailOutbox.createMany({
+    data: planned.map(({ entry, room }) => ({
       to: entry.user.email,
       template: 'waitlist-offer',
       payload: { name: entry.user.name, kosName: entry.kos.name, roomNumber: room.roomNumber, expiresAt: offerExpiresAt.toISOString(), url: `${origin}/kos/${kosId}` },
-    })
-  }
+    })),
+  })
   return offers.length
 }
 
@@ -110,5 +137,5 @@ export async function advanceAllWaitlists(prisma: PrismaClient, now: Date = new 
 
 /** Start the periodic advance. Ticks never overlap within this process. Returns a stop function. */
 export function startWaitlistWorker(prisma: PrismaClient, intervalMs = 15_000): StopWorker {
-  return startPeriodic('waitlist', intervalMs, () => advanceAllWaitlists(prisma))
+  return startPeriodic('waitlist', intervalMs, heartbeatJob('waitlist', intervalMs, () => advanceAllWaitlists(prisma)))
 }
