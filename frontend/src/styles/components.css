@@ -33,14 +33,7 @@
   }
 }
 
-/* Wide monitors: --container-max already widens to 1600px on its own,
-   so only the gutters need to grow. */
-@media (min-width: 1600px) {
-  .app-container {
-    padding-left: 2.5rem;
-    padding-right: 2.5rem;
-  }
-}
+/* Wide-monitor gutters are fluid now (.app-container in index.css). */
 
 /* ════════════════════════════════════════════════════════════════════
    SHARED CONTROL PRIMITIVES
@@ -60,7 +53,7 @@
   background-color: var(--bg-surface);
   color: var(--text-main);
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: var(--step--1);
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -96,7 +89,7 @@
   border-radius: var(--radius-pill);
   background-color: var(--primary);
   color: var(--text-inverse);
-  font-size: 0.68rem;
+  font-size: var(--step--2);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
@@ -163,7 +156,7 @@
   background-color: transparent;
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 0.78rem;
+  font-size: var(--step--1);
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -212,13 +205,14 @@
 }
 
 .kobo-searchfield input {
+  align-self: stretch; /* the whole pill height is the input's tap target */
   flex: 1;
   min-width: 0;
   border: none;
   outline: none;
   background: transparent;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: var(--step--1);
   color: var(--text-main);
 }
 
@@ -237,8 +231,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-xs);
   color: var(--text-muted);
   cursor: pointer;
@@ -267,10 +261,10 @@
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
   box-shadow: var(--shadow-lg);
-  padding: 0.25rem;
+  padding: var(--space-3xs);
   animation: campus-search-open 150ms ease-out;
 }
-.campus-search__heading { padding: 0.45rem 0.65rem 0.2rem; color: var(--text-muted); font-size: 0.75rem; font-weight: 700; }
+.campus-search__heading { padding: 0.45rem 0.65rem 0.2rem; color: var(--text-muted); font-size: var(--step--2); font-weight: 700; }
 .campus-search__option {
   display: flex;
   min-height: var(--control-height);
@@ -280,9 +274,9 @@
   border-radius: var(--radius-sm);
   color: var(--text-main);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--step--1);
 }
-.campus-search__option small { color: var(--text-muted); font-size: 0.75rem; }
+.campus-search__option small { color: var(--text-muted); font-size: var(--step--2); }
 .campus-search__option[aria-selected="true"], .campus-search__option:hover { background: var(--primary-subtle); }
 @keyframes campus-search-open { from { opacity: 0; transform: translateY(-2px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .campus-search__list { animation: none; } }
@@ -292,12 +286,12 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.25rem 0.3rem 0.25rem 0.55rem;
+  padding: var(--space-3xs) 0.3rem var(--space-3xs) 0.55rem;
   border-radius: var(--radius-badge);
   border: 1px solid var(--primary-light);
   background-color: var(--primary-subtle);
   color: var(--primary);
-  font-size: 0.75rem;
+  font-size: var(--step--2);
   font-weight: 600;
 }
 
@@ -343,7 +337,7 @@
   z-index: var(--z-dropdown);
   min-width: 300px;
   max-width: min(360px, calc(100vw - 2rem));
-  padding: 1rem;
+  padding: var(--space-s);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
   background-color: var(--bg-surface);
@@ -356,9 +350,9 @@
 }
 
 .kobo-popover__title {
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2xs);
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: var(--step--2);
   font-weight: 600;
 }
 
@@ -366,8 +360,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: var(--space-xs);
+  margin-top: var(--space-s);
   padding-top: 0.85rem;
   border-top: 1px solid var(--border-subtle);
 }
@@ -378,11 +372,11 @@
   align-items: center;
   gap: 0.6rem;
   width: 100%;
-  padding: 0.5rem 0.55rem;
+  padding: var(--space-2xs) 0.55rem;
   border-radius: var(--radius-sm);
   color: var(--text-main);
   font-family: inherit;
-  font-size: 0.84rem;
+  font-size: var(--step--1);
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -415,11 +409,11 @@
   align-items: center;
   gap: 0.55rem;
   width: 100%;
-  padding: 0.5rem 0.6rem;
+  padding: var(--space-2xs) 0.6rem;
   border-radius: var(--radius-sm);
   color: var(--text-main);
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: var(--step--1);
   font-weight: 600;
   text-align: left;
   text-decoration: none;
@@ -467,7 +461,7 @@
   background-color: var(--bg-surface);
 }
 
-@media (max-width: 1023px) {
+@media (width < 64rem) {
   .kobo-table-wrap {
     overflow-x: auto;
   }
@@ -477,13 +471,13 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.85rem;
+  font-size: var(--step--1);
 }
 
 .kobo-table caption {
-  padding: 0 1rem 0.75rem;
+  padding: 0 var(--space-s) var(--space-xs);
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: var(--step--2);
   text-align: left;
 }
 
@@ -491,20 +485,20 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  padding: 0.7rem 1rem;
+  padding: 0.7rem var(--space-s);
   background-color: var(--bg-muted);
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-muted);
   /* Sentence-case column headers: uppercase tracked micro-labels read as
      template scaffolding and are harder to scan. */
-  font-size: 0.78rem;
+  font-size: var(--step--1);
   font-weight: 600;
   text-align: left;
   white-space: nowrap;
 }
 
 .kobo-table tbody td {
-  padding: 0.8rem 1rem;
+  padding: 0.8rem var(--space-s);
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-main);
   vertical-align: middle;
@@ -525,12 +519,12 @@
 /* Floor / section group header row */
 .kobo-table__group th {
   position: static;
-  padding: 0.55rem 1rem;
+  padding: 0.55rem var(--space-s);
   background-color: var(--bg-page);
   border-top: 1px solid var(--border-subtle);
   border-bottom: 1px solid var(--border-subtle);
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: var(--step--1);
   font-weight: 700;
   text-align: left;
 }
@@ -560,7 +554,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.25rem;
+  gap: var(--space-3xs);
 }
 
 /* Actions stay fully visible on touch; they dim until hover on pointer
@@ -579,9 +573,9 @@
 }
 
 .kobo-table__empty {
-  padding: 2.5rem 1rem;
+  padding: 2.5rem var(--space-s);
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--step--1);
   text-align: center;
 }
 
@@ -593,7 +587,7 @@
   gap: 0.45rem;
   white-space: nowrap;
   color: var(--text-main);
-  font-size: 0.8rem;
+  font-size: var(--step--1);
   font-weight: 600;
 }
 
@@ -632,7 +626,7 @@
   align-items: center;
   gap: 0.4rem;
   color: var(--text-muted);
-  font-size: 0.76rem;
+  font-size: var(--step--2);
   font-weight: 600;
 }
 
@@ -643,7 +637,7 @@
 
 .kobo-stat__value {
   color: var(--text-main);
-  font-size: 1.6rem;
+  font-size: var(--step-2);
   font-weight: 800;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -652,7 +646,7 @@
 
 .kobo-stat__meta {
   color: var(--text-muted);
-  font-size: 0.74rem;
+  font-size: var(--step--2);
 }
 
 /* Thin rail for occupancy-style stats */
@@ -686,7 +680,7 @@
   border: none;
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: var(--step--1);
   font-weight: 600;
   cursor: pointer;
   transition: color var(--duration-fast) var(--ease-out-spring);
@@ -721,13 +715,13 @@
 }
 
 .kobo-hero__title {
-  font-size: clamp(2rem, 1.2rem + 2.6vw, 3.25rem);
+  font-size: var(--step-4);
   font-weight: 800;
   color: var(--text-main);
   letter-spacing: -0.025em;
   line-height: 1.12;
   text-wrap: balance;
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-m);
 }
 
 .kobo-hero__search {
@@ -742,11 +736,12 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin-top: 1rem;
+  row-gap: var(--space-xs);
+  column-gap: 6px;
+  margin-top: var(--space-s);
 }
 .kobo-hero__campus-lead {
-  font-size: 0.8125rem;
+  font-size: var(--step--2);
   color: var(--text-muted);
 }
 /* Secondary shortcut, so a small pill. The ::before keeps a 44px tap target around the 32px chip. */
@@ -755,26 +750,26 @@
   display: inline-flex;
   align-items: center;
   min-height: 32px;
-  padding: 0 12px;
+  padding: 0 var(--space-2xs);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
   color: var(--text-main);
-  font-size: 0.8125rem;
+  font-size: var(--step--1);
   font-weight: 500;
   text-decoration: none;
 }
-.kobo-hero__campus-chip::before { content: ''; position: absolute; inset: -6px -3px; }
+.kobo-hero__campus-chip::before { content: ''; position: absolute; inset: -7px -3px; }
 .kobo-hero__campus-chip:hover { border-color: var(--primary); color: var(--primary); }
 .kobo-hero__campus-chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-@media (min-width: 1024px) {
+@media (width >= 64rem) {
   .kobo-hero__campus-chips { justify-content: flex-start; }
 }
 
 /* Content-sized pair, centred as a unit, so the visible composition has
    equal outer margins. The grid centres the building's VISIBLE ink, not its
    canvas box: see the --hero-ink-* note on .kobo-hero-canvas below. */
-@media (min-width: 1024px) {
+@media (width >= 64rem) {
   .kobo-hero {
     grid-template-columns: minmax(0, 36rem) minmax(0, calc(var(--hero-canvas-max) * var(--hero-ink-w)));
     justify-content: center;
@@ -787,7 +782,7 @@
   /* One line: "Survey dulu, Baru sewa." is ~11.4em wide, the copy column is 36rem. */
   .kobo-hero__title {
     white-space: nowrap;
-    font-size: clamp(1.75rem, 3.4vw, 3rem);
+    font-size: var(--step-4);
   }
   .kobo-hero__search {
     margin-left: 0;
@@ -817,7 +812,7 @@
   --hero-dead-r: 0.174;
 }
 
-@media (min-width: 1024px) {
+@media (width >= 64rem) {
   #kobo-hero {
     overflow-x: clip; /* the overhang is transparent, but never scroll for it */
   }
@@ -869,7 +864,7 @@
 }
 
 /* Below 768px the 3D chunk is never fetched - poster only, and smaller. */
-@media (max-width: 767px) {
+@media (width < 48rem) {
   .kobo-hero-canvas {
     max-width: 430px;
   }
@@ -884,24 +879,12 @@
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   FEATURED KOS GRID - 1 / 2 / 4 columns, cards stretch to fill the row
+   FEATURED KOS GRID - intrinsic columns, cards stretch to fill the row
    ════════════════════════════════════════════════════════════════════ */
 .kobo-featured-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-}
-
-@media (min-width: 560px) {
-  .kobo-featured-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1024px) {
-  .kobo-featured-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--space-m);
 }
 
 /* Kuitansi page: "Unduh PDF" is window.print(), so only the receipt may reach the paper. */
@@ -927,10 +910,10 @@
 
 /* Per-invoice payment actions (MyKos): wraps cleanly at phone width. */
 .invoice-pay { display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem; min-width: 0; }
-.invoice-pay__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
-.invoice-pay__hint { font-size: 0.78rem; color: var(--text-muted); max-width: 22rem; text-align: right; line-height: 1.4; }
+.invoice-pay__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2xs); }
+.invoice-pay__hint { font-size: var(--step--2); color: var(--text-muted); max-width: 22rem; text-align: right; line-height: 1.4; }
 .invoice-pay__hint:empty { display: none; }
-@media (max-width: 480px) {
+@media (width < 40rem) {
   .invoice-pay { align-items: stretch; width: 100%; }
   .invoice-pay__actions { justify-content: stretch; }
   .invoice-pay__actions > * { flex: 1 1 auto; }
@@ -947,13 +930,13 @@
 .detail-info { order: 1; display: flex; flex-direction: column; min-width: 0; }
 .detail-sidebar { order: 2; align-self: stretch; min-width: 0; }
 /* Below the two-column breakpoint the sidebar is plain flow; its inline sticky/max-height only make sense beside the details column. */
-@media (max-width: 1023px) {
+@media (width < 64rem) {
   .booking-sidebar { position: static !important; max-height: none !important; overflow: visible !important; }
 }
 .detail-reviews { order: 3; min-width: 0; }
 .detail-related-wrap { order: 4; min-width: 0; }
-@media (min-width: 1024px) {
-  .detail-split-layout { grid-template-columns: minmax(0, 1fr) 384px; gap: 3rem; }
+@media (width >= 64rem) {
+  .detail-split-layout { grid-template-columns: minmax(0, 1fr) 384px; gap: var(--space-xl); }
   .detail-info, .detail-reviews, .detail-sidebar, .detail-related-wrap { order: 0; }
   .detail-main { display: flex; flex-direction: column; grid-column: 1; grid-row: 1; min-width: 0; }
   .detail-sidebar { grid-column: 2; grid-row: 1; }
@@ -961,58 +944,56 @@
 }
 
 /* Payment breakdown: one bordered unit; every row shares the same 16px side padding. */
-.booking-lines { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; font-size: 0.875rem; }
-.booking-lines__rows { display: flex; flex-direction: column; padding: 0 1rem; }
-.booking-fee-row { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: baseline; column-gap: 0.75rem; padding: 0.875rem 0; color: var(--text-main); font-weight: 500; }
+.booking-lines { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; font-size: var(--step--1); }
+.booking-lines__rows { display: flex; flex-direction: column; padding: 0 var(--space-s); }
+.booking-fee-row { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: baseline; column-gap: var(--space-xs); padding: 0.875rem 0; color: var(--text-main); font-weight: 500; }
 .booking-fee-row + .booking-fee-row { border-top: 1px solid var(--border-subtle); }
 .booking-fee-row__value { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.booking-fee-row__note { grid-column: 1 / -1; margin-top: 0.3rem; font-size: 0.75rem; font-weight: 400; line-height: 1.5; color: var(--text-muted); }
+.booking-fee-row__note { grid-column: 1 / -1; margin-top: 0.3rem; font-size: var(--step--2); font-weight: 400; line-height: 1.5; color: var(--text-muted); }
 .booking-fee-row--strong { font-weight: 700; }
-.booking-lines__total { padding: 1rem; background: var(--primary-light); border-top: 1px solid var(--border-subtle); }
-.booking-lines__total-main { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; }
-.booking-lines__total small { display: block; margin-top: 0.375rem; color: var(--text-muted); font-size: 0.75rem; }
-.booking-lines__sum { padding: 0 1rem; border-top: 1px solid var(--border-subtle); }
+.booking-lines__total { padding: var(--space-s); background: var(--primary-light); border-top: 1px solid var(--border-subtle); }
+.booking-lines__total-main { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--space-xs); } /* G2-12: wraps at 200% text instead of pushing the page sideways */
+.booking-lines__total small { display: block; margin-top: 0.375rem; color: var(--text-muted); font-size: var(--step--2); }
+.booking-lines__sum { padding: 0 var(--space-s); border-top: 1px solid var(--border-subtle); }
 
 /* Short laptop windows: tighter rhythm so the whole card (every payment line) fits under the header without scrolling. */
-@media (min-width: 1024px) and (max-height: 720px) {
-  .booking-card { padding: 1.25rem !important; gap: 1rem !important; }
+@media (width >= 64rem) and (max-height: 720px) {
+  .booking-card { padding: 1.25rem !important; gap: var(--space-s) !important; }
   .booking-fee-row { padding-block: 0.625rem !important; }
   .booking-lines__total { padding-block: 0.625rem !important; }
 }
 
 /* Main column: open sections divided by hairlines (the booking box is the only elevated object). The 4/8/12/16/24/32/48
    spacing scale applies: 32px section padding, 48px from 1024px. */
-.detail-card { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 2rem 0; min-width: 0; }
-.detail-main .room-picker { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 2rem 0; }
-.detail-main .section-title { font-size: 1.375rem; letter-spacing: -0.015em; }
-.detail-main .section-head, .detail-reviews .section-head { margin-bottom: 1.5rem; }
+.detail-card { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: var(--space-l) 0; min-width: 0; }
+.detail-main .room-picker { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: var(--space-l) 0; }
+.detail-main .section-title { font-size: var(--step-2); letter-spacing: -0.015em; }
+.detail-main .section-head, .detail-reviews .section-head { margin-bottom: var(--space-m); }
 .detail-main, .detail-info { gap: 0; }
 .detail-info > * + *, .detail-reviews { border-top: 1px solid var(--border-subtle); }
-@media (min-width: 1024px) { .detail-card, .detail-main .room-picker { padding: 2.5rem 0; } }
-@media (max-width: 639px) { .detail-card, .detail-main .room-picker { padding: 1.5rem 0; } }
 .detail-section { scroll-margin-top: calc(var(--header-height) + 4.25rem); }
 
 /* Breadcrumb above the title. */
-.detail-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.4rem; margin: 0; padding: 0; list-style: none; font-size: 0.8125rem; color: var(--text-muted); }
+.detail-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.4rem; margin: 0; padding: 0; list-style: none; font-size: var(--step--1); color: var(--text-muted); }
 .detail-crumbs a { display: inline-flex; align-items: center; min-height: 32px; color: var(--text-muted); text-decoration: none; }
 .detail-crumbs a:hover { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
 .detail-crumbs li + li::before { content: '›'; margin-right: 0.4rem; color: var(--text-subtle); }
-@media (pointer: coarse), (max-width: 639px) { .detail-crumbs a { min-height: 44px; } }
+@media (pointer: coarse), (width < 40rem) { .detail-crumbs a { min-height: 44px; } }
 .detail-crumbs [aria-current='page'] { color: var(--text-main); font-weight: 600; max-width: 22rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Key facts: quiet chips under the title (spec row, not promotions). */
-.detail-facts { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
-.detail-facts li { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 34px; padding: 0.25rem 0.75rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); color: var(--text-main); font-size: 0.8125rem; font-weight: 500; }
+.detail-facts { display: flex; flex-wrap: wrap; gap: var(--space-2xs); margin: 0; padding: 0; list-style: none; }
+.detail-facts li { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 34px; padding: var(--space-3xs) var(--space-xs); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); color: var(--text-main); font-size: var(--step--1); font-weight: 500; }
 .detail-facts li svg { flex: none; color: var(--primary); }
 .detail-facts li.is-strong { border-color: transparent; background: var(--primary-light); color: var(--primary-hover); font-weight: 700; }
 
 /* Section nav (desktop): a plain strip on the page background. A hairline runs the full column width; the current tab
    gets a 2px underline on top of it. */
 .detail-nav { display: none; }
-@media (min-width: 1024px) {
+@media (width >= 64rem) {
   .detail-nav { display: block; position: sticky; top: var(--header-height); z-index: var(--z-sticky); background: var(--bg-page); }
-  .detail-nav ul { display: flex; gap: 0.5rem; margin: 0; padding: 0; list-style: none; border-bottom: 1px solid var(--border-subtle); }
-  .detail-nav a { position: relative; display: flex; align-items: center; min-height: 52px; padding: 0 1.25rem; color: var(--text-muted); font-size: 0.9375rem; font-weight: 600; text-decoration: none; }
+  .detail-nav ul { display: flex; gap: var(--space-2xs); margin: 0; padding: 0; list-style: none; border-bottom: 1px solid var(--border-subtle); }
+  .detail-nav a { position: relative; display: flex; align-items: center; min-height: 52px; padding: 0 1.25rem; color: var(--text-muted); font-size: var(--step-0); font-weight: 600; text-decoration: none; }
   .detail-nav a::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: transparent; }
   .detail-nav a:hover { color: var(--text-main); }
   .detail-nav a[aria-current='true'] { color: var(--primary); }
@@ -1021,185 +1002,173 @@
 }
 
 /* Related kos */
-.detail-related { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
-@media (min-width: 640px) { .detail-related { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1280px) { .detail-related { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.detail-related { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: var(--space-s); }
 
 /* Room selection: names, availability and prices have separate, consistent positions. */
-.room-picker { container: room-picker / inline-size; padding: 1.5rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-card); background: var(--bg-surface); box-shadow: var(--shadow-xs); }
-.room-picker__heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 1rem; margin-bottom: 1rem; }
-.room-picker__heading h3 { margin: 0; }
-.room-picker__heading > span { color: var(--text-muted); font-size: 0.8rem; white-space: nowrap; }
-.room-picker__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; align-items: stretch; }
-.room-picker__option { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: 0.5rem 1.5rem; min-width: 0; min-height: 40px; padding: 1rem 1.25rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-page); color: var(--text-main); font: inherit; text-align: left; cursor: pointer; }
+.room-picker { container: room-picker / inline-size; padding: var(--space-m); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); background: var(--bg-surface); box-shadow: var(--shadow-xs); }
+.room-picker__heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2xs) var(--space-s); margin-bottom: var(--space-s); }
+.room-picker__heading h2 { margin: 0; }
+.room-picker__heading > span { color: var(--text-muted); font-size: var(--step--1); white-space: nowrap; }
+.room-picker__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); align-items: stretch; }
+.room-picker__option { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: var(--space-2xs) var(--space-m); min-width: 0; min-height: 40px; padding: var(--space-s) 1.25rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-page); color: var(--text-main); font: inherit; text-align: left; cursor: pointer; }
 .room-picker__option.is-selected { border-color: var(--primary); background: var(--primary-subtle); }
 .room-picker__option:focus-visible { outline: 3px solid var(--border-focus); outline-offset: 3px; }
 .room-picker__option:disabled { cursor: not-allowed; }
-.room-picker__title { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem; font-size: 1rem; font-weight: 700; line-height: 1.45; }
+.room-picker__title { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2xs) var(--space-xs); font-size: var(--step-0); font-weight: 700; line-height: 1.45; }
 .room-picker__title > span { min-width: 0; overflow-wrap: anywhere; }
-.room-picker__chosen { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.1rem 0.55rem; border-radius: var(--radius-badge); background: var(--primary); color: var(--text-inverse); font-size: 0.72rem; font-weight: 700; line-height: 1.5; }
+.room-picker__chosen { display: inline-flex; align-items: center; gap: var(--space-3xs); padding: 0.1rem 0.55rem; border-radius: var(--radius-badge); background: var(--primary); color: var(--text-inverse); font-size: var(--step--2); font-weight: 700; line-height: 1.5; }
 .room-picker__chosen svg { flex-shrink: 0; }
-.room-picker__availability { color: var(--status-paid-text); font-size: 0.8125rem; font-weight: 600; line-height: 1.4; }
+.room-picker__availability { color: var(--status-paid-text); font-size: var(--step--1); font-weight: 600; line-height: 1.4; }
 .room-picker__availability > span { white-space: nowrap; }
 .room-picker__option.is-full .room-picker__availability { color: var(--text-muted); }
 .room-picker__main { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
-.room-picker__details { display: flex; flex-wrap: wrap; gap: 0.1rem 1.25rem; margin: 0.1rem 0 0; color: var(--text-muted); font-size: 0.8125rem; line-height: 1.5; overflow-wrap: anywhere; }
-.room-picker__reserved { color: var(--status-booking-text); font-size: 0.75rem; line-height: 1.5; }
-.room-picker__footer { display: flex; flex-direction: column; gap: 0.25rem; padding-top: 0.6rem; border-top: 1px solid var(--border-subtle); }
-.room-picker__price { color: var(--primary); font-size: 1rem; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
-.room-picker__price > span { color: var(--text-muted); font-size: 0.75rem; font-weight: 400; white-space: nowrap; }
-.room-picker__waitlist { color: var(--primary); font-size: 0.8125rem; font-weight: 600; text-decoration: underline; text-underline-offset: 0.2em; }
-@container room-picker (min-width: 520px) {
+.room-picker__details { display: flex; flex-wrap: wrap; gap: 0.1rem 1.25rem; margin: 0.1rem 0 0; color: var(--text-muted); font-size: var(--step--1); line-height: 1.5; overflow-wrap: anywhere; }
+.room-picker__reserved { color: var(--status-booking-text); font-size: var(--step--2); line-height: 1.5; }
+.room-picker__footer { display: flex; flex-direction: column; gap: var(--space-3xs); padding-top: 0.6rem; border-top: 1px solid var(--border-subtle); }
+.room-picker__price { color: var(--primary); font-size: var(--step-0); font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.room-picker__price > span { color: var(--text-muted); font-size: var(--step--2); font-weight: 400; white-space: nowrap; }
+.room-picker__waitlist { color: var(--primary); font-size: var(--step--1); font-weight: 600; text-decoration: underline; text-underline-offset: 0.2em; }
+@container room-picker (width >= 32.5rem) {
   .room-picker__option { grid-template-columns: minmax(0, 1fr) auto; }
   .room-picker__footer { align-items: flex-end; padding-top: 0; border-top: 0; text-align: right; }
 }
-@container room-picker (min-width: 800px) {
-  .room-picker__option { padding: 1.1rem 1.5rem; }
+@container room-picker (width >= 50rem) {
+  .room-picker__option { padding: 1.1rem var(--space-m); }
 }
 
 /* Kos detail section layouts. Container queries follow the available column, not the viewport. */
 .kos-poi { container-type: inline-size; }
-.kos-poi__categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; margin-bottom: 1.5rem; }
+.kos-poi__categories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2xs); margin-bottom: var(--space-m); }
 .kos-poi__category { justify-content: center; width: 100%; min-height: 44px; border: 1px solid var(--border-subtle) !important; white-space: normal !important; text-align: center; line-height: 1.35; }
 .kos-poi__category.is-selected { border-color: var(--primary) !important; box-shadow: inset 0 0 0 1px var(--primary); }
 .kos-poi__category:focus-visible, .kos-rules__toggle:focus-visible, .kos-reviews__more:focus-visible { outline: 3px solid var(--border-focus); outline-offset: 2px; }
 .kos-amenities { container: amenities / inline-size; }
-.kos-amenities__scopes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; }
-.kos-amenities h4 { margin: 0 0 1.25rem; color: var(--text-main); font-size: 1rem; font-weight: 700; }
+.kos-amenities__scopes { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-l); }
+.kos-amenities h3 { margin: 0 0 1.25rem; color: var(--text-main); font-size: var(--step-0); font-weight: 700; }
 .kos-amenities__scope { min-width: 0; }
-.kos-amenities__list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
-.kos-amenities__item { display: flex; align-items: center; gap: 0.875rem; min-width: 0; color: var(--text-main); font-size: 0.9375rem; line-height: 1.4; }
+.kos-amenities__list { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); margin: 0; padding: 0; list-style: none; }
+.kos-amenities__item { display: flex; align-items: center; gap: 0.875rem; min-width: 0; color: var(--text-main); font-size: var(--step-0); line-height: 1.4; }
 .kos-amenities__icon { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius-md); background: var(--primary-light); color: var(--primary); }
 .kos-amenities__icon svg { width: 20px; height: 20px; stroke-width: 1.75; }
 .kos-amenities__label { min-width: 0; overflow-wrap: anywhere; }
-.kos-amenities__label small { display: block; color: var(--text-muted); font-size: 0.75rem; }
-@container amenities (min-width: 560px) {
+.kos-amenities__label small { display: block; color: var(--text-muted); font-size: var(--step--2); }
+@container amenities (width >= 40rem) {
   .kos-amenities__scopes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; }
-  .kos-amenities__scope { padding-right: 2rem; }
-  .kos-amenities__scope + .kos-amenities__scope { padding-right: 0; padding-left: 2rem; border-left: 1px solid var(--border-subtle); }
+  .kos-amenities__scope { padding-right: var(--space-l); }
+  .kos-amenities__scope + .kos-amenities__scope { padding-right: 0; padding-left: var(--space-l); border-left: 1px solid var(--border-subtle); }
 }
-.kos-rules__groups { display: flex; flex-direction: column; gap: 0.5rem; }
+.kos-rules__groups { display: flex; flex-direction: column; gap: var(--space-2xs); }
 .kos-rules__group { overflow: hidden; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-page); transition: border-color var(--duration-fast) var(--ease-out-spring); }
 .kos-rules__group:hover, .kos-rules__group:focus-within { border-color: var(--border-strong); }
 .kos-rules__heading { margin: 0; font-size: inherit; }
-.kos-rules__toggle { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; min-height: 56px; padding: 0.65rem 1rem; background: transparent; color: var(--text-main); text-align: left; cursor: pointer; }
+.kos-rules__toggle { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); width: 100%; min-height: 56px; padding: 0.65rem var(--space-s); background: transparent; color: var(--text-main); text-align: left; cursor: pointer; }
 .kos-rules__toggle > div:first-child { min-width: 0; }
-.kos-rules__title { font-size: 0.95rem; font-weight: 700; }
-.kos-rules__panel { padding: 0.85rem 1rem 1rem; border-top: 1px solid var(--border-subtle); background: var(--bg-surface); }
+.kos-rules__title { font-size: var(--step-0); font-weight: 700; }
+.kos-rules__panel { padding: 0.85rem var(--space-s) var(--space-s); border-top: 1px solid var(--border-subtle); background: var(--bg-surface); }
 .kos-rules__panel[hidden], .kos-reviews__extra[hidden] { display: none; }
 .kos-rules__panel ul { padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.4rem; margin: 0; }
-.kos-rules__panel li { font-size: 0.875rem; color: var(--text-main); line-height: 1.5; overflow-wrap: anywhere; }
-.kos-rules__clause { display: flex; align-items: flex-start; gap: 0.6rem; margin-top: 0.85rem; padding: 0.6rem 0.8rem; border: 1px solid var(--status-overdue-border); border-radius: var(--radius-sm); background: var(--status-overdue-bg); color: var(--status-overdue-text); font-size: 0.8125rem; font-weight: 600; line-height: 1.5; }
+.kos-rules__panel li { font-size: var(--step--1); color: var(--text-main); line-height: 1.5; overflow-wrap: anywhere; }
+.kos-rules__clause { display: flex; align-items: flex-start; gap: 0.6rem; margin-top: 0.85rem; padding: 0.6rem 0.8rem; border: 1px solid var(--status-overdue-border); border-radius: var(--radius-sm); background: var(--status-overdue-bg); color: var(--status-overdue-text); font-size: var(--step--1); font-weight: 600; line-height: 1.5; }
 .kos-reviews { container-type: inline-size; }
-.kos-reviews__summary { display: flex; flex-direction: column; gap: 1.25rem; padding: 1.25rem 1.5rem; margin-bottom: 0.5rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); }
+.kos-reviews__summary { display: flex; flex-direction: column; gap: 1.25rem; padding: 1.25rem var(--space-m); margin-bottom: var(--space-2xs); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); }
 .kos-reviews__score > div { display: flex; align-items: baseline; gap: 0.35rem; }
-.kos-reviews__score strong { color: var(--text-main); font-size: 2.25rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
-.kos-reviews__score span { color: var(--text-muted); font-size: 0.9rem; }
-.kos-reviews__score { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 1rem; }
-.kos-reviews__score p { margin: 0; color: var(--text-muted); font-size: 0.875rem; }
-.kos-reviews__aspects { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.25rem 2rem; padding-top: 1.25rem; border-top: 1px solid var(--border-subtle); }
-.kos-reviews__aspect { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-width: 0; min-height: 40px; padding: 0; border: 0; background: transparent; }
-.kos-reviews__aspect-label { min-width: 0; color: var(--text-main); font-size: 0.875rem; line-height: 1.4; overflow-wrap: anywhere; }
-.kos-reviews__star-meter { display: flex; flex-shrink: 0; align-items: center; gap: 0.5rem; }
+.kos-reviews__score strong { color: var(--text-main); font-size: var(--step-4); font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+.kos-reviews__score span { color: var(--text-muted); font-size: var(--step--1); }
+.kos-reviews__score { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3xs) var(--space-s); }
+.kos-reviews__score p { margin: 0; color: var(--text-muted); font-size: var(--step--1); }
+.kos-reviews__aspects { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3xs) var(--space-l); padding-top: 1.25rem; border-top: 1px solid var(--border-subtle); }
+.kos-reviews__aspect { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); min-width: 0; min-height: 40px; padding: 0; border: 0; background: transparent; }
+.kos-reviews__aspect-label { min-width: 0; color: var(--text-main); font-size: var(--step--1); line-height: 1.4; overflow-wrap: anywhere; }
+.kos-reviews__star-meter { display: flex; flex-shrink: 0; align-items: center; gap: var(--space-2xs); }
 .kos-reviews__stars { display: inline-flex; gap: 0.2rem; }
 .kos-reviews__star { position: relative; display: inline-flex; width: 16px; height: 16px; }
 .kos-reviews__star-outline { color: var(--text-muted); }
 .kos-reviews__star-fill { position: absolute; inset: 0 auto 0 0; overflow: hidden; color: var(--primary); }
 .kos-reviews__star-fill svg { display: block; width: 16px; height: 16px; max-width: none; }
-.kos-reviews__aspect-score { color: var(--text-main); font-size: 0.875rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.kos-reviews__unrated { color: var(--text-muted); font-size: 0.875rem; line-height: 1.5; }
+.kos-reviews__aspect-score { color: var(--text-main); font-size: var(--step--1); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kos-reviews__unrated { color: var(--text-muted); font-size: var(--step--1); line-height: 1.5; }
 .kos-reviews__list, .kos-reviews__extra { display: flex; flex-direction: column; gap: 0; }
 .kos-reviews__item { padding: 1.25rem 0; border: 0; border-top: 1px solid var(--border-subtle); background: transparent; }
 .kos-reviews__review-header, .kos-reviews__author, .kos-reviews__author-name, .kos-reviews__rating, .kos-reviews__reply { display: flex; align-items: center; }
-.kos-reviews__review-header { justify-content: space-between; gap: 0.75rem; margin-bottom: 0.5rem; }
-.kos-reviews__author { min-width: 0; gap: 0.75rem; }
+.kos-reviews__review-header { justify-content: space-between; gap: var(--space-xs); margin-bottom: var(--space-2xs); }
+.kos-reviews__author { min-width: 0; gap: var(--space-xs); }
 .kos-reviews__author-name { flex-wrap: wrap; gap: 0.4rem; }
-.kos-reviews__author-name h5, .kos-reviews__author p, .kos-reviews__reply p { margin: 0; }
-.kos-reviews__author-name h5 { font-size: 0.925rem; font-weight: 700; }
-.kos-reviews__author p, .kos-reviews__reply-title span { color: var(--text-muted); font-size: 0.75rem; }
-.kos-reviews__verified { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.15rem 0.45rem; border-radius: var(--radius-badge); background: var(--primary-light); color: var(--primary); font-size: 0.7rem; font-weight: 600; }
+.kos-reviews__author-name h3, .kos-reviews__author p, .kos-reviews__reply p { margin: 0; }
+.kos-reviews__author-name h3 { font-size: var(--step--1); font-weight: 700; }
+.kos-reviews__author p, .kos-reviews__reply-title span { color: var(--text-muted); font-size: var(--step--2); }
+.kos-reviews__verified { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.15rem 0.45rem; border-radius: var(--radius-badge); background: var(--primary-light); color: var(--primary); font-size: var(--step--2); font-weight: 600; }
 .kos-reviews__verified svg { flex-shrink: 0; }
 .kos-reviews__author > div { min-width: 0; }
-.kos-reviews__author-name h5 { overflow-wrap: anywhere; }
-.kos-reviews__rating { flex-shrink: 0; gap: 0.25rem; color: var(--accent-strong); font-size: 0.8125rem; font-weight: 800; }
-.kos-reviews__comment { color: var(--text-main); font-size: 0.875rem; line-height: 1.6; }
+.kos-reviews__author-name h3 { overflow-wrap: anywhere; }
+.kos-reviews__rating { flex-shrink: 0; gap: var(--space-3xs); color: var(--accent-strong); font-size: var(--step--1); font-weight: 800; }
+.kos-reviews__comment { color: var(--text-main); font-size: var(--step--1); line-height: 1.6; }
 .kos-reviews__reply { align-items: flex-start; gap: 0.65rem; margin-top: 0.6rem; padding: 0.65rem 0; border-top: 1px solid var(--border-subtle); }
 .kos-reviews__reply > svg { flex-shrink: 0; margin-top: 0.15rem; }
-.kos-reviews__reply-title { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; color: var(--primary); font-size: 0.8rem; }
-.kos-reviews__reply p { color: var(--text-muted); font-size: 0.825rem; line-height: 1.5; }
-.kos-reviews__more { min-height: 44px; margin-top: 0.75rem; padding: 0.5rem 0; color: var(--primary); font: inherit; font-weight: 700; text-align: left; text-decoration: underline; text-underline-offset: 0.2em; }
-@container (min-width: 560px) {
-  .kos-reviews__aspects { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@container (min-width: 600px) {
+.kos-reviews__reply-title { display: flex; align-items: center; gap: var(--space-2xs); margin-bottom: 0.2rem; color: var(--primary); font-size: var(--step--1); }
+.kos-reviews__reply p { color: var(--text-muted); font-size: var(--step--1); line-height: 1.5; }
+.kos-reviews__more { min-height: 44px; margin-top: var(--space-xs); padding: var(--space-2xs) 0; color: var(--primary); font: inherit; font-weight: 700; text-align: left; text-decoration: underline; text-underline-offset: 0.2em; }
+@container (width >= 37.5rem) {
   .kos-poi__categories { grid-template-columns: repeat(12, minmax(0, 1fr)); }
   .kos-poi__category:nth-child(-n + 4) { grid-column: span 3; }
   .kos-poi__category:nth-child(n + 5) { grid-column: span 4; }
 }
-@media (max-width: 767px), (pointer: coarse) {
+@media (width < 48rem), (pointer: coarse) {
   .kos-poi__category { min-height: 44px; }
 }
 
 /* /checkout/:id */
-.checkout-split-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem; align-items: start; }
-.application-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; }
-@media (min-width: 640px) { .application-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1024px) { .checkout-split-layout { grid-template-columns: 58fr 42fr; } }
+.checkout-split-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-l); align-items: start; }
+.application-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 0.9rem; }
+@media (width >= 64rem) { .checkout-split-layout { grid-template-columns: 58fr 42fr; } }
 
 /* Mobile bottom dock hides from tablet width. !important because the dock sets display inline. */
-@media (min-width: 768px) {
+@media (width >= 48rem) {
   .mobile-only-dock { display: none !important; }
 }
 
 /* /search. !important rules override layout the page still sets inline; --filter-bar-height is set on the page root. */
-.search-cards-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
-@media (min-width: 560px) { .search-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-/* 3 across only from 1280px: at 1024px the 64% feed column is ~614px, which would squeeze each card under 200px. */
-@media (min-width: 1280px) { .search-cards-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (min-width: 1024px) {
+/* Columns follow the feed width (a 14rem card minimum), so no card is squeezed under ~224px and 200% text drops a column. */
+/* 15rem keeps the pre-sweep column counts (1 / 2 at 640+ / 3 at 1280+ beside the map); the card's price row wraps when narrow. */
+.search-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: var(--space-s); }
+@media (width >= 64rem) {
   .search-split-grid { grid-template-columns: 64fr 36fr !important; }
   .search-feed-column { display: flex !important; }
   .search-map-column { display: block !important; }
   .mobile-map-toggle { display: none !important; }
 }
-@media (max-width: 640px) { .hide-on-mobile { display: none !important; } }
-@media (max-width: 1023px) {
+@media (width < 40rem) { .hide-on-mobile { display: none !important; } }
+@media (width < 64rem) {
   .search-filter-bar { position: static !important; }
   .search-map-column { position: static !important; height: calc(100vh - var(--header-height) - var(--filter-bar-height, 0px) - 1rem) !important; min-height: 360px; }
 }
 
 /* One page-title size for every top-level page (was 2rem, 2.1rem and 2.2rem). */
-.page-title { font-size: clamp(1.6rem, 1.2rem + 1.2vw, 2rem); font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; line-height: 1.2; }
+.page-title { font-size: var(--step-3); font-weight: 800; color: var(--text-main); letter-spacing: -0.02em; line-height: 1.2; }
 
 /* ════════════════════════════════════════════════════════════════════
    RESPONSIVE LAYER (390px to 1600px)
    ════════════════════════════════════════════════════════════════════ */
 
 /* Modal: dvh so the mobile browser chrome never pushes the footer off screen; tighter padding on phones. */
-.kobo-modal-backdrop { position: fixed; inset: 0; z-index: var(--z-modal-backdrop); display: flex; align-items: center; justify-content: center; padding: 1.25rem; background-color: rgba(15, 23, 42, 0.65); }
+.kobo-modal-backdrop { position: fixed; inset: 0; z-index: var(--z-modal-backdrop); display: flex; align-items: center; justify-content: center; padding: var(--space-xs-s); background-color: rgba(15, 23, 42, 0.65); }
 .kobo-modal { display: flex; flex-direction: column; width: 100%; max-height: 90vh; max-height: 90dvh; overflow: hidden; background-color: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); }
-.kobo-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-subtle); }
+.kobo-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-s); padding: var(--space-s) var(--space-s-m); border-bottom: 1px solid var(--border-subtle); }
 .kobo-modal__header > div:first-child { min-width: 0; }
-.kobo-modal__body { flex: 1; min-height: 0; padding: 1.5rem; overflow-y: auto; overscroll-behavior: contain; }
+.kobo-modal__body { flex: 1; min-height: 0; padding: var(--space-s-m); overflow-y: auto; overscroll-behavior: contain; }
 .kobo-modal__close { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: var(--control-height); height: var(--control-height); border-radius: var(--radius-sm); background-color: var(--bg-muted); color: var(--text-muted); }
-@media (max-width: 560px) {
-  .kobo-modal-backdrop { padding: 0.75rem; }
-  .kobo-modal__header { padding: 1rem; }
-  .kobo-modal__body { padding: 1rem; }
-}
 /* Sign-in dialog: compact header, body and height so the whole form fits without an inner scrollbar. */
 .kobo-modal:has(.auth-body) { max-height: 96vh; max-height: 96dvh; }
 .kobo-modal:has(.auth-body) .kobo-modal__header { padding: 0.85rem 1.25rem; }
-.kobo-modal:has(.auth-body) .kobo-modal__body { padding: 1rem 1.25rem 1.1rem; }
+.kobo-modal:has(.auth-body) .kobo-modal__body { padding: var(--space-s) 1.25rem 1.1rem; }
 /* Phone landscape and other short windows: use the full height. */
 @media (max-height: 480px) {
-  .kobo-modal-backdrop { padding: 0.5rem; }
+  .kobo-modal-backdrop { padding: var(--space-2xs); }
   .kobo-modal { max-height: 100vh; max-height: 100dvh; }
 }
 
 /* Toasts: bottom-right on desktop; full width above the dock on phones. */
-.kobo-toasts { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: var(--z-toast); display: flex; flex-direction: column; gap: 0.75rem; max-width: 420px; pointer-events: none; }
-@media (max-width: 767px) {
+.kobo-toasts { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: var(--z-toast); display: flex; flex-direction: column; gap: var(--space-xs); max-width: 420px; pointer-events: none; }
+@media (width < 48rem) {
   .kobo-toasts { left: 1rem; right: 1rem; max-width: none; bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
 }
 
@@ -1213,33 +1182,33 @@
   z-index: var(--z-header);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-s);
   background-color: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--border-subtle);
   box-shadow: 0 -4px 12px hsla(222, 47%, 11%, 0.06);
 }
 .booking-phone-bar__price { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
-.booking-phone-bar__price strong { font-size: 1rem; color: var(--text-main); white-space: nowrap; }
-.booking-phone-bar__label { font-size: 0.72rem; color: var(--text-muted); }
-@media (max-width: 767px) {
+.booking-phone-bar__price strong { font-size: var(--step-0); color: var(--text-main); white-space: nowrap; }
+.booking-phone-bar__label { font-size: var(--step--2); color: var(--text-muted); }
+@media (width < 48rem) {
   .booking-phone-bar { bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px)); }
 }
-@media (min-width: 1024px) {
+@media (width >= 64rem) {
   .booking-phone-bar { display: none; }
 }
 
 /* Mobile dock: equal-width 48px targets, and room for it under the page (footer included). */
 .mobile-only-dock > a { flex: 1 1 0; min-width: 0; min-height: 48px; justify-content: center; }
-@media (max-width: 767px) {
+@media (width < 48rem) {
   body:has(.mobile-only-dock) { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
 }
 /* Room for the Detail phone bar (about 3.8rem) on top of the dock, so the page end is never covered. */
-@media (max-width: 1023px) {
-  body:has(.booking-phone-bar) { padding-bottom: 4rem; }
+@media (width < 64rem) {
+  body:has(.booking-phone-bar) { padding-bottom: var(--space-2xl); }
 }
-@media (max-width: 767px) {
+@media (width < 48rem) {
   body:has(.mobile-only-dock):has(.booking-phone-bar) { padding-bottom: calc(8.25rem + env(safe-area-inset-bottom)); }
 }
 
@@ -1254,7 +1223,9 @@
 .listing-card__link::after { content: ''; position: absolute; inset: 0; z-index: 1; }
 .listing-card__link:focus-visible { outline: none; box-shadow: none; }
 .card-hover-lift:has(.listing-card__link:focus-visible) { outline: 2px solid var(--border-focus); outline-offset: 2px; }
-@media (max-width: 767px), (pointer: coarse) {
+/* Text-link controls reach the WCAG 2.5.8 minimum of 24px at every size. */
+.kobo-back { min-block-size: 24px; }
+@media (width < 48rem), (pointer: coarse) {
   header a[href='/my-kos'], .os-brand, .kobo-btn, .kobo-back, .interactive-tap:not(.kobo-carousel-btn):is(button, a) { min-height: var(--control-height); }
   .kobo-segmented button { height: var(--control-height); }
   .kobo-icon-btn--sm { width: var(--control-height); height: var(--control-height); }
@@ -1262,7 +1233,7 @@
 }
 
 /* Owner room board: stacked cards on phones (the wrapper must not clip the row action menu). */
-@media (max-width: 760px) {
+@media (width < 48rem) {
   .kobo-table-wrap:has(.kobo-table--stack) { overflow: visible; }
   .kobo-table--stack, .kobo-table--stack tbody, .kobo-table--stack tr, .kobo-table--stack td, .kobo-table--stack th { display: block; }
   .kobo-table--stack caption { display: block; }
@@ -1272,8 +1243,8 @@
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas: 'room status' 'tenant price' 'due actions';
     align-items: center;
-    gap: 0.4rem 1rem;
-    padding: 0.85rem 1rem;
+    gap: 0.4rem var(--space-s);
+    padding: 0.85rem var(--space-s);
     border-bottom: 1px solid var(--border-subtle);
   }
   .kobo-table--stack tbody tr:last-child { border-bottom: none; }
@@ -1283,116 +1254,135 @@
   .kobo-table--stack td[data-cell='tenant'] { grid-area: tenant; }
   .kobo-table--stack td[data-cell='price'] { grid-area: price; text-align: right; }
   .kobo-table--stack td[data-cell='due'] { grid-area: due; }
-  .kobo-table--stack td[data-cell='due']::before { content: 'Jatuh tempo '; color: var(--text-muted); font-size: 0.75rem; }
+  .kobo-table--stack td[data-cell='due']::before { content: 'Jatuh tempo '; color: var(--text-muted); font-size: var(--step--2); }
   .kobo-table--stack td[data-cell='actions'] { grid-area: actions; }
 }
 
 /* /my-kos invoice row: label left, amount + status + actions right; stacked under 560px. */
-.invoice-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 0.35rem 1rem; padding: 0.6rem 0; }
-.invoice-row__meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.35rem 0.75rem; min-width: 0; }
-@media (max-width: 560px) {
+.invoice-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 0.35rem var(--space-s); padding: 0.6rem 0; }
+.invoice-row__meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.35rem var(--space-xs); min-width: 0; }
+@media (width < 40rem) {
   .invoice-row { grid-template-columns: minmax(0, 1fr); }
   .invoice-row__meta { justify-content: flex-start; }
   .invoice-row__meta .invoice-pay { flex-basis: 100%; }
 }
 
 /* /kuitansi/:receiptNo: label column shrinks on phones; the stamp sits in flow below the signature instead of over it. */
-.kuitansi-paper { padding: 1.25rem; }
+.kuitansi-paper { padding: var(--space-m-l); }
 .kuitansi-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.1rem; }
-.kuitansi-stamp { display: flex; flex-direction: column; align-items: center; width: fit-content; margin: 1.5rem auto 0; padding: 0.6rem 1rem; border: 3px dashed var(--primary); border-radius: var(--radius-md); color: var(--primary); font-size: 0.85rem; font-weight: 800; text-transform: uppercase; opacity: 0.85; pointer-events: none; }
-@media (min-width: 640px) {
-  .kuitansi-paper { padding: 2rem; }
-  .kuitansi-row { grid-template-columns: 180px minmax(0, 1fr); gap: 0.5rem; }
+.kuitansi-stamp { display: flex; flex-direction: column; align-items: center; width: fit-content; margin: var(--space-m) auto 0; padding: 0.6rem var(--space-s); border: 3px dashed var(--primary); border-radius: var(--radius-md); color: var(--primary); font-size: var(--step--1); font-weight: 800; text-transform: uppercase; opacity: 0.85; pointer-events: none; }
+@media (width >= 40rem) {
+  .kuitansi-row { grid-template-columns: 180px minmax(0, 1fr); gap: var(--space-2xs); }
 }
-@media (min-width: 820px) {
+@media (width >= 64rem) {
   .kuitansi-stamp { position: absolute; right: 13.5rem; bottom: 1.75rem; margin: 0; }
 }
 
 /* Tables that become label/value cards on phones (data-label on each td). */
 .kobo-segmented--wrap { flex-wrap: wrap; overflow: visible; }
-@media (max-width: 760px) {
+/* Phones: four options sit as a clean 2x2 grid instead of 3 + 1. */
+@media (width < 40rem) {
+  .kobo-segmented--wrap { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .kobo-segmented--wrap button { justify-content: center; }
+}
+/* The floating "Lihat Peta" button sits above the dock; keep the last cards clear of it. */
+@media (width < 64rem) {
+  .search-feed-column { padding-bottom: var(--space-2xl); }
+}
+@media (width < 48rem) {
   .kobo-table-wrap:has(.kobo-table--labels) { overflow: visible; }
   .kobo-table--labels, .kobo-table--labels caption, .kobo-table--labels tbody { display: block; }
   .kobo-table--labels thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .kobo-table--labels tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-subtle); }
+  .kobo-table--labels tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem var(--space-s); padding: 0.85rem var(--space-s); border-bottom: 1px solid var(--border-subtle); }
   .kobo-table--labels tbody tr:last-child { border-bottom: none; }
   .kobo-table--labels tbody td { display: flex; flex-direction: column; align-items: flex-start; gap: 0.1rem; min-width: 0; padding: 0; border-bottom: none; }
-  .kobo-table--labels tbody td[data-label]::before { content: attr(data-label); color: var(--text-muted); font-size: 0.75rem; font-weight: 600; }
+  .kobo-table--labels tbody td[data-label]::before { content: attr(data-label); color: var(--text-muted); font-size: var(--step--2); font-weight: 600; }
   .kobo-table--labels tbody td:not([data-label]) { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; }
   .kobo-table--labels tbody td[colspan] { display: block; grid-column: 1 / -1; padding: 0; text-align: left; }
 }
 
 /* One heading system for every card on /kos/:id (room types, amenities, radar, rules, reviews). */
-.section-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.5rem 1rem; margin-bottom: 1rem; }
-.section-title { margin: 0; color: var(--text-main); font-size: 1.25rem; font-weight: 700; line-height: 1.3; letter-spacing: -0.01em; }
-.section-sub { margin: 0.2rem 0 0; color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; }
+.section-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-2xs) var(--space-s); margin-bottom: var(--space-s); }
+.section-title { margin: 0; color: var(--text-main); font-size: var(--step-1); font-weight: 700; line-height: 1.3; letter-spacing: -0.01em; }
+.section-sub { margin: 0.2rem 0 0; color: var(--text-muted); font-size: var(--step--1); line-height: 1.4; }
 .room-picker__heading { align-items: baseline; }
-.kos-rules__all { min-height: 44px; padding: 0 0.25rem; color: var(--primary); font: inherit; font-size: 0.85rem; font-weight: 600; text-decoration: underline; text-underline-offset: 0.2em; }
+.kos-rules__all { min-height: 44px; padding: 0 var(--space-3xs); color: var(--primary); font: inherit; font-size: var(--step--1); font-weight: 600; text-decoration: underline; text-underline-offset: 0.2em; }
 .kos-rules__label { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; text-align: left; }
-.kos-rules__count { color: var(--text-muted); font-size: 0.78rem; font-weight: 500; }
-.kos-rules__aside { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
-.kos-rules__fine { padding: 0.2rem 0.55rem; border: 1px solid var(--status-overdue-border); border-radius: var(--radius-badge); background: var(--status-overdue-bg); color: var(--status-overdue-text); font-size: 0.75rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kos-rules__count { color: var(--text-muted); font-size: var(--step--2); font-weight: 500; }
+.kos-rules__aside { display: flex; align-items: center; gap: var(--space-xs); flex-shrink: 0; }
+.kos-rules__fine { padding: 0.2rem 0.55rem; border: 1px solid var(--status-overdue-border); border-radius: var(--radius-badge); background: var(--status-overdue-bg); color: var(--status-overdue-text); font-size: var(--step--2); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* /my-kos application card: details on the left, the action always on the side; stacked under 560px. */
-.application-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--bg-surface); }
+.application-card { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); padding: var(--space-s) 1.25rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--bg-surface); }
 .application-card__main { display: flex; flex: 1 1 auto; align-items: center; gap: 0.85rem; min-width: 0; }
 .application-card__action { flex-shrink: 0; }
-@media (max-width: 560px) {
+@media (width < 40rem) {
   .application-card { flex-direction: column; align-items: stretch; }
   .application-card__action > button { width: 100%; }
 }
 
-/* Narrow phones: the header's "Kos Saya" keeps its icon and count (the dock carries the label) so "Masuk" fits at 320 px. */
-@media (max-width: 389px) {
+/* Phones: the bottom dock (shown up to 767px) already says "Kos Saya", so the header link keeps only its icon and count (its aria-label stays). */
+@media (width < 48rem) {
   .kobo-nav-mykos__label { display: none; }
 }
 
+/* Header at 200% text: container units follow the header's own font size, so a 390px phone at 200% (12em) compacts
+   while 390px at 100% (24em) does not. Chips lose their padding and "Masuk" becomes an icon (its aria-label stays). */
+.kobo-header { container-type: inline-size; }
+.kobo-header__inner { gap: var(--space-m); }
+.kobo-header__brand, .kobo-header__nav { min-width: 0; }
+@container (max-width: 16em) {
+  .kobo-header__inner { gap: var(--space-2xs); padding-inline: var(--space-xs); }
+  .kobo-header__nav { gap: var(--space-3xs) !important; }
+  .kobo-header__brand { padding-inline: 0.4rem !important; gap: 0.3rem !important; }
+  .kobo-header__chip { padding-inline: var(--space-2xs) !important; }
+  .kobo-nav-login__label { display: none; }
+}
+
 /* ── Detail page containers: every section is one container; sections are separated by space, not hairlines. ── */
-.detail-info { gap: 1.5rem; }
-.detail-main { gap: 1.5rem; }
+.detail-info { gap: var(--space-m); }
+.detail-main { gap: var(--space-m); }
 .detail-info > * + *, .detail-reviews { border-top: 0; }
 .detail-card, .detail-main .room-picker {
-  padding: 1.5rem;
+  padding: var(--space-s-m);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card);
 }
-@media (min-width: 1024px) { .detail-card, .detail-main .room-picker { padding: 1.75rem; } }
-@media (max-width: 639px) { .detail-card, .detail-main .room-picker { padding: 1.25rem; } }
 /* Beside the sidebar .detail-main is a flex column with its own 1.5rem gap; the margin only serves the stacked phone order. */
-.detail-reviews { margin-top: 1.5rem; }
-@media (min-width: 1024px) { .detail-reviews { margin-top: 0; } }
+.detail-reviews { margin-top: var(--space-m); }
+@media (width >= 64rem) { .detail-reviews { margin-top: 0; } }
 /* Inside a container the light-grey fill separates the items: rules groups and reviews. */
 .kos-rules__group { background: var(--bg-page); border-color: transparent; }
 .kos-rules__group:hover, .kos-rules__group:focus-within { border-color: var(--border-strong); }
-.kos-rules__panel { background: transparent; border-top: 0; padding-top: 0.25rem; }
+.kos-rules__panel { background: transparent; border-top: 0; padding-top: var(--space-3xs); }
 .kos-reviews__summary { padding: 0; margin: 0 0 1.25rem; border: 0; border-radius: 0; background: transparent; }
 .kos-reviews__aspects { padding-top: 0; border-top: 0; }
 /* Score on top, a thin rule, then the aspect ratings in a 2x2 grid. */
-.kos-reviews__summary { gap: 1rem; }
-.kos-reviews__aspects { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 1rem; border-top: 1px solid var(--border-subtle); }
-@media (max-width: 479px) { .kos-reviews__aspects { grid-template-columns: minmax(0, 1fr); } }
-.kos-reviews__list, .kos-reviews__extra { gap: 0.75rem; }
-.kos-reviews__extra { margin-top: 0.75rem; }
-.kos-reviews__item { padding: 1rem 1.25rem; border: 0; border-radius: var(--radius-lg); background: var(--bg-page); }
-.kos-reviews__reply { margin-top: 0.75rem; padding: 0.75rem 0 0; border-top: 0; }
+.kos-reviews__summary { gap: var(--space-s); }
+.kos-reviews__aspects { grid-template-columns: minmax(0, 1fr); padding-top: var(--space-s); border-top: 1px solid var(--border-subtle); }
+@container (width >= 37.5rem) { .kos-reviews__aspects { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kos-reviews__list, .kos-reviews__extra { gap: var(--space-xs); }
+.kos-reviews__extra { margin-top: var(--space-xs); }
+.kos-reviews__item { padding: var(--space-s) 1.25rem; border: 0; border-radius: var(--radius-lg); background: var(--bg-page); }
+.kos-reviews__reply { margin-top: var(--space-xs); padding: var(--space-xs) 0 0; border-top: 0; }
 
 /* (i) info popover next to a field label */
 .kobo-infotip__btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; background: none; border: 0; border-radius: 50%; color: var(--text-muted); cursor: pointer; }
 .kobo-infotip__btn:hover, .kobo-infotip__btn[aria-expanded='true'] { color: var(--primary); background: var(--primary-light); }
 @media (pointer: coarse) { .kobo-infotip__btn { width: 40px; height: 40px; margin: -6px 0; } }
-.kobo-infotip { width: min(18rem, 80vw); padding: 0.75rem 0.9rem; }
-.kobo-infotip__text { margin: 0; font-size: 0.8125rem; line-height: 1.5; color: var(--text-main); font-weight: 400; }
+.kobo-infotip { width: min(18rem, 80vw); padding: var(--space-xs) 0.9rem; }
+.kobo-infotip__text { margin: 0; font-size: var(--step--1); line-height: 1.5; color: var(--text-main); font-weight: 400; }
 
 /* Fasilitas: building facts, then Kamar and Gedung, items with their inclusion status. */
-.kos-amenities__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: 0.75rem; margin: 0 0 1.5rem; }
-.kos-amenities__facts > div { padding: 0.75rem 1rem; background: var(--bg-muted); border-radius: var(--radius-lg); }
-.kos-amenities__facts dt { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
-.kos-amenities__facts dd { margin: 0.15rem 0 0; font-size: 1.125rem; font-weight: 800; color: var(--text-main); font-variant-numeric: tabular-nums; }
+.kos-amenities__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr)); gap: var(--space-xs); margin: 0 0 var(--space-m); }
+.kos-amenities__facts > div { padding: var(--space-xs) var(--space-s); background: var(--bg-muted); border-radius: var(--radius-lg); }
+.kos-amenities__facts dt { font-size: var(--step--2); font-weight: 600; color: var(--text-muted); }
+.kos-amenities__facts dd { margin: 0.15rem 0 0; font-size: var(--step-1); font-weight: 800; color: var(--text-main); font-variant-numeric: tabular-nums; }
 .kos-amenities__group + .kos-amenities__group { margin-top: 1.25rem; }
-.kos-amenities__group h5 { margin: 0 0 0.6rem; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); }
-.kos-amenities__empty { margin: 0; font-size: 0.875rem; color: var(--text-muted); }
-.kos-amenities__status { margin-left: auto; flex-shrink: 0; padding: 0.15rem 0.55rem; border-radius: var(--radius-badge); background: var(--primary-light); color: var(--primary); font-size: 0.75rem; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kos-amenities__group h4 { margin: 0 0 0.6rem; font-size: var(--step--1); font-weight: 700; color: var(--text-muted); }
+.kos-amenities__empty { margin: 0; font-size: var(--step--1); color: var(--text-muted); }
+.kos-amenities__status { margin-left: auto; flex-shrink: 0; padding: 0.15rem 0.55rem; border-radius: var(--radius-badge); background: var(--primary-light); color: var(--primary); font-size: var(--step--2); font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .kos-amenities__status.is-paid { background: var(--bg-muted); color: var(--text-main); }
 .kos-amenities__item { align-items: flex-start; }
 .kos-amenities__item .kos-amenities__status { align-self: center; }
@@ -1406,7 +1396,7 @@
 .nearby-route:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
 
 /* Nearby chips: one scrollable row, never a multi-row grid. */
-.nearby-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.nearby-chips { display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
 .nearby-chip {
   flex: 1 1 0; min-width: 2.5rem; display: inline-flex; align-items: center; justify-content: center; height: 2.75rem;
   border: 1px solid transparent; border-radius: var(--radius-md); background: var(--bg-muted); color: var(--text-muted);
@@ -1420,31 +1410,31 @@
 .nearby-chip:not(.is-selected):focus-visible { border-color: var(--primary); color: var(--primary); }
 .nearby-chip:focus-visible { outline: 3px solid var(--border-focus); outline-offset: 2px; }
 /* The name sits on its own line under the tabs: fixed height, so hovering never moves anything. */
-.nearby-caption { min-height: 2rem; margin: 1rem 0 0.25rem; font-size: 1.375rem; font-weight: 800; letter-spacing: -0.01em; line-height: 1.3; color: var(--text-main); }
+.nearby-caption { min-height: 2rem; margin: var(--space-s) 0 var(--space-3xs); font-size: var(--step-2); font-weight: 800; letter-spacing: -0.01em; line-height: 1.3; color: var(--text-main); }
 
 /* Student verification (profile card, prompts) */
-.verify-prompt { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.85rem 1rem; border-radius: var(--radius-md); background-color: var(--primary-light); border: 1px solid var(--primary); }
-.student-verif__methods { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.student-verif__link { background: none; border: 0; padding: 0; min-height: var(--control-height); color: var(--primary); font-weight: 600; font-size: 0.85rem; text-decoration: underline; cursor: pointer; text-align: left; }
-.student-verif__link:hover { color: var(--primary-dark, var(--primary)); }
-.student-verif__option { display: block; width: 100%; min-height: var(--control-height); padding: 0 0.75rem; text-align: left; background: var(--bg-surface); border: 0; border-top: 1px solid var(--border-subtle); cursor: pointer; font: inherit; font-size: 0.85rem; }
+.verify-prompt { display: flex; align-items: flex-start; gap: var(--space-xs); padding: 0.85rem var(--space-s); border-radius: var(--radius-md); background-color: var(--primary-light); border: 1px solid var(--primary); }
+.student-verif__methods { display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
+.student-verif__link { background: none; border: 0; padding: 0; min-height: var(--control-height); color: var(--primary); font-weight: 600; font-size: var(--step--1); text-decoration: underline; cursor: pointer; text-align: left; }
+.student-verif__link:hover { color: var(--primary-hover); }
+.student-verif__option { display: block; width: 100%; min-height: var(--control-height); padding: 0 var(--space-xs); text-align: left; background: var(--bg-surface); border: 0; border-top: 1px solid var(--border-subtle); cursor: pointer; font: inherit; font-size: var(--step--1); }
 .student-verif__option:hover { background-color: var(--bg-muted); }
-@media (max-width: 480px) { .student-verif__methods > * { flex: 1 1 100%; } }
+@media (width < 40rem) { .student-verif__methods > * { flex: 1 1 100%; } }
 
 /* Six-digit email verification step (components/auth/VerifyCodeStep) */
 .verify-code { display: flex; flex-direction: column; gap: 1.25rem; align-items: center; text-align: center; }
-.verify-code__text { font-size: 0.95rem; color: var(--text-main); line-height: 1.55; }
+.verify-code__text { font-size: var(--step-0); color: var(--text-main); line-height: 1.55; }
 .verify-code__stack { display: flex; flex-direction: column; gap: 0.6rem; width: 100%; text-align: left; }
-.verify-code__back { color: var(--primary); font-weight: 700; text-decoration: underline; font-size: 0.85rem; align-self: center; }
+.verify-code__back { color: var(--primary); font-weight: 700; text-decoration: underline; font-size: var(--step--1); align-self: center; }
 
 /* One-time-code field (ui/OtpInput): six boxes over one transparent input. */
 .otp { display: flex; flex-direction: column; gap: 6px; }
-.otp__boxes { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; width: 80%; margin: 0 auto; cursor: text; }
+.otp__boxes { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-2xs); width: 80%; margin: 0 auto; cursor: text; }
 .otp__box {
   aspect-ratio: 4 / 5; display: grid; place-items: center;
   border: 1px solid var(--border-strong); border-radius: var(--radius-input);
   background: var(--bg-surface); color: var(--text-main);
-  font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  font-size: var(--step-2); font-weight: 700; font-variant-numeric: tabular-nums;
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 .otp__box--filled { border-color: var(--text-muted); }
@@ -1452,10 +1442,13 @@
 .otp__input {
   position: absolute; inset: 0; width: 100%; height: 100%;
   opacity: 0; border: 0; padding: 0; margin: 0;
-  font-size: 16px; /* no iOS zoom on focus */
+  font-size: var(--step-0); /* no iOS zoom on focus */
   color: transparent; caret-color: transparent; background: transparent;
 }
 .otp__input:disabled { cursor: not-allowed; }
-.otp__help { margin: 0; font-size: 0.8rem; color: var(--text-muted); text-align: center; }
-@media (max-width: 400px) { .otp__boxes { gap: 6px; } .otp__box { font-size: 1.25rem; } }
+.otp__help { margin: 0; font-size: var(--step--1); color: var(--text-muted); text-align: center; }
+@media (width < 40rem) { .otp__boxes { gap: 6px; } .otp__box { font-size: var(--step-1); } }
 @media (prefers-reduced-motion: reduce) { .otp__box { transition: none; } }
+
+/* Kos header: the rating/address separator dangles once the address wraps on a phone. */
+@media (width < 40rem) { .detail-meta-sep { display: none; } }

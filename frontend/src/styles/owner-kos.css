@@ -3,14 +3,14 @@
 .owner-kos {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--space-m);
 }
 
 .owner-kos__card {
   display: flex;
   flex-direction: column;
   gap: 1.75rem;
-  padding: 1.5rem;
+  padding: var(--space-m);
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
@@ -52,7 +52,7 @@
   border-radius: var(--radius-badge);
   background-color: var(--primary-light);
   color: var(--primary);
-  font-size: 0.75rem;
+  font-size: var(--step--2);
   font-weight: 700;
   text-transform: capitalize;
 }
@@ -60,7 +60,7 @@
 .owner-kos__name {
   margin: 0;
   color: var(--text-main);
-  font-size: 1.25rem;
+  font-size: var(--step-1);
   font-weight: 800;
   line-height: 1.25;
 }
@@ -71,7 +71,7 @@
   gap: 0.35rem;
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--step--1);
 }
 
 .owner-kos__line svg {
@@ -88,7 +88,7 @@
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  gap: 0.5rem;
+  gap: var(--space-2xs);
 }
 
 /* 40px controls */
@@ -128,7 +128,7 @@
   color: var(--text-main);
 }
 
-@media (pointer: coarse), (max-width: 640px) {
+@media (pointer: coarse), (width < 40rem) {
   .owner-kos__icon-btn--quiet {
     width: 40px;
     height: 40px;
@@ -145,19 +145,19 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-s);
   border: 1px solid var(--status-overdue-border);
   border-radius: var(--radius-md);
   background-color: var(--status-overdue-bg);
   color: var(--text-main);
-  font-size: 0.875rem;
+  font-size: var(--step--1);
   font-weight: 600;
 }
 
 .owner-kos__confirm-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2xs);
 }
 
 .owner-kos__confirm-actions .kobo-btn {
@@ -169,14 +169,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
+  gap: var(--space-s);
+  margin-bottom: var(--space-xs);
 }
 
 .owner-kos__section-title {
   margin: 0;
   color: var(--text-main);
-  font-size: 1rem;
+  font-size: var(--step-0);
   font-weight: 700;
 }
 
@@ -189,7 +189,7 @@
 .owner-kos__section-hint {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.875rem;
+  font-size: var(--step--1);
 }
 
 .owner-kos .kobo-table tbody td {
@@ -198,13 +198,13 @@
 
 .owner-kos .kobo-table td.owner-kos__actioncell {
   width: 1%;
-  padding-right: 0.5rem;
+  padding-right: var(--space-2xs);
   text-align: right;
   white-space: nowrap;
 }
 
 .owner-kos .kobo-table td.owner-kos__confirmcell {
-  padding: 0.5rem 1rem;
+  padding: var(--space-2xs) var(--space-s);
   background-color: var(--status-overdue-bg);
 }
 
@@ -227,9 +227,9 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: var(--space-xs);
   max-width: 560px;
-  padding: 2rem;
+  padding: var(--space-l);
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
@@ -237,25 +237,25 @@
 
 .owner-kos__empty h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--step-1);
   font-weight: 800;
 }
 
 .owner-kos__empty p {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--step--1);
 }
 
 .owner-kos__empty ul {
   margin: 0;
   padding-left: 1.1rem;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: var(--step--1);
   line-height: 1.7;
 }
 
-@media (max-width: 640px) {
+@media (width < 40rem) {
   .owner-kos__card {
     padding: 1.1rem;
   }
@@ -283,13 +283,13 @@
   }
 }
 
-@media (max-width: 760px) {
+@media (width < 48rem) {
   /* The room table becomes label/value cards (kobo-table--labels): rows size to their content. */
   .owner-kos .kobo-table--labels tbody td { height: auto; }
   .owner-kos .kobo-table--labels td.owner-kos__actioncell { width: auto; padding-right: 0; }
 }
 
-@media (max-width: 640px) {
+@media (width < 40rem) {
   /* Keep rows one line tall; the table scrolls inside its own wrapper */
   .owner-kos .kobo-table:not(.kobo-table--labels) td,
   .owner-kos .kobo-table th {
@@ -307,27 +307,27 @@
 
 /* Tata tertib summary rows: title, count and fine on shared tracks. */
 .rules-card__list { display: flex; flex-direction: column; gap: 0.25rem; list-style: none; margin: 0; padding: 0; }
-.rules-card__row { display: grid; grid-template-columns: minmax(0, 1fr) 6rem 9rem; align-items: center; column-gap: 1.5rem; padding: 0.65rem 0.75rem; border-radius: var(--radius-md); font-size: 0.875rem; }
+.rules-card__row { display: grid; grid-template-columns: minmax(0, 1fr) 6rem 9rem; align-items: center; column-gap: var(--space-m); padding: 0.65rem var(--space-xs); border-radius: var(--radius-md); font-size: var(--step--1); }
 .rules-card__row:hover { background: var(--bg-page); }
 .rules-card__title { font-weight: 700; min-width: 0; }
-.rules-card__count { color: var(--text-muted); font-size: 0.8125rem; }
+.rules-card__count { color: var(--text-muted); font-size: var(--step--1); }
 .rules-card__fine { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-@media (max-width: 640px) { .rules-card__row { grid-template-columns: 1fr auto; } .rules-card__count { display: none; } }
+@media (width < 40rem) { .rules-card__row { grid-template-columns: 1fr auto; } .rules-card__count { display: none; } }
 
 /* Sticky section nav on Kelola properti. Sits under the sticky owner bars (72px on desktop; 60 + 56px on phones). */
 .kos-sections {
   position: sticky; top: calc(var(--header-height) - 1px); z-index: calc(var(--z-header) - 2);
-  display: flex; gap: 0.25rem; margin: 0 0 1rem; padding: 0.5rem 0;
+  display: flex; gap: 0.25rem; margin: 0 0 var(--space-s); padding: var(--space-2xs) 0;
   background: var(--bg-page); border-bottom: 1px solid var(--border-subtle);
   overflow-x: auto; scrollbar-width: none;
 }
 .kos-sections::-webkit-scrollbar { display: none; }
 .kos-sections a {
   display: inline-flex; align-items: center; min-height: var(--control-height); padding: 0 0.85rem; white-space: nowrap;
-  border-radius: var(--radius-md); color: var(--text-muted); font-size: 0.875rem; font-weight: 600; text-decoration: none;
+  border-radius: var(--radius-md); color: var(--text-muted); font-size: var(--step--1); font-weight: 600; text-decoration: none;
 }
 .kos-sections a:hover { color: var(--text-main); background: var(--bg-muted); }
 .kos-sections a[aria-current='true'] { color: var(--text-main); background: var(--bg-surface); box-shadow: var(--shadow-xs); font-weight: 700; }
 .kos-sections a:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
-@media (max-width: 899px) { .kos-sections { top: 115px; } }
+@media (width < 64rem) { .kos-sections { top: 115px; } }
 .owner-kos__anchor, #properti, #kamar, #tata-tertib { scroll-margin-top: 9rem; }

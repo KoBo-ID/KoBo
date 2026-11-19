@@ -32,7 +32,7 @@
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  gap: 2rem;
+  gap: var(--space-l);
   overflow: hidden;
   padding: 1.5rem clamp(1.5rem, 3vw, 2.5rem) clamp(2rem, 8vh, 4rem);
   color: var(--bg-surface);
@@ -66,27 +66,27 @@
   background:
     linear-gradient(to top, hsla(190, 80%, 11%, 0.9), hsla(190, 75%, 16%, 0.45) 55%, hsla(176, 70%, 24%, 0.55));
 }
-.auth-shell__top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.auth-shell__top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); }
 .auth-shell__copy { display: flex; flex-direction: column; gap: 1.25rem; animation: auth-copy-in 400ms ease-out both; }
 @keyframes auth-copy-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .auth-shell__headline {
   max-width: 18ch;
   margin: 0;
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-size: var(--step-4);
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.15;
   color: inherit;
 }
 .auth-shell__points { display: flex; flex-direction: column; gap: 0.65rem; margin: 0; padding: 0; list-style: none; }
-.auth-shell__points li { display: flex; align-items: center; gap: 0.6rem; font-size: 0.9375rem; font-weight: 500; }
+.auth-shell__points li { display: flex; align-items: center; gap: 0.6rem; font-size: var(--step-0); font-weight: 500; }
 .auth-shell__points svg { flex: none; padding: 3px; box-sizing: content-box; width: 16px; height: 16px; border-radius: 50%; background: rgba(255, 255, 255, 0.18); }
 
 .auth-shell__panel {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 1rem;
+  gap: var(--space-s);
   width: min(34rem, 100%);
   margin-inline: auto;
   padding: 2rem clamp(1rem, 2vw, 1.5rem);
@@ -98,7 +98,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 1.3rem;
+  font-size: var(--step-1);
   font-weight: 800;
   letter-spacing: -0.025em;
   line-height: 1;
@@ -114,7 +114,7 @@
   gap: 0.4rem;
   min-height: 2.25rem;
   padding-inline: 0.85rem;
-  font-size: 0.8125rem;
+  font-size: var(--step--1);
   font-weight: 600;
   color: inherit;
   text-decoration: none;
@@ -130,12 +130,11 @@
    after the legal line (form, legal, demo). */
 .auth-page .auth-main { padding: 0; order: 1; }
 .auth-page .auth-body { display: contents !important; }
-.auth-page__legal { order: 2; }
 .auth-page .auth-quick { order: 3; margin-top: 0.5rem; }
 
 .auth-title {
   text-align: center;
-  font-size: 1.5rem;
+  font-size: var(--step-2);
   font-weight: 800;
   letter-spacing: -0.025em;
   line-height: 1.25;
@@ -149,22 +148,29 @@
   border-radius: var(--radius-lg);
 }
 
-.auth-page__legal {
-  font-size: 0.78rem;
-  line-height: 1.5;
-  text-align: center;
-  color: hsl(215, 19%, 34%);
-}
-.auth-page__legal a { color: var(--primary); font-weight: 600; text-decoration: underline; }
 
-/* Narrow screens: the photo panel goes away, the form takes the screen. */
-@media (max-width: 859px) {
+/* Demo quick-login: two columns when both labels fit, stacked otherwise (never overlapping at 390px). */
+.auth-page .auth-quick__grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr)); }
+
+/* The slim "Kembali" + brand bar for narrow screens, where the photo panel (and its own Kembali) is gone. */
+.auth-page__mobilebar { display: none; order: -1; }
+.auth-page__mobilebar .auth-page__back {
+  min-height: 2.5rem;
+  color: var(--text-main);
+  background: var(--bg-surface);
+  border-color: var(--border-subtle);
+}
+.auth-page__mobilebar .auth-page__back:hover { background-color: var(--bg-page); }
+.auth-page__mobilebar .auth-page__brand { min-height: 2.5rem; color: var(--text-main); font-size: var(--step-1); }
+
+/* Narrow screens: the photo panel goes away (its photos are lazy, so they are never fetched), the form takes the screen. */
+@media (width < 64rem) {
   .auth-shell { grid-template-columns: minmax(0, 1fr); }
   .auth-shell__aside { display: none; }
+  .auth-page__mobilebar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); }
 }
-@media (max-width: 480px) {
+@media (width < 40rem) {
   .auth-page .auth-quick { border-radius: var(--radius-md); }
-  .auth-title { font-size: 1.375rem; }
 }
 
 /* Role toggle: two equal halves with a thumb that slides between them. */
@@ -195,4 +201,9 @@
 @media (prefers-reduced-motion: reduce) {
   .auth-shell__photo, .auth-page__role::before { transition: none; }
   .auth-shell__copy { animation: none; }
+}
+
+/* Inline text-link buttons ("Lupa kata sandi?", "Daftar baru", ...) keep a 24px hit area (WCAG 2.5.8). */
+.auth-main button[type='button']:not(.kobo-btn):not([class]) {
+  display: inline-flex; align-items: center; min-block-size: 24px; padding-block: 0.25rem;
 }

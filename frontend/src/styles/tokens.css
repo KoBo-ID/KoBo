@@ -92,6 +92,45 @@
   --radius-badge: 6px;
   --radius-card: 12px;
 
+  /* Fluid type scale (sweep 2, .orchestration/research/responsive.md §9): Utopia method, viewport 320 -> 1600px,
+     base 16 -> 18px, ratio 1.2 -> 1.25. rem + vw preferred values so browser zoom still scales text (WCAG 1.4.4);
+     every max/min ratio is <= 1.38. Steps -1 and -2 are floored, not modular: 14px (body-small, labels) and
+     12px (captions/badges only) at the small end, so phone text never drops below those sizes.
+     px at 320 / 1600: -2 12/13, -1 14/15, 0 16/18, 1 19.2/22.5, 2 23/28.1, 3 27.6/35.2, 4 33.2/43.9, 5 39.8/54.9 */
+  --step--2: clamp(0.75rem, 0.7344rem + 0.0781vw, 0.8125rem);
+  --step--1: clamp(0.875rem, 0.8594rem + 0.0781vw, 0.9375rem);
+  --step-0: clamp(1rem, 0.9688rem + 0.1563vw, 1.125rem);
+  --step-1: clamp(1.2rem, 1.1484rem + 0.2578vw, 1.4063rem);
+  --step-2: clamp(1.44rem, 1.3605rem + 0.3973vw, 1.7578rem);
+  --step-3: clamp(1.728rem, 1.6107rem + 0.5866vw, 2.1973rem);
+  --step-4: clamp(2.0736rem, 1.9054rem + 0.8412vw, 2.7466rem);
+  --step-5: clamp(2.4883rem, 2.2521rem + 1.1811vw, 3.4332rem);
+
+  /* Fluid space scale (same viewport range; multiples of step 0). One-up pairs interpolate from the smaller value at
+     320px to the larger at 1600px: use them where a media query used to bump a padding or gap. */
+  --space-3xs: clamp(0.25rem, 0.2422rem + 0.0391vw, 0.2813rem);
+  --space-2xs: clamp(0.5rem, 0.4844rem + 0.0781vw, 0.5625rem);
+  --space-xs: clamp(0.75rem, 0.7266rem + 0.1172vw, 0.8438rem);
+  --space-s: clamp(1rem, 0.9688rem + 0.1563vw, 1.125rem);
+  --space-m: clamp(1.5rem, 1.4531rem + 0.2344vw, 1.6875rem);
+  --space-l: clamp(2rem, 1.9375rem + 0.3125vw, 2.25rem);
+  --space-xl: clamp(3rem, 2.9063rem + 0.4688vw, 3.375rem);
+  --space-2xl: clamp(4rem, 3.875rem + 0.625vw, 4.5rem);
+  --space-3xl: clamp(6rem, 5.8125rem + 0.9375vw, 6.75rem);
+  --space-3xs-2xs: clamp(0.25rem, 0.1719rem + 0.3906vw, 0.5625rem);
+  --space-2xs-xs: clamp(0.5rem, 0.4141rem + 0.4297vw, 0.8438rem);
+  --space-xs-s: clamp(0.75rem, 0.6563rem + 0.4688vw, 1.125rem);
+  --space-s-m: clamp(1rem, 0.8281rem + 0.8594vw, 1.6875rem);
+  --space-m-l: clamp(1.5rem, 1.3125rem + 0.9375vw, 2.25rem);
+  --space-l-xl: clamp(2rem, 1.6563rem + 1.7188vw, 3.375rem);
+  --space-xl-2xl: clamp(3rem, 2.625rem + 1.875vw, 4.5rem);
+  --space-2xl-3xl: clamp(4rem, 3.3125rem + 3.4375vw, 6.75rem);
+  --space-s-l: clamp(1rem, 0.6875rem + 1.5625vw, 2.25rem);
+
+  /* Named breakpoints (media queries cannot read custom properties, so these are documented constants: write the rem
+     value in @media, range syntax). Structure changes only; sizing is fluid. See CONTEXT.md "Breakpoints".
+     --bp-sm 40rem (640px), --bp-md 48rem (768px), --bp-lg 64rem (1024px), --bp-xl 80rem (1280px). */
+
   /* Layout Spacing */
   --header-height: 72px;
   --filter-bar-height: 64px;
