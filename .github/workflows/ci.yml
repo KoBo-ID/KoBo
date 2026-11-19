@@ -20,6 +20,33 @@ concurrency:
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 jobs:
+  # Cheap static gates in a parallel job: PR wall time stays that of the `ci` job (this one finishes well before it).
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint (oxlint, frontend)
+        run: npm run lint -w frontend
+
+      # The frontend has no typecheck script, so the root `npm run typecheck` skips it.
+      - name: Typecheck frontend
+        run: npx tsc -p tsconfig.app.json --noEmit
+        working-directory: frontend
+
+      - name: Dependency audit (production, high and above)
+        run: npm audit --omit=dev --audit-level=high
+
   ci:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -121,6 +148,15 @@ jobs:
           PGPASSWORD=kobo psql -h localhost -p 5433 -U kobo -d postgres -c 'CREATE DATABASE kobo_e2e_consents'
           npx playwright test -c e2e/gap/consents/playwright.config.ts
 
+      # Gated student-verification project (ADR 0018): REQUIRE_STUDENT_VERIFICATION=1 on port 3103 and its own database. Main and tags only, never PRs.
+      - name: E2E student project (Playwright, Chromium)
+        if: github.event_name == 'push'
+        env:
+          E2E_DATABASE_URL: postgresql://kobo:kobo@localhost:5433/kobo_e2e_student
+        run: |
+          PGPASSWORD=kobo psql -h localhost -p 5433 -U kobo -d postgres -c 'CREATE DATABASE kobo_e2e_student'
+          npx playwright test -c e2e/gap/student/playwright.config.ts
+
       - name: Bundle gate
         run: npm run bundle:check
 
@@ -136,7 +172,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    needs: ci
+    needs: [ci, static]
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15

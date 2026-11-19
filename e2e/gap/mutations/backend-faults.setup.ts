@@ -1,5 +1,13 @@
 // Vitest setup for the backend mutation probes: with FAULT=<id> one tRPC procedure's behaviour is changed in-process (no product file is touched).
+import { vi } from 'vitest'
 import { appRouter } from '../../../backend/src/trpc/router.ts'
+
+// B08 lives below the router: the shared isStudentVerified ignores the expiry. Hoisted by vitest; a pass-through unless FAULT=B08.
+vi.mock('@kobo/shared/domain', async (importOriginal) => {
+  const m: any = await importOriginal()
+  if (process.env.FAULT !== 'B08') return m
+  return { ...m, isStudentVerified: (u: { campusEmailVerifiedAt: unknown }) => Boolean(u.campusEmailVerifiedAt) }
+})
 
 type Change = (orig: (opts: unknown) => Promise<unknown>) => (opts: unknown) => Promise<unknown>
 const swallow = (code: string, value: unknown): Change => (orig) => async (opts) => {
@@ -14,15 +22,20 @@ export const BACKEND_FAULTS: Record<string, { what: string; proc: string; change
   B04: { what: 'kuitansi.get prints month 01 for every receipt', proc: 'kuitansi.get', change: mapResult((d) => ({ ...d, receiptNo: String(d.receiptNo).replace(/^KB\/(\d{4})\/\d{2}\//, 'KB/$1/01/') })) },
   B05: { what: 'auth.setNotifyOptOut does nothing', proc: 'auth.setNotifyOptOut', change: () => async () => ({ ok: true }) },
   B06: { what: 'application.create accepts invalid input (BAD_REQUEST swallowed)', proc: 'application.create', change: swallow('BAD_REQUEST', { id: 'x', status: 'PENDING' }) },
+  // ADR 0018 (student gate). B07 runs tests/integration/studentGate*; see BACKEND_TESTS in run.mjs.
+  B07: { what: 'application.create lets an unverified student through (studentProcedure gate refusal swallowed)', proc: 'application.create', change: swallow('PRECONDITION_FAILED', { id: 'x', status: 'PENDING' }) },
+  B08: { what: 'isStudentVerified ignores the expiry (an expired verification still passes the gate)', proc: '', change: (orig) => orig },
 }
 
 const id = process.env.FAULT
 if (id) {
   const fault = BACKEND_FAULTS[id]
   if (!fault) throw new Error(`unknown backend FAULT ${id}`)
-  const defs = (appRouter as any)._def.procedures as Record<string, any>
-  const orig = defs[fault.proc]
-  const wrapped: any = fault.change(orig)
-  Object.assign(wrapped, orig)
-  defs[fault.proc] = wrapped
+  if (fault.proc) {
+    const defs = (appRouter as any)._def.procedures as Record<string, any>
+    const orig = defs[fault.proc]
+    const wrapped: any = fault.change(orig)
+    Object.assign(wrapped, orig)
+    defs[fault.proc] = wrapped
+  }
 }

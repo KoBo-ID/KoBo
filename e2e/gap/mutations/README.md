@@ -1,6 +1,6 @@
 # Mutation probes
 
-Each probe injects one fault; a probe is **killed** when at least one gap test fails. `node e2e/gap/mutations/run.mjs all` runs all 21 and writes `notes/gap-tests/mutation-results.all.csv`. The nightly/manual workflow `.github/workflows/mutation-probes.yml` requires 21 of 21 killed.
+Each probe injects one fault; a probe is **killed** when at least one gap test fails. `node e2e/gap/mutations/run.mjs all` runs all 23 and writes `notes/gap-tests/mutation-results.all.csv`. The nightly/manual workflow `.github/workflows/mutation-probes.yml` requires 23 of 23 killed (runner crashes, timeouts and setup failures are reported as ERROR, never as kills, and fail the run).
 
 Needs `TEST_DATABASE_URL` and `E2E_DATABASE_URL` (see `CONTEXT.md`), and a built SPA (`npm run build`) for the e2e probes.
 
@@ -36,3 +36,7 @@ If a product change alters a behaviour a probe targets, update the probe (`fault
 | B04 | kuitansi.get prints month 01 for every receipt | receipt number format |
 | B05 | auth.setNotifyOptOut does nothing | opt-out requires and persists |
 | B06 | application.create swallows BAD_REQUEST | bounds on application input |
+| B07 | application.create lets an unverified student through | student gate refuses (ADR 0018; runs `tests/integration/studentGate*`) |
+| B08 | isStudentVerified ignores the expiry | expired verification is refused (ADR 0018; same tests) |
+
+`node e2e/gap/mutations/run.mjs selftest` checks the KILLED / SURVIVED / ERROR classification without any database.

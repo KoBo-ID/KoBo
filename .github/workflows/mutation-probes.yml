@@ -59,13 +59,13 @@ jobs:
       - name: Run all probes
         run: node e2e/gap/mutations/run.mjs all
 
-      # run.mjs only records results; the gate is here: every probe must be killed.
-      - name: Require 21 of 21 killed
+      # run.mjs exits 1 on any probe that ended in ERROR (crash/timeout/setup failure, never counted as a kill); the survivor gate is here.
+      - name: Require 23 of 23 killed
         run: |
           csv=notes/gap-tests/mutation-results.all.csv
           cat "$csv"
           total=$(tail -n +2 "$csv" | wc -l)
           killed=$(tail -n +2 "$csv" | awk -F, '{ for (i = 1; i <= NF; i++) if ($i == "true") { c++; break } } END { print c + 0 }')
           echo "killed $killed of $total"
-          [ "$total" -eq 21 ] && [ "$killed" -eq 21 ]
+          [ "$total" -eq 23 ] && [ "$killed" -eq 23 ]
 
