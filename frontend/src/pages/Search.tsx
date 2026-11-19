@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useDeferredValue } from 'react';
+import { useLocation, useNavigationType, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   MapPin,
@@ -12,7 +12,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
 } from 'lucide-react';
-import { useAppStore } from '../store/AppContext';
+import { setHoveredKosId, useHoveredKosId } from '../store/hoverStore';
 import { CAMPUSES } from '../data/campuses';
 import { branchById, groupOfBranch } from '@kobo/shared/campuses';
 import { PRESET_LOCATIONS } from '../data/locations';
@@ -56,7 +56,7 @@ const priceFillPercent = (value: number) =>
 
 /** Strips the administrative prefix: "Kota Tangerang Selatan" -> "tangerang selatan". */
 const bareRegionName = (name: string) =>
-  name.toLowerCase().replace(/./g, ' ').replace(/^(provinsi|kota administrasi|kabupaten administrasi|kota adm|kabupaten|kab|kota)s+/, '').replace(/s+/g, ' ').trim();
+  name.toLowerCase().replace(/\./g, ' ').replace(/^(provinsi|kota administrasi|kabupaten administrasi|kota adm|kabupaten|kab|kota)\s+/, '').replace(/\s+/g, ' ').trim();
 
 /** The province or regency/city a free-text search names exactly; null when it is only similar. Province first, then kota over kabupaten. */
 export function pickRegion<T extends { code: string; level: number; kind: string; name: string }>(q: string, hits: T[]): T | null {
@@ -66,10 +66,17 @@ export function pickRegion<T extends { code: string; level: number; kind: string
   return exact[0] ?? null;
 }
 
+type MapProps = React.ComponentProps<typeof LeafletMap>;
+// The map is the only page-level reader of the hover id, so a hover re-renders it and the hovered card, not the page.
+const HoverLinkedMap: React.FC<Omit<MapProps, 'hoveredKosId' | 'onHoverKos'>> = (props) => (
+  <LeafletMap {...props} hoveredKosId={useHoveredKosId()} onHoverKos={setHoveredKosId} />
+);
+
 export const Search: React.FC = () => {
   const trpc = useTRPC();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { hoveredKosId, setHoveredKosId } = useAppStore();
+  const location = useLocation();
+  const navigationType = useNavigationType();
 
   const [mobileViewMode, setMobileViewMode] = useState<'list' | 'map'>('list');
   // What the user has typed into the search field; null means "show the active location's label".
@@ -221,6 +228,7 @@ export const Search: React.FC = () => {
     if (!regionHit) return;
     setTypedInput((current) => current ?? filters.q);
     updateFilters({ q: '', loc: null, campus: null, lat: null, lng: null, place: null, radius: null, region: regionHit.code });
+    // Keyed on regionHit only: updateFilters is re-created each render and filters.q must not retrigger the redirect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [regionHit]);
   const regionResolving = resolveText && (regionQuery.isPending || !!regionHit);
@@ -237,6 +245,7 @@ export const Search: React.FC = () => {
     if (!resolvePlace || !place) return;
     setTypedInput((current) => current ?? filters.q);
     updateFilters({ q: '', loc: null, campus: null, lat: place.lat, lng: place.lng, place: place.label, radius: place.radiusMeters });
+    // Keyed on the lookup result only: updateFilters is re-created each render and filters.q must not retrigger the redirect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvePlace, place]);
   const placeNotice = !resolvePlace
@@ -270,9 +279,33 @@ export const Search: React.FC = () => {
   });
   const searchPending = search.isPending;
   const searchFailed = search.isError && !search.data;
+  // G2-08: results for a newly typed query re-render 30 cards + the map (~780 ms on a throttled phone). Deferred, React
+  // renders them interruptibly, so keystrokes that arrive meanwhile are handled first instead of queueing behind it.
+  const deferredResults = useDeferredValue(search.data);
+
+  // Back/forward onto this page: the browser restores the scroll before the list exists (a cold cache fetches it
+  // first), so it clamps to a short page. Remember scrollY per URL and re-apply it once the results are rendered.
+  const scrollKey = `kobo:search-scroll:${location.pathname}${location.search}`;
+  const restorePending = useRef(navigationType === 'POP');
+  useLayoutEffect(() => {
+    const save = () => {
+      if (restorePending.current) return; // the browser's own jump to 0 must not overwrite the saved position
+      try { sessionStorage.setItem(scrollKey, String(Math.round(window.scrollY))); } catch { /* storage unavailable */ }
+    };
+    window.addEventListener('scroll', save, { passive: true });
+    return () => window.removeEventListener('scroll', save); // layout-effect cleanup runs before ScrollToTop resets the page
+  }, [scrollKey]);
+  useLayoutEffect(() => {
+    // Wait for the deferred list too: restoring before it renders clamps to a short page.
+    if (!restorePending.current || searchPending || deferredResults !== search.data) return;
+    restorePending.current = false;
+    let y = 0;
+    try { y = Number(sessionStorage.getItem(scrollKey)) || 0; } catch { /* storage unavailable */ }
+    if (y > 0) window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+  }, [searchPending, scrollKey, deferredResults, search.data]);
 
   // The list and the map render this same array.
-  const sortedKos = useMemo(() => (search.data ?? []).map(kosCardToKos), [search.data]);
+  const sortedKos = useMemo(() => (deferredResults ?? []).map(kosCardToKos), [deferredResults]);
   const distanceById = useMemo(
     () => new Map((search.data ?? []).map((card) => [card.id, card.distanceMeters])),
     [search.data],
@@ -327,10 +360,12 @@ export const Search: React.FC = () => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const q = locationInput.trim();
+    // The field keeps what is typed to itself while typing; read the box so a quick click on "Cari" never sees stale text.
+    const typed = new FormData(e.currentTarget).get('location');
+    const q = (typeof typed === 'string' ? typed : locationInput).trim();
     // Only a full, exact place name becomes the map's reference point. Anything else is searched as typed, so
     // the box never rewrites what the user wrote into a different place (no alias or fuzzy matching).
     const exactLocation = allLocations.find((loc) => loc.label.toLowerCase() === q.toLowerCase());
@@ -417,8 +452,9 @@ export const Search: React.FC = () => {
               <CampusSearchField
                 value={locationInput}
                 label="Cari lokasi"
-                placeholder="Cari area atau lokasi..."
+                placeholder="Cari area atau lokasi…"
                 onChange={setLocationInput}
+                liftDelayMs={250}
                 onClear={clearLocationInput}
                 onSubmitText={handleSearchText}
                 onPickCampus={(branch) => handlePickCampus(branch.id)}
@@ -459,7 +495,7 @@ export const Search: React.FC = () => {
             )}
 
             {placeNotice && (
-              <p role="status" style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              <p role="status" style={{ marginTop: '0.5rem', fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>
                 {placeNotice}
               </p>
             )}
@@ -499,7 +535,7 @@ export const Search: React.FC = () => {
               })}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
               <Popover
                 label="Filter pencarian"
                 trigger={(p) => (
@@ -551,11 +587,11 @@ export const Search: React.FC = () => {
                       >
                         <label
                           htmlFor="search-price"
-                          style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}
+                          style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', fontWeight: 600 }}
                         >
                           Maks. Sewa
                         </label>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                        <span style={{ fontSize: 'var(--step--1)', fontWeight: 700, color: 'var(--text-main)' }}>
                           {formatJuta(maxPrice)}
                         </span>
                       </div>
@@ -577,7 +613,7 @@ export const Search: React.FC = () => {
                         <button
                           type="button"
                           onClick={handleResetFilters}
-                          style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)' }}
+                          style={{ fontSize: 'var(--step--1)', fontWeight: 600, color: 'var(--text-muted)' }}
                         >
                           Reset
                         </button>
@@ -641,8 +677,8 @@ export const Search: React.FC = () => {
             }}
           >
             <MapPin size={15} color="var(--accent)" style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-main)' }}>{regionName ?? 'Wilayah'}</span>
-            <div style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: 'var(--step--1)', fontWeight: 700, color: 'var(--text-main)' }}>{regionName ?? 'Wilayah'}</span>
+            <div style={{ marginLeft: 'auto', fontSize: 'var(--step--2)', color: 'var(--text-muted)' }}>
               <strong style={{ color: 'var(--text-main)' }}>{sortedKos.length}</strong> kos di {regionName ?? 'wilayah ini'}
             </div>
           </div>
@@ -669,10 +705,10 @@ export const Search: React.FC = () => {
           >
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem' }}>
               <div>
-                <h1 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                <h1 style={{ fontSize: 'var(--step-1)', fontWeight: 800, color: 'var(--text-main)' }}>
                   {activeLocation ? `Kos di Sekitar ${activeLocation.label}` : 'Semua Kos'}
                 </h1>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                   {searchFailed ? null : searchPending ? (
                     'Memuat daftar kos…'
                   ) : (
@@ -693,13 +729,9 @@ export const Search: React.FC = () => {
 
             <div className="search-cards-grid" aria-busy={searchPending} style={searchFailed ? { display: 'none' } : undefined}>
               {searchPending && [0, 1, 2, 3, 4, 5].map((i) => <KosCardSkeleton key={i} />)}
-              {sortedKos.map((kos) => (
-                <div
-                  key={kos.id}
-                  onMouseEnter={() => setHoveredKosId(kos.id)}
-                  onMouseLeave={() => setHoveredKosId(null)}
-                >
-                  <ListingCard kos={kos} onOpenSurvey={setVisitKos} distance={activeLocation ? (distanceById.get(kos.id) ?? undefined) : undefined} />
+              {sortedKos.map((kos, index) => (
+                <div key={kos.id}>
+                  <ListingCard kos={kos} index={index} onOpenSurvey={setVisitKos} distance={activeLocation ? (distanceById.get(kos.id) ?? undefined) : undefined} />
                 </div>
               ))}
             </div>
@@ -715,8 +747,8 @@ export const Search: React.FC = () => {
                 }}
               >
                 <MapPin size={36} color="var(--text-subtle)" style={{ margin: '0 auto 0.85rem' }} />
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Tidak ada kos yang cocok</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.35rem', maxWidth: '380px', margin: '0.35rem auto 1.25rem' }}>
+                <h3 style={{ fontSize: 'var(--step-0)', fontWeight: 700 }}>Tidak ada kos yang cocok</h3>
+                <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', marginTop: '0.35rem', maxWidth: '380px', margin: '0.35rem auto 1.25rem' }}>
                   Coba perluas titik lokasi, naikkan batas sewa, atau kurangi kriteria filter.
                 </p>
                 <Button variant="outline" size="sm" onClick={handleResetFilters}>
@@ -741,14 +773,12 @@ export const Search: React.FC = () => {
               isolation: 'isolate',
             }}
           >
-            <LeafletMap
+            <HoverLinkedMap
               kosList={sortedKos}
               activeLocation={activeLocation}
               regionOutline={regionOutline.data ?? null}
               isLoading={searchPending || search.isPlaceholderData}
               fitKey={mapFitVersion}
-              hoveredKosId={hoveredKosId}
-              onHoverKos={setHoveredKosId}
             />
           </aside>
         </div>
@@ -779,7 +809,7 @@ export const Search: React.FC = () => {
             color: 'white',
             padding: '0.65rem 1.25rem',
             borderRadius: 'var(--radius-btn)',
-            fontSize: '0.875rem',
+            fontSize: 'var(--step--1)',
             fontWeight: 700,
             boxShadow: 'var(--shadow-xl)',
             border: 'none',

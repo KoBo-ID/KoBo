@@ -14,9 +14,6 @@ interface AppContextType {
   authModalOpen: boolean;
   openAuthModal: () => void;
   closeAuthModal: () => void;
-  // Search list <-> map hover link.
-  hoveredKosId: string | null;
-  setHoveredKosId: (id: string | null) => void;
   // Toasts
   toasts: ToastNotification[];
   addToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
@@ -27,7 +24,6 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [hoveredKosId, setHoveredKosId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
   const removeToast = useCallback((id: string) => {
@@ -48,7 +44,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <AppContext.Provider
-      value={{ authModalOpen, openAuthModal, closeAuthModal, hoveredKosId, setHoveredKosId, toasts, addToast, removeToast }}
+      value={{ authModalOpen, openAuthModal, closeAuthModal, toasts, addToast, removeToast }}
     >
       {children}
     </AppContext.Provider>

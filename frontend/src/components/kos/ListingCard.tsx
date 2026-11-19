@@ -3,23 +3,32 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Star, MapPin, Footprints, ChevronLeft, ChevronRight, Calendar, GraduationCap } from 'lucide-react';
 import { Kos } from '../../types';
 import { GenderBadge, Badge } from '../ui/Badge';
-import { useAppStore } from '../../store/AppContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { setHoveredKosId, useIsKosHovered } from '../../store/hoverStore';
+import { useTRPC } from '../../lib/trpc';
 import { formatDistance } from '../../utils/geo';
-import { SafeImage } from '../ui/SafeImage';
+import { SafeImage, widthSrcSet } from '../ui/SafeImage';
 import { formatRupiah } from '../../lib/format';
 
 interface ListingCardProps {
   kos: Kos;
   onOpenSurvey?: (kos: Kos) => void;
   distance?: number;
+  /** Position in the list: the first row loads eagerly, the rest lazily; the very first photo is the LCP candidate. */
+  index?: number;
 }
 
-export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, distance }) => {
+const EAGER_CARDS = 3;
+
+const ListingCardBase: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, distance, index = EAGER_CARDS }) => {
   const navigate = useNavigate();
-  const { hoveredKosId, setHoveredKosId } = useAppStore();
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  const isHovered = hoveredKosId === kos.id;
+  const isHovered = useIsKosHovered(kos.id);
+  // Start the detail request when the user shows intent, so the page often opens with its data already in the cache.
+  const prefetchDetail = () => void queryClient.prefetchQuery(trpc.kos.detail.queryOptions({ id: kos.id }));
 
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -68,6 +77,12 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
         <SafeImage
           src={kos.images[activeImageIndex]}
           alt={kos.name}
+          width={800}
+          height={500}
+          sizes="(min-width: 1024px) 340px, 100vw"
+          {...widthSrcSet(kos.images[activeImageIndex], [480, 800])}
+          loading={index < EAGER_CARDS ? 'eager' : 'lazy'}
+          fetchPriority={index === 0 ? 'high' : undefined}
           style={{
             width: '100%',
             height: '100%',
@@ -164,7 +179,9 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
             position: 'absolute',
             top: '0.55rem',
             left: '0.55rem',
+            right: '0.55rem',
             display: 'flex',
+            flexWrap: 'wrap', // a narrow card stacks whole badges instead of breaking the discount text
             alignItems: 'center',
             gap: '0.35rem',
             zIndex: 2,
@@ -188,7 +205,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
               right: '0.5rem',
               backgroundColor: 'rgba(15, 23, 42, 0.8)',
               color: 'white',
-              fontSize: '0.68rem',
+              fontSize: 'var(--step--2)',
               fontWeight: 600,
               padding: '0.18rem 0.45rem',
               borderRadius: 'var(--radius-xs)',
@@ -202,17 +219,23 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
       {/* Compact Content */}
       <div style={{ padding: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.78rem', fontWeight: 700 }}>
-            <Star size={13} fill="var(--accent)" color="var(--accent)" />
-            <span>{kos.rating}</span>
-            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({kos.reviewCount})</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--step--2)', fontWeight: 700 }}>
+            {kos.reviewCount > 0 ? (
+              <>
+                <Star size={13} fill="var(--accent)" color="var(--accent)" />
+                <span>{kos.rating}</span>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({kos.reviewCount})</span>
+              </>
+            ) : (
+              <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Belum ada ulasan</span>
+            )}
           </div>
           <span
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.2rem',
-              fontSize: '0.72rem',
+              fontSize: 'var(--step--2)',
               color: 'var(--text-muted)',
               minWidth: 0,
             }}
@@ -225,13 +248,13 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
         <h3
           className="truncate-1"
           style={{
-            fontSize: '0.92rem',
+            fontSize: 'var(--step--1)',
             fontWeight: 700,
             color: 'var(--text-main)',
             lineHeight: 1.3,
           }}
         >
-          <Link to={`/kos/${kos.id}`} className="listing-card__link">{kos.name}</Link>
+          <Link to={`/kos/${kos.id}`} className="listing-card__link" onPointerEnter={prefetchDetail} onFocus={prefetchDetail}>{kos.name}</Link>
         </h3>
 
         <div
@@ -239,7 +262,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
             display: 'flex',
             alignItems: 'center',
             gap: '0.3rem',
-            fontSize: '0.75rem',
+            fontSize: 'var(--step--2)',
             color: 'var(--primary)',
             fontWeight: 600,
           }}
@@ -253,16 +276,17 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexWrap: 'wrap', // a narrow card puts Survey under the price instead of colliding with "/bln"
             gap: '0.5rem',
             marginTop: 'auto',
             paddingTop: '0.3rem',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.2rem', minWidth: 0 }}>
-            <span style={{ fontSize: '1.02rem', fontWeight: 800, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 'var(--step-0)', fontWeight: 800, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
               {formatRupiah(kos.priceMonthlyStart)}
             </span>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>/bln</span>
+            <span style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)' }}>/bln</span>
           </div>
 
           <button
@@ -283,7 +307,7 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
               gap: '0.3rem',
               padding: '0.35rem 0.6rem',
               borderRadius: 'var(--radius-btn)',
-              fontSize: '0.72rem',
+              fontSize: 'var(--step--2)',
               fontWeight: 700,
               backgroundColor: 'var(--primary-light)',
               color: 'var(--primary)',
@@ -299,3 +323,5 @@ export const ListingCard: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, dis
     </div>
   );
 };
+
+export const ListingCard = React.memo(ListingCardBase);

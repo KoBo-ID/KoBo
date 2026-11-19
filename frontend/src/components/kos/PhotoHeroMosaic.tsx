@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Grid, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { SafeImage } from '../ui/SafeImage';
+import { Grid, X, ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
+import { SafeImage, widthSrcSet } from '../ui/SafeImage';
 
 interface PhotoHeroMosaicProps {
   images: string[];
@@ -48,6 +48,33 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
     setActivePhotoIdx((prev) => (prev < images.length - 1 ? prev + 1 : 0));
   };
 
+  // No photos: a quiet placeholder, no gallery button, nothing that could open an empty lightbox.
+  if (images.length === 0) {
+    return (
+      <div
+        role="img"
+        aria-label={`${kosName}: belum ada foto`}
+        style={{
+          width: '100%',
+          height: '200px',
+          borderRadius: 'var(--radius-lg)',
+          backgroundColor: 'var(--bg-muted)',
+          border: '1px dashed var(--border-strong)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.5rem',
+          color: 'var(--text-muted)',
+          fontSize: 'var(--step--1)',
+        }}
+      >
+        <ImageOff size={28} aria-hidden="true" />
+        <span>Foto kos ini belum tersedia</span>
+      </div>
+    );
+  }
+
   return (
     <div style={{ position: 'relative', width: '100%', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
       {/* 5-Photo Mosaic Grid */}
@@ -62,9 +89,14 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
       >
         {/* Large Hero Image (Spans 2 cols, 2 rows) */}
         {displayImages[0] && (
-          <div
+          <button
+            type="button"
+            aria-label={`Buka foto 1 dari ${images.length}`}
             onClick={() => openLightbox(0)}
             style={{
+              padding: 0,
+              border: 0,
+              background: 'none',
               gridColumn: 'span 2',
               gridRow: 'span 2',
               position: 'relative',
@@ -75,6 +107,11 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
             <SafeImage
               src={displayImages[0]}
               alt={`${kosName} 1`}
+              width={800}
+              height={500}
+              sizes="(min-width: 1024px) 50vw, 100vw"
+              {...widthSrcSet(displayImages[0], [640, 800])}
+              fetchPriority="high"
               style={{
                 width: '100%',
                 height: '100%',
@@ -84,17 +121,22 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
               onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
               onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
             />
-          </div>
+          </button>
         )}
 
         {/* 4 Secondary Images */}
         {displayImages.slice(1, 5).map((img, idx) => {
           const actualIndex = idx + 1;
           return (
-            <div
+            <button
               key={actualIndex}
+              type="button"
+              aria-label={`Buka foto ${actualIndex + 1} dari ${images.length}`}
               onClick={() => openLightbox(actualIndex)}
               style={{
+                padding: 0,
+                border: 0,
+                background: 'none',
                 position: 'relative',
                 cursor: 'pointer',
                 overflow: 'hidden',
@@ -103,6 +145,11 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
               <SafeImage
                 src={img}
                 alt={`${kosName} ${actualIndex + 1}`}
+                width={400}
+                height={300}
+                sizes="(min-width: 1024px) 25vw, 50vw"
+                {...widthSrcSet(img, [400, 800])}
+                loading="lazy"
                 style={{
                   width: '100%',
                   height: '100%',
@@ -112,13 +159,14 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
                 onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.03)')}
                 onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
               />
-            </div>
+            </button>
           );
         })}
       </div>
 
       {/* "Lihat Semua Foto" Floating Button */}
       <button
+        type="button"
         onClick={() => openLightbox(0)}
         className="interactive-tap"
         style={{
@@ -129,7 +177,7 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
           border: '1px solid var(--border-strong)',
           borderRadius: 'var(--radius-sm)',
           padding: '0.45rem 0.85rem',
-          fontSize: '0.8125rem',
+          fontSize: 'var(--step--1)',
           fontWeight: 700,
           color: 'var(--text-main)',
           display: 'flex',
@@ -171,11 +219,12 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
               zIndex: 2,
             }}
           >
-            <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+            <span style={{ fontSize: 'var(--step-0)', fontWeight: 600 }}>
               {kosName} · Foto {activePhotoIdx + 1} dari {images.length}
             </span>
             <button
               ref={closeRef}
+              type="button"
               aria-label="Tutup galeri foto"
               onClick={() => setLightboxOpen(false)}
               className="interactive-tap"
@@ -189,7 +238,7 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
                 justifyContent: 'center',
               }}
             >
-              <X size={20} />
+              <X size={20} aria-hidden="true" />
             </button>
           </div>
 
@@ -206,6 +255,8 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
             onClick={(e) => e.stopPropagation()}
           >
             <button
+              type="button"
+              aria-label="Foto sebelumnya"
               onClick={handlePrev}
               className="interactive-tap"
               style={{
@@ -220,7 +271,7 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
                 justifyContent: 'center',
               }}
             >
-              <ChevronLeft size={24} />
+              <ChevronLeft size={24} aria-hidden="true" />
             </button>
 
             <SafeImage
@@ -238,6 +289,8 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
             />
 
             <button
+              type="button"
+              aria-label="Foto berikutnya"
               onClick={handleNext}
               className="interactive-tap"
               style={{
@@ -252,7 +305,7 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
                 justifyContent: 'center',
               }}
             >
-              <ChevronRight size={24} />
+              <ChevronRight size={24} aria-hidden="true" />
             </button>
           </div>
 
@@ -272,7 +325,12 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
               <SafeImage
                 key={i}
                 src={img}
-                alt={`Thumb ${i}`}
+                alt={`Foto ${i + 1}`}
+                width={60}
+                height={42}
+                sizes="60px"
+                {...widthSrcSet(img, [120, 240])}
+                loading="lazy"
                 iconSize={16}
                 onClick={() => setActivePhotoIdx(i)}
                 style={{

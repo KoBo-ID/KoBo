@@ -9,6 +9,8 @@ interface Props {
   label: string
   placeholder: string
   onChange: (value: string) => void
+  /** Wait this long after the last keystroke before calling onChange, so a busy parent does not re-render per key. Picks and clears are never delayed. */
+  liftDelayMs?: number
   onSubmitText: (value: string) => void
   onPickCampus: (branch: CampusBranch) => void
   /** Province, regency, district or village from the region catalogue. Omit to leave regions out of the list. */
@@ -30,8 +32,26 @@ type Extra =
 const KIND_LABEL: Record<string, string> = { provinsi: 'Provinsi', kabupaten: 'Kabupaten', kota: 'Kota', kecamatan: 'Kecamatan', kelurahan: 'Kelurahan', desa: 'Desa' }
 const normalize = (text: string) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ')
 
-export const CampusSearchField: React.FC<Props> = ({ value, label, placeholder, onChange, onSubmitText, onPickCampus, onPickRegion, onPickPoint, onClear, className, style }) => {
+export const CampusSearchField: React.FC<Props> = ({ value: valueProp, label, placeholder, onChange: onChangeProp, liftDelayMs = 0, onSubmitText, onPickCampus, onPickRegion, onPickPoint, onClear, className, style }) => {
   const root = useRef<HTMLDivElement>(null)
+  // The typed text lives here; the parent hears about it after liftDelayMs. An outside change to `value` wins.
+  const [value, setValue] = useState(valueProp)
+  const lifted = useRef(valueProp)
+  const liftTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => {
+    if (valueProp === lifted.current) return
+    lifted.current = valueProp
+    clearTimeout(liftTimer.current)
+    setValue(valueProp)
+  }, [valueProp])
+  useEffect(() => () => clearTimeout(liftTimer.current), [])
+  const onChange = (text: string, delayMs = 0) => {
+    setValue(text)
+    clearTimeout(liftTimer.current)
+    const lift = () => { lifted.current = text; onChangeProp(text) }
+    if (delayMs > 0) liftTimer.current = setTimeout(lift, delayMs)
+    else lift()
+  }
   const request = useRef(0)
   const [catalog, setCatalog] = useState<CampusGroup[] | null>(null)
   const [results, setResults] = useState<CampusSuggestion[]>([])
@@ -84,7 +104,7 @@ export const CampusSearchField: React.FC<Props> = ({ value, label, placeholder, 
 
   const update = async (text: string) => {
     const currentRequest = ++request.current
-    onChange(text)
+    onChange(text, liftDelayMs)
     setActive(-1)
     setClosed(false)
     if (!text.trim()) { setResults([]); return }
@@ -145,7 +165,7 @@ export const CampusSearchField: React.FC<Props> = ({ value, label, placeholder, 
     <div className="kobo-searchfield">
       <Search size={18} aria-hidden="true" />
       <input
-        type="text" value={value} onChange={(event) => { void update(event.target.value) }}
+        type="text" name="location" value={value} onChange={(event) => { void update(event.target.value) }}
         onKeyDown={handleKeyDown} onFocus={() => { if (value && total) setClosed(false) }}
         onBlur={() => setClosed(true)} autoComplete="off" placeholder={placeholder}
         role="combobox" aria-label={label} aria-expanded={open} aria-controls={listId}

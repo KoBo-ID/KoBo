@@ -8,6 +8,15 @@ type SafeImageProps = React.ImgHTMLAttributes<HTMLImageElement> & {
 };
 
 /**
+ * `srcSet` for photos whose URL carries a `w=` width (the seeded Unsplash photos), so a small slot fetches a small file.
+ * Other URLs (uploaded photos, other hosts) get no srcSet and keep loading their one file.
+ */
+export const widthSrcSet = (src: string | undefined, widths: number[]): { srcSet?: string } => {
+  if (!src || !/[?&]w=\d+/.test(src)) return {};
+  return { srcSet: widths.map((w) => `${src.replace(/([?&])w=\d+/, `$1w=${w}`)} ${w}w`).join(', ') };
+};
+
+/**
  * A plain <img> that swaps itself for a neutral surface block with an ImageOff icon when the
  * remote photo fails to load, instead of the browser's broken-image glyph. Layout props
  * (style, className, mouse handlers) carry over to the placeholder so the box keeps its size.
@@ -45,6 +54,7 @@ export const SafeImage: React.FC<SafeImageProps> = ({ placeholderStyle, iconSize
 
   return (
     <img
+      decoding="async"
       {...img}
       onError={(e) => {
         setFailedSrc(src);
