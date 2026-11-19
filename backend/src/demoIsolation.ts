@@ -8,10 +8,10 @@ import type { PrismaClient } from './db/client.ts'
  *    visitor can read the demo owner's applicants);
  *  - a demo account never does it at a kos owned by a real, signed-up owner (the MOCK provider would let the demo account
  *    "pay" without any real payment and activate a tenancy in the real owner's room).
- * Seeded showcase owners have no login (no Account row), so the demo student may still use them. Opt-in: set
- * DEMO_ISOLATION=1 in production; dev, e2e and tests keep the open behavior.
+ * Seeded showcase owners have no login (no Account row), so the demo student may still use them. Fails closed: in
+ * production it is on unless DEMO_ISOLATION=0 is set explicitly (e2e does). Dev and tests stay opt-in (DEMO_ISOLATION=1).
  */
-export const demoIsolationOn = (env: NodeJS.ProcessEnv = process.env) => env.DEMO_ISOLATION === '1'
+export const demoIsolationOn = (env: NodeJS.ProcessEnv = process.env) => (env.NODE_ENV === 'production' ? env.DEMO_ISOLATION !== '0' : env.DEMO_ISOLATION === '1')
 
 export async function assertDemoIsolation(db: Pick<PrismaClient, 'kos'>, user: { isDemo?: boolean }, kosId: string, env: NodeJS.ProcessEnv = process.env): Promise<void> {
   if (!demoIsolationOn(env)) return

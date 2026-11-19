@@ -1,4 +1,5 @@
 import { Cron } from 'croner'
+import { beat, DAILY_STALE_MS, registerWorker } from './health.ts'
 import type { PrismaClient } from './db/client.ts'
 
 /** An account that never confirmed its email within this many days is removed. */
@@ -35,10 +36,12 @@ export async function purgeUnverifiedUsers(prisma: PrismaClient, now: Date): Pro
 export const UNVERIFIED_CLEANUP_CRON = '40 4 * * *'
 
 export function startUnverifiedCleanup(prisma: PrismaClient): () => void {
+  registerWorker('unverified-cleanup', DAILY_STALE_MS)
   const job = new Cron(UNVERIFIED_CLEANUP_CRON, { timezone: 'Asia/Jakarta', protect: true }, async () => {
     try {
       const n = await purgeUnverifiedUsers(prisma, new Date())
       console.log(`[auth] purged ${n} unverified account(s)`)
+      beat('unverified-cleanup')
     } catch (err) {
       console.error('[auth] unverified cleanup failed:', err instanceof Error ? err.message : err)
     }

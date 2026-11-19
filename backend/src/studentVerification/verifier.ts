@@ -3,13 +3,6 @@ import { isStudentVerified, STUDENT_VERIFICATION_MAX_DAYS } from '@kobo/shared/d
 import type { PrismaClient } from '../db/client.ts'
 import type { Prisma } from '../generated/prisma/client.ts'
 
-/** One way of proving student status. SHEERID is dev/test only (backend/src/sheerid.ts). */
-export interface StudentVerifier {
-  method: CampusVerifyMethod
-  start(input: { userId: string; campusId?: string }): Promise<{ next: string }>
-  status(userId: string): Promise<StudentVerificationStatus['state']>
-}
-
 export interface ApplyVerificationInput {
   via: CampusVerifyMethod
   until: Date
@@ -55,7 +48,7 @@ export async function getStudentVerificationStatus(
   })
   const base = { via: u.campusVerifiedVia, until: u.campusVerifiedUntil?.toISOString() ?? null, campus: u.campus, reason: null, providers }
   if (isStudentVerified(u, now)) return { ...base, state: 'VERIFIED' }
-  const docs = await prisma.studentDocument.findMany({ where: { userId, deletedAt: null }, orderBy: { createdAt: 'desc' }, select: { status: true, reason: true, createdAt: true } })
+  const docs = await prisma.studentDocument.findMany({ where: { userId, deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 20, select: { status: true, reason: true, createdAt: true } })
   if (docs.some((d) => d.status === 'PENDING')) return { ...base, state: 'PENDING' }
   const last = docs[0]
   if (last && last.status === 'REJECTED' && (!u.campusEmailVerifiedAt || last.createdAt > u.campusEmailVerifiedAt)) return { ...base, state: 'REJECTED', reason: last.reason }

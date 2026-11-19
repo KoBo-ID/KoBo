@@ -1,13 +1,21 @@
 import { createHash } from 'node:crypto'
+import { createServer, type Server } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { exportJWK, generateKeyPair, SignJWT } from 'jose'
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp } from '../../src/app.ts'
 import { createAuth } from '../../src/auth.ts'
 import { createCampusIdp, MICROSOFT_CONSUMER_TENANT, validateClaims } from '../../src/campusIdp.ts'
 import { resetDb } from '../../src/db/seed.ts'
 import { baseURL, cookieFrom, demoCookie, nextIp, paymentService, prisma, registerAndSignIn, secret, storage } from '../helpers.ts'
 
-/* No network: the token endpoint is a fake fetch, and ID tokens are signed with a local key pair served as the JWKS. */
+/* No external network: the token endpoint is a fake fetch, and ID tokens are signed with a local key pair served as the JWKS
+ * by a local HTTP server, so verification runs through the real jose remote-JWKS path. */
+
+let jwksKeys: Record<string, unknown>[] = []
+let jwksHits = 0
+let jwksServer: Server
+let jwksUrl = ''
 
 const MS = { clientId: 'ms-client-id', clientSecret: 'ms-secret' }
 const GOOGLE = { clientId: 'google-client-id', clientSecret: 'google-secret' }
@@ -77,9 +85,19 @@ beforeAll(async () => {
   const pair = await generateKeyPair('RS256', { extractable: true })
   privateKey = pair.privateKey
   jwk = { ...(await exportJWK(pair.publicKey)), kid: KID, alg: 'RS256', use: 'sig' }
-  idp = createCampusIdp({ microsoft: MS, google: GOOGLE, jwks: async () => [jwk as never], fetch: fakeFetch })
+  jwksKeys = [jwk]
+  jwksServer = createServer((_req, res) => {
+    jwksHits++
+    res.setHeader('content-type', 'application/json')
+    res.end(JSON.stringify({ keys: jwksKeys }))
+  })
+  await new Promise<void>((r) => jwksServer.listen(0, '127.0.0.1', r))
+  jwksUrl = `http://127.0.0.1:${(jwksServer.address() as AddressInfo).port}/keys`
+  idp = createCampusIdp({ microsoft: MS, google: GOOGLE, jwksUrls: { microsoft: jwksUrl, google: jwksUrl }, fetch: fakeFetch })
   app = createApp({ prisma, auth: createAuth({ prisma, baseURL, secret, campusIdp: idp, campusIdpProviders: { microsoft: true, google: true } }), storage, paymentService })
 })
+
+afterAll(() => new Promise<void>((r) => jwksServer.close(() => r())))
 
 beforeEach(async () => {
   issued.clear()
@@ -129,6 +147,64 @@ describe('validateClaims (pure)', () => {
       })
     expect(() => validateClaims('microsoft', trap(ms({ email: 'a@b', preferred_username: 'a@b' })), ctx)).not.toThrow()
     expect(() => validateClaims('google', trap(g({ email: 'a@b' })), ctx)).not.toThrow()
+  })
+})
+
+describe('verifyIdToken through the real JWKS path', () => {
+  const mk = (over: Record<string, unknown> = {}) => ({ iss: 'https://login.microsoftonline.com/t1/v2.0', aud: MS.clientId, tid: 't1', oid: 'o1', nonce: 'n1', exp: NOW() + 600, ...over })
+  const sign = (payload: Record<string, unknown>, key = privateKey, header: Record<string, unknown> = { alg: 'RS256', kid: KID }) => new SignJWT(payload).setProtectedHeader(header as never).sign(key)
+  const verify = (i: ReturnType<typeof createCampusIdp>, idToken: string, provider: 'microsoft' | 'google' = 'microsoft') => i.verifyIdToken({ provider, idToken, nonce: 'n1' })
+  const fresh = (cooldown = 0) => createCampusIdp({ microsoft: MS, google: GOOGLE, jwksUrls: { microsoft: jwksUrl, google: jwksUrl }, jwksCooldownMs: cooldown })
+
+  it('accepts a valid token and fetches the JWKS over HTTP', async () => {
+    const before = jwksHits
+    expect(await verify(fresh(), await sign(mk()))).toEqual({ provider: 'microsoft', tid: 't1', oid: 'o1', iss: 'https://login.microsoftonline.com/t1/v2.0' })
+    expect(jwksHits).toBeGreaterThan(before)
+  })
+
+  it('refetches on an unknown kid, so a rotated key works without waiting out a cache', async () => {
+    const i = fresh()
+    await verify(i, await sign(mk())) // primes the cache with the old key
+    const next = await generateKeyPair('RS256', { extractable: true })
+    jwksKeys = [jwk, { ...(await exportJWK(next.publicKey)), kid: 'rotated', alg: 'RS256', use: 'sig' }]
+    try {
+      expect((await verify(i, await sign(mk(), next.privateKey, { alg: 'RS256', kid: 'rotated' }))).provider).toBe('microsoft')
+    } finally {
+      jwksKeys = [jwk]
+    }
+  })
+
+  it('refuses a kid that is still unknown after the refetch', async () => {
+    await expect(verify(fresh(), await sign(mk(), privateKey, { alg: 'RS256', kid: 'nope' }))).rejects.toThrow(/campus idp/)
+  })
+
+  it('refuses alg none and HS256 (including an HMAC keyed with the public key)', async () => {
+    const i = fresh()
+    const b = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url')
+    await expect(verify(i, `${b({ alg: 'none', kid: KID })}.${b(mk())}.`)).rejects.toThrow(/campus idp/)
+    const hs = await new SignJWT(mk()).setProtectedHeader({ alg: 'HS256', kid: KID }).sign(new TextEncoder().encode(JSON.stringify(jwk)))
+    await expect(verify(i, hs)).rejects.toThrow(/campus idp/)
+  })
+
+  it('refuses expired, wrong audience, wrong issuer, tid mismatch and wrong google issuer', async () => {
+    const i = fresh()
+    await expect(verify(i, await sign(mk({ exp: NOW() - 10 })))).rejects.toThrow(/campus idp/)
+    await expect(verify(i, await sign(mk({ aud: 'other' })))).rejects.toThrow(/campus idp/)
+    await expect(verify(i, await sign(mk({ iss: 'https://evil.example/t1/v2.0' })))).rejects.toThrow(/campus idp: iss/)
+    await expect(verify(i, await sign(mk({ tid: 't2' })))).rejects.toThrow(/campus idp: iss/)
+    const g = { iss: 'https://evil.example', aud: GOOGLE.clientId, sub: 's', hd: 'binus.ac.id', nonce: 'n1', exp: NOW() + 600 }
+    await expect(verify(i, await sign(g), 'google')).rejects.toThrow(/campus idp/)
+    expect((await verify(i, await sign({ ...g, iss: 'accounts.google.com' }), 'google')).provider).toBe('google')
+  })
+
+  it('refuses malformed tokens', async () => {
+    const i = fresh()
+    for (const t of ['', 'abc', 'a.b', 'a.b.c', 'a.b.c.d']) await expect(verify(i, t), t).rejects.toThrow(/campus idp/)
+  })
+
+  it('maps an unreachable JWKS to a CampusIdpError', async () => {
+    const dead = createCampusIdp({ microsoft: MS, jwksUrls: { microsoft: 'http://127.0.0.1:1/keys' } })
+    await expect(verify(dead, await sign(mk()))).rejects.toThrow(/campus idp/)
   })
 })
 

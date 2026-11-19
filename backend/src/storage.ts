@@ -335,6 +335,9 @@ export function storageFromEnv(env: NodeJS.ProcessEnv = process.env): Storage {
   if (privateAny && !privateFull) {
     throw new Error('[storage] R2_PRIVATE_* is partly set. Set all three of R2_PRIVATE_BUCKET, R2_PRIVATE_ACCESS_KEY_ID and R2_PRIVATE_SECRET_ACCESS_KEY, or none of them.')
   }
+  if (privateFull && R2_PRIVATE_BUCKET === R2_PUBLIC_BUCKET) {
+    throw new Error('[storage] R2_PRIVATE_BUCKET must differ from R2_PUBLIC_BUCKET: KTM photos must never sit in the publicly readable bucket.')
+  }
   if (R2_ENDPOINT && R2_PUBLIC_BUCKET && R2_PUBLIC_ACCESS_KEY_ID && R2_PUBLIC_SECRET_ACCESS_KEY && R2_PUBLIC_BASE_URL) {
     const publicCfg = {
       endpoint: R2_ENDPOINT,

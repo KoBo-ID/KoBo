@@ -21,6 +21,7 @@ export const parseList = (value: string | undefined): string[] =>
     .map((s) => s.trim())
     .filter(Boolean)
 
+const MIN_AUTH_SECRET_LENGTH = 32
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '0.0.0.0'])
 
 /**
@@ -48,13 +49,18 @@ export function authEnv(env: NodeJS.ProcessEnv = process.env) {
     }
   }
 
+  const secret = requireEnv('BETTER_AUTH_SECRET', env)
+  if (production && secret.length < MIN_AUTH_SECRET_LENGTH) {
+    throw new Error(`[auth] BETTER_AUTH_SECRET must be at least ${MIN_AUTH_SECRET_LENGTH} characters in production (generate one with: openssl rand -base64 32).`)
+  }
+
   const ipHeaders = parseList(env.AUTH_IP_HEADERS).map((h) => h.toLowerCase())
   const google = googleEnv(env)
   const campusMs = campusMsEnv(env)
 
   return {
     baseURL,
-    secret: requireEnv('BETTER_AUTH_SECRET', env),
+    secret,
     // Dev: the Vite dev server proxies /api but keeps its own Origin, which better-auth's CSRF check must accept.
     // TRUSTED_ORIGINS adds more (e.g. Vercel preview domains) in any environment.
     trustedOrigins: [...new Set([...(production ? [] : ['http://localhost:5173']), ...parseList(env.TRUSTED_ORIGINS).map((o) => o.replace(/\/+$/, ''))])],

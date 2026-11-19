@@ -1,9 +1,11 @@
 import { TRPCError } from '@trpc/server'
+import type { PrismaClient } from '../db/client.ts'
 import { consentsRequired } from '../consents.ts'
 import { isStudentVerified, TERMS_VERSION } from '@kobo/shared/domain'
 import type { StudentVerificationStatus } from '@kobo/shared/types'
 import { getStudentVerificationStatus } from '../studentVerification/verifier.ts'
 import { acceptTermsInput, emergencyContactInput, notifyPrefInput, profileUpdateInput } from '@kobo/shared/schemas'
+import { studentVerificationRequired } from '../studentGate.ts'
 import { authedProcedure, publicProcedure, router } from './trpc.ts'
 
 export interface MeResult {
@@ -24,10 +26,18 @@ export interface MeResult {
   /** True when a first application needs the emergency contact and the current terms (production default). */
   profileConsentsRequired: boolean
   notifyOptOut: boolean
+  /** The effective REQUIRE_STUDENT_VERIFICATION for this caller: false for demo users (they are exempt). */
+  studentVerificationRequired: boolean
 }
 
 export interface ProvidersResult {
   google: boolean
+}
+
+/** A-017: demo accounts are shared, so they never change consent or notification columns (demoReset does not restore them). */
+async function refuseDemo(prisma: PrismaClient, userId: string, message: string): Promise<void> {
+  const u = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { isDemo: true } })
+  if (u.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message })
 }
 
 export const authRouter = router({
@@ -57,6 +67,7 @@ export const authRouter = router({
       termsVersion: TERMS_VERSION,
       profileConsentsRequired: consentsRequired() && !u.isDemo,
       notifyOptOut: u.notifyOptOut,
+      studentVerificationRequired: studentVerificationRequired() && !u.isDemo,
     }
   }),
 
@@ -79,6 +90,7 @@ export const authRouter = router({
 
   /** Withdraws the contact and the consent together. */
   clearEmergencyContact: authedProcedure.mutation(async ({ ctx }): Promise<{ id: string }> => {
+    await refuseDemo(ctx.prisma, ctx.user.id, 'Akun demo bersifat hanya-baca dan tidak dapat mengubah kontak darurat.')
     await ctx.prisma.user.update({
       where: { id: ctx.user.id },
       data: { emergencyContactName: null, emergencyContactRelation: null, emergencyContactPhone: null, emergencyContactConsentAt: null },
@@ -88,6 +100,7 @@ export const authRouter = router({
 
   /** Records agreement to the Syarat/Privasi version shown. A stale version is refused so a cached page cannot consent to old text. */
   acceptTerms: authedProcedure.input(acceptTermsInput).mutation(async ({ ctx, input }): Promise<{ version: string }> => {
+    await refuseDemo(ctx.prisma, ctx.user.id, 'Akun demo bersifat hanya-baca dan tidak dapat menyetujui syarat.')
     if (input.version !== TERMS_VERSION) throw new TRPCError({ code: 'CONFLICT', message: 'Syarat telah diperbarui. Muat ulang halaman lalu baca versi terbaru.' })
     await ctx.prisma.user.update({ where: { id: ctx.user.id }, data: { termsVersion: TERMS_VERSION, termsAcceptedAt: new Date() } })
     return { version: TERMS_VERSION }
@@ -95,6 +108,7 @@ export const authRouter = router({
 
   /** Payment reminders to the student themselves (email / WhatsApp). The owner still sees the invoice; the emergency contact flow is separate. */
   setNotifyOptOut: authedProcedure.input(notifyPrefInput).mutation(async ({ ctx, input }): Promise<{ optOut: boolean }> => {
+    await refuseDemo(ctx.prisma, ctx.user.id, 'Akun demo bersifat hanya-baca dan tidak dapat mengubah pengaturan notifikasi.')
     await ctx.prisma.user.update({ where: { id: ctx.user.id }, data: { notifyOptOut: input.optOut } })
     return { optOut: input.optOut }
   }),

@@ -1,4 +1,4 @@
-import { STUDENT_VERIFICATION_MAX_DAYS } from '@kobo/shared/domain'
+import { isCalendarDay, STUDENT_VERIFICATION_MAX_DAYS } from '@kobo/shared/domain'
 import type { PrismaClient } from '../db/client.ts'
 import type { Storage } from '../storage.ts'
 import { applyVerification } from './verifier.ts'
@@ -23,6 +23,7 @@ export async function listPending(prisma: PrismaClient): Promise<PendingRow[]> {
   const rows = await prisma.studentDocument.findMany({
     where: { status: 'PENDING', deletedAt: null },
     orderBy: { createdAt: 'asc' },
+    take: 200,
     select: { id: true, createdAt: true, campusId: true, nim: true, user: { select: { email: true, name: true } } },
   })
   const campuses = await prisma.campus.findMany({ where: { id: { in: rows.flatMap((r) => (r.campusId ? [r.campusId] : [])) } }, select: { id: true, shortName: true } })
@@ -63,6 +64,7 @@ export async function approveDocument(
   now: Date = new Date(),
 ): Promise<{ userId: string; until: Date }> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(opts.validUntil)) throw new ReviewError('Tanggal harus berformat YYYY-MM-DD.')
+  if (!isCalendarDay(opts.validUntil)) throw new ReviewError('Tanggal tidak valid.')
   const until = endOfDayWib(opts.validUntil)
   if (Number.isNaN(until.getTime())) throw new ReviewError('Tanggal tidak valid.')
   if (until.getTime() <= now.getTime()) throw new ReviewError('Tanggal berlaku harus di masa depan.')

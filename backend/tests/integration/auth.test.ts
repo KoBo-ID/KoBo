@@ -107,6 +107,16 @@ describe('code-only email verification', () => {
     expect(await verified()).toBe(false)
   })
 
+  it('one wrong code, then the right one still verifies (e2e onboarding:27)', async () => {
+    await signUp()
+    const good = (await lastEmail('verify-email', 'sari@example.com'))!.payload.code
+    const wrong = good === '000000' ? '111111' : '000000'
+    const ip = nextIp() // one browser: both attempts from the same address
+    expect((await otp({ email: 'sari@example.com', otp: wrong }, ip)).status).toBe(400)
+    expect((await otp({ email: 'sari@example.com', otp: good }, ip)).status).toBe(200)
+    expect(await verified()).toBe(true)
+  })
+
   it('an expired code is refused', async () => {
     await signUp()
     const good = (await lastEmail('verify-email', 'sari@example.com'))!.payload.code

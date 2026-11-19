@@ -1,5 +1,6 @@
 // Campus identity provider port (Microsoft Entra / Google Workspace OIDC) and its implementation.
-import { createHash, createPublicKey, verify as cryptoVerify, type JsonWebKey as NodeJwk } from 'node:crypto'
+import { createHash } from 'node:crypto'
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose'
 
 export type CampusIdpProvider = 'microsoft' | 'google'
 
@@ -14,8 +15,8 @@ export interface CampusIdp {
 
 /*
  * Real implementation: Microsoft Entra (multi-tenant "organizations" authority) and Google Workspace, Authorization Code + PKCE.
- * No dependency: the ID token signature is checked with node:crypto against the provider's JWKS (RS256 only), and the
- * claims by the pure validateClaims(). Identity is tid+oid / hd+sub, NEVER the email or preferred_username claim.
+ * The ID token signature is checked by jose against the provider's remote JWKS (RS256 only; jose caches and refetches on an
+ * unknown kid, with a cooldown), then the claims by the pure validateClaims(). Identity is tid+oid / hd+sub, NEVER the email or preferred_username claim.
  * A campus ID token proves "this person holds an account in tenant X"; it is never used to log in or to create an Account row.
  */
 
@@ -83,18 +84,16 @@ export function validateClaims(provider: CampusIdpProvider, payload: Record<stri
   return { provider: 'google', sub, hd: hd.toLowerCase() }
 }
 
-export type JwksFetcher = (provider: CampusIdpProvider) => Promise<NodeJwk[]>
-
 export interface CampusIdpConfig {
   microsoft?: { clientId: string; clientSecret: string } | null
   google?: { clientId: string; clientSecret: string } | null
-  /** Injectable for tests. Default: fetch the provider's JWKS, cached 1 h (refetched once on an unknown kid). */
-  jwks?: JwksFetcher
+  /** Test seam: override a provider's JWKS URL (e.g. a local server). Default: the provider's real JWKS endpoint. */
+  jwksUrls?: Partial<Record<CampusIdpProvider, string>>
+  /** Minimum ms between JWKS refetches triggered by an unknown kid (jose default 30 s). */
+  jwksCooldownMs?: number
   fetch?: typeof fetch
   now?: () => Date
 }
-
-const b64json = (s: string) => JSON.parse(Buffer.from(s, 'base64url').toString()) as Record<string, unknown>
 
 export function createCampusIdp(config: CampusIdpConfig): CampusIdp {
   const doFetch = config.fetch ?? fetch
@@ -105,18 +104,15 @@ export function createCampusIdp(config: CampusIdpConfig): CampusIdp {
     return c
   }
 
-  const cache = new Map<CampusIdpProvider, { keys: NodeJwk[]; at: number }>()
-  const jwks: JwksFetcher =
-    config.jwks ??
-    (async (provider) => {
-      const hit = cache.get(provider)
-      if (hit && Date.now() - hit.at < 3_600_000) return hit.keys
-      const res = await doFetch(ENDPOINTS[provider].jwks, { signal: AbortSignal.timeout(5000) })
-      if (!res.ok) throw new CampusIdpError(`jwks ${res.status}`)
-      const keys = ((await res.json()) as { keys?: NodeJwk[] }).keys ?? []
-      cache.set(provider, { keys, at: Date.now() })
-      return keys
-    })
+  const keySets = new Map<CampusIdpProvider, ReturnType<typeof createRemoteJWKSet>>()
+  const keySet = (provider: CampusIdpProvider) => {
+    let ks = keySets.get(provider)
+    if (!ks) {
+      ks = createRemoteJWKSet(new URL(config.jwksUrls?.[provider] ?? ENDPOINTS[provider].jwks), { timeoutDuration: 5000, cooldownDuration: config.jwksCooldownMs ?? 30_000 })
+      keySets.set(provider, ks)
+    }
+    return ks
+  }
 
   return {
     async authorizationUrl({ provider, state, nonce, codeVerifier, redirectUri }) {
@@ -152,22 +148,19 @@ export function createCampusIdp(config: CampusIdpConfig): CampusIdp {
 
     async verifyIdToken({ provider, idToken, nonce }) {
       const c = creds(provider)
-      const parts = idToken.split('.')
-      if (parts.length !== 3) throw new CampusIdpError('malformed')
-      const [h, p, s] = parts as [string, string, string]
-      let header: Record<string, unknown>
-      let payload: Record<string, unknown>
+      let payload: JWTPayload
       try {
-        header = b64json(h)
-        payload = b64json(p)
-      } catch {
-        throw new CampusIdpError('malformed')
+        // Microsoft's issuer is per tenant, so it is matched against the tid claim in validateClaims().
+        ;({ payload } = await jwtVerify(idToken, keySet(provider), {
+          algorithms: ['RS256'],
+          audience: c.clientId,
+          currentDate: now(),
+          ...(provider === 'google' ? { issuer: [...GOOGLE_ISSUERS] } : {}),
+        }))
+      } catch (e) {
+        const code = (e as { code?: string }).code ?? ''
+        throw new CampusIdpError(code === 'ERR_JWT_MALFORMED' || code === 'ERR_JWS_INVALID' ? 'malformed' : `token ${code || 'invalid'}`)
       }
-      if (header.alg !== 'RS256') throw new CampusIdpError('alg')
-      const jwk = (await jwks(provider)).find((k) => (k as { kid?: string }).kid === header.kid)
-      if (!jwk) throw new CampusIdpError('unknown kid')
-      const ok = cryptoVerify('sha256', Buffer.from(`${h}.${p}`), createPublicKey({ key: jwk, format: 'jwk' }), Buffer.from(s, 'base64url'))
-      if (!ok) throw new CampusIdpError('signature')
       return validateClaims(provider, payload, { clientId: c.clientId, nonce, now: now() })
     },
   }

@@ -6,7 +6,7 @@ import { setSessionCookie } from 'better-auth/cookies'
 import { emailOTP } from 'better-auth/plugins'
 import type { BetterAuthPlugin } from 'better-auth'
 import { STUDENT_VERIFICATION_MAX_DAYS, TERMS_VERSION } from '@kobo/shared/domain'
-import { campusEmailCodeInput, profileUpdateInput } from '@kobo/shared/schemas'
+import { campusEmailCodeInput, profileCampusField, profilePhoneField, profileUpdateInput } from '@kobo/shared/schemas'
 import { z } from 'zod'
 import {
   CAMPUS_CHALLENGE_TTL_SECONDS,
@@ -87,10 +87,22 @@ const isOtpPath = (path: string) => path.startsWith('/email-otp/') || path === '
 const demoForbidden = () =>
   new APIError('FORBIDDEN', { message: 'Akun ini bersifat hanya-baca: kata sandi, email, dan penghapusan akun tidak dapat diubah.', code: 'DEMO_ACCOUNT_READONLY' })
 
+/** Sign-up carries phone and campus too: apply the same field schemas as profileUpdateInput. Returns an error message, or null. */
+function checkSignUpExtras(d: { phone?: unknown; campus?: unknown } | undefined): string | null {
+  if (!d) return null
+  const given = (v: unknown) => v !== undefined && v !== null && !(typeof v === 'string' && v.trim() === '') // the form sends '' for an empty optional field
+  if (given(d.phone) && !profilePhoneField.safeParse(d.phone).success) return 'Nomor WhatsApp tidak valid. Contoh: 0812 3456 7890.'
+  if (given(d.campus) && !profileCampusField.safeParse(d.campus).success) return 'Nama kampus terlalu panjang (maksimal 80 karakter).'
+  return null
+}
+
 const invalidCampusEmail = () => new APIError('BAD_REQUEST', { message: 'Masukkan alamat email kampus yang valid.', code: 'INVALID_CAMPUS_EMAIL' })
 
 const MSG_DOMAIN_UNKNOWN = 'Domain email ini belum terdaftar sebagai email mahasiswa. Coba verifikasi dengan akun kampus atau unggah KTM.'
 const MSG_CODE_DEAD = 'Kode sudah kedaluwarsa atau terlalu banyak salah. Minta kode baru.'
+
+/** Upper bound on the campus catalogue scanned to map an email domain / IdP tenant (the nationwide catalogue is a few thousand rows). */
+const CAMPUS_SCAN_CAP = 10_000
 
 class ChallengeGone extends Error {}
 
@@ -133,7 +145,7 @@ function koboPlugin(prisma: PrismaClient, secret: string, { mx, idp, idpProvider
     if (!challenge || challenge.consumedAt || challenge.expiresAt <= now || challenge.userId !== userId) return false
     const taken = await prisma.user.findFirst({ where: { campusEmail: challenge.email, campusEmailVerifiedAt: { not: null }, id: { not: challenge.userId } }, select: { id: true } })
     if (taken) return false
-    const campuses = await prisma.campus.findMany({ select: { shortName: true, studentEmailDomains: true } })
+    const campuses = await prisma.campus.findMany({ select: { shortName: true, studentEmailDomains: true }, take: CAMPUS_SCAN_CAP })
     const campus = campusForDomain(emailDomain(challenge.email) ?? '', campuses)
     try {
       await prisma.$transaction(async (tx) => {
@@ -177,7 +189,7 @@ function koboPlugin(prisma: PrismaClient, secret: string, { mx, idp, idpProvider
           const email = ctx.body.email.trim().toLowerCase()
           const domain = emailDomain(email)
           if (!z.email().safeParse(email).success || !domain) throw invalidCampusEmail()
-          const campuses = await prisma.campus.findMany({ select: { shortName: true, studentEmailDomains: true } })
+          const campuses = await prisma.campus.findMany({ select: { shortName: true, studentEmailDomains: true }, take: CAMPUS_SCAN_CAP })
           if (!campusForDomain(domain, campuses)) throw new APIError('BAD_REQUEST', { message: MSG_DOMAIN_UNKNOWN, code: 'CAMPUS_EMAIL_DOMAIN_UNKNOWN' })
           if (!(await mx(domain))) throw new APIError('BAD_REQUEST', { message: 'Domain email ini tidak bisa menerima email.', code: 'CAMPUS_EMAIL_NO_MX' })
 
@@ -189,13 +201,16 @@ function koboPlugin(prisma: PrismaClient, secret: string, { mx, idp, idpProvider
           const code = generateCampusCode()
           const id = randomUUID()
           await prisma.$transaction(async (tx) => {
+            // Serialize concurrent requests of one user, so exactly one challenge stays live.
+            await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE`
             // Only the newest challenge is live: an older mail's code stops working.
             await tx.campusEmailChallenge.updateMany({ where: { userId: user.id, consumedAt: null }, data: { consumedAt: now } })
             await tx.campusEmailChallenge.create({
               data: { id, userId: user.id, email, codeHash: hashCampusCode(secret, id, code), expiresAt: new Date(now.getTime() + CAMPUS_CHALLENGE_TTL_SECONDS * 1000) },
             })
+            // Same transaction: a rolled-back challenge never has a mail, a mail never exists without its challenge.
+            await enqueueEmail(tx, { to: email, template: 'campus-email', payload: { name: user.name, code } })
           })
-          await enqueueEmail(prisma, { to: email, template: 'campus-email', payload: { name: user.name, code } })
           return ctx.json({ ok: true })
         },
       ),
@@ -267,7 +282,7 @@ function koboPlugin(prisma: PrismaClient, secret: string, { mx, idp, idpProvider
             throw ctx.redirect('/profile?campus=idp-invalid')
           }
 
-          const campuses = await prisma.campus.findMany({ select: { shortName: true, entraTenantIds: true, studentEmailDomains: true } })
+          const campuses = await prisma.campus.findMany({ select: { shortName: true, entraTenantIds: true, studentEmailDomains: true }, take: CAMPUS_SCAN_CAP })
           const campus =
             claims.provider === 'microsoft'
               ? campuses.find((c) => c.entraTenantIds.some((t) => t.toLowerCase() === claims.tid))
@@ -285,8 +300,12 @@ function koboPlugin(prisma: PrismaClient, secret: string, { mx, idp, idpProvider
           const now = new Date()
           try {
             await prisma.$transaction(async (tx) => {
-              await tx.user.update({ where: { id: userId }, data: { campusIdpTenant: tenant, campusIdpSubject: subject } })
-              await applyVerification(tx, userId, { via: claims.provider === 'microsoft' ? 'MICROSOFT' : 'GOOGLE', until: verificationUntil(now), campusShortName: campus.shortName }, now)
+              const via = claims.provider === 'microsoft' ? 'MICROSOFT' : 'GOOGLE'
+              await applyVerification(tx, userId, { via, until: verificationUntil(now), campusShortName: campus.shortName }, now)
+              // The IdP identity is recorded only when this verification actually took effect; a longer-lived verification by
+              // another method (applyVerification keeps it) must not be left pointing at an identity that did not win.
+              const after = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { campusVerifiedVia: true } })
+              if (after.campusVerifiedVia === via) await tx.user.update({ where: { id: userId }, data: { campusIdpTenant: tenant, campusIdpSubject: subject } })
             })
           } catch (e) {
             if ((e as { code?: string } | null)?.code === 'P2002') throw ctx.redirect('/profile?campus=idp-taken')
@@ -395,6 +414,8 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAdd
           // A Google sign-up would otherwise copy the Google photo. Every new account starts with KoBo's default avatar
           // (the initial on the brand tint, rendered by the frontend when `image` is empty); a photo is the user's own choice later.
           before: async (user) => {
+            const extras = checkSignUpExtras(user as { phone?: unknown; campus?: unknown })
+            if (extras) throw new APIError('BAD_REQUEST', { message: extras, code: 'INVALID_PROFILE' })
             const claimed = (user as { termsVersion?: unknown }).termsVersion
             const accepted = claimed === TERMS_VERSION
             // Backstop for every creation path: the sign-up endpoint hook refuses a long name; a Google display name is clamped, never blocking.
@@ -417,7 +438,10 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAdd
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path === '/sign-up/email') {
-          const name = (ctx.body as { name?: unknown } | undefined)?.name
+          const body = ctx.body as { name?: unknown; phone?: unknown; campus?: unknown } | undefined
+          const extras = checkSignUpExtras(body)
+          if (extras) throw new APIError('BAD_REQUEST', { message: extras, code: 'INVALID_PROFILE' })
+          const name = body?.name
           if (typeof name === 'string' && !profileUpdateInput.shape.name.safeParse(name).success && name.trim().length > 0) {
             throw new APIError('BAD_REQUEST', { message: 'Nama terlalu panjang (maksimal 80 karakter).', code: 'INVALID_PROFILE' })
           }

@@ -50,6 +50,12 @@ export const studentVerificationRouter = router({
     if ((ctx.user as { isDemo?: boolean }).isDemo === true) throw new TRPCError({ code: 'FORBIDDEN', message: 'Akun demo tidak dapat mengunggah KTM.' })
     const prefix = `private/ktm/${ctx.user.id}/`
     if (!input.key.startsWith(prefix) || input.key.includes('..') || input.key.slice(prefix.length).includes('/')) throw new TRPCError({ code: 'FORBIDDEN', message: 'Kunci berkas tidak valid.' })
+    const u = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.user.id }, select: { campusEmailVerifiedAt: true, campusVerifiedUntil: true } })
+    if (isStudentVerified(u, new Date())) {
+      // Do not keep a card photo the student no longer needs. Only objects that no document row owns are removed.
+      if (!(await ctx.prisma.studentDocument.findUnique({ where: { key: input.key }, select: { id: true } }))) await ctx.storage.deletePrivate(input.key)
+      throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Status mahasiswa Anda sudah terverifikasi.' })
+    }
     const campus = await ctx.prisma.campus.findUnique({ where: { id: input.campusId }, select: { id: true } })
     if (!campus) throw bad('Kampus tidak ditemukan.')
     const head = await ctx.storage.headPrivate(input.key)
@@ -73,24 +79,41 @@ export const studentVerificationRouter = router({
         data: { userId: ctx.user.id, kind: 'KTM', status: 'PENDING', key: input.key, contentType: head.contentType, campusId: input.campusId, nim: input.nim, nameOnCard: input.nameOnCard, consentAt: now },
       })
     } catch (e) {
-      if ((e as { code?: string }).code === 'P2002') throw new TRPCError({ code: 'CONFLICT', message: 'KTM Anda sedang ditinjau.' })
+      if ((e as { code?: string }).code === 'P2002') {
+        // Either a PENDING document exists, or this key already belongs to a document. Delete the new object only in the first case.
+        if (!(await ctx.prisma.studentDocument.findUnique({ where: { key: input.key }, select: { id: true } }))) await ctx.storage.deletePrivate(input.key)
+        throw new TRPCError({ code: 'CONFLICT', message: 'KTM Anda sedang ditinjau.' })
+      }
       throw e
     }
     return getStudentVerificationStatus(ctx.prisma, ctx.user.id, now, providersOf(ctx))
   }),
 
-  /** Deletes the stored photo at once. A PENDING document is closed as withdrawn. */
+  /**
+   * Deletes every stored photo of the user at once. A PENDING document is closed as withdrawn. Each row is claimed with a
+   * conditional update on its current status, so a concurrent approve (which is conditional on PENDING) and this call can
+   * never both win: whichever loses sees count 0 and re-reads. The row is only marked deleted after the object is gone;
+   * if the storage call fails the row keeps deleteAfter = now and the retention job finishes the job.
+   */
   ktmWithdraw: authedProcedure.mutation(async ({ ctx }): Promise<StudentVerificationStatus> => {
     const now = new Date()
-    const doc =
-      (await ctx.prisma.studentDocument.findFirst({ where: { userId: ctx.user.id, status: 'PENDING', deletedAt: null }, select: { id: true, key: true, status: true } })) ??
-      (await ctx.prisma.studentDocument.findFirst({ where: { userId: ctx.user.id, deletedAt: null }, orderBy: { createdAt: 'desc' }, select: { id: true, key: true, status: true } }))
-    if (doc) {
-      await ctx.storage.deletePrivate(doc.key)
-      await ctx.prisma.studentDocument.update({
-        where: { id: doc.id },
-        data: doc.status === 'PENDING' ? { deletedAt: now, status: 'REJECTED', reason: 'Ditarik oleh pengguna', decidedAt: now } : { deletedAt: now },
-      })
+    for (let round = 0; round < 3; round++) {
+      const docs = await ctx.prisma.studentDocument.findMany({ where: { userId: ctx.user.id, deletedAt: null }, select: { id: true, key: true, status: true }, take: 50 })
+      if (docs.length === 0) break
+      let raced = false
+      for (const d of docs) {
+        const claim = await ctx.prisma.studentDocument.updateMany({
+          where: { id: d.id, status: d.status, deletedAt: null },
+          data: d.status === 'PENDING' ? { status: 'REJECTED', reason: 'Ditarik oleh pengguna', decidedAt: now, deleteAfter: now } : { deleteAfter: now },
+        })
+        if (claim.count !== 1) {
+          raced = true
+          continue
+        }
+        await ctx.storage.deletePrivate(d.key)
+        await ctx.prisma.studentDocument.update({ where: { id: d.id }, data: { deletedAt: now } })
+      }
+      if (!raced) break
     }
     return getStudentVerificationStatus(ctx.prisma, ctx.user.id, now, providersOf(ctx))
   }),
