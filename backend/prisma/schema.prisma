@@ -25,8 +25,8 @@ model User {
   phone                 String?
   campus                String?
   campusEmail           String?
-  campusEmailVerifiedAt DateTime? @db.Timestamptz(3)
-  isDemo                Boolean   @default(false)
+  campusEmailVerifiedAt DateTime?           @db.Timestamptz(3)
+  isDemo                Boolean             @default(false)
   // How and until when the student status was verified. Entra tid / "google:<hd>" and oid / sub; unique together (hand SQL index).
   campusVerifiedVia     CampusVerifyMethod?
   campusVerifiedUntil   DateTime?           @db.Timestamptz(3)
@@ -44,16 +44,16 @@ model User {
   termsVersion              String?
   termsAcceptedAt           DateTime? @db.Timestamptz(3)
 
-  sessions           Session[]
-  accounts           Account[]
-  ownerProfile       OwnerProfile?
-  tenancies          Tenancy[]
-  visits             Visit[]
-  waitlistEntries    WaitlistEntry[]
-  rentalApplications RentalApplication[]
-  recordedPayments   Payment[]           @relation("PaymentRecordedBy")
-  profileViewsMade   TenantProfileView[] @relation("ProfileViewOwner")
-  profileViewsOfMe   TenantProfileView[] @relation("ProfileViewTenant")
+  sessions              Session[]
+  accounts              Account[]
+  ownerProfile          OwnerProfile?
+  tenancies             Tenancy[]
+  visits                Visit[]
+  waitlistEntries       WaitlistEntry[]
+  rentalApplications    RentalApplication[]
+  recordedPayments      Payment[]              @relation("PaymentRecordedBy")
+  profileViewsMade      TenantProfileView[]    @relation("ProfileViewOwner")
+  profileViewsOfMe      TenantProfileView[]    @relation("ProfileViewTenant")
   studentDocuments      StudentDocument[]
   campusEmailChallenges CampusEmailChallenge[]
   sheeridVerifications  SheerIdVerification[]
@@ -112,7 +112,7 @@ model StudentDocument {
   // No FK: Campus is reference data (ADR 0016).
   campusId    String?
   kind        StudentDocumentKind   @default(KTM)
-  key         String
+  key         String                @unique
   contentType String
   status      StudentDocumentStatus @default(PENDING)
   nim         String?
@@ -129,6 +129,7 @@ model StudentDocument {
   // Hand-written in the migration: unique ("userId") WHERE status = 'PENDING' AND "deletedAt" IS NULL.
   @@index([status, createdAt])
   @@index([deleteAfter])
+  @@index([userId, deletedAt, createdAt])
 }
 
 model CampusEmailChallenge {
@@ -306,13 +307,13 @@ enum OutboxStatus {
 }
 
 model Campus {
-  id           String   @id @default(cuid(2))
-  name         String
-  shortName    String
-  city         String
-  lat          Float
-  lng          Float
-  emailDomains String[]
+  id                  String   @id @default(cuid(2))
+  name                String
+  shortName           String
+  city                String
+  lat                 Float
+  lng                 Float
+  emailDomains        String[]
   // Curated student mail domains (exact match; also matched against a Google hd) and Microsoft Entra tenant ids.
   studentEmailDomains String[] @default([])
   entraTenantIds      String[] @default([])
@@ -441,17 +442,19 @@ model Room {
 }
 
 model Tenancy {
-  id             String        @id @default(cuid(2))
-  roomId         String
-  room           Room          @relation(fields: [roomId], references: [id], onDelete: Restrict)
-  userId         String
-  user           User          @relation(fields: [userId], references: [id])
-  status         TenancyStatus
-  startDate      DateTime      @db.Timestamptz(3)
-  durationMonths Int
-  expiresAt      DateTime?     @db.Timestamptz(3)
-  endedAt        DateTime?     @db.Timestamptz(3)
-  createdAt      DateTime      @default(now()) @db.Timestamptz(3)
+  id                String        @id @default(cuid(2))
+  roomId            String
+  room              Room          @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  userId            String
+  user              User          @relation(fields: [userId], references: [id])
+  status            TenancyStatus
+  startDate         DateTime      @db.Timestamptz(3)
+  durationMonths    Int
+  /// Rent per month agreed at approval (A-006); null on rows from before the column.
+  agreedMonthlyRent Int?
+  expiresAt         DateTime?     @db.Timestamptz(3)
+  endedAt           DateTime?     @db.Timestamptz(3)
+  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
 
   invoices          Invoice[]
   review            Review?
@@ -476,6 +479,7 @@ model RentalApplication {
   note           String?
   tenancyId      String?                 @unique
   tenancy        Tenancy?                @relation(fields: [tenancyId], references: [id], onDelete: SetNull)
+  waitlistEntry  WaitlistEntry?
   decidedAt      DateTime?               @db.Timestamptz(3)
   createdAt      DateTime                @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime                @updatedAt @db.Timestamptz(3)
@@ -502,6 +506,7 @@ model Invoice {
   notifications NotificationLog[]
 
   @@index([tenancyId])
+  @@index([status, dueDate])
 }
 
 model Payment {
@@ -658,20 +663,23 @@ model Visit {
 }
 
 model WaitlistEntry {
-  id             String         @id @default(cuid(2))
+  id             String             @id @default(cuid(2))
   kosId          String
-  kos            Kos            @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  kos            Kos                @relation(fields: [kosId], references: [id], onDelete: Cascade)
   userId         String
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// null = any room type
   roomType       String?
-  status         WaitlistStatus @default(WAITING)
+  status         WaitlistStatus     @default(WAITING)
   offeredRoomId  String?
-  offeredRoom    Room?          @relation(fields: [offeredRoomId], references: [id], onDelete: SetNull)
-  offerExpiresAt DateTime?      @db.Timestamptz(3)
-  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
-  resolvedAt     DateTime?      @db.Timestamptz(3)
+  offeredRoom    Room?              @relation(fields: [offeredRoomId], references: [id], onDelete: SetNull)
+  offerExpiresAt DateTime?          @db.Timestamptz(3)
+  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+  resolvedAt     DateTime?          @db.Timestamptz(3)
+  applicationId  String?            @unique
+  application    RentalApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
 
+  // Hand-written in the migration: partial index (kosId, createdAt) WHERE status IN ('WAITING','OFFERED').
   @@index([kosId, status, createdAt])
   @@index([userId])
 }

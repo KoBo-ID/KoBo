@@ -1,7 +1,12 @@
 // Zod schemas. Server and lazy routes only (never import from the landing chunk).
 import { z } from 'zod'
+import { MAX_ROOMS_PER_KOS } from './limits.ts'
+import { isCalendarDay } from './domain/calendarDay.ts'
 import { MAX_LEASE_MONTHS } from './domain/pricing.ts'
 import { GENDER_FILTERS, PRICE_MAX, SEARCH_RADIUS_MAX, SEARCH_RADIUS_MIN, SORT_KEYS } from './search.ts'
+
+/** 'YYYY-MM-DD' that exists on the calendar. */
+const calendarDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(isCalendarDay, { message: 'Tanggal tidak valid.' })
 
 export const kosListInput = z.object({ limit: z.number().int().min(1).max(200).optional() }).optional()
 export type KosListInput = z.infer<typeof kosListInput>
@@ -33,7 +38,7 @@ export const idInput = z.object({ id: z.string().min(1).max(64) })
 export const bookingCreateInput = z.object({
   roomId: z.string().min(1).max(64),
   /** 'YYYY-MM-DD' (WIB calendar day). The server rejects dates in the past. */
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startDate: calendarDay,
   durationMonths: z.number().int().min(1).max(MAX_LEASE_MONTHS),
 })
 export type BookingCreateInput = z.input<typeof bookingCreateInput>
@@ -109,13 +114,11 @@ export const ownerRegisterInput = z.object({
   ownershipType: z.enum(OWNERSHIP_TYPES).optional(),
 })
 
-/** Abuse cap: rooms per kos, enforced at creation and on room.create. */
-export const MAX_ROOMS_PER_KOS = 40
-/** Abuse cap: kos per owner. */
-export const MAX_KOS_PER_OWNER = 5
+export { MAX_ROOMS_PER_KOS, MAX_KOS_PER_OWNER } from './limits.ts'
 
 const text = (max: number) => z.string().trim().min(1).max(max)
-const rupiah = z.number().int().min(0).max(50_000_000)
+/** Rent price: at least Rp 1 (B-08). Deposits and fees use their own min(0) fields. */
+const rupiah = z.number().int().min(1).max(50_000_000)
 
 export const kosIdOnly = z.object({ kosId: z.string().min(1).max(64) })
 
@@ -245,7 +248,7 @@ export const VISIT_SLOTS = ['PAGI', 'SIANG'] as const
 export const visitCreateInput = z.object({
   kosId: z.string().min(1).max(64),
   /** 'YYYY-MM-DD' (WIB calendar day), strictly after today in WIB. */
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date: calendarDay,
   timeSlot: z.enum(VISIT_SLOTS),
   notes: z.string().trim().max(300).optional(),
 })
@@ -267,14 +270,16 @@ export const ownerWaitlistRemoveInput = z.object({ kosId: z.string().min(1).max(
 // ---------------------------------------------------------------------------
 
 /** Name, WhatsApp number and campus. Email and password are not editable here (demo guard; email has its own verified flow). */
+export const profilePhoneField = z
+  .string()
+  .trim()
+  .regex(/^\+?[0-9][0-9 ()-]{7,18}$/, 'Nomor telepon tidak valid')
+  .nullable()
+export const profileCampusField = z.string().trim().max(80).nullable()
 export const profileUpdateInput = z.object({
   name: z.string().trim().min(1).max(80),
-  phone: z
-    .string()
-    .trim()
-    .regex(/^\+?[0-9][0-9 ()-]{7,18}$/, 'Nomor telepon tidak valid')
-    .nullable(),
-  campus: z.string().trim().max(80).nullable(),
+  phone: profilePhoneField,
+  campus: profileCampusField,
 })
 export type ProfileUpdateInput = z.input<typeof profileUpdateInput>
 

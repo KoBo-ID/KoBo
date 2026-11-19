@@ -28,8 +28,9 @@ describe('deriveRoomStatus', () => {
   it('PENDING within hold is booking', () => {
     expect(deriveRoomStatus(pending('2026-10-15T05:00:01Z'))).toBe('booking')
   })
-  it('PENDING with expiresAt exactly now is still booking (expired only when expiresAt < now)', () => {
-    expect(deriveRoomStatus(pending(NOW.toISOString()))).toBe('booking')
+  it('PENDING with expiresAt exactly now is already vacant (expired when expiresAt <= now, like the payment paths)', () => {
+    expect(deriveRoomStatus(pending(NOW.toISOString()))).toBe('vacant')
+    expect(deriveRoomStatus(pending('2026-10-15T05:00:00.001Z'))).toBe('booking')
   })
   it('PENDING past expiresAt is vacant', () => {
     expect(deriveRoomStatus(pending('2026-10-15T04:59:59Z'))).toBe('vacant')

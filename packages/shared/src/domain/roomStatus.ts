@@ -16,7 +16,7 @@ export const DUE_WINDOW_DAYS = 3
 
 /**
  * Edge semantics (all in WIB calendar days):
- * - PENDING hold expires only when expiresAt < now (strictly); expiresAt === now is still booking.
+ * - PENDING hold is expired when expiresAt <= now (same as payment.start / settlement); expiresAt === now is already vacant.
  * - today < dueDate - 3  -> paid
  * - dueDate - 3 <= today <= dueDate -> due (due today is still due)
  * - today > dueDate -> overdue
@@ -26,7 +26,7 @@ export function deriveRoomStatus(input: RoomStatusInput): RoomStatus {
   const { tenancy, oldestUnpaidInvoice, now } = input
   if (!tenancy || tenancy.status === 'ENDED') return 'vacant'
   if (tenancy.status === 'PENDING') {
-    if (tenancy.expiresAt !== null && new Date(tenancy.expiresAt).getTime() < now.getTime()) return 'vacant'
+    if (tenancy.expiresAt !== null && new Date(tenancy.expiresAt).getTime() <= now.getTime()) return 'vacant'
     return 'booking'
   }
   if (!oldestUnpaidInvoice) return 'paid'
