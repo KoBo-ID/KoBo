@@ -1,5 +1,6 @@
 import { deflateSync } from 'node:zlib'
 import { test, expect, loginAs } from './fixtures'
+import { wibDate } from './seams'
 
 // Slice 11: reviews (tenant writes, owner replies), photo upload (client-side resize -> presigned PUT -> confirm)
 // and the room edit action. No hard-coded counts: every assertion is relative to what the test just did.
@@ -54,12 +55,18 @@ test('a paying tenant reviews their kos, it appears on Detail, and the owner rep
   const ownerPage = await ownerCtx.newPage()
   await loginAs(ownerPage, 'owner')
   const kosList = await trpcData<OwnerKos[]>(await ownerPage.request.get('/api/trpc/owner.myKos'))
-  const kos = kosList.find((k) => k.rooms.some((r) => r.status === 'vacant'))
+  // A student holds one room per kos (G2-05), so skip any kos where the demo student already has a live tenancy.
+  await loginAs(page, 'student')
+  const rentedKos = new Set(
+    (await trpcData<{ status: string; derivedStatus: string; kos: { id: string } }[]>(await page.request.get('/api/trpc/booking.mine')))
+      .filter((t) => t.status === 'ACTIVE' || t.status === 'PENDING')
+      .map((t) => t.kos.id),
+  )
+  const kos = kosList.find((k) => !rentedKos.has(k.id) && k.rooms.some((r) => r.status === 'vacant'))
   expect(kos, 'an owner kos with a vacant room').toBeTruthy()
 
   // Demo student applies; the owner approves, then the student starts and simulates the demo payment.
-  await loginAs(page, 'student')
-  const startDate = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
+  const startDate = wibDate(3)
   let invoiceId = ''
   for (const room of kos!.rooms.filter((r) => r.status === 'vacant').sort(() => Math.random() - 0.5)) {
     const submitted = await page.request.post('/api/trpc/application.create', {
@@ -109,7 +116,7 @@ test('a paying tenant reviews their kos, it appears on Detail, and the owner rep
   await expect(page.getByText(comment)).toBeVisible()
 
   // Demo student is campus-verified, so the snapshot badge shows.
-  await expect(page.getByText('Email kampus terverifikasi').first()).toBeVisible()
+  await expect(page.getByText('Mahasiswa terverifikasi').first()).toBeVisible()
 
   // The owner sees it in Ulasan and replies.
   await ownerPage.goto(`/owner/reviews?kos=${kos!.id}`)

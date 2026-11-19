@@ -1,5 +1,5 @@
 ﻿import { test, expect } from '@playwright/test'
-import { outboxLink, ownIp, signUpVerified } from '../tests/accounts'
+import { outboxCode, outboxLink, ownIp, signUpVerified } from '../tests/accounts'
 test.use({ trace:'off', screenshot:'off' })
 test.beforeEach(async ({page}) => {
   await page.route('**/*', route => ['localhost','127.0.0.1'].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort())
@@ -14,9 +14,10 @@ test('B1 register and verify through outbox', async ({page}) => {
   await page.getByLabel('Kata Sandi', { exact: true }).fill('Sandi-rahasia-123')
   await page.getByLabel(/Saya menyetujui/).check()
   await page.getByRole('button',{name:'Daftar Sekarang'}).click()
-  await expect(page.getByText('Cek email Anda').first()).toBeVisible()
-  await page.goto(await outboxLink(email,'verify-email'))
-  await expect(page.getByRole('heading',{name:'Email berhasil diverifikasi'})).toBeVisible()
+  await expect(page.getByText(`Masukkan kode 6 digit yang kami kirim ke ${email}`)).toBeVisible()
+  await page.getByLabel('Kode verifikasi').fill(await outboxCode(email,'verify-email'))
+  await page.getByRole('button',{name:'Verifikasi',exact:true}).click()
+  await expect(page).toHaveURL(/\/$/)
 })
 test('B3 password reset and old password invalidation', async ({page}) => {
   const email = await signUpVerified(page,'audit-reset')

@@ -1,6 +1,6 @@
 import type { BrowserContext, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
-import { newContext, newOwnerWorld, newStudent, apply, approve, hold, sql, trpcPost, trpcRaw, watch, expectHttpErrors, type OwnerWorld } from './seams'
+import { newContext, newOwnerWorld, newStudent, apply, approve, hold, sql, trpcPost, trpcRaw, watch, expectHttpErrors, wibDate, type OwnerWorld } from './seams'
 
 // From browsing a kos to an approved hold: discovery, application, validation, the owner's decision and its consequences.
 // Every test builds its own owner, kos, rooms and students, so nothing here touches the seeded demo rows.
@@ -11,7 +11,7 @@ test.skip(!!process.env.BASE_URL, 'needs the e2e hooks and database, which only 
 
 const PASSWORD = 'Sandi-rahasia-123'
 const digits = (text: string | null) => Number((text ?? '').replace(/\D/g, ''))
-const wibToday = (plusDays = 0) => new Date(Date.now() + 7 * 3_600_000 + plusDays * 86_400_000).toISOString().slice(0, 10)
+const wibToday = wibDate
 
 async function closeAll(...contexts: (BrowserContext | undefined)[]) {
   await Promise.all(contexts.map((c) => c?.close()))
@@ -71,8 +71,8 @@ test('scenario 1: the room picker shows vacant, held, full, reserved-for-queue a
       await trpcPost(owner.ctx, 'owner.tenancy.end', { kosId: owner.kosId, tenancyId: tenancyA })
 
       await waiter.page.goto(`/kos/${owner.kosId}`)
-      await expect(waiter.page.getByTestId('waitlist-offer')).toContainText(`Kamar ${room0.roomNumber} ditawarkan untukmu`)
-      await expect(waiter.page.getByRole('button', { name: 'Pesan Sekarang' })).toBeVisible()
+      await expect(waiter.page.getByTestId('waitlist-offer')).toContainText(`Kamar ${room0.roomNumber} ditawarkan untuk Anda`)
+      await expect(waiter.page.getByTestId('waitlist-offer').getByRole('button', { name: 'Ajukan Sewa' })).toBeVisible()
 
       await viewer.page.reload()
       await expect(tile).toContainText('Dipesan antrean')
@@ -398,7 +398,7 @@ test('scenario 7: rejecting creates nothing, frees the room for others and tells
       await ownerRow(owner.page, 'Mahasiswa').getByRole('button', { name: 'Tolak' }).click()
       const dialog = owner.page.getByRole('dialog')
       await expect(dialog).toContainText('Tolak pengajuan?')
-      await expect(dialog).toContainText('Pengajuan Penguji E2E akan ditolak dan tidak menahan kamar.')
+      await expect(dialog).toContainText('Pengajuan ini akan ditolak dan tidak menahan kamar.')
       await dialog.getByRole('button', { name: 'Tolak Pengajuan' }).click()
       await expect(ownerRow(owner.page, 'Mahasiswa')).toHaveCount(0)
     })

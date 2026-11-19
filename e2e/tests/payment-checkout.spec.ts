@@ -28,6 +28,7 @@ const tenancy = (invoice: Record<string, unknown>) => [
     startDate: '2026-11-01',
     durationMonths: 3,
     expiresAt: iso(6 * 3600_000),
+    endCause: null, // MyKos treats anything but null as an ended tenancy ("Tidak ditagih, ..."), so the fixture must say it is live
     kos: { id: 'kos-1', name: 'Kos Uji Bayar', address: 'Jl. Uji', image: null, ownerName: 'Pemilik', ownerPhone: null },
     room: { id: 'room-1', roomNumber: 'A1', floor: 1, type: 'Standar', priceMonthly: 1_000_000 },
     invoices: [

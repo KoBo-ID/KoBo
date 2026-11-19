@@ -23,7 +23,8 @@ test('demo student signs in, sees their account in the navbar, and can sign out'
 
   await page.getByRole('button', { name: 'Menu Pengguna' }).click()
   await expect(page.getByText('Dimas Pratama', { exact: true })).toBeVisible()
-  await expect(page.getByText('Mahasiswa Terverifikasi')).toBeVisible()
+  // Scoped to the account header in the menu: other copy on the page also says "Mahasiswa terverifikasi".
+  await expect(page.getByText('Dimas Pratama', { exact: true }).locator('xpath=..').getByText('Mahasiswa Terverifikasi')).toBeVisible()
   await page.getByRole('button', { name: 'Keluar' }).click()
   await expect(page.getByRole('button', { name: 'Masuk', exact: true })).toBeVisible()
 

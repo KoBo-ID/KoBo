@@ -1,6 +1,6 @@
 import type { BrowserContext } from '@playwright/test'
 import { test, expect } from './fixtures'
-import { expectHttpErrors, newOwnerWorld, newStudent, sql, trpcPost, trpcRaw, watch } from './seams'
+import { expectHttpErrors, newOwnerWorld, newStudent, sql, trpcPost, trpcRaw, watch, wibDate } from './seams'
 
 // Free survey visits, beyond visits.spec.ts (demo accounts, happy path): what the modal allows, the one-scheduled-visit rule,
 // cancelling, and the owner's view of a completed or cancelled visit. Every test has its own kos and student.
@@ -8,7 +8,7 @@ import { expectHttpErrors, newOwnerWorld, newStudent, sql, trpcPost, trpcRaw, wa
 test.skip(!!process.env.BASE_URL, 'needs the e2e hooks and database, which only the local e2e server provides')
 
 const closeAll = (...ctxs: BrowserContext[]) => Promise.all(ctxs.map((c) => c.close()))
-const wibDay = (offsetDays: number) => new Date(Date.now() + 7 * 3_600_000 + offsetDays * 86_400_000).toISOString().slice(0, 10)
+const wibDay = (offsetDays: number) => wibDate(offsetDays)
 const visitRows = (kosId: string, userId: string) => sql<{ id: string; status: string; timeSlot: string; date: Date }>('SELECT id, status, "timeSlot", date FROM "Visit" WHERE "kosId" = $1 AND "userId" = $2 ORDER BY "createdAt"', [kosId, userId])
 
 test('scenario 26: the modal offers only the next five days and refuses a bad phone number', async ({ browser, problems }) => {

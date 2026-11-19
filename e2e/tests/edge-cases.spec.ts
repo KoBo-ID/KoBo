@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { outboxCode, uniqueIp } from './accounts'
-import { expireSession, hold, newContext, newOwnerWorld, newStudent, sql, trpcPost, trpcRaw, watch, expectHttpErrors } from './seams'
+import { expireSession, hold, newContext, newOwnerWorld, newStudent, sql, trpcPost, trpcRaw, watch, expectHttpErrors, wibDate } from './seams'
 
 // Edge cases around the booking flow: signed-out visitors, a session that dies mid-form, read-only demo accounts,
 // an unverified e-mail address, and whether the prices on screen are the prices the server bills.
@@ -65,7 +65,7 @@ test('scenario 27: signed-out visitors are asked to sign in on /my-kos, /checkou
     })
 
     await test.step('the API says the same', async () => {
-      const refused = await trpcRaw(visitor.ctx, 'application.create', { roomId: owner.rooms[0].id, startDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), durationMonths: 3, program: 'Mahasiswa' })
+      const refused = await trpcRaw(visitor.ctx, 'application.create', { roomId: owner.rooms[0].id, startDate: wibDate(3), durationMonths: 3, program: 'Mahasiswa' })
       expect([refused.status, refused.message]).toEqual([401, 'Silakan masuk terlebih dahulu.'])
       expect(await sql('SELECT id FROM "RentalApplication" WHERE "roomId" = $1', [owner.rooms[0].id])).toHaveLength(0)
     })
@@ -158,7 +158,7 @@ test('scenario 27: an unverified e-mail cannot sign in, can ask for a new link, 
     })
 
     await test.step('there is no session, so the API refuses an application', async () => {
-      const refused = await trpcRaw(visitor.ctx, 'application.create', { roomId: owner.rooms[0].id, startDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), durationMonths: 3, program: 'Mahasiswa' })
+      const refused = await trpcRaw(visitor.ctx, 'application.create', { roomId: owner.rooms[0].id, startDate: wibDate(3), durationMonths: 3, program: 'Mahasiswa' })
       expect(refused.status).toBe(401)
       expectHttpErrors(problems, 401)
     })
@@ -177,7 +177,7 @@ test('scenario 27: an unverified e-mail cannot sign in, can ask for a new link, 
       expect(verified.ok()).toBe(true)
       const [user] = await sql<{ id: string; emailVerified: boolean }>('SELECT id, "emailVerified" FROM "User" WHERE email = $1', [email])
       expect(user.emailVerified).toBe(true)
-      const app = await trpcPost<{ id: string; status: string }>(visitor.ctx, 'application.create', { roomId: owner.rooms[0].id, startDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), durationMonths: 3, program: 'Mahasiswa' })
+      const app = await trpcPost<{ id: string; status: string }>(visitor.ctx, 'application.create', { roomId: owner.rooms[0].id, startDate: wibDate(3), durationMonths: 3, program: 'Mahasiswa' })
       expect(app.status).toBe('PENDING')
     })
   } finally {

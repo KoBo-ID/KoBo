@@ -234,8 +234,8 @@ test('scenario 17: when the provider is down the student sees an error and no at
     await test.step('the browser shows the generic error text (BAD_GATEWAY has no own message), and stays on /my-kos', async () => {
       const alert = bulan1(page).getByRole('alert')
       await expect(alert).toBeVisible()
-      // Finding G14: the server's retryable 503 reaches the student as the generic "Terjadi kesalahan" text.
-      await expect(alert).toHaveText('Terjadi kesalahan. Silakan coba lagi.')
+      // A-012: BAD_GATEWAY is no longer masked as the generic text; the student sees the payment-specific retry message.
+      await expect(alert).toHaveText('Gagal membuat sesi pembayaran. Coba lagi.')
       await expect(page).toHaveURL(/\/my-kos$/)
     })
 

@@ -19,6 +19,7 @@ const env = {
   ALLOW_MOCK_PAYMENTS: '1', // e2e only: production mode normally refuses the mock provider
   PAYMENT_RETURN_ORIGIN: '', // backend/.env may point it at production; checkout return links must come back to this server
   ALLOW_E2E_HOOKS: '1', // e2e only: mounts /api/__e2e/* and a fake Xendit provider (backend/src/e2eHooks.ts)
+  DEMO_ISOLATION: '0', // e2e keeps demo and real accounts mixed (production default is on, B-01)
   DATABASE_URL: process.env.E2E_DATABASE_URL ?? 'postgresql://kobo:kobo@localhost:5433/kobo_e2e',
   // Never hit the real email service from e2e: backend/.env may hold a Resend key, and loadEnvFile
   // does not override keys that already exist, so an empty value forces the console transport.

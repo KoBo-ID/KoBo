@@ -56,7 +56,7 @@ test('scenario 25: a student joins a full kos, sees the position, and leaves the
       await join.getByRole('button', { name: 'Ikut Daftar Tunggu' }).click()
       await expect(toast(a.page, 'Anda masuk daftar tunggu. Kami kirim email saat kamar tersedia.')).toBeVisible()
       await expect(a.page.getByTestId('waitlist-queued')).toContainText('Anda di antrean #1')
-      await expect(a.page.getByTestId('waitlist-queued')).toContainText('Anda punya 24 jam untuk memesan.')
+      await expect(a.page.getByTestId('waitlist-queued')).toContainText('Anda punya 24 jam untuk mengajukan sewa.')
     })
 
     await test.step('a second student is #2, and /my-kos lists the entry with its number', async () => {
@@ -123,9 +123,10 @@ test('scenario 25: an offer arrives with a banner and an email; declining passes
       expect(await offerMails(second.student.email)).toBe(0)
       await first.student.page.goto('/my-kos')
       const banner = first.student.page.getByTestId('waitlist-offer')
-      await expect(banner).toContainText(`Kamar ${room.roomNumber} ditawarkan untukmu`)
+      await expect(banner).toContainText(`Kamar ${room.roomNumber} ditawarkan untuk Anda`)
       await expect(banner).toContainText('sisa')
-      await expect(banner.getByRole('button', { name: 'Pesan Sekarang' })).toBeVisible()
+      await expect(banner.getByRole('button', { name: 'Ajukan Sewa' })).toBeVisible()
+      await expect(banner).toContainText('Tawaran ditahan selama pemilik meninjau pengajuan Anda.')
       await second.student.page.goto('/my-kos')
       await expect(second.student.page.getByTestId('waitlist-entry')).toContainText('Antrean #1')
       await expect(second.student.page.getByTestId('waitlist-offer')).toHaveCount(0)
@@ -138,11 +139,11 @@ test('scenario 25: an offer arrives with a banner and an email; declining passes
       expect(await entryStatus(second.entryId)).toEqual({ status: 'OFFERED', offeredRoomId: room.id })
       await expect.poll(() => offerMails(second.student.email)).toBe(1)
       await second.student.page.reload()
-      await expect(second.student.page.getByTestId('waitlist-offer')).toContainText(`Kamar ${room.roomNumber} ditawarkan untukmu`)
+      await expect(second.student.page.getByTestId('waitlist-offer')).toContainText(`Kamar ${room.roomNumber} ditawarkan untuk Anda`)
     })
 
-    await test.step('"Pesan Sekarang" opens the checkout for the offered room', async () => {
-      await second.student.page.getByTestId('waitlist-offer').getByRole('button', { name: 'Pesan Sekarang' }).click()
+    await test.step('"Ajukan Sewa" opens the checkout for the offered room', async () => {
+      await second.student.page.getByTestId('waitlist-offer').getByRole('button', { name: 'Ajukan Sewa' }).click()
       await expect(second.student.page).toHaveURL(new RegExp(`/checkout/${held.owner.kosId}\\?room=${room.id}`))
     })
     expectHttpErrors(problems)

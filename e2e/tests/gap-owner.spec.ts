@@ -1,5 +1,6 @@
 import { test, expect } from '../gap/fixtures'
 import { apply, approve, expectHttpErrors, newOwnerWorld, newStudent, sql, trpcPost, trpcRaw, watch } from '../gap/helpers'
+import { wibDate } from './seams'
 
 // Owner workspace gaps: inbox counts from hand-made rows, the student's rupiah after approval, and the cross-owner wall in the browser.
 
@@ -19,7 +20,7 @@ test('[G-050][R-104] "Perlu tindakan" counts exactly the pending applications an
   try {
     const appA = await apply(first, owner.rooms[0].id)
     await apply(second, owner.rooms[1].id)
-    await trpcPost(first.page, 'visit.create', { kosId: owner.kosId, date: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), timeSlot: 'PAGI' })
+    await trpcPost(first.page, 'visit.create', { kosId: owner.kosId, date: wibDate(3), timeSlot: 'PAGI' })
 
     // Before the decision the student sees a pending application, not a held room (spec: no hold before approval).
     await first.page.goto('/my-kos')

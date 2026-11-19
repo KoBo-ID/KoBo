@@ -9,17 +9,17 @@ test.skip(!!process.env.BASE_URL, 'needs the e2e hooks and database, which only 
 
 const PASSWORD = 'Sandi-rahasia-123'
 
-test('[G-055][R-014] a sign-in with an external ?next= stays on the app origin', async ({ browser, problems }) => {
+test('[G-055][R-014][G2-17] a sign-in with an external or sign-in-page ?next= stays on the app origin and leaves /masuk', async ({ browser, problems }) => {
   const account = await newStudent(browser, { label: 'next-away' })
   try {
-    for (const next of ['https://evil.example/phish', '//evil.example/phish']) {
+    for (const next of ['https://evil.example/phish', '//evil.example/phish', '/Masuk', '/%6Dasuk']) {
       const visitor = await newContext(browser)
       watch(visitor.page, problems)
       await visitor.page.goto(`/masuk?next=${encodeURIComponent(next)}`)
       await visitor.page.getByLabel('Email').fill(account.email)
       await visitor.page.getByLabel('Kata Sandi', { exact: true }).fill(PASSWORD)
       await visitor.page.getByRole('button', { name: 'Masuk ke Akun' }).click()
-      await expect(visitor.page).not.toHaveURL(/\/masuk/)
+      await expect(visitor.page).not.toHaveURL(/\/(masuk|%6dasuk)/i)
       const here = new URL(visitor.page.url())
       expect(here.origin).toBe(new URL(test.info().project.use.baseURL as string).origin)
       await visitor.ctx.close()
@@ -114,7 +114,7 @@ test('[G-057][R-005] sign-up refuses a short password, a malformed email and a d
     expect(long.status()).toBe(400)
     expect((await long.json()).message).toBe('Nama terlalu panjang (maksimal 80 karakter).')
     expect(await sql(`SELECT id FROM "User" WHERE email LIKE 'gap-api-long-%'`)).toHaveLength(0)
-    expect(problems.filter((p) => !/status of 4dd/.test(p))).toEqual([])
+    expect(problems.filter((p) => !/status of 4\d\d/.test(p))).toEqual([])
     problems.splice(0)
   } finally {
     await Promise.all([existing.ctx.close(), visitor.ctx.close()])

@@ -1,5 +1,6 @@
 import { test, expect, loginAs } from './fixtures'
 import { signUpVerified } from './accounts'
+import { wibDate } from './seams'
 
 // Daftar Tunggu (docs/superpowers/specs/2026-10-02-waitlist-design.md). The seed has no completely full demo kos, so the
 // test builds one: the demo owner adds a two-room kos and a second, freshly registered account books both rooms. Then the
@@ -39,18 +40,19 @@ test('demo student queues for a full kos, gets the room when the owner frees it,
   const { id: kosId } = await trpcData<{ id: string }>(created)
   const kos = (await trpcData<{ id: string; rooms: { id: string; roomNumber: string }[] }[]>(await page.request.get('/api/trpc/owner.myKos'))).find((k) => k.id === kosId)!
 
-  // 2. A second account applies for both rooms and the owner approves them.
-  const tenantCtx = await browser.newContext({ baseURL })
-  const tenant = await tenantCtx.newPage()
-  await signUpVerified(tenant, 'penyewa-antre')
-  const startDate = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
-  for (const room of kos.rooms) {
+  // 2. One fresh account per room applies and the owner approves (a student may hold only one room per kos, G2-05).
+  const startDate = wibDate(3)
+  for (const [i, room] of kos.rooms.entries()) {
+    const tenantCtx = await browser.newContext({ baseURL })
+    const tenant = await tenantCtx.newPage()
+    await signUpVerified(tenant, `penyewa-antre-${i}`)
     const submitted = await tenantCtx.request.post('/api/trpc/application.create', {
       data: { roomId: room.id, startDate, durationMonths: 3, program: 'Mahasiswa' },
       headers: origin,
     })
     if (!submitted.ok()) {
       expect(submitted.status(), 'only a lost race may fail').toBe(409)
+      await tenantCtx.close()
       continue
     }
     const application = await trpcData<{ id: string }>(submitted)
@@ -59,8 +61,8 @@ test('demo student queues for a full kos, gets the room when the owner frees it,
       headers: origin,
     })
     if (!approved.ok()) expect(approved.status(), 'only a lost approval race may fail').toBe(409)
+    await tenantCtx.close()
   }
-  await tenantCtx.close()
 
   // 3. The demo student sees "Kamar Penuh" and joins.
   await loginAs(page, 'student')
@@ -81,13 +83,13 @@ test('demo student queues for a full kos, gets the room when the owner frees it,
   await page.getByRole('alertdialog').getByRole('button', { name: 'Batalkan booking' }).click()
   await expect(page.getByText('Sewa diakhiri. Kamar kembali kosong.')).toBeVisible()
 
-  // 5. The student reloads: the room is theirs for 24 hours, and "Pesan Sekarang" leads to checkout.
+  // 5. The student reloads: the room is theirs for 24 hours, and "Ajukan Sewa" leads to checkout.
   await loginAs(page, 'student')
   await page.goto(`/kos/${kosId}`)
   const offer = page.getByTestId('waitlist-offer')
-  await expect(offer).toContainText(`Kamar ${roomNumber} ditawarkan untukmu`)
+  await expect(offer).toContainText(`Kamar ${roomNumber} ditawarkan untuk Anda`)
   await expect(offer).toContainText('sisa')
-  await offer.getByRole('button', { name: 'Pesan Sekarang' }).click()
+  await offer.getByRole('button', { name: 'Ajukan Sewa' }).click()
   await expect(page).toHaveURL(new RegExp(`/checkout/${kosId}\\?room=`))
 
   // 6. Clean up: decline, so the demo student keeps no live entry for the other specs.

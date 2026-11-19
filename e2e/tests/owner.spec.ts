@@ -1,5 +1,6 @@
 import { test, expect, loginAs } from './fixtures'
 import { signUpVerified } from './accounts'
+import { wibDate } from './seams'
 
 // Money flow 2 (spec section 11): owner marks a room paid -> status paid -> kuitansi page.
 // The unpaid invoice is arranged by a booking from a second, freshly registered account, so the test does not
@@ -26,7 +27,7 @@ test('owner marks a booked room paid and opens its kuitansi', async ({ page, bro
   const tenantCtx = await browser.newContext({ baseURL })
   const tenant = await tenantCtx.newPage()
   await signUpVerified(tenant, 'penyewa')
-  const startDate = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10)
+  const startDate = wibDate(3)
   let room: Room | undefined
   for (const candidate of [...vacant].sort(() => Math.random() - 0.5)) {
     const res = await tenantCtx.request.post('/api/trpc/application.create', {

@@ -5,6 +5,7 @@ import { test, expect, loginAs } from './fixtures'
 // laptop and desktop widths, and the overlays that matter on a phone fit the viewport. Layout only, no pixel snapshots.
 
 const VIEWPORTS = [
+  { name: '320 reflow', width: 320, height: 640 },
   { name: '390 phone', width: 390, height: 844 },
   { name: '768 tablet', width: 768, height: 1024 },
   { name: '1280x650 laptop', width: 1280, height: 650 },
@@ -186,10 +187,15 @@ test.describe('phone-only layout', () => {
       expect(b.width).toBeGreaterThanOrEqual(40)
     }
     // Scrolled to the very end, the footer's last line is not hidden behind the dock.
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-    const dock = (await page.locator('.mobile-only-dock').boundingBox())!
-    const footer = (await page.locator('footer').boundingBox())!
-    expect(footer.y + footer.height).toBeLessThanOrEqual(dock.y + 1)
+    // Polled (G2-18): under parallel load the page can still grow after the first scroll, so re-scroll until it settles.
+    await expect
+      .poll(async () => {
+        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+        const dock = (await page.locator('.mobile-only-dock').boundingBox())!
+        const footer = (await page.locator('footer').boundingBox())!
+        return footer.y + footer.height - (dock.y + 1)
+      })
+      .toBeLessThanOrEqual(0)
   })
 
   test('owner room board becomes stacked cards on a phone', async ({ page }) => {
@@ -247,5 +253,66 @@ test.describe('phone-only layout', () => {
     const dock = (await page.locator('.mobile-only-dock').boundingBox())!
     expect(probe.y + probe.height).toBeLessThanOrEqual(dock.y)
     expect(probe.width).toBeGreaterThanOrEqual(390 - 40)
+  })
+})
+
+// WCAG 1.4.4: text-only resize to 200% must not break the headers or push the page sideways.
+test.describe('200% text', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('public and owner pages do not scroll sideways at 200% root font', async ({ page }) => {
+    await loginAs(page, 'owner')
+    for (const url of ['/', '/search', '/kos/kos-1', '/owner/dashboard']) {
+      await settle(page, url)
+      await page.evaluate(() => { document.documentElement.style.fontSize = '200%' })
+      expect(await horizontalOverflow(page), `${url} at 200% text`).toBeLessThanOrEqual(0)
+    }
+  })
+
+  test('[G2-12] kos detail related cards reflow at 200% text on a 1280 laptop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 650 })
+    await settle(page, '/kos/kos-1')
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%' })
+    await page.locator('.detail-related').scrollIntoViewIfNeeded()
+    expect(await horizontalOverflow(page), '/kos/kos-1 at 200% text, 1280').toBeLessThanOrEqual(0)
+  })
+
+  test('the controls collapsed by the narrow header keep an accessible name', async ({ page }) => {
+    await settle(page, '/')
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%' })
+    await expect(page.getByRole('button', { name: 'Masuk', exact: true })).toBeVisible()
+    await expect(page.locator('.kobo-nav-mykos')).toBeVisible()
+  })
+})
+
+// WCAG 2.5.8: inline text-link buttons are at least 24px tall.
+test.describe('tap target floor', () => {
+  const heights = (page: Page, selector: string) => page.locator(selector).evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))
+
+  test('sign-in links, owner tenant link and the checkout back link are 24px', async ({ page }) => {
+    await settle(page, '/masuk')
+    for (const name of ['Lupa kata sandi?', 'Daftar baru']) {
+      const box = (await page.getByRole('button', { name, exact: true }).boundingBox())!
+      expect(box.height, name).toBeGreaterThanOrEqual(24)
+    }
+    await loginAs(page, 'student')
+    await settle(page, '/kos/kos-1')
+    await page.getByRole('button', { name: 'Ajukan Sewa' }).click()
+    await expect(page).toHaveURL(/[/]checkout[/]/)
+    const back = (await page.locator('.kobo-back').boundingBox())!
+    expect(back.height, 'Kembali').toBeGreaterThanOrEqual(24)
+    // A paid invoice renders the receipt link (.mk-link); stub one so the check never passes vacuously.
+    await page.route('**/api/trpc/booking.mine*', (r) => r.fulfill(trpc([tenancy('t-1', 'ACTIVE', 'paid', [invoice('i-1', { status: 'PAID', receiptNo: 'KB-0001', receiptNumber: 1 })])])))
+    await settle(page, '/my-kos')
+    await page.unroute('**/api/trpc/booking.mine*')
+    const links = await heights(page, '.mk-link')
+    expect(links.length, 'my-kos invoice links').toBeGreaterThan(0)
+    for (const h of links) expect(h, 'my-kos invoice link').toBeGreaterThanOrEqual(24)
+
+    await loginAs(page, 'owner')
+    await settle(page, '/owner/dashboard?tab=tindakan')
+    const sub = await heights(page, '.od-person--sub')
+    expect(sub.length).toBeGreaterThan(0)
+    for (const h of sub) expect(h, 'Lihat profil penyewa').toBeGreaterThanOrEqual(24)
   })
 })

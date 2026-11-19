@@ -288,10 +288,15 @@ export async function newOwnerWorld(browser: Browser, opts: { label: string; roo
   return { ctx, page, email, userId, kosId, kosName, rooms }
 }
 
+/** The app's calendar day (Asia/Jakarta, YYYY-MM-DD, like the backend's todayWIB), `plusDays` from today. Never use UTC for app dates. */
+export function wibDate(plusDays = 0): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + plusDays * 86_400_000))
+}
+
 /** Submit a rental application as `student`. Returns the application id. */
 export async function apply(student: Student | BrowserContext, roomId: string, opts: { startInDays?: number; months?: number; program?: string } = {}) {
   const who = 'ctx' in student ? student.ctx : student
-  const startDate = new Date(Date.now() + (opts.startInDays ?? 3) * 86_400_000).toISOString().slice(0, 10)
+  const startDate = wibDate(opts.startInDays ?? 3)
   const app = await trpcPost<{ id: string }>(who, 'application.create', { roomId, startDate, durationMonths: opts.months ?? 3, program: opts.program ?? 'Mahasiswa' })
   return app.id
 }

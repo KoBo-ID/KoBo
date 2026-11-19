@@ -14,7 +14,7 @@ test('Kelola properti: sticky section nav jumps to Tata tertib dan denda and fol
 
   // Sticky: still on screen after scrolling, and the spy follows manual scrolling back up.
   expect((await nav.boundingBox())!.y).toBeLessThan(120)
-  await page.waitForTimeout(1100)
+  await expect.poll(async () => (await nav.boundingBox())!.y).toBeLessThan(120) // settled after the jump scroll, no fixed sleep
   await page.evaluate(() => window.scrollTo(0, 0))
   await expect(nav.getByRole('link', { name: 'Properti' })).toHaveAttribute('aria-current', 'true')
 })

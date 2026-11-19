@@ -156,3 +156,50 @@ test('a new user can register as an owner and reach the dashboard', async ({ pag
   await expect(page.getByRole('heading', { name: 'Papan okupansi', level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Belum ada kos' })).toBeVisible()
 })
+
+test('mobile /masuk keeps Kembali and the brand, stacks the demo buttons, and never fetches the hidden photo', async ({ page }) => {
+  const photoRequests: string[] = []
+  page.on('request', (r) => {
+    if (/room-(survey|living)/.test(r.url())) photoRequests.push(r.url())
+  })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/masuk')
+  await expect(page.getByRole('link', { name: 'Kembali' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'KoBo, ke beranda' })).toBeVisible()
+  const student = await page.getByRole('button', { name: 'Masuk sebagai Mahasiswa' }).boundingBox()
+  const owner = await page.getByRole('button', { name: 'Masuk sebagai Pemilik' }).boundingBox()
+  expect(student && owner).toBeTruthy()
+  // Stacked or side by side, the two boxes must not intersect, and both stay inside the 390px viewport.
+  const apart = student!.y + student!.height <= owner!.y + 1 || owner!.y + owner!.height <= student!.y + 1 || student!.x + student!.width <= owner!.x + 1 || owner!.x + owner!.width <= student!.x + 1
+  expect(apart, 'demo buttons overlap').toBe(true)
+  for (const b of [student!, owner!]) expect(b.x >= 0 && b.x + b.width <= 390, 'demo button outside the viewport').toBe(true)
+  await page.waitForLoadState('networkidle')
+  expect(photoRequests, 'hidden aside photos must stay unfetched').toEqual([])
+})
+
+test('"Kembali" from a signed-out owner-route redirect goes home instead of looping back to /masuk', async ({ page }) => {
+  await page.goto('/owner/dashboard')
+  await expect(page).toHaveURL(/\/masuk\?peran=pemilik&next=%2Fowner%2Fdashboard/)
+  await expect(page.getByRole('link', { name: 'Kembali' })).toHaveAttribute('href', '/')
+  await page.getByRole('link', { name: 'Kembali' }).click()
+  await expect(page).toHaveURL(/\/$/)
+})
+
+test('owner sign-in honours ?next', async ({ page }) => {
+  await ownIp(page)
+  await page.goto('/masuk?peran=pemilik&next=%2Fowner%2Fkos')
+  await page.getByRole('button', { name: 'Masuk sebagai Pemilik' }).click()
+  await expect(page).toHaveURL(/\/owner\/kos$/)
+})
+
+test('the Demo Student sent to an owner route is not left at a dead end', async ({ page }) => {
+  await ownIp(page)
+  await page.goto('/masuk?next=%2Fowner%2Fdashboard')
+  await page.getByRole('button', { name: 'Masuk sebagai Mahasiswa' }).click()
+  await expect(page).toHaveURL(/\/owner\/login$/)
+  await expect(page.getByRole('button', { name: 'Daftarkan diri sebagai pemilik' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Keluar dan masuk sebagai pemilik' }).click()
+  await expect(page).toHaveURL(/\/masuk\?peran=pemilik/)
+  await page.getByRole('button', { name: 'Masuk sebagai Pemilik' }).click()
+  await expect(page).toHaveURL(/\/owner\/dashboard$/)
+})

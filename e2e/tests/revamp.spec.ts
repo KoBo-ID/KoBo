@@ -93,9 +93,29 @@ test('popular-campus chips fit the hero at 1280x650 and wrap to at most two rows
   expect(last.y + last.height).toBeLessThanOrEqual(650)
   await page.screenshot({ path: test.info().outputPath('chips-1280x650.png') })
   await page.setViewportSize({ width: 390, height: 844 })
-  const tops = await chips.evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().top))).size)
-  expect(tops).toBeLessThanOrEqual(2)
-  for (const box of await chips.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height))) expect(box).toBeGreaterThanOrEqual(44)
+  await expect.poll(() => chips.evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().top))).size)).toBeLessThanOrEqual(2)
+  // The real tap target is the ::before overlay, positioned against the padding box (inside the border).
+  const hits = await chips.evaluateAll((els) =>
+    els.map((el) => {
+      const rect = el.getBoundingClientRect()
+      const own = getComputedStyle(el)
+      const before = getComputedStyle(el, '::before')
+      const left = rect.left + parseFloat(own.borderLeftWidth) + parseFloat(before.left)
+      const top = rect.top + parseFloat(own.borderTopWidth) + parseFloat(before.top)
+      const width = rect.width - parseFloat(own.borderLeftWidth) - parseFloat(own.borderRightWidth) - parseFloat(before.left) - parseFloat(before.right)
+      const height = rect.height - parseFloat(own.borderTopWidth) - parseFloat(own.borderBottomWidth) - parseFloat(before.top) - parseFloat(before.bottom)
+      return { left, top, right: left + width, bottom: top + height, height }
+    }),
+  )
+  for (const hit of hits) expect(hit.height).toBeGreaterThanOrEqual(44)
+  // Wrapped rows must not share tap area.
+  for (let i = 0; i < hits.length; i++) {
+    for (let j = i + 1; j < hits.length; j++) {
+      const a = hits[i], b = hits[j]
+      const overlaps = a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5
+      expect(overlaps, `chip ${i} and ${j} tap areas overlap`).toBe(false)
+    }
+  }
 })
 
 test('a popular-campus chip on Home opens the campus search', async ({ page }) => {
@@ -153,7 +173,7 @@ test('on a phone, a booking bar appears above the dock once the booking box is o
     const page = student.page
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(`/kos/${owner.kosId}`)
-    const bar = page.getByRole('region', { name: 'Ringkasan pemesanan' })
+    const bar = page.getByRole('region', { name: 'Ringkasan pengajuan sewa' })
     await expect(bar).toBeVisible()
     const dock = (await page.locator('.mobile-only-dock').boundingBox())!
     const box = (await bar.boundingBox())!

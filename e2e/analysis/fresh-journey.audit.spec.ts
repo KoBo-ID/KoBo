@@ -1,5 +1,5 @@
 ﻿import {test,expect} from './safe-fixtures'
-import {outboxLink,ownIp} from '../tests/accounts'
+import {outboxCode,ownIp} from '../tests/accounts'
 import {newOwnerWorld,sql,stubXenditCheckout,latestPayment,webhook,sessionCompleted} from '../tests/seams'
 
 test('E2 fresh registration to mocked settlement and receipts',async({page,browser})=>{
@@ -14,16 +14,18 @@ test('E2 fresh registration to mocked settlement and receipts',async({page,brows
     await page.getByLabel('Kata Sandi', { exact: true }).fill('Sandi-rahasia-123')
     await page.getByLabel(/Saya menyetujui/).check()
     await page.getByRole('button',{name:'Daftar Sekarang'}).click()
-    await expect(page.getByText('Cek email Anda').first()).toBeVisible()
-    await page.goto(await outboxLink(email,'verify-email'))
-    await expect(page.getByRole('heading',{name:'Email berhasil diverifikasi'})).toBeVisible()
+    await expect(page.getByText(`Masukkan kode 6 digit yang kami kirim ke ${email}`)).toBeVisible()
+    await page.getByLabel('Kode verifikasi').fill(await outboxCode(email,'verify-email'))
+    await page.getByRole('button',{name:'Verifikasi',exact:true}).click()
+    await expect(page).toHaveURL(/\/$/)
     await page.goto('/profile')
-    const campus=`audit${Date.now()}@student.binus.ac.id`
+    const campus=`audit${Date.now()}@binus.ac.id`
     await page.getByLabel('Email Kampus').fill(campus)
-    await page.getByRole('button',{name:'Kirim Tautan Verifikasi'}).click()
-    await expect(page.getByText(`Tautan verifikasi terkirim ke ${campus}`)).toBeVisible()
-    await page.goto(await outboxLink(campus,'campus-email'))
-    await expect(page.getByText('Email kampus terverifikasi').first()).toBeVisible()
+    await page.getByRole('button',{name:'Kirim kode'}).click()
+    await expect(page.getByText(`Kode dikirim ke ${campus}`)).toBeVisible()
+    await page.getByLabel('Kode 6 digit').fill(await outboxCode(campus,'campus-email'))
+    await page.getByRole('button',{name:'Verifikasi',exact:true}).click()
+    await expect(page.getByText('Terverifikasi lewat').first()).toBeVisible()
     const contact=page.getByTestId('emergency-contact-card')
     await contact.getByRole('button',{name:'Isi kontak darurat'}).click()
     await contact.getByLabel('Nama',{exact:true}).fill('Kontak Uji')

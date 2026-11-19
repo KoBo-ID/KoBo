@@ -117,3 +117,27 @@ test('[G-046][R-103] when application.create fails the page says so in Indonesia
     await Promise.all([owner.ctx.close(), student.ctx.close()])
   }
 })
+
+test('[F-09] signed out, the Jadwal Survey Gratis tab on /my-kos shows the login gate, never the empty-visits state', async ({ page, problems }) => {
+  await page.goto('/my-kos')
+  await page.getByRole('tab', { name: /Pengajuan Sewa/ }).click()
+  await page.getByRole('tab', { name: /Jadwal Survey Gratis/ }).click()
+  await expect(page.getByRole('heading', { name: 'Masuk untuk melihat jadwal survey Anda' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Belum Ada Jadwal Survey' })).toHaveCount(0)
+  expect(problems).toEqual([])
+})
+
+test('[F-10] /checkout/:id without a valid ?room= asks for a room instead of claiming the room is gone', async ({ page, browser, problems }) => {
+  const owner = await newOwnerWorld(browser, { label: 'state-noroom', rooms: 1 })
+  try {
+    for (const query of ['', '?room=bukan-kamar']) {
+      await page.goto(`/checkout/${owner.kosId}${query}`)
+      await expect(page.getByRole('heading', { name: 'Pilih kamar terlebih dahulu' })).toBeVisible()
+      await expect(page.getByText('Kamar ini sudah tidak tersedia')).toHaveCount(0)
+      await expect(page.getByRole('link', { name: /Pilih Kamar di/ })).toHaveAttribute('href', `/kos/${owner.kosId}`)
+    }
+    expect(problems).toEqual([])
+  } finally {
+    await owner.ctx.close()
+  }
+})

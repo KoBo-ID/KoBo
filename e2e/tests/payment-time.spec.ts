@@ -59,8 +59,8 @@ test('scenario 18: an unpaid hold lapses, the room is free on the board and a qu
         .toEqual({ status: 'OFFERED', offeredRoomId: room.id })
       await expect.poll(() => outboxCount(waiter.email, 'waitlist-offer')).toBe(1)
       await waiter.page.goto('/my-kos')
-      await expect(waiter.page.getByTestId('waitlist-offer')).toContainText(`Kamar ${room.roomNumber} ditawarkan untukmu`)
-      await expect(waiter.page.getByRole('button', { name: 'Pesan Sekarang' })).toBeVisible()
+      await expect(waiter.page.getByTestId('waitlist-offer')).toContainText(`Kamar ${room.roomNumber} ditawarkan untuk Anda`)
+      await expect(waiter.page.getByRole('button', { name: 'Ajukan Sewa' })).toBeVisible()
     })
 
     await test.step('the student whose hold lapsed has no rental card; the application says the room was released', async () => {
@@ -122,14 +122,18 @@ test('scenario 19: money that arrives after the hold lapsed is refunded, never t
       await expect(card.getByText('Pembayaran diterima setelah masa tahan berakhir. Dana sedang dikembalikan.')).toBeVisible()
       await expect(card.getByRole('button', { name: /Bayar Sekarang|Lanjutkan Pembayaran/ })).toHaveCount(0)
       await expect(card.getByText('Sewa Aktif')).toHaveCount(0)
-      await expect(card.getByText('Selesai', { exact: true })).toBeVisible() // lapsed hold reads as "Selesai"
+      // A-011: a lapsed hold says why it ended, not a plain "Selesai", and shows no next due date.
+      await expect(card.getByText('Masa Tahan Berakhir', { exact: true })).toBeVisible()
+      await expect(card.getByText('Selesai', { exact: true })).toHaveCount(0)
+      await expect(card.getByText('Tidak ditagih, masa tahan berakhir')).toBeVisible()
     })
 
-    await test.step('the owner board shows an empty room and no refund banner: that state is unreachable for a lapsed hold', async () => {
+    await test.step('the owner board shows an empty room with the pending refund and no failure banner (A-003)', async () => {
       await openBoard(owner.page, owner.kosId)
       const row = boardRow(owner.page, room.roomNumber)
       await expect(row.getByText('Kosong', { exact: true })).toBeVisible()
-      await expect(row.getByTestId('payment-label')).toHaveCount(0)
+      // A-003: the board now shows the refund of the late money on the (empty) room; it has not failed, so no failure banner.
+      await expect(row.getByTestId('payment-label')).toHaveCount(1)
       await expect(owner.page.getByText('Pengembalian dana gagal, perlu ditinjau')).toHaveCount(0)
     })
 
@@ -144,17 +148,17 @@ test('scenario 19: money that arrives after the hold lapsed is refunded, never t
       await expect(student.page.getByText('Pembayaran diterima setelah masa tahan berakhir. Dana sedang dikembalikan.')).toBeVisible()
     })
 
-    await test.step('refund.succeeded: the money is back, but the card (and "Dana telah dikembalikan.") disappears', async () => {
+    await test.step('refund.succeeded: the money is back and the card stays, saying so (F-01)', async () => {
       const refund = (await refundOf(attempt.id))!
       const done = await webhook(student.page.request, refundEvent('succeeded', refund))
       expect(done.status).toBe(200)
       await expect.poll(async () => (await refundOf(attempt.id))?.status).toBe('SUCCEEDED')
       expect((await latestPayment(held.invoiceId)).status).toBe('REFUNDED')
       await student.page.reload()
-      // Finding: MyKos.tsx filters cards with status.startsWith('REFUND_'), which 'REFUNDED' does not match. The success copy
-      // 'Dana telah dikembalikan.' (InvoicePaymentActions.tsx) is therefore never shown; the student only has the application card.
-      await expect(student.page.getByTestId('tenancy-card')).toHaveCount(0)
-      await expect(student.page.getByText('Dana telah dikembalikan.')).toHaveCount(0)
+      // F-01: the card filter matches REFUNDED too, so the refunded card survives a reload with the refund reason and outcome.
+      await expect(student.page.getByTestId('tenancy-card')).toHaveCount(1)
+      await expect(student.page.getByText('Pembayaran diterima setelah masa tahan berakhir. Dana telah dikembalikan.')).toBeVisible()
+      await student.page.getByRole('tab', { name: /Pengajuan Sewa/ }).click()
       await expect(student.page.getByTestId('application-card')).toContainText('kamar dilepas')
       expect(await tenancyStatus(held.tenancyId)).not.toBe('ACTIVE')
     })
