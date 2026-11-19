@@ -9,3 +9,4 @@ playwright-report/
 
 # data job: large temporary downloads
 data-work/
+e2e/test-results-*/
