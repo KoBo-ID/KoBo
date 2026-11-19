@@ -8,10 +8,9 @@ import { secureHeaders } from 'hono/secure-headers'
 import { createAuth } from './auth.ts'
 import type { Auth } from './auth.ts'
 import type { PrismaClient } from './db/client.ts'
-import type { E2eHooks } from './e2eHooks.ts'
-import { mountE2eHooks } from './e2eHooks.ts'
 import { authEnv } from './env.ts'
 import { geocoderFromEnv, type Geocoder } from './geocode.ts'
+import { healthHandler } from './health.ts'
 import { paymentServiceFromEnv } from './payment/service.ts'
 import type { PaymentService } from './payment/service.ts'
 import { handleXenditWebhook, MAX_WEBHOOK_BYTES } from './payment/webhook.ts'
@@ -35,8 +34,10 @@ export interface AppOptions {
   geocoder?: Geocoder
   /** Defaults to the shared limiter (off under NODE_ENV=test). Tests inject one with their own clock. */
   limiter?: RateLimiter
-  /** Test/e2e only (ALLOW_E2E_HOOKS=1, see e2eHooks.ts). Mounts /api/__e2e/*; absent in every real deployment. */
-  e2eHooks?: E2eHooks | null
+  /** Test/e2e only: index.ts passes e2eHooks.ts's mount when ALLOW_E2E_HOOKS=1 (dynamic import); absent in every real deployment. */
+  e2eMount?: ((app: Hono) => void) | null
+  /** Defaults to SELECT 1 on `prisma`. Tests inject a failing check. */
+  checkDb?: () => Promise<unknown>
   /** Defaults to sheerIdServiceFromEnv(): null unless SHEERID_ENABLED=1, and refused in production. Dev/test only. */
   sheerid?: SheerIdService | null
 }
@@ -77,7 +78,7 @@ async function readIfFile(root: string, urlPath: string): Promise<Uint8Array<Arr
   }
 }
 
-export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...authEnv() }), storage = storageFromEnv(), paymentService = paymentServiceFromEnv(), geocoder = geocoderFromEnv(), limiter, e2eHooks = null, sheerid = sheerIdServiceFromEnv() }: AppOptions) {
+export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...authEnv() }), storage = storageFromEnv(), paymentService = paymentServiceFromEnv(), geocoder = geocoderFromEnv(), limiter, e2eMount = null, checkDb = () => prisma.$queryRaw`SELECT 1`, sheerid = sheerIdServiceFromEnv() }: AppOptions) {
   const app = new Hono()
 
   // Response hardening for the SPA and the API (OWASP HTTP Headers Cheat Sheet; Hono secureHeaders defaults otherwise).
@@ -96,18 +97,18 @@ export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...auth
     }),
   )
 
-  // /health for the platform probe; /api/health for anything that reaches the app through the Vercel rewrite, where
+  // /health: plain DB probe for the container healthcheck and deploy.sh ({ ok } only, 200/503).
+  // /api/health: JSON with DB and worker liveness (health.ts) for the uptime monitor; reachable through the Vercel rewrite, where
   // /health would be answered by the SPA fallback instead of this service.
-  const health = async (c: HonoContext) => {
+  app.get('/health', async (c: HonoContext) => {
     try {
-      await prisma.$queryRaw`SELECT 1`
+      await checkDb()
       return c.json({ ok: true })
     } catch {
       return c.json({ ok: false }, 503)
     }
-  }
-  app.get('/health', health)
-  app.get('/api/health', health)
+  })
+  app.get('/api/health', healthHandler({ checkDb }))
 
   // Auth bodies are tiny (sign-up is under 1 KB): refuse anything bigger before it is buffered, with or without Content-Length.
   app.use(
@@ -197,7 +198,7 @@ export function createApp({ prisma, distDir, auth = createAuth({ prisma, ...auth
     }),
   )
 
-  if (e2eHooks) mountE2eHooks(app, prisma, e2eHooks)
+  if (e2eMount) e2eMount(app)
 
   // Anything else under /api is JSON, never the SPA shell.
   app.all('/api/*', (c) => c.json({ error: 'Not found' }, 404))

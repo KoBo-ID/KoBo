@@ -47,6 +47,15 @@ RUN npm ci --omit=dev -w backend --include-workspace-root=false \
  && npm cache clean --force
 COPY packages/shared/src packages/shared/src
 COPY backend/src backend/src
+# Operator CLIs (`npm run students:review|owners:approve|refunds:admin|places:approve|catalog:* -w backend`)
+# run inside the api container via `docker exec`. They are erasable-syntax TS with explicit .ts imports,
+# so plain `node` runs them (strip-types); no tsx dependency. The npm scripts still say `tsx`, so a
+# two-line shim named tsx that forwards to node makes them work without touching package.json.
+# backend/data/catalog (~9 MB) is what catalog:import reads by default.
+COPY backend/scripts backend/scripts
+COPY backend/data/catalog backend/data/catalog
+RUN { echo '#!/bin/sh'; echo 'exec node "$@"'; } > /app/node_modules/.bin/tsx \
+ && chmod 755 /app/node_modules/.bin/tsx
 COPY --from=build /app/frontend/dist frontend/dist
 RUN chown -R node:node /app
 USER node

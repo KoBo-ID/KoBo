@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url'
 import { createApp } from './app.ts'
 import { createPrisma } from './db/client.ts'
 import { startDemoReset } from './demoSchedule.ts'
-import { createE2eHooks } from './e2eHooks.ts'
 import { e2eHooksEnabled, requireEnv } from './env.ts'
 import { startNotificationWorker, whatsappFromEnv } from './notifications.ts'
 import { startOutboxWorker, transportFromEnv } from './outbox.ts'
@@ -23,10 +22,11 @@ const distDir =
     : undefined
 
 // Test/e2e only (ALLOW_E2E_HOOKS=1, guarded in env.ts): swaps in a fake Xendit provider and mounts /api/__e2e/*.
-const e2eHooks = e2eHooksEnabled() ? createE2eHooks(prisma) : null
-const paymentService = e2eHooks?.paymentService ?? paymentServiceFromEnv()
+// Dynamic import: a production start never loads e2eHooks.ts.
+const e2e = e2eHooksEnabled() ? (await import('./e2eHooks.ts')).wireE2e(prisma) : null
+const paymentService = e2e?.paymentService ?? paymentServiceFromEnv()
 const storage = storageFromEnv()
-const server = serve({ fetch: createApp({ prisma, distDir, paymentService, e2eHooks, storage }).fetch, port }, (info) => {
+const server = serve({ fetch: createApp({ prisma, distDir, paymentService, e2eMount: e2e?.mount, storage }).fetch, port }, (info) => {
   console.log(`KoBo server listening on :${info.port}${distDir ? ` (serving ${distDir})` : ''}`)
 })
 
@@ -47,13 +47,13 @@ const stopWaitlist = startWaitlistWorker(prisma)
 
 // Also not started from createApp. Restores demo-owned rows only (demoReset.ts).
 // e2e: a 03:30 reset would wipe rows mid-suite.
-const stopDemoReset: () => void = e2eHooks ? () => {} : startDemoReset(prisma)
+const stopDemoReset: () => void = e2e ? () => {} : startDemoReset(prisma)
 
 // Also not started from createApp: tests call purgeStudentDocuments() directly. Deletes KTM photos 30 days after a decision.
 // e2e: skipped, the fake private storage is in memory.
-const stopStudentDocs: () => void = e2eHooks ? () => {} : startStudentDocRetention(prisma, storage)
+const stopStudentDocs: () => void = e2e ? () => {} : startStudentDocRetention(prisma, storage)
 // Daily purge of sign-ups that never verified their email (7 days). Not started from createApp; e2e keeps its seeded users.
-const stopUnverified: () => void = e2eHooks ? () => {} : startUnverifiedCleanup(prisma)
+const stopUnverified: () => void = e2e ?() => {} : startUnverifiedCleanup(prisma)
 
 // Compose gives the container 10 s (stop_grace_period). Stop taking requests, let the running ticks and in-flight
 // requests finish (max 8 s), then close the pool, so a refund or email send is not cut off between the provider call

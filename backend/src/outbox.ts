@@ -1,5 +1,6 @@
 import type { PrismaClient } from './db/client.ts'
 import { renderEmail } from './emailTemplates.ts'
+import { heartbeatJob } from './health.ts'
 import { startPeriodic, type StopWorker } from './worker.ts'
 
 /*
@@ -182,5 +183,5 @@ export function transportFromEnv(env: NodeJS.ProcessEnv = process.env, warn: (li
 
 /** Start the periodic drain. Ticks never overlap within this process. Returns a stop function. */
 export function startOutboxWorker(prisma: PrismaClient, transport: EmailTransport, intervalMs = 15_000): StopWorker {
-  return startPeriodic('outbox', intervalMs, () => drainOutbox(prisma, transport))
+  return startPeriodic('outbox', intervalMs, heartbeatJob('outbox', intervalMs, () => drainOutbox(prisma, transport)))
 }

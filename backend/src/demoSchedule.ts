@@ -1,6 +1,7 @@
 import { Cron } from 'croner'
 import type { PrismaClient } from './db/client.ts'
 import { resetDemo } from './demoReset.ts'
+import { beat, DAILY_STALE_MS, registerWorker } from './health.ts'
 
 /** 03:30 every night, Jakarta time (WIB has no DST, so this is 20:30 UTC). */
 export const DEMO_RESET_CRON = '30 3 * * *'
@@ -13,9 +14,11 @@ export function nextDemoReset(from: Date): Date {
 
 /** Started from index.ts only (tests call resetDemo directly). Returns a stop function. */
 export function startDemoReset(prisma: PrismaClient): () => void {
+  registerWorker('demo-reset', DAILY_STALE_MS)
   const job = new Cron(DEMO_RESET_CRON, { timezone: DEMO_RESET_TZ, protect: true }, async () => {
     try {
       await resetDemo(prisma, new Date())
+      beat('demo-reset')
       console.log('[demo] nightly reset done')
     } catch (err) {
       console.error('[demo] nightly reset failed:', err instanceof Error ? err.message : err)

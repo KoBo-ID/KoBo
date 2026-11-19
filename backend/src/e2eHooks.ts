@@ -99,7 +99,13 @@ export function createE2eHooks(prisma: PrismaClient): E2eHooks {
   return { provider, paymentService, whatsapp: new FakeWhatsApp() }
 }
 
-const tickBody = z.object({ worker: z.enum(['sweep', 'refunds', 'waitlist', 'outbox', 'notify']), now: z.iso.datetime().optional() })
+/** Single entry for index.ts (dynamic import, only when env.ts e2eHooksEnabled() allowed it): the fake payment service plus the route mount. */
+export function wireE2e(prisma: PrismaClient): { paymentService: PaymentService; mount: (app: Hono) => void } {
+  const hooks = createE2eHooks(prisma)
+  return { paymentService: hooks.paymentService, mount: (app) => mountE2eHooks(app, prisma, hooks) }
+}
+
+const tickBody =z.object({ worker: z.enum(['sweep', 'refunds', 'waitlist', 'outbox', 'notify']), now: z.iso.datetime().optional() })
 const sessionBody = z.object({ paymentId: z.string().min(1), state: z.enum(['ACTIVE', 'COMPLETED', 'EXPIRED']) })
 const refundBody = z.object({ paymentId: z.string().min(1), mode: z.enum(['SUCCEEDED', 'PENDING', 'FAILED', 'ERROR']) })
 const outageBody = z.object({ invoiceId: z.string().min(1) })
