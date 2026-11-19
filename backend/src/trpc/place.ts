@@ -29,12 +29,27 @@ export interface ReverseResult {
 const previewOf = (ranked: RankedByCategory[]): ReverseResult['places'] =>
   ranked.filter((r) => r.primary.length > 0).map((r) => ({ category: r.category, items: r.primary.slice(0, 2).map((p) => ({ id: p.id, name: p.name, distanceM: p.distanceM })) }))
 
+/**
+ * The caller's address for rate limiting, from the same headers better-auth trusts (AUTH_IP_HEADERS; production default
+ * cf-connecting-ip only, so a spoofed x-forwarded-for cannot mint buckets). No header: one shared bucket.
+ */
+function clientIp(headers: Headers): string {
+  const configured = (process.env.AUTH_IP_HEADERS ?? '').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean)
+  const names = configured.length > 0 ? configured : process.env.NODE_ENV === 'production' ? ['cf-connecting-ip'] : ['cf-connecting-ip', 'x-forwarded-for']
+  for (const name of names) {
+    const value = headers.get(name)?.split(',')[0]?.trim()
+    if (value) return value.slice(0, 64)
+  }
+  return 'unknown'
+}
+
 export const placeRouter = router({
   /**
    * Free text to a map point. Called when the user submits the Search box (never while typing). Returns null when
    * the place is unknown, so the client falls back to a text search on kos addresses.
    */
   search: publicProcedure.input(z.object({ q: z.string().trim().min(2).max(100) })).query(async ({ ctx, input }) => {
+    limiterFor(ctx).check(`placesearch:${clientIp(ctx.headers)}`, 30, 60_000, 'Terlalu banyak pencarian lokasi. Tunggu sebentar lalu coba lagi.')
     try {
       return await ctx.geocoder.search(input.q)
     } catch (e) {

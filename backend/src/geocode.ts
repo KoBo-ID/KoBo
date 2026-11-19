@@ -67,6 +67,8 @@ export interface NominatimOptions {
   minIntervalMs?: number
   /** Callers waiting behind the throttle beyond this are refused instead of queued forever. */
   maxQueue?: number
+  /** Queue slots reserved for the anonymous Search box (`search`); `resolveAddress` (owner form) uses maxQueue. */
+  publicMaxQueue?: number
   timeoutMs?: number
   cacheSize?: number
   positiveTtlMs?: number
@@ -76,6 +78,8 @@ export interface NominatimOptions {
 }
 
 const DAY = 24 * 60 * 60 * 1000
+
+type Lane = 'owner' | 'public'
 
 /**
  * Nominatim geocoder for the Search box. Follows the OSM usage policy (operations.osmfoundation.org/policies/nominatim):
@@ -96,8 +100,10 @@ export class NominatimGeocoder implements Geocoder {
   private readonly sleep: (ms: number) => Promise<void>
   private readonly cache = new Map<string, { at: number; value: Place | AddressMatch | null }>()
   private readonly inflight = new Map<string, Promise<Place | AddressMatch | null>>()
+  private readonly publicMaxQueue: number
   private lastCallAt = 0
-  private waiting = 0
+  /** Waiters per lane: the anonymous Search box has its own slots so a flood there cannot fill the owner form's queue (B-02). */
+  private readonly waiting: Record<Lane, number> = { owner: 0, public: 0 }
   private tail: Promise<unknown> = Promise.resolve()
 
   constructor(options: NominatimOptions) {
@@ -106,6 +112,7 @@ export class NominatimGeocoder implements Geocoder {
     this.fetchImpl = options.fetchImpl ?? fetch
     this.minIntervalMs = options.minIntervalMs ?? 1100
     this.maxQueue = options.maxQueue ?? 4
+    this.publicMaxQueue = options.publicMaxQueue ?? 2
     this.timeoutMs = options.timeoutMs ?? 4000
     this.cacheSize = options.cacheSize ?? 500
     this.positiveTtlMs = options.positiveTtlMs ?? 30 * DAY
@@ -118,7 +125,7 @@ export class NominatimGeocoder implements Geocoder {
     const key = query.trim().toLowerCase().replace(/\s+/g, ' ')
     if (!key) return null
 
-    return this.cached(key, () => this.fetchPlace(key)) as Promise<Place | null>
+    return this.cached(key, () => this.fetchPlace(key), 'public') as Promise<Place | null>
   }
 
   /**
@@ -134,14 +141,14 @@ export class NominatimGeocoder implements Geocoder {
     return null
   }
 
-  private async cached(key: string, job: () => Promise<Place | AddressMatch | null>): Promise<Place | AddressMatch | null> {
+  private async cached(key: string, job: () => Promise<Place | AddressMatch | null>, lane: Lane = 'owner'): Promise<Place | AddressMatch | null> {
     const hit = this.cache.get(key)
     if (hit && this.now() - hit.at < (hit.value ? this.positiveTtlMs : this.negativeTtlMs)) return hit.value
 
     const running = this.inflight.get(key)
     if (running) return running
 
-    const request = this.throttled(job).then((value) => {
+    const request = this.throttled(job, lane).then((value) => {
       this.remember(key, value)
       return value
     })
@@ -176,9 +183,9 @@ export class NominatimGeocoder implements Geocoder {
   }
 
   /** One upstream call at a time, spaced by minIntervalMs. A full queue is refused rather than left to grow. */
-  private throttled<T>(job: () => Promise<T>): Promise<T> {
-    if (this.waiting >= this.maxQueue) return Promise.reject(new GeocoderUnavailable('Geocoder queue is full'))
-    this.waiting += 1
+  private throttled<T>(job: () => Promise<T>, lane: Lane): Promise<T> {
+    if (this.waiting[lane] >= (lane === 'public' ? this.publicMaxQueue : this.maxQueue)) return Promise.reject(new GeocoderUnavailable('Geocoder queue is full'))
+    this.waiting[lane] += 1
     const run = this.tail.then(async () => {
       const wait = this.lastCallAt + this.minIntervalMs - this.now()
       if (wait > 0) await this.sleep(wait)
@@ -186,7 +193,7 @@ export class NominatimGeocoder implements Geocoder {
       try {
         return await job()
       } finally {
-        this.waiting -= 1
+        this.waiting[lane] -= 1
       }
     })
     this.tail = run.catch(() => undefined)

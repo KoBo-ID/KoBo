@@ -21,7 +21,9 @@ export function tokenMatches(given: string | null | undefined, expected: string)
   return timingSafeEqual(Buffer.from(sha256(given), 'hex'), Buffer.from(sha256(expected), 'hex'))
 }
 
-export const fingerprint = (eventType: string, resourceId: string, updated: string) => sha256(`xendit:${eventType}:${resourceId}:${updated}`)
+/** Dedupe key. Status, amount and the payment ids are part of it: two different events on one resource that share a timestamp must not collapse into one. */
+export const fingerprint = (eventType: string, resourceId: string, updated: string, extra: Record<string, unknown> = {}) =>
+  sha256(`xendit:${eventType}:${resourceId}:${updated}:${JSON.stringify([extra.status ?? null, extra.amount ?? null, extra.paymentRequestId ?? null, extra.paymentId ?? null])}`)
 
 // Xendit adds fields over time, so objects are never .strict(): unknown keys are stripped, not rejected.
 const iso = z.string().refine((v) => !Number.isNaN(Date.parse(v)))
@@ -144,7 +146,12 @@ export async function handleXenditWebhook(
     return audit(prisma, { eventType: parsed.eventType, resourceId: 'unknown', fp: sha256(`xendit:${parsed.eventType}:${sha256(input.rawBody)}`), result: 'IGNORED', reason: 'UNKNOWN_EVENT' })
   }
 
-  const fp = fingerprint(parsed.eventType, parsed.resourceId, parsed.updated)
+  const fp = fingerprint(parsed.eventType, parsed.resourceId, parsed.updated, {
+    status: parsed.metadata.providerStatus,
+    amount: parsed.metadata.amount,
+    paymentRequestId: parsed.metadata.paymentRequestId,
+    paymentId: 'providerPaymentId' in parsed.event ? parsed.event.providerPaymentId : null,
+  })
   try {
     const result = await prisma.$transaction(async (tx) => {
       // ON CONFLICT DO NOTHING: a concurrent duplicate waits for the first transaction and then sees count 0.

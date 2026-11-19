@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import { IMAGE_CONTENT_TYPES, IMAGE_MAX_BYTES, IMAGE_MAX_PER_KOS, imageConfirmInput, imageDeleteInput, imagePresignInput, imageReorderInput } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
+import { Prisma } from '../generated/prisma/client.ts'
 import { HOUR, limiterFor } from '../rateLimit.ts'
+import { lockKos } from '../waitlist.ts'
 import { hasImageSignature, PRESIGN_EXPIRES_SECONDS } from '../storage.ts'
 import { ownerProcedure, router } from './trpc.ts'
 
@@ -53,14 +55,23 @@ export const ownerImageRouter = router({
       await ctx.storage.delete(input.key)
       throw bad('Isi file bukan foto yang valid. Gunakan WebP atau JPEG.')
     }
-    if ((await ctx.prisma.kosImage.count({ where: { kosId: input.kosId } })) >= IMAGE_MAX_PER_KOS) {
+    // Count and insert under the kos row lock, so parallel confirms cannot all pass the check (B-13).
+    const created = await ctx.prisma.$transaction(async (tx) => {
+      await lockKos(tx, input.kosId)
+      const dup = await tx.kosImage.findFirst({ where: { key: input.key }, select: { id: true } })
+      if (dup) return { id: dup.id, full: false }
+      if ((await tx.kosImage.count({ where: { kosId: input.kosId } })) >= IMAGE_MAX_PER_KOS) return { id: null, full: true }
+      const row = await tx.kosImage.create({
+        data: { kosId: input.kosId, key: input.key, order: input.order, width: input.width, height: input.height },
+        select: { id: true },
+      })
+      return { id: row.id, full: false }
+    })
+    if (created.full || !created.id) {
       await ctx.storage.delete(input.key)
       throw bad(`Satu kos maksimal ${IMAGE_MAX_PER_KOS} foto.`)
     }
-    return ctx.prisma.kosImage.create({
-      data: { kosId: input.kosId, key: input.key, order: input.order, width: input.width, height: input.height },
-      select: { id: true },
-    })
+    return { id: created.id }
   }),
 
   /** Removes the row and, for uploaded photos, the stored object. Seeded external-URL photos only lose the row. */
@@ -78,10 +89,14 @@ export const ownerImageRouter = router({
 
   /** `imageIds` is the complete new order of the kos's photos. */
   reorder: ownerProcedure.input(imageReorderInput).mutation(async ({ ctx, input }): Promise<{ count: number }> => {
-    const rows = await ctx.prisma.kosImage.findMany({ where: { kosId: input.kosId }, select: { id: true } })
+    const rows = await ctx.prisma.kosImage.findMany({ where: { kosId: input.kosId }, select: { id: true }, take: 200 })
     const known = new Set(rows.map((r) => r.id))
     if (new Set(input.imageIds).size !== input.imageIds.length || input.imageIds.some((id) => !known.has(id))) throw bad('Daftar foto tidak valid.')
-    await ctx.prisma.$transaction(input.imageIds.map((id, order) => ctx.prisma.kosImage.update({ where: { id }, data: { order } })))
+    // One statement for the whole order (H-002), scoped to this kos.
+    if (input.imageIds.length > 0) {
+      const values = Prisma.join(input.imageIds.map((id, order) => Prisma.sql`(${id}, ${order}::int)`))
+      await ctx.prisma.$executeRaw`UPDATE "KosImage" AS k SET "order" = v.ord FROM (VALUES ${values}) AS v(id, ord) WHERE k.id = v.id AND k."kosId" = ${input.kosId}`
+    }
     return { count: input.imageIds.length }
   }),
 })
