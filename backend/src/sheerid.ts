@@ -77,12 +77,16 @@ type FetchFn = typeof fetch
 /** OAuth client-credentials token (30-day lifetime), cached until 5 minutes before expiry. */
 export class HttpSheerIdClient implements SheerIdClient {
   private token: { value: string; expiresAt: number } | null = null
+  private readonly cfg: SheerIdConfig
+  private readonly fetchFn: FetchFn
+  private readonly now: () => number
 
-  constructor(
-    private readonly cfg: SheerIdConfig,
-    private readonly fetchFn: FetchFn = fetch,
-    private readonly now: () => number = Date.now,
-  ) {}
+  // Plain fields, not TS parameter properties: Node's strip-only mode rejects those (X-01).
+  constructor(cfg: SheerIdConfig, fetchFn: FetchFn = fetch, now: () => number = Date.now) {
+    this.cfg = cfg
+    this.fetchFn = fetchFn
+    this.now = now
+  }
 
   private async accessToken(): Promise<string> {
     if (this.token && this.token.expiresAt > this.now()) return this.token.value
