@@ -96,6 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
 
   return (
     <header
+      className="kobo-header"
       style={{
         position: 'sticky',
         top: 0,
@@ -110,18 +111,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
       }}
     >
       <div
-        className="app-container"
+        className="app-container kobo-header__inner"
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '1.5rem',
           width: '100%',
         }}
       >
         {/* Zone 1: Brand Group */}
         <Link
           to="/"
+          className="kobo-header__brand"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -149,7 +150,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
           />
           <span
             style={{
-              fontSize: '1.35rem',
+              fontSize: 'var(--step-2)',
               fontWeight: 800,
               color: 'var(--text-main)',
               letterSpacing: '-0.025em',
@@ -161,13 +162,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
         </Link>
 
         {/* Zone 2: Navigation Actions (Kos Saya + User Profile only) */}
-        <nav style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+        <nav className="kobo-header__nav" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
           <Link
             to="/my-kos"
             aria-label={activeRentalsCount + activeVisitsCount > 0 ? `Kos Saya (${activeRentalsCount + activeVisitsCount})` : 'Kos Saya'}
-            className="kobo-nav-mykos"
+            className="kobo-nav-mykos kobo-header__chip"
             style={{
-              fontSize: '0.875rem',
+              fontSize: 'var(--step--1)',
               fontWeight: location.pathname === '/my-kos' ? 700 : 600,
               color: location.pathname === '/my-kos' ? 'var(--primary)' : 'var(--text-main)',
               display: 'flex',
@@ -192,7 +193,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                   borderRadius: 'var(--radius-pill)',
                   backgroundColor: 'var(--accent-strong)',
                   color: 'white',
-                  fontSize: '0.65rem',
+                  fontSize: 'var(--step--2)',
                   fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
@@ -209,12 +210,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
             <button
               type="button"
               onClick={() => onOpenAuth?.()}
-              className="interactive-tap"
+              aria-label="Masuk"
+              className="interactive-tap kobo-header__chip"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.4rem',
-                fontSize: '0.875rem',
+                fontSize: 'var(--step--1)',
                 fontWeight: 700,
                 color: 'var(--primary)',
                 padding: '0.5rem 0.9rem',
@@ -225,7 +227,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
               }}
             >
               <LogIn size={16} />
-              <span>Masuk</span>
+              <span className="kobo-nav-login__label">Masuk</span>
             </button>
           )}
 
@@ -270,7 +272,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                     borderRadius: '50%',
                     backgroundColor: 'var(--primary-light)',
                     color: 'var(--primary)',
-                    fontSize: '0.8rem',
+                    fontSize: 'var(--step--1)',
                     fontWeight: 800,
                     display: 'flex',
                     alignItems: 'center',
@@ -301,10 +303,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                 }}
               >
                 <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                  <p style={{ fontWeight: 700, fontSize: 'var(--step--1)', color: 'var(--text-main)' }}>
                     {me!.user.name}
                   </p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  <p style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)' }}>
                     {me!.user.email}
                   </p>
                   {me!.campusVerified && (
@@ -314,7 +316,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                         alignItems: 'center',
                         gap: '0.35rem',
                         color: 'var(--primary)',
-                        fontSize: '0.75rem',
+                        fontSize: 'var(--step--2)',
                         fontWeight: 600,
                         marginTop: '0.4rem',
                       }}
@@ -334,7 +336,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                       alignItems: 'center',
                       gap: '0.65rem',
                       padding: '0.65rem 1rem',
-                      fontSize: '0.875rem',
+                      fontSize: 'var(--step--1)',
                       color: 'var(--text-main)',
                     }}
                     className="interactive-tap"
@@ -352,13 +354,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                     alignItems: 'center',
                     gap: '0.65rem',
                     padding: '0.65rem 1rem',
-                    fontSize: '0.875rem',
+                    fontSize: 'var(--step--1)',
                     color: 'var(--text-main)',
                   }}
                   className="interactive-tap"
                 >
                   <User size={16} color="var(--text-muted)" />
-                  <span>Profil &amp; Email Kampus</span>
+                  <span>Profil &amp; Verifikasi Mahasiswa</span>
                 </Link>
 
                 <Link
@@ -369,7 +371,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                     alignItems: 'center',
                     gap: '0.65rem',
                     padding: '0.65rem 1rem',
-                    fontSize: '0.875rem',
+                    fontSize: 'var(--step--1)',
                     color: 'var(--text-main)',
                   }}
                   className="interactive-tap"
@@ -388,7 +390,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
                     gap: '0.65rem',
                     width: '100%',
                     padding: '0.65rem 1rem',
-                    fontSize: '0.875rem',
+                    fontSize: 'var(--step--1)',
                     color: 'var(--status-overdue-text)',
                     textAlign: 'left',
                   }}

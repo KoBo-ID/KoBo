@@ -12,7 +12,7 @@ export const StudentLayout: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navbar onOpenAuth={openAuthModal} />
       {/* min-height is one screen minus the navbar (see my-kos.css), so the footer starts at the fold. */}
-      <main className="student-main">
+      <main id="main" tabIndex={-1} className="student-main">
         <Outlet />
       </main>
       <Footer />

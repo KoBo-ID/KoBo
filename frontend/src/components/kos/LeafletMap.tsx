@@ -214,7 +214,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     : [-6.24, 106.81];
   const formatPriceChip = (price: number) => {
     const inJuta = price / 1000000;
-    return `Rp ${inJuta.toFixed(1).replace('.0', '').replace('.', ',')}jt`;
+    return `Rp ${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(inJuta)}jt`;
   };
 
   return (
@@ -239,7 +239,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         maxZoom={18}
         scrollWheelZoom={true}
         style={{ width: '100%', height: '100%', background: 'var(--bg-muted)' }}
-        attributionControl={false}
       >
         <MapViewportController
           pin={activeLocation}
@@ -251,7 +250,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         />
 
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="/lisensi">Data tempat</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
@@ -293,13 +292,13 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
             >
               <Popup>
                 <div style={{ minWidth: '200px', fontFamily: 'var(--font-sans)' }}>
-                  <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-main)' }}>
+                  <div style={{ fontWeight: 800, fontSize: 'var(--step--1)', color: 'var(--text-main)' }}>
                     {activeLocation.label}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                  <div style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
                     {activeLocation.area}, {activeLocation.city}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.45rem', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', marginTop: '0.45rem', lineHeight: 1.5 }}>
                     Titik acuan pencarian. Menampilkan <strong style={{ color: 'var(--text-main)' }}>{kosList.length} kos</strong>
                     {nearbyCampuses.length > 0 && (
                       <>
@@ -329,8 +328,8 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           >
             <Popup>
               <div style={{ minWidth: '180px', fontFamily: 'var(--font-sans)' }}>
-                <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-main)' }}>{campus.name}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                <div style={{ fontWeight: 800, fontSize: 'var(--step--1)', color: 'var(--text-main)' }}>{campus.name}</div>
+                <div style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                   {campus.city}
                   {activeLocation && (
                     <> &middot; {formatDistance(haversineMeters(activeLocation.coordinates, campus.coordinates))} dari titik lokasi</>
@@ -378,20 +377,20 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
                     }}
                   />
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                    <span style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
                       Kos {kos.gender}
                     </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--status-due-text)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontSize: 'var(--step--2)', fontWeight: 700, color: 'var(--status-due-text)' }}>
                       <Star size={12} fill="var(--accent)" />
                       <span>{kos.rating}</span>
                     </div>
                   </div>
-                  <h4 style={{ fontSize: '0.88rem', fontWeight: 700, margin: '0.2rem 0', color: 'var(--text-main)' }}>
+                  <h4 style={{ fontSize: 'var(--step--1)', fontWeight: 700, margin: '0.2rem 0', color: 'var(--text-main)' }}>
                     {kos.name}
                   </h4>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--primary)', margin: '0.25rem 0' }}>
+                  <div style={{ fontSize: 'var(--step--1)', fontWeight: 800, color: 'var(--primary)', margin: '0.25rem 0' }}>
                     {formatRupiah(kos.priceMonthlyStart)}
-                    <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}> /bln</span>
+                    <span style={{ fontSize: 'var(--step--2)', fontWeight: 500, color: 'var(--text-muted)' }}> /bln</span>
                   </div>
                   <Link
                     to={`/kos/${kos.id}`}
@@ -402,7 +401,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
                       color: 'var(--text-inverse)',
                       padding: '0.4rem',
                       borderRadius: '6px',
-                      fontSize: '0.78rem',
+                      fontSize: 'var(--step--2)',
                       fontWeight: 700,
                       textDecoration: 'none',
                       marginTop: '0.5rem',
@@ -437,7 +436,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           }}
         >
           <MapPin size={14} color="var(--accent)" style={{ flexShrink: 0 }} />
-          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)' }}>
+          <span style={{ fontSize: 'var(--step--2)', fontWeight: 600, color: 'var(--text-main)' }}>
             Cari lokasi atau pakai Lokasi Saya untuk menjadikannya titik acuan peta
           </span>
         </div>

@@ -20,6 +20,7 @@ const HELP: { to: string; label: string }[] = [
   { to: '/kontak', label: 'Hubungi kami' },
   { to: '/syarat', label: 'Syarat dan ketentuan' },
   { to: '/privasi', label: 'Kebijakan privasi' },
+  { to: '/lisensi', label: 'Data peta & tempat' },
 ];
 
 const Flyer: React.FC<{ cls: string; title: string; label: string; links: TabLink[] }> = ({
@@ -28,7 +29,7 @@ const Flyer: React.FC<{ cls: string; title: string; label: string; links: TabLin
   <div className={`kf-card kf-flyer ${cls}`}>
     <span className="kf-pin" aria-hidden="true" />
     <div className="kf-flyer-body">
-      <h2 className="kf-flyer-title">{title}</h2>
+      <div className="kf-flyer-title">{title}</div>
     </div>
     <div className="kf-cut" aria-hidden="true">
       <Scissors size={14} strokeWidth={2.25} />

@@ -62,6 +62,7 @@ const Terms = lazyWithReload(() =>
 const Privacy = lazyWithReload(() =>
   import('./pages/Privacy').then((m) => ({ default: m.Privacy }))
 );
+const Licenses = lazyWithReload(() => import('./pages/Licenses'));
 
 // The one sign-in / register page. `openAuthModal` redirects here (see AuthRedirect).
 const AuthPage = lazyWithReload(() =>
@@ -97,7 +98,7 @@ const RouteFallback: React.FC = () => (
     role="status"
     aria-live="polite"
   >
-    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Memuat halaman…</span>
+    <span style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Memuat halaman…</span>
   </div>
 );
 
@@ -106,10 +107,36 @@ const RouteFallback: React.FC = () => (
 const ScrollToTop: React.FC = () => {
   const { pathname, search, hash } = useLocation();
   const navigationType = useNavigationType();
+  const previousPath = React.useRef<string | null>(null);
   React.useLayoutEffect(() => {
     if (navigationType === 'POP' || hash) return;
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [pathname, search, hash, navigationType]);
+
+  /* A new page after a link click: move focus into it (WCAG 2.4.3), otherwise it stays on the link that was
+     clicked (often in the footer) or falls to <body>. Same-path changes (?query, #hash), back/forward and the
+     first load leave focus alone; a field the page focused itself (autofocus) wins. The layout may still be
+     lazy-loading, so look for the target for a short while. */
+  React.useEffect(() => {
+    const previous = previousPath.current;
+    previousPath.current = pathname;
+    if (previous === null || previous === pathname || navigationType === 'POP' || hash) return;
+    let frames = 0;
+    let raf = 0;
+    const move = () => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName) && active.closest('main')) return;
+      const target = document.getElementById('main') ?? document.querySelector<HTMLElement>('h1');
+      if (!target) {
+        if (++frames < 90) raf = requestAnimationFrame(move);
+        return;
+      }
+      if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+      target.focus({ preventScroll: true });
+    };
+    raf = requestAnimationFrame(move);
+    return () => cancelAnimationFrame(raf);
+  }, [pathname, navigationType, hash]);
   return null;
 };
 
@@ -134,12 +161,24 @@ export function App() {
     <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
     <AppProvider>
       <BrowserRouter>
+        <a
+          href="#main"
+          className="skip-link"
+          onClick={(e) => {
+            // Chromium does not always focus a fragment target; move focus explicitly so the next Tab starts inside main.
+            const main = document.getElementById('main');
+            if (main) { e.preventDefault(); main.focus(); }
+          }}
+        >
+          Lewati ke konten utama
+        </a>
         <ScrollToTop />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             {/* Tenant / Student Portal Route Tree */}
             <Route element={<StudentLayout />}>
-              <Route path="/" element={<Home />} />              <Route path="/search" element={<Search />} />
+              <Route path="/" element={<Home />} />
+              <Route path="/search" element={<Search />} />
               <Route path="/kos/:id" element={<Detail />} />
               <Route path="/checkout/:id" element={<Checkout />} />
               <Route path="/my-kos" element={<MyKos />} />
@@ -152,6 +191,7 @@ export function App() {
               <Route path="/kontak" element={<Contact />} />
               <Route path="/syarat" element={<Terms />} />
               <Route path="/privasi" element={<Privacy />} />
+              <Route path="/lisensi" element={<Licenses />} />
               <Route path="*" element={<NotFound />} />
             </Route>
 

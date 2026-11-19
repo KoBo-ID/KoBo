@@ -161,7 +161,16 @@ export const OwnerLayout: React.FC = () => {
           {brand}
           <div className="os-mobile-user">
             {avatar(30)}
-            <span>{userName.split(' ')[0]}</span>
+            <span title={userName} className="os-mobile-user__name">{userName}</span>
+            <button
+              type="button"
+              title="Keluar"
+              aria-label="Keluar"
+              onClick={handleLogout}
+              className="os-logout"
+            >
+              <LogOut size={17} />
+            </button>
           </div>
         </header>
 
@@ -188,7 +197,7 @@ export const OwnerLayout: React.FC = () => {
           </div>
         )}
 
-        <main className="os-main-content">
+        <main id="main" tabIndex={-1} className="os-main-content">
           {kosQuery.isPending ? (
             <div role="status" aria-live="polite" className="os-status">
               <span>Memuat properti Anda…</span>

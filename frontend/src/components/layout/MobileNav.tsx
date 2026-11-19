@@ -16,7 +16,8 @@ export const MobileNav: React.FC<{ ownerBadges?: { dashboard: number; reviews: n
   const totalBadges = rentalsCount + visitsCount;
 
   return (
-    <div
+    <nav
+      aria-label="Navigasi seluler"
       style={{
         position: 'fixed',
         bottom: 0,
@@ -43,7 +44,7 @@ export const MobileNav: React.FC<{ ownerBadges?: { dashboard: number; reviews: n
               alignItems: 'center',
               gap: '0.2rem',
               color: location.pathname === '/' ? 'var(--primary)' : 'var(--text-muted)',
-              fontSize: '0.7rem',
+              fontSize: 'var(--step--2)',
               fontWeight: location.pathname === '/' ? 700 : 500,
             }}
           >
@@ -59,7 +60,7 @@ export const MobileNav: React.FC<{ ownerBadges?: { dashboard: number; reviews: n
               alignItems: 'center',
               gap: '0.2rem',
               color: location.pathname === '/search' ? 'var(--primary)' : 'var(--text-muted)',
-              fontSize: '0.7rem',
+              fontSize: 'var(--step--2)',
               fontWeight: location.pathname === '/search' ? 700 : 500,
             }}
           >
@@ -75,7 +76,7 @@ export const MobileNav: React.FC<{ ownerBadges?: { dashboard: number; reviews: n
               alignItems: 'center',
               gap: '0.2rem',
               color: location.pathname === '/my-kos' ? 'var(--primary)' : 'var(--text-muted)',
-              fontSize: '0.7rem',
+              fontSize: 'var(--step--2)',
               fontWeight: location.pathname === '/my-kos' ? 700 : 500,
               position: 'relative',
             }}
@@ -93,7 +94,7 @@ export const MobileNav: React.FC<{ ownerBadges?: { dashboard: number; reviews: n
                   backgroundColor: 'var(--accent-strong)',
                   color: 'white',
                   borderRadius: '50%',
-                  fontSize: '0.6rem',
+                  fontSize: 'var(--step--2)',
                   fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
@@ -113,7 +114,7 @@ export const MobileNav: React.FC<{ ownerBadges?: { dashboard: number; reviews: n
               alignItems: 'center',
               gap: '0.2rem',
               color: location.pathname === '/profile' ? 'var(--primary)' : 'var(--text-muted)',
-              fontSize: '0.7rem',
+              fontSize: 'var(--step--2)',
               fontWeight: location.pathname === '/profile' ? 700 : 500,
             }}
           >
@@ -131,7 +132,7 @@ export const MobileNav: React.FC<{ ownerBadges?: { dashboard: number; reviews: n
               alignItems: 'center',
               gap: '0.2rem',
               color: location.pathname === '/owner/dashboard' ? 'var(--primary)' : 'var(--text-muted)',
-              fontSize: '0.7rem',
+              fontSize: 'var(--step--2)',
               fontWeight: location.pathname === '/owner/dashboard' ? 700 : 500,
             }}
           >
@@ -150,7 +151,7 @@ export const MobileNav: React.FC<{ ownerBadges?: { dashboard: number; reviews: n
               alignItems: 'center',
               gap: '0.2rem',
               color: location.pathname === '/owner/kos' ? 'var(--primary)' : 'var(--text-muted)',
-              fontSize: '0.7rem',
+              fontSize: 'var(--step--2)',
               fontWeight: location.pathname === '/owner/kos' ? 700 : 500,
             }}
           >
@@ -166,7 +167,7 @@ export const MobileNav: React.FC<{ ownerBadges?: { dashboard: number; reviews: n
               alignItems: 'center',
               gap: '0.2rem',
               color: location.pathname === '/owner/reviews' ? 'var(--primary)' : 'var(--text-muted)',
-              fontSize: '0.7rem',
+              fontSize: 'var(--step--2)',
               fontWeight: location.pathname === '/owner/reviews' ? 700 : 500,
             }}
           >
@@ -179,6 +180,6 @@ export const MobileNav: React.FC<{ ownerBadges?: { dashboard: number; reviews: n
         </>
       )}
 
-    </div>
+    </nav>
   );
 };
