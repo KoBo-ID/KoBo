@@ -41,6 +41,8 @@ export const ToastContainer: React.FC = () => {
         return (
           <div
             key={toast.id}
+            // Errors interrupt (alert); everything else is announced politely by the status region.
+            role={toast.type === 'error' ? 'alert' : undefined}
             className="animate-slide-up"
             style={{
               pointerEvents: 'auto',
@@ -54,7 +56,7 @@ export const ToastContainer: React.FC = () => {
               boxShadow: 'var(--shadow-lg)',
               border: `1px solid ${getBorderColor()}`,
               color: 'var(--text-main)',
-              fontSize: '0.875rem',
+              fontSize: 'var(--step--1)',
               fontWeight: 500,
             }}
           >

@@ -101,7 +101,7 @@ export const Hero: React.FC = () => {
                   <CampusSearchField
                     value={searchInput}
                     label="Cari area atau lokasi"
-                    placeholder="Cari kampus atau area..."
+                    placeholder="Cari kampus atau area…"
                     onChange={setSearchInput}
                     onSubmitText={submitText}
                     onPickCampus={(branch) => navigate(`/search?campus=${encodeURIComponent(branch.id)}&sort=distance_asc`)}

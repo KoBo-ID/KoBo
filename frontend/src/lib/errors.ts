@@ -50,8 +50,8 @@ export function isStudentGateError(error: unknown): boolean {
   return e?.data?.code === 'PRECONDITION_FAILED' && typeof e.message === 'string' && e.message.startsWith(GATE_PREFIX);
 }
 
-/** tRPC codes where the server's own (always Indonesian) message is more useful than a fixed line. */
-const SERVER_MESSAGE_CODES = new Set(['UNAUTHORIZED', 'FORBIDDEN', 'NOT_FOUND', 'CONFLICT', 'PRECONDITION_FAILED']);
+/** tRPC codes where the server's own (always Indonesian) message is more useful than a fixed line. Zod validation errors are already collapsed to the generic text server-side (formatTrpcError). */
+const SERVER_MESSAGE_CODES = new Set(['UNAUTHORIZED', 'FORBIDDEN', 'NOT_FOUND', 'CONFLICT', 'PRECONDITION_FAILED', 'BAD_GATEWAY', 'BAD_REQUEST']);
 
 const TRPC_FALLBACK: Record<string, string> = {
   UNAUTHORIZED: 'Silakan masuk terlebih dahulu.',
@@ -60,6 +60,7 @@ const TRPC_FALLBACK: Record<string, string> = {
   CONFLICT: 'Data ini sudah ada atau bentrok dengan data lain.',
   TOO_MANY_REQUESTS: RATE_LIMIT,
   BAD_REQUEST: 'Data yang dikirim tidak valid. Periksa kembali isian Anda.',
+  BAD_GATEWAY: 'Layanan pihak ketiga sedang tidak dapat dihubungi. Coba lagi nanti.',
 };
 
 const STATUS_FALLBACK: Record<number, string> = {
@@ -94,7 +95,9 @@ export function messageForError(error: unknown): string {
   const trpcCode = e.data?.code;
   if (trpcCode) {
     if (isStudentGateError(error)) return 'Verifikasi status mahasiswa dulu';
-    if (SERVER_MESSAGE_CODES.has(trpcCode) && e.message) return e.message;
+    // Defence in depth: a raw Zod issue dump (JSON) must never reach the user even if the server formatter is bypassed.
+    const rawIssues = trpcCode === 'BAD_REQUEST' && /^\s*[[{]/.test(e.message ?? '');
+    if (SERVER_MESSAGE_CODES.has(trpcCode) && e.message && !rawIssues) return e.message;
     return TRPC_FALLBACK[trpcCode] ?? GENERIC;
   }
 

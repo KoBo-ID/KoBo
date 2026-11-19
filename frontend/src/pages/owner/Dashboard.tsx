@@ -24,6 +24,10 @@ import { useOwnerVisits } from '../../lib/visits';
 import { useTRPC } from '../../lib/trpc';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
+/** 'YYYY-MM-DD' (a WIB calendar day) as "5 Oktober 2026". */
+const formatLongDate = (d: string | null) =>
+  d ? new Date(`${d}T00:00:00+07:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '-';
+
 const START_STEPS = ['Daftarkan kos', 'Tambah kamar dan harga', 'Terima pengajuan sewa'];
 
 
@@ -125,6 +129,9 @@ export const OwnerDashboard: React.FC = () => {
     .filter((r) => r.status === 'overdue' || r.status === 'due')
     .sort((a, b) => b.daysOverdue - a.daysOverdue);
 
+  // An ACTIVE tenancy past its lease end: nothing ends it by itself, so the owner is asked to extend or end it.
+  const leaseEndedRooms = rooms.filter((r) => r.leaseEnded && r.tenancyId);
+
   const needsReview = rooms.filter((r) => r.payment?.state === 'NEEDS_REVIEW');
 
   const askEnd = (room: BoardRoom) => {
@@ -145,8 +152,9 @@ export const OwnerDashboard: React.FC = () => {
   const hasVisitAttention = scheduledVisits > 0;
   const applicationCount = applications.data?.length ?? 0;
   const hasApplications = applicationCount > 0;
-  const allClear = !hasAttention && !hasVisitAttention && !hasApplications;
-  const actionCount = attentionRooms.length + scheduledVisits + applicationCount + needsReview.length;
+  const hasLeaseEnded = leaseEndedRooms.length > 0;
+  const allClear = !hasAttention && !hasVisitAttention && !hasApplications && !hasLeaseEnded;
+  const actionCount = attentionRooms.length + scheduledVisits + applicationCount + needsReview.length + leaseEndedRooms.length;
   const showStatus = (status: RoomStatus) => {
     setStatusFilter(status);
     document.getElementById('room-board-title')?.scrollIntoView({ block: 'start' });
@@ -168,10 +176,6 @@ export const OwnerDashboard: React.FC = () => {
         </button>
       </div>
 
-      <div id="od-panel" role="tabpanel" aria-labelledby={`od-tab-${tab}`}>
-        {tab === 'ringkasan' ? (
-          <>
-            <OwnerOverview summary={summary} onShowStatus={showStatus} />
       {confirmingRoom && (
         <div
           ref={confirmRef}
@@ -198,6 +202,10 @@ export const OwnerDashboard: React.FC = () => {
         </div>
       )}
 
+      <div id="od-panel" role="tabpanel" aria-labelledby={`od-tab-${tab}`}>
+        {tab === 'ringkasan' ? (
+          <>
+            <OwnerOverview summary={summary} onShowStatus={showStatus} />
       <RoomOccupancyBoard
         kosName={selectedKos.name}
         rooms={rooms}
@@ -259,6 +267,42 @@ export const OwnerDashboard: React.FC = () => {
                     onClick={() => pay(room)}
                   >
                     Tandai lunas
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {hasLeaseEnded && (
+        <section aria-labelledby="lease-end-title" className="od-section" data-testid="lease-ended-section">
+          <h2 id="lease-end-title" className="od-section__title">
+            Masa sewa berakhir
+            <span className="od-count">{leaseEndedRooms.length}</span>
+          </h2>
+          <ul className="od-list">
+            {leaseEndedRooms.map((room) => (
+              <li key={room.id} className="od-row od-row--attention">
+                <div className="od-row__main">
+                  <span className="od-row__title">Kamar {room.roomNumber}</span>
+                  <button type="button" className="od-person od-person--sub" aria-label={`Lihat profil penyewa Kamar ${room.roomNumber}`} onClick={() => setProfileTenancy(room.tenancyId!)}>
+                    {room.tenant?.name || 'Penghuni aktif'}
+                    <ChevronRight size={13} aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="od-row__due">
+                  <span>Masa sewa berakhir {formatLongDate(room.leaseEndDate)}</span>
+                </div>
+                <div className="od-row__actions">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={busyRoomId === room.id}
+                    aria-label={`Akhiri sewa Kamar ${room.roomNumber}`}
+                    onClick={() => askEnd(room)}
+                  >
+                    Akhiri sewa
                   </Button>
                 </div>
               </li>

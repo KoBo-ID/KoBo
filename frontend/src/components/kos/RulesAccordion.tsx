@@ -17,7 +17,7 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
     <section className="kos-rules detail-card">
       <div className="section-head">
         <div>
-          <h3 className="section-title">Tata tertib dan denda</h3>
+          <h2 className="section-title">Tata tertib dan denda</h2>
         </div>
         {rules.length > 1 && (
           <button
@@ -31,7 +31,7 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
       </div>
 
       {rules.length === 0 ? (
-        <p style={{ margin: 0, padding: '0.9rem 1rem', border: '1px dashed var(--border-strong)', borderRadius: 'var(--radius-md)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+        <p style={{ margin: 0, padding: '0.9rem 1rem', border: '1px dashed var(--border-strong)', borderRadius: 'var(--radius-md)', color: 'var(--text-muted)', fontSize: 'var(--step--1)' }}>
           Pemilik belum mengisi tata tertib dan denda.
         </p>
       ) : (
@@ -42,7 +42,7 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
 
           return (
             <section key={rule.id} className="kos-rules__group">
-              <h4 className="kos-rules__heading">
+              <h3 className="kos-rules__heading">
                 <button
                   type="button"
                   onClick={() => setExpanded((current) => {
@@ -71,7 +71,7 @@ export const RulesAccordion: React.FC<RulesAccordionProps> = ({ rules }) => {
                     />
                   </span>
                 </button>
-              </h4>
+              </h3>
 
               <div id={panelId} hidden={!isExpanded} className="kos-rules__panel">
                 <ul>

@@ -91,12 +91,12 @@ export const Modal: React.FC<ModalProps> = ({
           <div className="kobo-modal__header">
             <div>
               {title && (
-                <h3 id={titleId} style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                <h3 id={titleId} style={{ fontSize: 'var(--step-1)', fontWeight: 700, color: 'var(--text-main)' }}>
                   {title}
                 </h3>
               )}
               {subtitle && (
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                   {subtitle}
                 </p>
               )}

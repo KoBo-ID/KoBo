@@ -28,7 +28,7 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
   return (
     <section className="room-picker" aria-labelledby={headingId}>
       <div className="room-picker__heading">
-        <h3 id={headingId} className="section-title">Pilihan tipe kamar & ketersediaan</h3>
+        <h2 id={headingId} className="section-title">Pilihan tipe kamar & ketersediaan</h2>
         <span>{groupEntries.length} tipe kamar</span>
       </div>
       <div className="room-picker__grid">

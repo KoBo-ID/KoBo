@@ -43,9 +43,9 @@ export const ManualPaymentModal: React.FC<{
         {online && <Notice tone="error">Penyewa sedang membayar secara online. Tunggu sesi pembayaran berakhir sebelum mencatat manual.</Notice>}
 
         <fieldset style={{ border: 0, padding: 0, margin: 0, display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <legend style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>Cara pembayaran</legend>
+          <legend style={{ fontSize: 'var(--step--1)', fontWeight: 600, marginBottom: '0.4rem' }}>Cara pembayaran</legend>
           {([['CASH', 'Tunai'], ['BANK_TRANSFER', 'Transfer bank']] as const).map(([value, label]) => (
-            <label key={value} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.9rem' }}>
+            <label key={value} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: 'var(--step--1)' }}>
               <input type="radio" name="method" value={value} checked={method === value} onChange={() => setMethod(value)} />
               {label}
             </label>

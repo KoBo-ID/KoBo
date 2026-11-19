@@ -25,6 +25,8 @@ const room = (
   daysOverdue: 0,
   lastReceipt: null,
   payment: null,
+  leaseEndDate: null,
+  leaseEnded: false,
   ...extra,
 });
 

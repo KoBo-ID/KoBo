@@ -101,7 +101,7 @@ export const WhyRows: React.FC = () => {
             <div className="whyr__card whyr__card--back" />
             <div className="whyr__card whyr__card--under" />
             <div className="whyr__card whyr__card--price">
-              <span className="whyr__verified"><MailCheck size={16} strokeWidth={2.25} />Email kampus .ac.id terverifikasi</span>
+              <span className="whyr__verified"><MailCheck size={16} strokeWidth={2.25} />Mahasiswa terverifikasi</span>
               <div className="whyr__price-top">
                 <span className="whyr__price-old">Rp 1.500.000</span>
                 <span className="whyr__price-badge">Harga mahasiswa</span>
@@ -113,7 +113,7 @@ export const WhyRows: React.FC = () => {
           </div>
         }
       >
-        Aktif setelah email kampus (.ac.id) Anda terverifikasi, dan berlaku untuk pembayaran pertama. Besarnya ditentukan tiap pemilik.
+        Aktif setelah status mahasiswa Anda terverifikasi (email kampus, akun kampus, atau KTM), dan berlaku untuk pembayaran pertama. Besarnya ditentukan tiap pemilik.
       </Row>
 
       <Row
@@ -141,7 +141,7 @@ export const WhyRows: React.FC = () => {
           </div>
         }
       >
-        Pemilik menulis tata tertib dan denda untuk tiap kos. Anda bisa membacanya di halaman kos sebelum memesan.
+        Pemilik menulis tata tertib dan denda untuk tiap kos. Anda bisa membacanya di halaman kos sebelum mengajukan sewa.
       </Row>
 
       <Row

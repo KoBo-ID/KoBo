@@ -41,7 +41,7 @@ export const NotFoundState: React.FC<{ title: string; text: string; linkTo: stri
     style={{ paddingTop: '4rem', paddingBottom: '4rem', textAlign: 'center', minHeight: '50vh' }}
   >
     <SearchX size={40} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
-    <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>{title}</h1>
+    <h1 style={{ fontSize: 'var(--step-2)', fontWeight: 800 }}>{title}</h1>
     <p style={{ color: 'var(--text-muted)', margin: '0.5rem auto 1.5rem', maxWidth: '420px' }}>{text}</p>
     <Link to={linkTo}>
       <Button variant="primary" size="md">

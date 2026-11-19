@@ -18,6 +18,8 @@ interface ReviewsSectionProps {
   reviews: Review[];
 }
 
+const ratingFormat = new Intl.NumberFormat('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
 const SUB_RATING_ROWS = [
   { key: 'cleanliness', label: 'Kebersihan Kamar & Gedung' },
   { key: 'wifi', label: 'Kecepatan & Stabilitas Wi-Fi' },
@@ -32,11 +34,11 @@ const ReviewItem: React.FC<{ review: Review }> = ({ review }) => (
         <Avatar src={review.authorAvatar} name={review.authorName} size={38} />
         <div>
           <div className="kos-reviews__author-name">
-            <h5>{review.authorName}</h5>
+            <h3>{review.authorName}</h3>
             {review.verifiedStudent && (
-              <span className="kos-reviews__verified" title="Email kampus telah diverifikasi saat ulasan ditulis.">
+              <span className="kos-reviews__verified" title="Status mahasiswa telah diverifikasi saat ulasan ditulis.">
                 <ShieldCheck size={12} aria-hidden="true" />
-                Email kampus terverifikasi
+                Mahasiswa terverifikasi
               </span>
             )}
           </div>
@@ -97,7 +99,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
 
   return (
     <section className="kos-reviews detail-card">
-      <h3 className="sr-only">Ulasan</h3>
+      <h2 className="sr-only">Ulasan</h2>
       {(writable || editable) && (
         <div className="section-head" style={{ justifyContent: 'flex-end' }}>
           <Button
@@ -114,10 +116,10 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       <div className="kos-reviews__summary">
         <div className="kos-reviews__score">
           <div>
-            <strong>{ratingOverall ?? '-'}</strong>
-            <span>/ 5.0</span>
+            <strong>{ratingOverall === null ? '-' : ratingFormat.format(ratingOverall)}</strong>
+            <span>/ 5,0</span>
           </div>
-          <p>Berdasarkan {reviewCount} ulasan</p>
+          <p>{reviewCount > 0 ? `Berdasarkan ${reviewCount} ulasan` : 'Belum ada ulasan'}</p>
         </div>
 
         {/* Read-only aspect ratings: label and stars share one row. */}
@@ -133,7 +135,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                   <div
                     className="kos-reviews__star-meter"
                     role="img"
-                    aria-label={`${label}: ${value.toFixed(1).replace('.', ',')} dari 5 bintang`}
+                    aria-label={`${label}: ${ratingFormat.format(value)} dari 5 bintang`}
                   >
                     <span className="kos-reviews__stars" aria-hidden="true">
                       {[0, 1, 2, 3, 4].map((index) => {
@@ -148,7 +150,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
                         );
                       })}
                     </span>
-                    <span className="kos-reviews__aspect-score" aria-hidden="true">{value.toFixed(1)} / 5</span>
+                    <span className="kos-reviews__aspect-score" aria-hidden="true">{ratingFormat.format(value)} / 5</span>
                   </div>
                 )}
               </div>

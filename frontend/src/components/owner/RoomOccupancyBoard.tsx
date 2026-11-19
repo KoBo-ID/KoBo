@@ -228,7 +228,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                       <tr role="row" key={room.id}>
                         <td role="cell" data-cell="room">
                           <div className="kobo-table__strong od-trunc" title={`Kamar ${room.roomNumber}`}>Kamar {room.roomNumber}</div>
-                          <div className="kobo-table__muted od-trunc" style={{ fontSize: '0.75rem' }}>
+                          <div className="kobo-table__muted od-trunc" style={{ fontSize: 'var(--step--2)' }}>
                             {room.type} · {room.size}
                           </div>
                         </td>
@@ -240,7 +240,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             <>
                               <div className="kobo-table__strong od-trunc" title={room.tenant?.name}>{room.tenant?.name || 'Penghuni aktif'}</div>
                               {room.tenant?.campus && (
-                                <div className="kobo-table__muted od-trunc" style={{ fontSize: '0.75rem' }} title={room.tenant.campus}>
+                                <div className="kobo-table__muted od-trunc" style={{ fontSize: 'var(--step--2)' }} title={room.tenant.campus}>
                                   {room.tenant.campus}
                                 </div>
                               )}
@@ -254,7 +254,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             <>
                               <span className="kobo-table__num">{formatDueDate(room.invoice?.dueDate)}</span>
                               {late > 0 && (
-                                <div style={{ color: 'var(--status-overdue-text)', fontSize: '0.75rem', fontWeight: 700 }}>
+                                <div style={{ color: 'var(--status-overdue-text)', fontSize: 'var(--step--2)', fontWeight: 700 }}>
                                   Telat {late} hari
                                 </div>
                               )}
@@ -267,7 +267,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             {STATUS_META[room.status].label}
                           </span>
                           {PAYMENT_LABEL[room.payment?.state ?? 'NONE'] && (
-                            <div className="kobo-table__muted" style={{ fontSize: '0.75rem', marginTop: '0.2rem' }} data-testid="payment-label">
+                            <div className="kobo-table__muted" style={{ fontSize: 'var(--step--2)', marginTop: '0.2rem' }} data-testid="payment-label">
                               {PAYMENT_LABEL[room.payment?.state ?? 'NONE']}
                             </div>
                           )}

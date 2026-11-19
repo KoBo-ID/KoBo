@@ -12,7 +12,7 @@ export const Notice: React.FC<{ tone: 'error' | 'success'; children: React.React
         backgroundColor: error ? 'var(--status-overdue-bg)' : 'var(--primary-light)',
         border: `1px solid ${error ? 'var(--status-overdue-border)' : 'var(--primary)'}`,
         color: error ? 'var(--status-overdue-text)' : 'var(--primary)',
-        fontSize: '0.85rem',
+        fontSize: 'var(--step--1)',
         fontWeight: 500,
         lineHeight: 1.5,
       }}

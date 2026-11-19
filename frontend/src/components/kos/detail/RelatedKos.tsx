@@ -16,7 +16,7 @@ export const RelatedKos: React.FC<{ kosId: string; campusId: string; city: strin
   return (
     <section aria-labelledby={headingId}>
       <div className="section-head">
-        <h3 id={headingId} className="section-title">{campusName ? `Kos lain dekat ${campusName}` : 'Kos lain di sekitar'}</h3>
+        <h2 id={headingId} className="section-title">{campusName ? `Kos lain dekat ${campusName}` : 'Kos lain di sekitar'}</h2>
       </div>
       <div className="detail-related">
         {picks.map((card) => <ListingCard key={card.id} kos={kosCardToKos(card)} />)}

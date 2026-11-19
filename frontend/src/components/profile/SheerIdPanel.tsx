@@ -7,7 +7,7 @@ import { useTRPC } from '../../lib/trpc';
 import { messageForError } from '../../lib/errors';
 
 const box: React.CSSProperties = { backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '0.85rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' };
-const muted: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)' };
+const muted: React.CSSProperties = { fontSize: 'var(--step--1)', color: 'var(--text-muted)' };
 
 /**
  * SheerID verification, DEV/TEST ONLY: the server offers it only when SHEERID_ENABLED=1 and refuses it in production
@@ -63,10 +63,10 @@ export const SheerIdPanel: React.FC = () => {
         )}
       </div>
       <p style={muted}>
-        Data yang kamu isi di formulir SheerID (nama, email, tanggal lahir, kampus, dan dokumen kuliah tanpa foto wajah) dikirim ke SheerID, Inc. di Amerika Serikat untuk diperiksa.
+        Data yang Anda isi di formulir SheerID (nama, email, tanggal lahir, kampus, dan dokumen kuliah tanpa foto wajah) dikirim ke SheerID, Inc. di Amerika Serikat untuk diperiksa.
         KoBo hanya menerima hasilnya, lalu meminta SheerID menghapus datamu begitu hasil keluar.
       </p>
-      <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.82rem' }}>
+      <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: 'var(--step--1)' }}>
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: '0.2rem' }} />
         <span>Saya setuju data verifikasi saya dikirim ke SheerID (Amerika Serikat) hanya untuk memeriksa status mahasiswa.</span>
       </label>

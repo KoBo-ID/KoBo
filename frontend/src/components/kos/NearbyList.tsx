@@ -27,14 +27,14 @@ const HIGHLIGHTS: { any: PlaceCategoryId[]; take: number }[] = [
 const PlaceRow: React.FC<{ p: NearbyItem; tag?: string }> = ({ p, tag }) => (
   <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: '1rem', alignItems: 'center', padding: '0.75rem 0', borderTop: '1px solid var(--border-subtle)' }}>
     <div style={{ minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, fontSize: '0.9rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, fontSize: 'var(--step--1)' }}>
         <MapPin size={14} color="var(--text-muted)" aria-hidden="true" style={{ flexShrink: 0 }} />
         <span style={{ overflowWrap: 'anywhere' }}>{p.name}</span>
       </div>
-      {tag && <div style={{ marginTop: '0.15rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{tag}</div>}
+      {tag && <div style={{ marginTop: '0.15rem', fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>{tag}</div>}
     </div>
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-secondary, var(--text-muted))', fontVariantNumeric: 'tabular-nums' }} title={p.minutesNote}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: 'var(--step--1)', fontWeight: 600, color: 'var(--text-secondary, var(--text-muted))', fontVariantNumeric: 'tabular-nums' }} title={p.minutesNote}>
         {p.mode === 'walk' ? <Footprints size={14} aria-hidden="true" /> : <Bike size={14} aria-hidden="true" />}
         {p.distanceLabel}, ± {p.minutes} mnt
       </span>
@@ -73,11 +73,11 @@ export const NearbyList: React.FC<{ nearby: NearbyView }> = ({ nearby }) => {
   return (
     <section className="kos-poi detail-card">
       <div className="section-head">
-        <h3 className="section-title">Lokasi dan sekitar kos</h3>
+        <h2 className="section-title">Lokasi dan sekitar kos</h2>
       </div>
 
       {tabs.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Belum ada data lokasi untuk kos ini.</p>
+        <p style={{ margin: 0, fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Belum ada data lokasi untuk kos ini.</p>
       ) : (
         <>
         <div className="nearby-chips" role="group" aria-label="Filter kategori lokasi" onMouseLeave={() => setHint(null)}>
@@ -111,7 +111,7 @@ export const NearbyList: React.FC<{ nearby: NearbyView }> = ({ nearby }) => {
                 {items.map((p) => <PlaceRow key={p.id} p={p} />)}
                 {hidden > 0 && (
                   <button type="button" onClick={() => setExpanded((s) => { const n = new Set(s); if (n.has(g.category)) n.delete(g.category); else n.add(g.category); return n; })}
-                    style={{ margin: '0.25rem 0 0', padding: '0.4rem 0', color: 'var(--primary)', fontWeight: 700, fontSize: '0.8125rem' }} aria-expanded={open}>
+                    style={{ margin: '0.25rem 0 0', padding: '0.4rem 0', color: 'var(--primary)', fontWeight: 700, fontSize: 'var(--step--1)' }} aria-expanded={open}>
                     {open ? 'Tampilkan lebih sedikit' : `Tampilkan ${hidden} ${g.label.toLowerCase()} lagi`}
                   </button>
                 )}

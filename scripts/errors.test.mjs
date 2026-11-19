@@ -9,8 +9,12 @@ test('maps tRPC codes to Indonesian', () => {
   assert.equal(messageForError(trpc('FORBIDDEN', 'Akun demo bersifat hanya-baca.')), 'Akun demo bersifat hanya-baca.')
   assert.match(messageForError(trpc('NOT_FOUND')), /tidak ditemukan/)
   assert.match(messageForError(trpc('TOO_MANY_REQUESTS')), /Terlalu banyak/)
-  assert.match(messageForError(trpc('BAD_REQUEST', 'zod internals')), /tidak valid/)
-  assert.doesNotMatch(messageForError(trpc('BAD_REQUEST', 'zod internals')), /zod/)
+  // A raw Zod issue dump falls back to the generic copy; a deliberate server message (G2-06) is shown as is.
+  const zodDump = JSON.stringify([{ code: 'too_small', path: ['date'] }], null, 2)
+  assert.match(messageForError(trpc('BAD_REQUEST', zodDump)), /tidak valid/)
+  assert.doesNotMatch(messageForError(trpc('BAD_REQUEST', zodDump)), /too_small/)
+  assert.equal(messageForError(trpc('BAD_REQUEST', 'Tanggal survey harus setelah hari ini.')), 'Tanggal survey harus setelah hari ini.')
+  assert.match(messageForError(trpc('BAD_REQUEST')), /tidak valid/)
   assert.match(messageForError(trpc('INTERNAL_SERVER_ERROR', 'boom')), /Terjadi kesalahan/)
 })
 

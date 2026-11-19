@@ -47,17 +47,17 @@ export const Button: React.FC<ButtonProps> = ({
   const sizeStyles: Record<string, React.CSSProperties> = {
     sm: {
       padding: '0.4rem 0.8rem',
-      fontSize: '0.8125rem',
+      fontSize: 'var(--step--1)',
       borderRadius: 'var(--radius-sm)',
     },
     md: {
       padding: '0.625rem 1.25rem',
-      fontSize: '0.9375rem',
+      fontSize: 'var(--step-0)',
       borderRadius: 'var(--radius-btn)',
     },
     lg: {
       padding: '0.875rem 1.75rem',
-      fontSize: '1rem',
+      fontSize: 'var(--step-0)',
       borderRadius: 'var(--radius-btn)',
     },
   };

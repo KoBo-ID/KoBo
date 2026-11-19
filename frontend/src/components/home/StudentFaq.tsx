@@ -2,19 +2,19 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const STEPS: { title: string; text: React.ReactNode }[] = [
-  { title: 'Cari kos dekat kampus', text: <>Pilih kampusmu, lihat kos terdekat dengan jarak dan harga per bulan.</> },
-  { title: 'Survey gratis', text: <>Jadwalkan kunjungan <strong>tanpa bayar apa pun</strong>. Aturan dan denda tertulis sebelum kamu mengajukan.</> },
-  { title: 'Ajukan sewa', text: <>Pengajuan <strong>tidak menahan kamar dan tidak memindahkan uang</strong>. Pemilik yang menyetujui.</> },
+  { title: 'Cari kos dekat kampus', text: <>Pilih kampus Anda, lihat kos terdekat dengan jarak dan harga per bulan.</> },
+  { title: 'Survey gratis', text: <>Jadwalkan kunjungan <strong>tanpa bayar apa pun</strong>. Aturan dan denda tertulis sebelum Anda mengajukan.</> },
+  { title: 'Ajukan sewa', text: <>Pengajuan <strong>tidak menahan kamar dan tidak memindahkan uang</strong>. Pemilik yang menyetujui, dan Anda perlu berstatus mahasiswa terverifikasi.</> },
   { title: 'Bayar dan simpan kuitansi', text: <>Setelah disetujui, kamar ditahan <strong>24 jam</strong> untuk pembayaran pertama. Kuitansi digital langsung tersedia.</> },
 ];
 
 const FAQ: { q: string; a: React.ReactNode }[] = [
-  { q: 'Siapa yang bisa menyewa di KoBo?', a: 'Hanya mahasiswa yang status kampusnya terverifikasi. Verifikasi lewat email mahasiswa, akun Microsoft/Google kampus, atau unggah kartu mahasiswa (KTM) jika keduanya tidak tersedia. Siapa pun bisa melihat-lihat kos tanpa verifikasi.' },
-  { q: 'Kenapa perlu email kampus?', a: <>Email kampus (.ac.id) yang terverifikasi membuka diskon mahasiswa di pembayaran pertama. Verifikasinya di halaman <Link to="/profile" className="mhs-link">Profil</Link>.</> },
-  { q: 'Bagaimana jika belum punya email kampus?', a: 'Kamu tetap bisa mencari, survey, dan mengajukan sewa tanpa diskon. Kamu juga bisa memverifikasi dengan unggah kartu mahasiswa (KTM).' },
-  { q: 'Apakah orang tua bisa membayar?', a: 'Saat ini pembayaran dilakukan dari akunmu. Orang tua dapat membayar lewat metode yang tersedia di halaman pembayaran (misalnya transfer atau e-wallet) memakai tagihan atas namamu. Tautan bayar khusus orang tua belum tersedia.' },
-  { q: 'Bayar per bulan atau per semester?', a: 'Harga ditampilkan per bulan. Pilihan 1, 3, atau 12 bulan ada di halaman kos; pembayaran pertama dan tagihan berikutnya tampil sebelum kamu mengajukan.' },
-  { q: 'Kenapa diminta kontak darurat?', a: 'Sebelum pengajuan pertama kami meminta satu kontak (misalnya orang tua). Dengan izinmu, kami hanya menghubunginya bila sewa terlambat lebih dari seminggu.' },
+  { q: 'Siapa yang bisa menyewa di KoBo?', a: 'Hanya mahasiswa yang status kampusnya terverifikasi. Verifikasi lewat email kampus, akun Microsoft/Google kampus, atau unggah kartu mahasiswa (KTM) yang ditinjau tim KoBo. Siapa pun bisa melihat-lihat kos tanpa verifikasi. Pemilik kos tidak perlu berstatus mahasiswa.' },
+  { q: 'Kenapa perlu verifikasi mahasiswa?', a: <>KoBo khusus mahasiswa. Status terverifikasi dibutuhkan untuk menjadwalkan survey, mengajukan sewa, dan masuk daftar tunggu, serta membuka diskon mahasiswa di pembayaran pertama. Verifikasinya di halaman <Link to="/profile" className="mhs-link">Profil</Link>.</> },
+  { q: 'Bagaimana jika belum punya email atau akun kampus?', a: 'Anda tetap bisa mencari dan melihat kos. Untuk survey, mengajukan sewa, dan daftar tunggu, unggah kartu mahasiswa (KTM) di halaman Profil. Pengajuan KTM ditinjau tim KoBo sebelum status Anda aktif.' },
+  { q: 'Apakah orang tua bisa membayar?', a: 'Saat ini pembayaran dilakukan dari akun Anda. Orang tua dapat membayar lewat metode yang tersedia di halaman pembayaran (misalnya transfer atau e-wallet) memakai tagihan atas nama Anda. Tautan bayar khusus orang tua belum tersedia.' },
+  { q: 'Bayar per bulan atau per semester?', a: 'Harga ditampilkan per bulan. Pilihan 1, 3, atau 12 bulan ada di halaman kos; pembayaran pertama dan tagihan berikutnya tampil sebelum Anda mengajukan.' },
+  { q: 'Kenapa diminta kontak darurat?', a: 'Sebelum pengajuan pertama kami meminta satu kontak (misalnya orang tua). Dengan izin Anda, kami hanya menghubunginya bila sewa terlambat lebih dari seminggu.' },
   { q: 'Apakah data saya aman?', a: <>KoBo belum meminta KTP. Data yang kami simpan dan siapa yang dapat melihatnya dijelaskan di <Link to="/privasi" className="mhs-link">Kebijakan Privasi</Link> (draf).</> },
 ];
 

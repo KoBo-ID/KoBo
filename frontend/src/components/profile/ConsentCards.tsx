@@ -22,10 +22,10 @@ const card: React.CSSProperties = {
 const heading = (icon: React.ReactNode, text: string) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
     {icon}
-    <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>{text}</h4>
+    <h4 style={{ fontSize: 'var(--step-0)', fontWeight: 700 }}>{text}</h4>
   </div>
 );
-const hint: React.CSSProperties = { fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 };
+const hint: React.CSSProperties = { fontSize: 'var(--step--1)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 };
 const PHONE = /^\+?[0-9][0-9 ()-]{7,18}$/;
 
 /** Emergency contact (required before a first application) with the consent that lets KoBo message them about a late payment. */
@@ -93,7 +93,7 @@ export const EmergencyContactCard: React.FC = () => {
           <Input label="Nama" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" required />
           <Input label="Hubungan" value={relation} onChange={(e) => setRelation(e.target.value)} placeholder="Ibu, Ayah, Kakak" autoComplete="off" required />
           <Input label="Nomor WhatsApp" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0812 3456 7890" autoComplete="off" required />
-          <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--text-main)' }}>
+          <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: 'var(--step--1)', lineHeight: 1.5, color: 'var(--text-main)' }}>
             <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: '0.2rem' }} />
             <span>
               Saya sudah memberi tahu orang ini dan setuju KoBo menghubunginya lewat WhatsApp bila pembayaran sewa saya terlambat lebih dari 7 hari. Pesannya memuat nama saya dan permintaan menghubungi pemilik kos, tanpa jumlah tagihan. Saya dapat mencabut izin kapan saja. Lihat <Link to="/privasi" style={{ color: 'var(--primary)', fontWeight: 600 }}>Kebijakan Privasi</Link>.
@@ -125,7 +125,7 @@ export const RemindersAndTermsCard: React.FC = () => {
   return (
     <div style={card}>
       {heading(<BellRing size={18} color="var(--primary)" />, 'Pengingat tagihan')}
-      <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: '0.875rem', lineHeight: 1.5 }}>
+      <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: 'var(--step--1)', lineHeight: 1.5 }}>
         <input
           type="checkbox"
           checked={!me.notifyOptOut}
@@ -143,7 +143,7 @@ export const RemindersAndTermsCard: React.FC = () => {
       <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <FileCheck2 size={16} color="var(--primary)" />
-          <strong style={{ fontSize: '0.875rem' }}>Syarat dan Kebijakan Privasi</strong>
+          <strong style={{ fontSize: 'var(--step--1)' }}>Syarat dan Kebijakan Privasi</strong>
         </div>
         {me.termsCurrent ? (
           <p style={hint}>Anda sudah menyetujui versi {me.termsVersion}. Baca <Link to="/syarat" style={{ color: 'var(--primary)', fontWeight: 600 }}>Syarat</Link> dan <Link to="/privasi" style={{ color: 'var(--primary)', fontWeight: 600 }}>Privasi</Link>.</p>

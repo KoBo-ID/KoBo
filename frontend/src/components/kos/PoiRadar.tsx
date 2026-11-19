@@ -47,12 +47,12 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois }) => {
     <section className="kos-poi detail-card">
       <div className="section-head">
         <div>
-          <h3 className="section-title">Lokasi dan sekitar kos</h3>
+          <h2 className="section-title">Lokasi dan sekitar kos</h2>
         </div>
       </div>
 
       {pois.length === 0 ? (
-        <p style={{ margin: 0, padding: '0.9rem 1rem', border: '1px dashed var(--border-strong)', borderRadius: 'var(--radius-md)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+        <p style={{ margin: 0, padding: '0.9rem 1rem', border: '1px dashed var(--border-strong)', borderRadius: 'var(--radius-md)', color: 'var(--text-muted)', fontSize: 'var(--step--1)' }}>
           Belum ada data lokasi untuk kos ini.
         </p>
       ) : (<>
@@ -73,7 +73,7 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois }) => {
                 gap: '0.35rem',
                 padding: '0.4rem 0.8rem',
                 borderRadius: 'var(--radius-sm)',
-                fontSize: '0.785rem',
+                fontSize: 'var(--step--1)',
                 fontWeight: isActive ? 700 : 500,
                 backgroundColor: isActive ? 'var(--primary)' : 'var(--bg-muted)',
                 color: isActive ? 'white' : 'var(--text-muted)',
@@ -109,10 +109,10 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois }) => {
                 {getCategoryIcon(poi.category)}
               </span>
               <div>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                <h3 style={{ fontSize: 'var(--step-0)', fontWeight: 700, color: 'var(--text-main)' }}>
                   {poi.name}
-                </h4>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem', lineHeight: 1.4 }}>
+                </h3>
+                <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', marginTop: '0.2rem', lineHeight: 1.4 }}>
                   {poi.description}
                 </p>
               </div>
@@ -121,7 +121,7 @@ export const PoiRadar: React.FC<PoiRadarProps> = ({ pois }) => {
             {/* Distance */}
             <span
               style={{
-                fontSize: '0.85rem',
+                fontSize: 'var(--step--1)',
                 fontWeight: 800,
                 color: 'var(--primary)',
                 display: 'flex',

@@ -18,7 +18,7 @@ export const WaitlistSection: React.FC = () => {
 
   return (
     <section aria-labelledby="waitlist-title" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <h2 id="waitlist-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.15rem', fontWeight: 700 }}>
+      <h2 id="waitlist-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: 'var(--step-1)', fontWeight: 700 }}>
         <Hourglass size={18} color="var(--primary)" aria-hidden="true" />
         Daftar Tunggu
       </h2>
@@ -33,10 +33,10 @@ export const WaitlistSection: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
               {e.kos.image && <SafeImage iconSize={20} src={e.kos.image} alt={e.kos.name} style={{ width: 56, height: 56, borderRadius: 'var(--radius-md)', objectFit: 'cover', flexShrink: 0 }} />}
               <div>
-                <Link to={`/kos/${e.kos.id}`} style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                <Link to={`/kos/${e.kos.id}`} style={{ fontSize: 'var(--step-0)', fontWeight: 800, color: 'var(--text-main)' }}>
                   {e.kos.name}
                 </Link>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                   {roomTypeLabel(e.roomType)}
                   {e.status === 'WAITING' && (
                     <>
@@ -59,10 +59,10 @@ export const WaitlistSection: React.FC = () => {
 
       {history.length > 0 && (
         <details>
-          <summary style={{ cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Riwayat daftar tunggu ({history.length})</summary>
+          <summary style={{ cursor: 'pointer', fontSize: 'var(--step--1)', fontWeight: 600, color: 'var(--text-muted)' }}>Riwayat daftar tunggu ({history.length})</summary>
           <ul style={{ listStyle: 'none', margin: '0.6rem 0 0', padding: 0, border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-card)', backgroundColor: 'var(--bg-surface)' }}>
             {history.map((e, i) => (
-              <li key={e.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', padding: '0.7rem 1rem', fontSize: '0.85rem', borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
+              <li key={e.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', padding: '0.7rem 1rem', fontSize: 'var(--step--1)', borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
                 <span>
                   <strong>{e.kos.name}</strong> · {roomTypeLabel(e.roomType)}
                 </span>

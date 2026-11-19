@@ -44,7 +44,7 @@ export const Kuitansi: React.FC = () => {
     return (
       <div className="app-container" style={{ paddingTop: '4rem', textAlign: 'center', minHeight: '50vh' }}>
         <FileText size={40} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
-        <h1 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Masuk untuk Melihat Kuitansi</h1>
+        <h1 style={{ fontSize: 'var(--step-2)', fontWeight: 800 }}>Masuk untuk Melihat Kuitansi</h1>
         <p style={{ color: 'var(--text-muted)', margin: '0.5rem auto 1.25rem', maxWidth: '380px' }}>Kuitansi hanya dapat dibuka oleh penyewa yang membayar dan pemilik kosnya.</p>
         <Button variant="primary" size="md" onClick={openAuthModal}>Masuk</Button>
       </div>
@@ -78,20 +78,20 @@ export const Kuitansi: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem 1rem', paddingBottom: '1.25rem', borderBottom: '2px solid var(--border-subtle)', marginBottom: '1.5rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+              <span style={{ fontSize: 'var(--step-2)', fontWeight: 800, letterSpacing: '-0.02em' }}>
                 Ko<span style={{ color: 'var(--primary)' }}>Bo</span>
               </span>
             </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>BUKTI PEMBAYARAN SEWA</span>
+            <span style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', fontWeight: 600 }}>BUKTI PEMBAYARAN SEWA</span>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Nomor Kuitansi:</span>
-            <span data-testid="kuitansi-no" style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--primary)' }}>{k.receiptNo}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.15rem' }}>Tanggal: {longDate(new Date(k.paidAt))}</span>
+            <span style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', display: 'block' }}>Nomor Kuitansi:</span>
+            <span data-testid="kuitansi-no" style={{ fontSize: 'var(--step-0)', fontWeight: 800, color: 'var(--primary)' }}>{k.receiptNo}</span>
+            <span style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', display: 'block', marginTop: '0.15rem' }}>Tanggal: {longDate(new Date(k.paidAt))}</span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: '0.9rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: 'var(--step--1)' }}>
           <Row label="Telah Terima Dari:">
             <strong>{k.payer.name}</strong>
             {k.payer.campus ? ` (${k.payer.campus})` : ''}
@@ -120,24 +120,24 @@ export const Kuitansi: React.FC = () => {
               gap: '0.25rem 1rem',
             }}
           >
-            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)' }}>JUMLAH DITERIMA:</span>
-            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary)' }}>{formatRupiah(k.amount)}</span>
+            <span style={{ fontSize: 'var(--step--1)', fontWeight: 700, color: 'var(--text-muted)' }}>JUMLAH DITERIMA:</span>
+            <span style={{ fontSize: 'var(--step-2)', fontWeight: 800, color: 'var(--primary)' }}>{formatRupiah(k.amount)}</span>
           </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem', marginTop: '2.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', maxWidth: '320px' }}>
+          <div style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', maxWidth: '320px' }}>
             Dokumen ini diterbitkan otomatis oleh sistem KoBo dan sah tanpa tanda tangan basah.
           </div>
           <div style={{ textAlign: 'center', minWidth: '180px', flex: '0 1 auto' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '1.75rem' }}>Pengelola Kos,</span>
-            <span style={{ fontSize: '0.875rem', fontWeight: 700, textDecoration: 'underline' }}>{k.owner.name}</span>
+            <span style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', display: 'block', marginBottom: '1.75rem' }}>Pengelola Kos,</span>
+            <span style={{ fontSize: 'var(--step--1)', fontWeight: 700, textDecoration: 'underline' }}>{k.owner.name}</span>
           </div>
         </div>
         <div className="kuitansi-stamp">
           <ShieldCheck size={26} />
           <span>LUNAS · TERCATAT</span>
-          <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>KOBO</span>
+          <span style={{ fontSize: 'var(--step--2)', fontWeight: 600 }}>KOBO</span>
         </div>
       </div>
 

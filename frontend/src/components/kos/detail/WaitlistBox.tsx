@@ -19,12 +19,12 @@ export const QueuedCard: React.FC<{ entry: MyWaitlistEntry }> = ({ entry }) => {
           <Hourglass size={18} />
         </span>
         <div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>Anda di antrean #{entry.position}</div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{roomTypeLabel(entry.roomType)}</div>
+          <div style={{ fontSize: 'var(--step-1)', fontWeight: 800, color: 'var(--text-main)' }}>Anda di antrean #{entry.position}</div>
+          <div style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>{roomTypeLabel(entry.roomType)}</div>
         </div>
       </div>
-      <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-        Kami kirim email saat kamar tersedia. Anda punya 24 jam untuk memesan.
+      <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+        Kami kirim email saat kamar tersedia. Anda punya 24 jam untuk mengajukan sewa.
       </p>
       <Button variant="outline" size="md" fullWidth disabled={busy} onClick={() => void leave(entry.id)}>
         Keluar antrean
@@ -33,7 +33,7 @@ export const QueuedCard: React.FC<{ entry: MyWaitlistEntry }> = ({ entry }) => {
   );
 };
 
-/** "Kamar 105 ditawarkan untukmu" banner with a live countdown. */
+/** "Kamar 105 ditawarkan untuk Anda" banner with a live countdown. */
 export const OfferBanner: React.FC<{ entry: MyWaitlistEntry; onBook: (roomId: string) => void }> = ({ entry, onBook }) => {
   const { decline, busy } = useWaitlistActions();
   const now = useNow();
@@ -47,15 +47,16 @@ export const OfferBanner: React.FC<{ entry: MyWaitlistEntry; onBook: (roomId: st
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
         <BellRing size={20} color="var(--primary)" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
         <div>
-          <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)' }}>Kamar {offer.roomNumber} ditawarkan untukmu</div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+          <div style={{ fontSize: 'var(--step-0)', fontWeight: 800, color: 'var(--text-main)' }}>Kamar {offer.roomNumber} ditawarkan untuk Anda</div>
+          <div style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
             {formatRupiah(offer.priceMonthly)} / bulan · <strong style={{ color: 'var(--primary)' }}>{formatTimeLeft(offer.expiresAt, now)}</strong>
           </div>
         </div>
       </div>
       <Button variant="primary" size="lg" fullWidth disabled={busy} onClick={() => onBook(offer.roomId)}>
-        Pesan Sekarang
+        Ajukan Sewa
       </Button>
+      <p style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>Tawaran ditahan selama pemilik meninjau pengajuan Anda.</p>
       <Button variant="outline" size="md" fullWidth disabled={busy} onClick={() => void decline(entry.id)}>
         Lewati
       </Button>
@@ -87,7 +88,7 @@ export const JoinCard: React.FC<JoinCardProps> = ({ kosId, status, initialType, 
   if (status.rentingHere) {
     return (
       <div data-testid="waitlist-join" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Anda sudah menyewa kamar di kos ini, jadi tidak perlu ikut daftar tunggu.</div>
+        <div style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Anda sudah menyewa kamar di kos ini, jadi tidak perlu ikut daftar tunggu.</div>
         {onBack && (
           <Button variant="ghost" size="sm" fullWidth onClick={onBack}>
             Lihat kamar yang tersedia
@@ -104,8 +105,8 @@ export const JoinCard: React.FC<JoinCardProps> = ({ kosId, status, initialType, 
           <Users size={18} />
         </span>
         <div>
-          <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>{status.full ? 'Kamar Penuh' : 'Tipe Ini Penuh'}</div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Antre dulu, Anda dapat giliran sesuai nomor antrean.</div>
+          <div style={{ fontSize: 'var(--step-1)', fontWeight: 800, color: 'var(--text-main)' }}>{status.full ? 'Kamar Penuh' : 'Tipe Ini Penuh'}</div>
+          <div style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Antre dulu, Anda dapat giliran sesuai nomor antrean.</div>
         </div>
       </div>
       <Select label="Tipe kamar yang dicari" value={type} onChange={(e) => setType(e.target.value)} options={options} />

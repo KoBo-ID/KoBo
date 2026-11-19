@@ -9,7 +9,7 @@ import { useTRPC } from '../../lib/trpc';
 
 type Target = { kosId: string; applicationId: string; tenancyId?: undefined } | { kosId: string; tenancyId: string; applicationId?: undefined };
 
-const row: React.CSSProperties = { display: 'grid', gridTemplateColumns: '9rem minmax(0, 1fr)', columnGap: '1rem', alignItems: 'baseline', fontSize: '0.875rem' };
+const row: React.CSSProperties = { display: 'grid', gridTemplateColumns: '9rem minmax(0, 1fr)', columnGap: '1rem', alignItems: 'baseline', fontSize: 'var(--step--1)' };
 const label: React.CSSProperties = { color: 'var(--text-muted)' };
 
 /** "Profil penyewa": what the student has shared with this owner. Opening it is logged; phone and emergency contact appear once accepted. */
@@ -25,10 +25,10 @@ export const TenantProfileModal: React.FC<{ target: Target; onClose: () => void 
       {p && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }} data-testid="tenant-profile">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <strong style={{ fontSize: '1.125rem' }}>{p.name}</strong>
+            <strong style={{ fontSize: 'var(--step-1)' }}>{p.name}</strong>
             {p.campusVerified && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: 700 }}>
-                <BadgeCheck size={14} aria-hidden="true" /> Email kampus terverifikasi
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: 'var(--primary)', fontSize: 'var(--step--2)', fontWeight: 700 }}>
+                <BadgeCheck size={14} aria-hidden="true" /> Mahasiswa terverifikasi
               </span>
             )}
           </div>
@@ -61,7 +61,7 @@ export const TenantProfileModal: React.FC<{ target: Target; onClose: () => void 
                 : `${p.payments.onTime} tepat waktu, ${p.payments.late} terlambat${p.payments.overdue ? `, ${p.payments.overdue} menunggak` : ''}`}
             </span>
           </div>
-          <p style={{ display: 'flex', gap: '0.45rem', alignItems: 'flex-start', margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          <p style={{ display: 'flex', gap: '0.45rem', alignItems: 'flex-start', margin: 0, fontSize: 'var(--step--2)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             <ShieldAlert size={14} style={{ flexShrink: 0, marginTop: '0.1rem' }} aria-hidden="true" />
             Data ini hanya untuk menilai dan mengelola sewa di kos Anda. Setiap pembukaan profil tercatat.
           </p>

@@ -8,12 +8,13 @@ import { Skeleton } from '../ui/Skeleton';
 import { TenantProfileModal } from './TenantProfileModal';
 import { messageForError } from '../../lib/errors';
 import { useTRPC } from '../../lib/trpc';
+import { useAppStore } from '../../store/AppContext';
 
 const formatDate = (date: string) =>
   new Date(`${date}T00:00:00+07:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
 // SHEERID (dev/test only) is never named to owners: SheerID's VSA §3.2(e) bars passing its Result to third parties.
-const VIA_LABEL = { EMAIL: 'email kampus', MICROSOFT: 'akun Microsoft', GOOGLE: 'akun Google', KTM: 'KTM', SHEERID: 'dokumen' } as const;
+const VIA_LABEL = { EMAIL: 'email kampus', MICROSOFT: 'akun Microsoft kampus', GOOGLE: 'akun Google kampus', KTM: 'KTM', SHEERID: 'verifikasi kampus' } as const;
 /** Program and semester for new applications; old rows only have the free-text occupation. */
 const detail = (a: { program: string | null; semester: number | null; occupation: string | null }) => {
   const parts = [a.program, a.semester ? `Semester ${a.semester}` : null].filter(Boolean);
@@ -23,6 +24,7 @@ const detail = (a: { program: string | null; semester: number | null; occupation
 export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
   const trpc = useTRPC();
   const qc = useQueryClient();
+  const { addToast } = useAppStore();
   const applications = useQuery(trpc.application.ownerList.queryOptions({ kosId }));
   const decide = useMutation(trpc.application.decide.mutationOptions({
     onSuccess: () => {
@@ -34,25 +36,67 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
   }));
 
   const [profileFor, setProfileFor] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<{ applicationId: string; decision: 'APPROVE' | 'REJECT'; name: string } | null>(null);
-  const act = (applicationId: string, decision: 'APPROVE' | 'REJECT', applicantName: string) => setConfirming({ applicationId, decision, name: applicantName });
+  const [confirming, setConfirming] = useState<{ applicationId: string; decision: 'APPROVE' | 'REJECT' } | null>(null);
+  const act = (applicationId: string, decision: 'APPROVE' | 'REJECT') => setConfirming({ applicationId, decision });
 
   const count = applications.data?.length ?? 0;
+  const target = confirming ? applications.data?.find((a) => a.id === confirming.applicationId) : undefined;
+  const othersForRoom = target ? (applications.data ?? []).filter((a) => a.id !== target.id && a.room.id === target.room.id).length : 0;
+
+  // Focus goes back to the button that opened the dialog; if that row is gone (decided), to the section, then to <main>.
+  const returnFocus = (key: string, decided: boolean) => {
+    setTimeout(() => {
+      const trigger = decided ? null : document.querySelector<HTMLElement>(`[data-app-action="${key}"]`);
+      const fallback = document.getElementById('owner-applications-title') ?? document.getElementById('main');
+      const el = trigger ?? fallback;
+      if (el && !el.hasAttribute('tabindex') && !(el instanceof HTMLButtonElement)) el.setAttribute('tabindex', '-1');
+      el?.focus();
+    }, 0);
+  };
+  const closeConfirm = () => {
+    if (confirming) returnFocus(`${confirming.applicationId}:${confirming.decision}`, false);
+    setConfirming(null);
+  };
   // Nothing waiting: the dashboard shows one all-clear line instead of an empty section.
   if (applications.isSuccess && count === 0) return null;
 
   return (
     <section aria-labelledby="owner-applications-title" className="od-section">
-      {confirming && (
+      {confirming && target && (
         <ConfirmDialog
           title={confirming.decision === 'APPROVE' ? 'Terima pengajuan?' : 'Tolak pengajuan?'}
-          message={confirming.decision === 'APPROVE' ? `Kamar akan ditahan 24 jam untuk pembayaran ${confirming.name}.` : `Pengajuan ${confirming.name} akan ditolak dan tidak menahan kamar.`}
+          message={
+            <>
+              <strong>{target.applicant.name}</strong>, Kamar {target.room.roomNumber} ({target.room.type}), mulai {formatDate(target.startDate)} selama {target.durationMonths} bulan.
+              <br />
+              {confirming.decision === 'APPROVE'
+                ? `Kamar akan ditahan 24 jam untuk pembayaran ${target.applicant.name}.`
+                : `Pengajuan ini akan ditolak dan tidak menahan kamar.`}
+              {confirming.decision === 'APPROVE' && othersForRoom > 0 && (
+                <>
+                  <br />
+                  <strong>
+                    {othersForRoom} pengajuan lain untuk kamar ini akan otomatis ditolak.
+                  </strong>
+                </>
+              )}
+            </>
+          }
           confirmLabel={confirming.decision === 'APPROVE' ? 'Terima Pengajuan' : 'Tolak Pengajuan'}
           danger={confirming.decision === 'REJECT'}
-          onCancel={() => setConfirming(null)}
+          onCancel={closeConfirm}
           onConfirm={() => {
-            decide.mutate({ kosId, applicationId: confirming.applicationId, decision: confirming.decision });
+            const { applicationId, decision } = confirming;
+            const name = target.applicant.name;
+            decide.mutate(
+              { kosId, applicationId, decision },
+              {
+                onSuccess: () => addToast(decision === 'APPROVE' ? `Pengajuan ${name} diterima. Kamar ditahan 24 jam.` : `Pengajuan ${name} ditolak.`, 'success'),
+                onError: (err) => addToast(messageForError(err), 'error'),
+              },
+            );
             setConfirming(null);
+            returnFocus(`${applicationId}:${decision}`, true);
           }}
         />
       )}
@@ -73,7 +117,6 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
         </div>
       )}
       {applications.isError && <Notice tone="error">Gagal memuat pengajuan sewa.</Notice>}
-      {decide.isError && <div style={{ marginBottom: '0.75rem' }}><Notice tone="error">{messageForError(decide.error)}</Notice></div>}
       {applications.isSuccess && count > 0 && (
         <ul className="od-list">
           {applications.data.map((application) => (
@@ -102,8 +145,8 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
                 </span>
               </div>
               <div className="od-row__actions">
-                <Button variant="outline" size="sm" icon={<X size={14} />} disabled={decide.isPending} onClick={() => act(application.id, 'REJECT', application.applicant.name)}>Tolak</Button>
-                <Button variant="primary" size="sm" icon={<Check size={14} />} disabled={decide.isPending} onClick={() => act(application.id, 'APPROVE', application.applicant.name)}>Terima</Button>
+                <Button variant="outline" size="sm" icon={<X size={14} />} disabled={decide.isPending} data-app-action={`${application.id}:REJECT`} onClick={() => act(application.id, 'REJECT')}>Tolak</Button>
+                <Button variant="primary" size="sm" icon={<Check size={14} />} disabled={decide.isPending} data-app-action={`${application.id}:APPROVE`} onClick={() => act(application.id, 'APPROVE')}>Terima</Button>
               </div>
             </li>
           ))}

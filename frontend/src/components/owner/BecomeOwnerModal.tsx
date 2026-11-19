@@ -51,9 +51,9 @@ export const BecomeOwnerModal: React.FC<{ onClose: () => void }> = ({ onClose })
             { value: 'PENGELOLA_KUASA', label: 'Saya pengelola dengan surat kuasa' },
             { value: 'LAINNYA', label: 'Lainnya' },
           ]}
-          helperText="Pernyataan Anda sendiri, belum diperiksa KoBo. Lencana Terverifikasi dokumen diberikan manual setelah dokumen diperiksa."
+          helperText="Pernyataan Anda sendiri; KoBo belum memeriksa dokumen kepemilikan."
         />
-        <p style={{ margin: 0, fontSize: '0.8125rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+        <p style={{ margin: 0, fontSize: 'var(--step--1)', lineHeight: 1.5, color: 'var(--text-muted)' }}>
           Anda bisa langsung menyiapkan kos, kamar, dan foto. Kos baru muncul di pencarian setelah KoBo memeriksa dan menyetujui akun pemilik Anda.
         </p>
         {error && <Notice tone="error">{error}</Notice>}

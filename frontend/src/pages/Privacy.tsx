@@ -18,7 +18,7 @@ export const Privacy: React.FC = () => {
         <InfoList
           items={[
             'Nama dan alamat email, serta nomor telepon bila Anda mengisinya',
-            'Email kampus dan waktu verifikasinya',
+            'Status verifikasi mahasiswa: email kampus (bila dipakai), metode, dan waktu verifikasinya',
             'Kontak darurat (nama, hubungan, nomor) dan waktu Anda menyetujui kami menghubunginya, bila Anda mengisinya',
             'Foto profil, bila ada',
             'Detail pengajuan sewa, catatan sewa, dan catatan pembayaran',

@@ -5,7 +5,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 /** Shown on Terms and Privacy: the version users consent to, the effective date, and the draft status. */
 export const LegalMeta: React.FC = () => (
-  <p style={{ margin: '1rem 0 0', padding: '0.75rem 1rem', background: 'var(--status-due-bg)', border: '1px solid var(--status-due-border)', borderRadius: 'var(--radius-md)', color: 'var(--status-due-text)', fontSize: '0.875rem', lineHeight: 1.55 }}>
+  <p style={{ margin: '1rem 0 0', padding: '0.75rem 1rem', background: 'var(--status-due-bg)', border: '1px solid var(--status-due-border)', borderRadius: 'var(--radius-md)', color: 'var(--status-due-text)', fontSize: 'var(--step--1)', lineHeight: 1.55 }}>
     <strong>Draf, belum ditinjau pengacara.</strong> Versi {TERMS_VERSION}, berlaku sejak 28 Oktober 2026. Isi halaman ini dapat berubah setelah ditinjau ({TERMS_DRAFT_NOTE}).
   </p>
 );
@@ -63,10 +63,10 @@ const SECTIONS: { heading: string; items: React.ReactNode[] }[] = [
     ],
   },
   {
-    heading: 'Verifikasi dan lencana "Terverifikasi dokumen"',
+    heading: 'Verifikasi pemilik',
     items: [
-      'Pemilik menyatakan sendiri jenis kepemilikannya. KoBo tidak memeriksa dokumen secara otomatis.',
-      'Lencana "Terverifikasi dokumen", bila ada, diberikan setelah pemeriksaan manual atas dokumen yang diunggah dan dapat dicabut. Lencana bukan jaminan hukum atas properti.',
+      'Pemilik menyatakan sendiri jenis kepemilikannya. KoBo belum memeriksa dokumen kepemilikan.',
+      'Lencana "Pemilik terverifikasi" hanya tampil bila KoBo telah memverifikasi pemilik tersebut, dan dapat dicabut. Lencana bukan jaminan hukum atas properti.',
     ],
   },
   {

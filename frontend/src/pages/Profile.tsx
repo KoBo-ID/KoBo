@@ -51,7 +51,7 @@ export const Profile: React.FC = () => {
     const next = new URLSearchParams(params);
     next.delete('campus');
     setParams(next, { replace: true });
-  }, [campusResult, signedIn]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [campusResult, signedIn]); // eslint-disable-line react-hooks/exhaustive-deps -- one-shot on the ?campus= return; params/qc/addToast are read fresh and must not re-trigger it
 
   if (!me) {
     return (
@@ -60,8 +60,8 @@ export const Profile: React.FC = () => {
           <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat profil…</p>
         ) : (
           <>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Masuk untuk Melihat Profil</h1>
-            <p style={{ color: 'var(--text-muted)', margin: '0.5rem 0 1.25rem' }}>Profil dan verifikasi email kampus tersimpan di akun Anda.</p>
+            <h1 style={{ fontSize: 'var(--step-2)', fontWeight: 800 }}>Masuk untuk Melihat Profil</h1>
+            <p style={{ color: 'var(--text-muted)', margin: '0.5rem 0 1.25rem' }}>Profil dan verifikasi status mahasiswa tersimpan di akun Anda.</p>
             <Button variant="primary" onClick={openAuthModal}>Masuk</Button>
           </>
         )}
@@ -97,7 +97,7 @@ export const Profile: React.FC = () => {
         <h1 className="page-title">
           Profil Akun & Verifikasi Kampus
         </h1>
-        <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+        <p style={{ fontSize: 'var(--step-0)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
           Kelola informasi identitas dan verifikasi status mahasiswa Anda.
         </p>
       </div>
@@ -129,10 +129,10 @@ export const Profile: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
             <Avatar src={user.image} name={user.name} size={72} style={{ border: '3px solid var(--primary-light)' }} />
             <div>
-              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--text-main)' }}>
+              <h3 style={{ fontSize: 'var(--step-1)', fontWeight: 800, color: 'var(--text-main)' }}>
                 {user.name}
               </h3>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>
                 {user.email}
               </p>
 
@@ -146,7 +146,7 @@ export const Profile: React.FC = () => {
                     color: 'var(--primary)',
                     padding: '0.2rem 0.6rem',
                     borderRadius: 'var(--radius-badge)',
-                    fontSize: '0.75rem',
+                    fontSize: 'var(--step--2)',
                     fontWeight: 700,
                     marginTop: '0.5rem',
                   }}
@@ -188,7 +188,7 @@ export const Profile: React.FC = () => {
               </div>
             </form>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: '0.9rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: 'var(--step--1)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.65rem', borderBottom: '1px solid var(--border-subtle)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Asal Kampus:</span>
                 <span style={{ fontWeight: 600 }}>{user.campus ?? '-'}</span>
@@ -214,7 +214,7 @@ export const Profile: React.FC = () => {
         </div>
 
         {campusNotice && <Notice tone={campusNotice.tone}>{campusNotice.text}</Notice>}
-        <StudentVerificationCard />
+        {!me.isOwner && <StudentVerificationCard />}
 
         {me && !me.user.isDemo && <EmergencyContactCard />}
 
@@ -236,18 +236,18 @@ export const Profile: React.FC = () => {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Building2 size={18} color="var(--primary)" />
-              <h4 style={{ fontSize: '1rem', fontWeight: 700 }}>Punya kos?</h4>
+              <h4 style={{ fontSize: 'var(--step-0)', fontWeight: 700 }}>Punya kos?</h4>
             </div>
             {me.isOwner ? (
               <>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Akun Anda sudah terdaftar sebagai pemilik.</p>
+                <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Akun Anda sudah terdaftar sebagai pemilik.</p>
                 <Link to="/owner/dashboard">
                   <Button variant="outline" size="sm">Buka Dasbor Pemilik</Button>
                 </Link>
               </>
             ) : (
               <>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Kelola kamar, tagihan, dan kuitansi dari dashboard pemilik. Gratis.</p>
+                <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Kelola kamar, tagihan, dan kuitansi dari dashboard pemilik. Gratis.</p>
                 <Button variant="primary" size="sm" onClick={() => setRegistering(true)}>
                   Daftarkan diri sebagai pemilik
                 </Button>

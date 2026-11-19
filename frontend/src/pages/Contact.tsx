@@ -12,8 +12,8 @@ export const Contact: React.FC = () => {
       <InfoSection heading="Pengajuan dan pembayaran">
         <p>Status pengajuan, tagihan, dan kuitansi ada di <Link to="/my-kos" style={link}>Kos Saya</Link>. Dari sana Anda juga dapat melanjutkan pembayaran dan melihat jadwal survey.</p>
       </InfoSection>
-      <InfoSection heading="Akun dan email kampus">
-        <p>Ubah nama, nomor telepon, kampus, dan verifikasi email kampus di <Link to="/profile" style={link}>Profil</Link>. Lupa kata sandi? Gunakan tautan atur ulang di jendela masuk.</p>
+      <InfoSection heading="Akun dan verifikasi mahasiswa">
+        <p>Ubah nama, nomor telepon, kampus, dan verifikasi status mahasiswa di <Link to="/profile" style={link}>Profil</Link>. Lupa kata sandi? Gunakan tautan atur ulang di jendela masuk.</p>
       </InfoSection>
       <InfoSection heading="Pertanyaan tentang kos tertentu">
         <p>Buka halaman kos lalu pilih <strong>Jadwalkan Survey Gratis</strong> untuk bertemu pemilik langsung, atau buka profil pemilik di halaman kos untuk menghubunginya lewat WhatsApp.</p>

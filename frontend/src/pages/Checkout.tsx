@@ -105,7 +105,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
       <div className="app-container" style={{ maxWidth: '640px', paddingTop: '3rem', paddingBottom: '4rem', textAlign: 'center' }}>
         <div style={{ ...card, padding: '2.5rem 1.5rem' }} role="status">
           <CheckCircle2 size={48} color="var(--status-paid)" style={{ margin: '0 auto 1rem' }} />
-          <h1 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Pengajuan Terkirim</h1>
+          <h1 style={{ fontSize: 'var(--step-2)', fontWeight: 800 }}>Pengajuan Terkirim</h1>
           <p style={{ color: 'var(--text-muted)', margin: '0.5rem auto 0', maxWidth: '430px' }}>Pemilik {kos.name} akan meninjau rencana sewa Anda. Kamar belum ditahan dan Anda belum perlu membayar sebelum pengajuan diterima.</p>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '1.75rem' }}>
             <Link to="/my-kos"><Button variant="primary" size="md">Pantau Pengajuan</Button></Link>
@@ -121,12 +121,18 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
       <div style={{ marginBottom: '2rem' }}>
         <BackButton style={{ marginBottom: '0.5rem' }} />
         <h1 className="page-title">Pengajuan Sewa</h1>
-        <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Kirim rencana sewa untuk ditinjau pemilik. Pembayaran baru tersedia setelah pengajuan diterima.</p>
+        <p style={{ fontSize: 'var(--step-0)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Kirim rencana sewa untuk ditinjau pemilik. Pembayaran baru tersedia setelah pengajuan diterima.</p>
       </div>
 
-      {roomUnavailable ? (
+      {!room ? (
+        <div style={{ ...card, textAlign: 'center', padding: '2.5rem 1.5rem' }} role="status" data-testid="checkout-pick-room">
+          <h2 style={{ fontSize: 'var(--step-1)', fontWeight: 700 }}>Pilih kamar terlebih dahulu</h2>
+          <p style={{ color: 'var(--text-muted)', margin: '0.4rem auto 1.25rem', maxWidth: '380px' }}>Pengajuan sewa dibuat untuk satu kamar. Buka halaman kos, pilih kamar yang kosong, lalu ajukan sewa.</p>
+          <Link to={`/kos/${kos.id}`}><Button variant="primary" size="md">Pilih Kamar di {kos.name}</Button></Link>
+        </div>
+      ) : roomUnavailable ? (
         <div style={{ ...card, textAlign: 'center', padding: '2.5rem 1.5rem' }} role="alert">
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Kamar ini sudah tidak tersedia</h2>
+          <h2 style={{ fontSize: 'var(--step-1)', fontWeight: 700 }}>Kamar ini sudah tidak tersedia</h2>
           <p style={{ color: 'var(--text-muted)', margin: '0.4rem auto 1.25rem', maxWidth: '380px' }}>Pilih kamar lain sebelum mengirim pengajuan.</p>
           <Link to={`/kos/${kos.id}`}><Button variant="primary" size="md">Pilih Kamar Lain</Button></Link>
         </div>
@@ -137,24 +143,24 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
               <VerifyPrompt what="mengajukan sewa" />
               <CampusDiscountCard studentDiscountAmount={kos.studentDiscountAmount || undefined} />
               <section style={card} aria-labelledby="rental-plan-title">
-                <h2 id="rental-plan-title" style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '1rem' }}>Rencana Sewa</h2>
+                <h2 id="rental-plan-title" style={{ fontSize: 'var(--step-1)', fontWeight: 700, marginBottom: '1rem' }}>Rencana Sewa</h2>
                 <div className="application-form-grid">
                   <Input label="Tanggal Mulai Sewa" type="date" value={startDate} min={today} max={addDays(today, 120)} onChange={(event) => setStartDate(event.target.value)} required />
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    <label htmlFor="application-duration" style={{ fontSize: '0.875rem', fontWeight: 600 }}>Durasi Sewa</label>
-                    <select id="application-duration" value={duration} onChange={(event) => setDuration(Number(event.target.value))} style={{ height: 'var(--control-height)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', padding: '0 0.75rem', backgroundColor: 'var(--bg-surface)', fontSize: '0.95rem' }}>
+                    <label htmlFor="application-duration" style={{ fontSize: 'var(--step--1)', fontWeight: 600 }}>Durasi Sewa</label>
+                    <select id="application-duration" value={duration} onChange={(event) => setDuration(Number(event.target.value))} style={{ height: 'var(--control-height)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', padding: '0 0.75rem', backgroundColor: 'var(--bg-surface)', fontSize: 'var(--step-0)' }}>
                       {Array.from({ length: MAX_LEASE_MONTHS }, (_, index) => index + 1).map((months) => <option key={months} value={months}>{months} bulan</option>)}
                     </select>
                   </div>
                   <Input label="Jurusan (opsional)" value={program} onChange={(event) => setProgram(event.target.value)} placeholder="Contoh: Teknik Informatika" maxLength={80} />
                   <Input label="Semester (opsional)" type="number" inputMode="numeric" min={1} max={14} step={1} value={semester} onChange={(event) => setSemester(event.target.value)} placeholder="1-14" />
-                  <p style={{ gridColumn: '1 / -1', fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Kampus: <strong style={{ color: 'var(--text-main)' }}>{me?.studentVerification.campus ?? me?.user.campus ?? '-'}</strong></p>
+                  <p style={{ gridColumn: '1 / -1', fontSize: 'var(--step--1)', color: 'var(--text-muted)', margin: 0 }}>Kampus: <strong style={{ color: 'var(--text-main)' }}>{me?.studentVerification.campus ?? me?.user.campus ?? '-'}</strong></p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', gridColumn: '1 / -1' }}>
-                    <label htmlFor="application-note" style={{ fontSize: '0.875rem', fontWeight: 600 }}>Catatan untuk pemilik <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(opsional)</span></label>
+                    <label htmlFor="application-note" style={{ fontSize: 'var(--step--1)', fontWeight: 600 }}>Catatan untuk pemilik <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(opsional)</span></label>
                     <textarea id="application-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={4} placeholder="Perkenalkan kebutuhan atau rencana tinggal Anda" style={{ resize: 'vertical', minHeight: '96px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', padding: '0.75rem', backgroundColor: 'var(--bg-surface)', color: 'var(--text-main)', font: 'inherit' }} />
                   </div>
                 </div>
-                {me && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.85rem' }}>Pengaju: <strong>{me.user.name}</strong> ({me.user.email})</p>}
+                {me && <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', marginTop: '0.85rem' }}>Pengaju: <strong>{me.user.name}</strong> ({me.user.email})</p>}
               </section>
             </div>
 
@@ -162,16 +168,16 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
               <div style={{ display: 'flex', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
                 {kos.images[0] && <SafeImage src={kos.images[0]} alt="" iconSize={20} style={{ width: '72px', height: '72px', borderRadius: 'var(--radius-md)', objectFit: 'cover' }} />}
                 <div>
-                  <h2 style={{ fontSize: '1rem', fontWeight: 700, lineHeight: 1.3 }}>{kos.name}</h2>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Kamar {room.roomNumber} ({room.type}) · Lt. {room.floor}</p>
-                  {kos.nearestCampus && kos.nearestCampusMeters !== null && <p style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600, marginTop: '0.2rem' }}><Footprints size={12} /> {kos.nearestCampusMeters}m ke {kos.nearestCampus.shortName}</p>}
+                  <h2 style={{ fontSize: 'var(--step-0)', fontWeight: 700, lineHeight: 1.3 }}>{kos.name}</h2>
+                  <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Kamar {room.roomNumber} ({room.type}) · Lt. {room.floor}</p>
+                  {kos.nearestCampus && kos.nearestCampusMeters !== null && <p style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: 'var(--step--2)', color: 'var(--primary)', fontWeight: 600, marginTop: '0.2rem' }}><Footprints size={12} /> {kos.nearestCampusMeters}m ke {kos.nearestCampus.shortName}</p>}
                 </div>
               </div>
 
               {breakdown && (
                 <div>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.75rem' }}>Perkiraan pembayaran setelah disetujui</span>
-                  <div style={{ fontSize: '0.875rem' }}>
+                  <span style={{ fontSize: 'var(--step--1)', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.75rem' }}>Perkiraan pembayaran setelah disetujui</span>
+                  <div style={{ fontSize: 'var(--step--1)' }}>
                     <Row label="Sewa bulan pertama" value={formatRupiah(breakdown.rent)} />
                     {breakdown.discount > 0 && <Row tone="primary" label="Diskon mahasiswa" value={`- ${formatRupiah(breakdown.discount)}`} />}
                     <Row label="Biaya layanan KoBo" value={formatRupiah(breakdown.applicationFee)} />
@@ -187,7 +193,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
               )}
               {create.isError && <Notice tone="error">{messageForError(create.error)}{isStudentGateError(create.error) && <> {' '}<Link to="/profile" style={{ color: 'var(--primary)', fontWeight: 700 }}>Buka Profil</Link></>}</Notice>}
               <Button type="submit" variant="primary" size="lg" fullWidth isLoading={create.isPending} disabled={missingProfile} icon={<Send size={16} />}>{me ? 'Kirim Pengajuan' : 'Masuk untuk Mengajukan'}</Button>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: 'var(--step--2)', color: 'var(--text-muted)' }}>
                 <ShieldCheck size={15} color="var(--primary)" style={{ flexShrink: 0 }} />
                 <span>Pengajuan tidak menahan kamar dan tidak memindahkan uang.</span>
               </div>

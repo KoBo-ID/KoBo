@@ -15,9 +15,11 @@ import { SafeImage } from '../components/ui/SafeImage';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useSession } from '../lib/session';
 import { useTRPC } from '../lib/trpc';
+import { useMyWaitlist } from '../lib/waitlist';
 import { messageForError } from '../lib/errors';
 import { formatVisitDate, VISIT_SLOT_LABEL } from '../lib/visits';
 import { formatRupiah } from '../lib/format';
+import { todayWIB } from '@kobo/shared/domain';
 
 type TabId = 'rentals' | 'applications' | 'visits';
 const PAGE_TITLE: Record<TabId, string> = { visits: 'Jadwal Survey', applications: 'Pengajuan Sewa', rentals: 'Kamar yang Disewa' };
@@ -34,6 +36,9 @@ const ListSkeleton: React.FC<{ label: string; rows?: number }> = ({ label, rows 
 const formatDate = (d: string) =>
   new Date(`${d}T00:00:00+07:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
+/** True once the lease end day (a WIB calendar day) has arrived. */
+const leaseOver = (d: string) => d <= todayWIB(new Date());
+
 type Tone = 'paid' | 'due' | 'overdue' | 'muted' | 'primary';
 
 const TENANCY_BADGE: Record<string, { label: string; tone: Tone }> = {
@@ -42,6 +47,13 @@ const TENANCY_BADGE: Record<string, { label: string; tone: Tone }> = {
   due: { label: 'Sewa Aktif · Segera Jatuh Tempo', tone: 'due' },
   overdue: { label: 'Menunggak', tone: 'overdue' },
   vacant: { label: 'Selesai', tone: 'muted' },
+};
+
+/** A tenancy that is over, by why (A-011). A normal move-out keeps the plain "Selesai". */
+const END_BADGE: Record<NonNullable<MyTenancy['endCause']>, { label: string; tone: Tone }> = {
+  HOLD_LAPSED: { label: 'Masa Tahan Berakhir', tone: 'muted' },
+  CANCELLED_BY_OWNER: { label: 'Dibatalkan Pemilik', tone: 'muted' },
+  MOVED_OUT: { label: 'Selesai', tone: 'muted' },
 };
 
 const APPLICATION_BADGE = {
@@ -182,7 +194,7 @@ const MonthTimeline: React.FC<{ t: MyTenancy; nextId?: string }> = ({ t, nextId 
   <div className="mk-timeline" aria-hidden="true">
     <div className="mk-timeline__bars">
       {t.invoices.map((inv) => {
-        const state = inv.status === 'PAID' ? 'paid' : t.status === 'ENDED' ? 'ended' : inv.id === nextId ? 'due' : 'later';
+        const state = inv.status === 'PAID' ? 'paid' : t.status === 'ENDED' || t.endCause !== null ? 'ended' : inv.id === nextId ? 'due' : 'later';
         return <span key={inv.id} className={`mk-timeline__bar${state === 'later' ? '' : ` mk-timeline__bar--${state}`}`} />;
       })}
     </div>
@@ -208,6 +220,7 @@ export const MyKos: React.FC = () => {
   const mine = useQuery({ ...trpc.booking.mine.queryOptions(), enabled: !!me });
   const applicationQuery = useQuery({ ...trpc.application.mine.queryOptions(), enabled: !!me });
   const visitsQuery = useQuery({ ...trpc.visit.mine.queryOptions(), enabled: !!me });
+  const waitlistQuery = useMyWaitlist(); // same query WaitlistSection reads, so no extra request
   const visits = me ? (visitsQuery.data ?? []) : [];
   const scheduledCount = visits.filter((v) => v.status === 'SCHEDULED').length;
   // A count is shown only once its query has answered; while the session or the query is loading, or after a failure, it reads "–", never "(0)".
@@ -222,8 +235,10 @@ export const MyKos: React.FC = () => {
   );
   // Lapsed holds and abandoned (never paid) tenancies are noise, not rentals.
   // A lapsed hold that took a late payment stays visible, so the tenant can see the refund instead of silence.
-  const refunding = (t: MyTenancy) => t.invoices.some((i) => i.latestPayment?.status.startsWith('REFUND_'));
-  const rentals = (me ? (mine.data ?? []) : []).filter(
+  // 'REFUND' (no underscore) so a finished REFUNDED stays visible after reload, not only REFUND_PENDING / REFUND_FAILED.
+  const refunding = (t: MyTenancy) => t.invoices.some((i) => i.latestPayment?.status.startsWith('REFUND'));
+  const allTenancies = me ? (mine.data ?? []) : [];
+  const rentals = allTenancies.filter(
     (t) => t.status === 'ACTIVE' || (t.status === 'PENDING' && t.derivedStatus === 'booking') || t.invoices.some((i) => i.status === 'PAID') || refunding(t),
   );
   const liveCardFor = (a: { kos: { id: string }; room: { roomNumber: string } }) =>
@@ -233,15 +248,19 @@ export const MyKos: React.FC = () => {
   // later ended, or never paid within the 24 hours (the room is released and the tenancy is no longer live).
   const approvedNote = (a: { kos: { id: string }; room: { roomNumber: string } }) => {
     if (liveCardFor(a)) return 'Pengajuan diterima. Bayar tagihan pertama di tab Kamar yang Disewa sebelum batas waktunya.';
-    const ended = rentals.some((t) => t.kos.id === a.kos.id && t.room.roomNumber === a.room.roomNumber && t.status === 'ENDED');
-    return ended
-      ? 'Pengajuan diterima dan sewanya sudah berakhir.'
-      : 'Pengajuan diterima, tetapi tagihan pertama tidak dibayar dalam 24 jam, jadi kamar dilepas. Ajukan lagi bila kamar masih tersedia.';
+    // Every tenancy counts here, not only the visible rentals: an unpaid booking the owner cancelled is hidden from the rentals tab.
+    const over = allTenancies.filter((t) => t.kos.id === a.kos.id && t.room.roomNumber === a.room.roomNumber && t.endCause !== null);
+    const cause = over.find((t) => t.endCause === 'MOVED_OUT')?.endCause ?? over.find((t) => t.endCause === 'CANCELLED_BY_OWNER')?.endCause ?? null;
+    if (cause === 'MOVED_OUT') return 'Pengajuan diterima dan sewanya sudah berakhir.';
+    if (cause === 'CANCELLED_BY_OWNER') return 'Pengajuan diterima, tetapi pemilik membatalkan pemesanan sebelum tagihan pertama dibayar.';
+    return 'Pengajuan diterima, tetapi tagihan pertama tidak dibayar dalam 24 jam, jadi kamar dilepas. Ajukan lagi bila kamar masih tersedia.';
   };
   // Until the user picks a tab, land on the furthest stage that has content (the tabs follow the rental path).
-  const defaultTab: TabId = rentals.length > 0 ? 'rentals' : applications.length > 0 ? 'applications' : 'visits';
+  // The waitlist lives on the rentals tab, so a student with a queue entry lands there; so does a failed booking.mine, whose error is shown there.
+  const hasWaitlist = me ? (waitlistQuery.data ?? []).length > 0 : false;
+  const defaultTab: TabId = rentals.length > 0 || hasWaitlist || mine.isError ? 'rentals' : applications.length > 0 ? 'applications' : 'visits';
   // While any query is still answering, no tab is chosen yet, so the page does not flip from one tab to another.
-  const settling = !chosenTab && !!me && (mine.isPending || applicationQuery.isPending || visitsQuery.isPending);
+  const settling = !chosenTab && !!me && (mine.isPending || applicationQuery.isPending || visitsQuery.isPending || waitlistQuery.isPending);
   const activeTab: TabId | null = chosenTab ?? (settling ? null : defaultTab);
 
   // A return link that matches no invoice, or an invoice that is already settled, must not linger in the URL.
@@ -256,6 +275,7 @@ export const MyKos: React.FC = () => {
       return; // still pending: InvoicePaymentActions waits and clears it
     }
     setSearchParams({}, { replace: true });
+    // Runs when the return flag or the first answer arrives; addToast / setSearchParams change identity and would repeat the toast.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [returnedPayment, mine.isSuccess]);
 
@@ -299,8 +319,11 @@ export const MyKos: React.FC = () => {
               {me && <WaitlistSection />}
 
               {rentals.map((t) => {
-                const badge = TENANCY_BADGE[t.derivedStatus] ?? TENANCY_BADGE.paid;
-                const nextInvoice = t.invoices.find((i) => i.status === 'UNPAID');
+                const badge = (t.endCause && END_BADGE[t.endCause]) || TENANCY_BADGE[t.derivedStatus] || TENANCY_BADGE.paid;
+                // A tenancy that is over has no "next" bill, whatever its unpaid invoices say.
+                const over = t.endCause !== null;
+                const nextInvoice = over ? undefined : t.invoices.find((i) => i.status === 'UNPAID');
+                const unbilled = t.endCause === 'HOLD_LAPSED' ? 'Tidak ditagih, masa tahan berakhir' : t.endCause === 'CANCELLED_BY_OWNER' ? 'Tidak ditagih, dibatalkan pemilik' : 'Tidak ditagih, sewa berakhir';
                 const firstReceipt = t.invoices.find((i) => i.receiptNumber !== null);
                 return (
                   <div key={t.id} data-testid="tenancy-card" data-status={t.status} className="mk-pass">
@@ -325,9 +348,16 @@ export const MyKos: React.FC = () => {
                     <div className="mk-facts">
                       <Fact label="Mulai Sewa" value={formatDate(t.startDate)} />
                       <Fact label="Durasi Sewa" value={`${t.durationMonths} Bulan`} />
-                      <Fact label={t.status === 'PENDING' ? 'Tagihan Pertama' : 'Jatuh Tempo Berikutnya'} value={nextInvoice ? formatDate(nextInvoice.dueDate) : 'Lunas'} strong />
+                      <Fact label={t.status === 'PENDING' ? 'Tagihan Pertama' : 'Jatuh Tempo Berikutnya'} value={nextInvoice ? formatDate(nextInvoice.dueDate) : over ? 'Tidak ada' : 'Lunas'} strong />
                       <Fact label="Pemilik Kos" value={t.kos.ownerName} />
                     </div>
+                    {t.status === 'ACTIVE' && t.leaseEndDate && (
+                      <p data-testid="lease-end" className={`mk-row__note${leaseOver(t.leaseEndDate) ? '' : ' mk-row__note--good'}`}>
+                        {leaseOver(t.leaseEndDate)
+                          ? 'Masa sewa sudah berakhir. Hubungi pemilik untuk memperpanjang atau mengakhiri sewa.'
+                          : `Sewa berakhir ${formatDate(t.leaseEndDate)}`}
+                      </p>
+                    )}
 
                     <MonthTimeline t={t} nextId={nextInvoice?.id} />
 
@@ -337,7 +367,7 @@ export const MyKos: React.FC = () => {
                           <span role="cell">Bulan {i + 1} · jatuh tempo {formatDate(inv.dueDate)}</span>
                           <span role="cell" className="invoice-row__meta">
                             <strong>{formatRupiah(inv.amount)}</strong>
-                            <span className={`mk-invoice-status${inv.status === 'PAID' ? ' mk-invoice-status--paid' : ''}`}>{inv.status === 'PAID' ? 'Lunas' : t.status === 'ENDED' ? 'Tidak ditagih, sewa berakhir' : 'Belum dibayar'}</span>
+                            <span className={`mk-invoice-status${inv.status === 'PAID' ? ' mk-invoice-status--paid' : ''}`}>{inv.status === 'PAID' ? 'Lunas' : over ? unbilled : 'Belum dibayar'}</span>
                             <InvoicePaymentActions
                               invoice={inv}
                               returnedPaymentId={returnedPayment && (inv.activePayment?.id === returnedPayment || inv.latestPayment?.id === returnedPayment) ? returnedPayment : undefined}
@@ -355,11 +385,15 @@ export const MyKos: React.FC = () => {
                       <div className="mk-pass__note">
                         <ShieldCheck size={16} />
                         <span>
-                          {t.status === 'ENDED'
-                            ? `Sewa berakhir${t.endedAt ? ` pada ${new Date(t.endedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}`
-                            : t.status === 'PENDING' && t.expiresAt
-                              ? `Kamar ditahan sampai ${new Date(t.expiresAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}`
-                              : 'Pembayaran tercatat di KoBo'}
+                          {t.endCause === 'HOLD_LAPSED'
+                            ? 'Masa tahan kamar sudah berakhir sebelum tagihan pertama lunas.'
+                            : t.endCause === 'CANCELLED_BY_OWNER'
+                              ? `Pemilik membatalkan pemesanan ini${t.endedAt ? ` pada ${new Date(t.endedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}.`
+                              : t.status === 'ENDED'
+                                ? `Sewa berakhir${t.endedAt ? ` pada ${new Date(t.endedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}`
+                                : t.status === 'PENDING' && t.expiresAt
+                                  ? `Kamar ditahan sampai ${new Date(t.expiresAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}`
+                                  : 'Pembayaran tercatat di KoBo'}
                         </span>
                       </div>
                       <div className="mk-pass__actions">
@@ -481,7 +515,7 @@ export const MyKos: React.FC = () => {
                         <span className="mk-row__icon"><Calendar size={22} /></span>
                         <div style={{ minWidth: 0 }}>
                           <div className="mk-row__title">
-                            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>{vis.kos.name}</h3>
+                            <h3 style={{ fontSize: 'var(--step-0)', fontWeight: 700 }}>{vis.kos.name}</h3>
                             <Badge tone={vis.status === 'SCHEDULED' ? 'primary' : 'muted'}>
                               {vis.status === 'SCHEDULED' ? 'Terjadwal' : vis.status === 'COMPLETED' ? 'Selesai' : 'Dibatalkan'}
                             </Badge>

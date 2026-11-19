@@ -4,7 +4,7 @@ import { Building2, CheckCircle2, MapPin, Search } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { haversineMeters, parseCoordinates } from '@kobo/shared/domain';
 import type { FacilityItem } from '@kobo/shared/facilities';
-import { MAX_ROOMS_PER_KOS } from '@kobo/shared/schemas';
+import { MAX_ROOMS_PER_KOS } from '@kobo/shared/limits';
 import type { OwnerKos } from '../../../../backend/src/trpc/router';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -290,7 +290,7 @@ export const KosFormModal: React.FC<KosFormModalProps> = ({ isOpen, onClose, exi
                   <li key={campus.id}>
                     <MapPin size={14} aria-hidden="true" />
                     <span>{campus.name}</span>
-                    <span className="okf-campuses__dist">{meters >= 1000 ? `${(meters / 1000).toFixed(1).replace('.', ',')} km` : `${meters} m`}{index === 0 && meters <= 10_000 ? ' (tertaut otomatis)' : ''}</span>
+                    <span className="okf-campuses__dist">{meters >= 1000 ? `${new Intl.NumberFormat('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(meters / 1000)} km` : `${meters} m`}{index === 0 && meters <= 10_000 ? ' (tertaut otomatis)' : ''}</span>
                   </li>
                 ))}
               </ul>
@@ -364,7 +364,7 @@ export const KosFormModal: React.FC<KosFormModalProps> = ({ isOpen, onClose, exi
               onChange={(e) => setDiscount(e.target.value)}
               error={errors.discount}
               placeholder="0 bila tidak ada"
-              info="Nominal ini dikurangkan dari tagihan pembayaran pertama, hanya untuk mahasiswa yang email kampusnya sudah terverifikasi. Harga sewa per bulan tidak berubah."
+              info="Nominal ini dikurangkan dari tagihan pembayaran pertama, hanya untuk mahasiswa yang sudah terverifikasi (email kampus, akun Microsoft/Google kampus, atau KTM). Harga sewa per bulan tidak berubah."
             />
           </div>
         </Section>

@@ -80,7 +80,7 @@ export const KosRulesModal: React.FC<KosRulesModalProps> = ({ kosId, kosName, on
   return (
     <Modal isOpen onClose={onClose} title="Tata Tertib" subtitle={kosName} maxWidth="lg">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+        <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>
           Kelompok aturan ini tampil di halaman kos. Calon penyewa membacanya sebelum mengajukan sewa.
         </p>
         {detail.isPending && <p role="status" style={{ color: 'var(--text-muted)' }}>Memuat tata tertib…</p>}
@@ -89,10 +89,10 @@ export const KosRulesModal: React.FC<KosRulesModalProps> = ({ kosId, kosName, on
 
         {list.map((g, i) => (
           <fieldset key={i} style={{ border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 0 }}>
-            <legend style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', padding: '0 0.35rem' }}>Kelompok {i + 1}</legend>
+            <legend style={{ fontSize: 'var(--step--1)', fontWeight: 700, color: 'var(--text-muted)', padding: '0 0.35rem' }}>Kelompok {i + 1}</legend>
             <Input label="Judul kelompok" id={`rules-title-${i}`} value={g.categoryTitle} maxLength={60} onChange={(e) => update(i, { categoryTitle: e.target.value })} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <label htmlFor={`rules-lines-${i}`} style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-main)' }}>Aturan (satu per baris)</label>
+              <label htmlFor={`rules-lines-${i}`} style={{ fontSize: 'var(--step--1)', fontWeight: 600, color: 'var(--text-main)' }}>Aturan (satu per baris)</label>
               <textarea
                 id={`rules-lines-${i}`}
                 value={g.linesText}
@@ -116,7 +116,7 @@ export const KosRulesModal: React.FC<KosRulesModalProps> = ({ kosId, kosName, on
             <Button variant="ghost" size="sm" icon={<Plus size={15} />} disabled={list.length >= MAX_GROUPS} onClick={() => setGroups((prev) => [...(prev ?? []), emptyGroup()])}>
               Tambah kelompok aturan
             </Button>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{list.length} dari {MAX_GROUPS} kelompok</span>
+            <span style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>{list.length} dari {MAX_GROUPS} kelompok</span>
           </div>
         )}
 

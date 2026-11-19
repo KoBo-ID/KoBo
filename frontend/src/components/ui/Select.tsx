@@ -39,7 +39,7 @@ export const Select: React.FC<SelectProps> = ({
           <label
             htmlFor={selectId}
             style={{
-              fontSize: '0.875rem',
+              fontSize: 'var(--step--1)',
               fontWeight: 600,
               color: 'var(--text-main)',
             }}
@@ -59,7 +59,7 @@ export const Select: React.FC<SelectProps> = ({
             width: '100%',
             appearance: 'none',
             padding: '0.625rem 2.25rem 0.625rem 0.875rem',
-            fontSize: '0.9375rem',
+            fontSize: 'var(--step-0)',
             fontFamily: 'var(--font-sans)',
             backgroundColor: 'var(--bg-surface)',
             color: 'var(--text-main)',
@@ -90,13 +90,13 @@ export const Select: React.FC<SelectProps> = ({
         </span>
       </div>
       {error && (
-        <span id={noteId} style={{ fontSize: '0.8rem', color: 'var(--status-overdue-text)', fontWeight: 500 }}>
+        <span id={noteId} style={{ fontSize: 'var(--step--1)', color: 'var(--status-overdue-text)', fontWeight: 500 }}>
           <span className="sr-only">Error: </span>
           {error}
         </span>
       )}
       {!error && helperText && (
-        <span id={noteId} style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{helperText}</span>
+        <span id={noteId} style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>{helperText}</span>
       )}
     </div>
   );

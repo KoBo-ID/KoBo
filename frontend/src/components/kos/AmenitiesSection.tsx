@@ -70,7 +70,7 @@ export const AmenitiesSection: React.FC<AmenitiesSectionProps> = ({ facilities, 
   return (
     <section className="kos-amenities detail-card" aria-labelledby={`${headingId}-all`}>
       <div className="section-head">
-        <h3 id={`${headingId}-all`} className="section-title">Fasilitas</h3>
+        <h2 id={`${headingId}-all`} className="section-title">Fasilitas</h2>
       </div>
 
       {facts.length > 0 && (
@@ -86,7 +86,7 @@ export const AmenitiesSection: React.FC<AmenitiesSectionProps> = ({ facilities, 
 
       <div className="kos-amenities__scopes">
         <section className="kos-amenities__scope" aria-labelledby={`${headingId}-room`}>
-          <h4 id={`${headingId}-room`}>Kamar</h4>
+          <h3 id={`${headingId}-room`}>Kamar</h3>
           {room.length === 0 ? (
             <p className="kos-amenities__empty">Pemilik belum mengisi fasilitas kamar.</p>
           ) : (
@@ -97,13 +97,13 @@ export const AmenitiesSection: React.FC<AmenitiesSectionProps> = ({ facilities, 
         </section>
 
         <section className="kos-amenities__scope" aria-labelledby={`${headingId}-building`}>
-          <h4 id={`${headingId}-building`}>Gedung</h4>
+          <h3 id={`${headingId}-building`}>Gedung</h3>
           {groups.length === 0 ? (
             <p className="kos-amenities__empty">Pemilik belum mengisi fasilitas gedung.</p>
           ) : (
             groups.map((g) => (
               <div key={g.id} className="kos-amenities__group">
-                <h5>{g.label}</h5>
+                <h4>{g.label}</h4>
                 <ul className="kos-amenities__list">
                   {g.items.map((item) => <Item key={item.label} item={item} />)}
                 </ul>

@@ -109,7 +109,8 @@ export const Badge: React.FC<BadgeProps> = ({
       className={`pill-badge ${className}`}
       style={{
         ...getBadgeStyle(),
-        fontSize: isSmall ? '0.7rem' : '0.75rem',
+        fontSize: 'var(--step--2)',
+        whiteSpace: 'nowrap',
         padding: isSmall ? '0.15rem 0.5rem' : '0.25rem 0.55rem',
         borderRadius: 'var(--radius-badge)',
         display: 'inline-flex',

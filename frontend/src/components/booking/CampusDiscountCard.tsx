@@ -38,8 +38,8 @@ export const CampusDiscountCard: React.FC<CampusDiscountCardProps> = ({ studentD
           <GraduationCap size={22} />
         </div>
         <div style={{ minWidth: 0 }}>
-          <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>Potongan mahasiswa dari pemilik</h4>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+          <h4 style={{ fontSize: 'var(--step-0)', fontWeight: 700, color: 'var(--text-main)' }}>Potongan mahasiswa dari pemilik</h4>
+          <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
             {verified
               ? (studentDiscountAmount ? `Potongan ${formatRupiah(studentDiscountAmount)} berlaku otomatis pada pembayaran pertama.` : 'Berlaku untuk pembayaran pertama pada kos yang menyediakannya.')
               : (studentDiscountAmount ? `Verifikasi status mahasiswa untuk potongan ${formatRupiah(studentDiscountAmount)} di pembayaran pertama.` : 'Verifikasi status mahasiswa untuk klaim potongan dari pemilik.')}
@@ -47,7 +47,7 @@ export const CampusDiscountCard: React.FC<CampusDiscountCardProps> = ({ studentD
         </div>
       </div>
       {verified ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--primary)', fontSize: '0.785rem', fontWeight: 700, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--primary)', fontSize: 'var(--step--1)', fontWeight: 700, flexShrink: 0 }}>
           <CheckCircle2 size={16} />
           <span>Aktif</span>
         </div>

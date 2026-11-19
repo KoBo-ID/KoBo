@@ -151,14 +151,14 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ minWidth: 0 }}>
-            <h1 className="page-title" style={{ fontSize: 'clamp(1.75rem, 1.3rem + 1.4vw, 2.25rem)' }}>{kos.name}</h1>
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem 1rem', marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            <h1 className="page-title" style={{ fontSize: 'var(--step-3)' }}>{kos.name}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem 1rem', marginTop: '0.5rem', fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
                 <Star size={16} fill="var(--accent)" color="var(--accent)" />
                 <span>{detail.rating ?? '-'}</span>
                 <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({kos.reviewCount} ulasan)</span>
               </div>
-              <span aria-hidden="true">·</span>
+              <span aria-hidden="true" className="detail-meta-sep">·</span>
               <span>{kos.address}</span>
             </div>
           </div>
@@ -221,17 +221,15 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
                   style={{ border: '2px solid var(--primary-light)' }}
                 />
                 <div style={{ minWidth: 0 }}>
-                  <span style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Pemilik kos</span>
-                  <h4 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0.1rem 0 0' }}>{kos.owner.name}</h4>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.15rem 0 0' }}>Bergabung sejak {kos.owner.memberSince}</p>
+                  <span style={{ display: 'block', fontSize: 'var(--step--2)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Pemilik kos</span>
+                  <h2 style={{ fontSize: 'var(--step-1)', fontWeight: 700, margin: '0.1rem 0 0' }}>{kos.owner.name}</h2>
+                  <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', margin: '0.15rem 0 0' }}>Bergabung sejak {kos.owner.memberSince}</p>
                 </div>
               </div>
 
-              <Link to={`/owner/${kos.owner.id}`}>
-                <Button variant="outline" size="sm">
-                  Lihat Profil & Semua Kos ({kos.owner.totalProperties} Properti)
-                </Button>
-              </Link>
+              <Button variant="outline" size="sm" onClick={() => navigate(`/owner/${kos.owner.id}`)}>
+                Lihat Profil & Semua Kos ({kos.owner.totalProperties} Properti)
+              </Button>
             </div>
           </div>
 

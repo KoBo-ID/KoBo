@@ -90,21 +90,21 @@ export const ReviewFormModal: React.FC<ReviewFormModalProps> = ({ onClose, tenan
     <Modal isOpen onClose={onClose} title={existing ? 'Ubah Ulasan Anda' : 'Tulis Ulasan'} subtitle={kosName} maxWidth="md">
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div>
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>Rating keseluruhan</span>
+          <span style={{ fontSize: 'var(--step--1)', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>Rating keseluruhan</span>
           <Stars label="Rating keseluruhan" value={rating} onChange={setRating} />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.85rem' }}>
           {SUBS.map(({ key, label }) => (
             <div key={key}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.3rem' }}>{label} (opsional)</span>
+              <span style={{ fontSize: 'var(--step--1)', fontWeight: 600, display: 'block', marginBottom: '0.3rem' }}>{label} (opsional)</span>
               <Stars label={label} value={subs[key]} onChange={(n) => setSubs((s) => ({ ...s, [key]: n }))} />
             </div>
           ))}
         </div>
 
         <div>
-          <label htmlFor="review-comment" style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>
+          <label htmlFor="review-comment" style={{ fontSize: 'var(--step--1)', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>
             Ceritakan pengalaman tinggal Anda
           </label>
           <textarea
@@ -121,7 +121,7 @@ export const ReviewFormModal: React.FC<ReviewFormModalProps> = ({ onClose, tenan
               borderRadius: 'var(--radius-md)',
               border: '1.5px solid var(--border-strong)',
               fontFamily: 'var(--font-sans)',
-              fontSize: '0.9rem',
+              fontSize: 'var(--step--1)',
               backgroundColor: 'var(--bg-surface)',
               color: 'var(--text-main)',
             }}

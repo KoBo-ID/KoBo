@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { addDays, todayWIB } from '@kobo/shared/domain';
@@ -35,9 +35,14 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
       const fmt = (o: Intl.DateTimeFormatOptions) => d.toLocaleDateString('id-ID', { ...o, timeZone: 'Asia/Jakarta' });
       return { isoStr, dayName: fmt({ weekday: 'short' }), dayNum: fmt({ day: 'numeric' }), monthName: fmt({ month: 'short' }) };
     });
-  }, []);
+    // Recomputed each time the modal opens: a tab left open past WIB midnight would otherwise offer a day the server refuses.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const [selectedDate, setSelectedDate] = useState(availableDays[0].isoStr);
+  useEffect(() => {
+    if (isOpen) setSelectedDate(availableDays[0].isoStr);
+  }, [isOpen, availableDays]);
   const [timeSlot, setTimeSlot] = useState<'PAGI' | 'SIANG'>('SIANG');
   // undefined = untouched: show the profile value.
   const [phoneInput, setPhoneInput] = useState<string | undefined>(undefined);
@@ -95,7 +100,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
             display: 'flex',
             alignItems: 'center',
             gap: '0.75rem',
-            fontSize: '0.85rem',
+            fontSize: 'var(--step--1)',
             color: 'var(--primary)',
             fontWeight: 600,
           }}
@@ -108,7 +113,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
 
         {/* 1. Pilih Tanggal Kunjungan */}
         <div>
-          <label style={{ fontSize: '0.875rem', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>
+          <label style={{ fontSize: 'var(--step--1)', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>
             1. Pilih Tanggal Kunjungan:
           </label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem' }}>
@@ -133,13 +138,13 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
                     transition: 'background-color var(--duration-fast) var(--ease-out-spring), border-color var(--duration-fast) var(--ease-out-spring), color var(--duration-fast) var(--ease-out-spring), box-shadow var(--duration-fast) var(--ease-out-spring), transform var(--duration-fast) var(--ease-out-spring), opacity var(--duration-fast) var(--ease-out-spring)',
                   }}
                 >
-                  <span style={{ fontSize: '0.72rem', opacity: isSelected ? 0.9 : 0.6 }}>
+                  <span style={{ fontSize: 'var(--step--2)', opacity: isSelected ? 0.9 : 0.6 }}>
                     {day.dayName}
                   </span>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0.1rem 0' }}>
+                  <span style={{ fontSize: 'var(--step-1)', fontWeight: 800, margin: '0.1rem 0' }}>
                     {day.dayNum}
                   </span>
-                  <span style={{ fontSize: '0.72rem', opacity: isSelected ? 0.9 : 0.6 }}>
+                  <span style={{ fontSize: 'var(--step--2)', opacity: isSelected ? 0.9 : 0.6 }}>
                     {day.monthName}
                   </span>
                 </button>
@@ -150,7 +155,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
 
         {/* 2. Pilih Sesi Waktu */}
         <div>
-          <label style={{ fontSize: '0.875rem', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>
+          <label style={{ fontSize: 'var(--step--1)', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>
             2. Pilih Sesi Waktu Kunjungan:
           </label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -172,8 +177,8 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
             >
               <Clock size={18} />
               <div>
-                <span style={{ fontSize: '0.9rem', fontWeight: 700, display: 'block' }}>Sesi Pagi</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>09.00 - 12.00 WIB</span>
+                <span style={{ fontSize: 'var(--step--1)', fontWeight: 700, display: 'block' }}>Sesi Pagi</span>
+                <span style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)' }}>09.00 - 12.00 WIB</span>
               </div>
             </button>
 
@@ -195,8 +200,8 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
             >
               <Clock size={18} />
               <div>
-                <span style={{ fontSize: '0.9rem', fontWeight: 700, display: 'block' }}>Sesi Siang/Sore</span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>13.00 - 17.00 WIB</span>
+                <span style={{ fontSize: 'var(--step--1)', fontWeight: 700, display: 'block' }}>Sesi Siang/Sore</span>
+                <span style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)' }}>13.00 - 17.00 WIB</span>
               </div>
             </button>
           </div>
@@ -214,25 +219,26 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
             required
           />
         ) : (
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Masuk dulu agar pemilik tahu siapa yang akan berkunjung.</p>
+          <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Masuk dulu agar pemilik tahu siapa yang akan berkunjung.</p>
         )}
 
         <div>
-          <label style={{ fontSize: '0.875rem', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>
+          <label htmlFor="visit-notes" style={{ fontSize: 'var(--step--1)', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>
             Catatan Khusus ke Pengelola Kos (Opsional):
           </label>
           <textarea
+            id="visit-notes"
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Contoh: Mau cek colokan meja belajar atau bawa motor..."
+            placeholder="Contoh: Mau cek colokan meja belajar atau bawa motor…"
             style={{
               width: '100%',
               padding: '0.625rem 0.875rem',
               borderRadius: 'var(--radius-md)',
               border: '1.5px solid var(--border-strong)',
               fontFamily: 'var(--font-sans)',
-              fontSize: '0.875rem',
+              fontSize: 'var(--step--1)',
               backgroundColor: 'var(--bg-surface)',
             }}
           />

@@ -17,6 +17,13 @@ const RECONCILE_COOLDOWN_S = 30;
 
 const TERMINAL = new Set(['PAID', 'EXPIRED', 'FAILED', 'REFUND_PENDING', 'REFUNDED', 'REFUND_FAILED']);
 
+/** Why a payment is being refunded (PaymentRefund.reason); an unknown or missing reason falls back to a neutral line. */
+const REFUND_REASON: Record<string, string> = {
+  HOLD_EXPIRED: 'Pembayaran diterima setelah masa tahan berakhir.',
+  INVOICE_ALREADY_PAID: 'Tagihan ini sudah lunas, jadi pembayaran kedua dikembalikan.',
+  TENANCY_ENDED: 'Sewa sudah berakhir sebelum pembayaran ini diterima.',
+};
+
 /**
  * Payment actions for one invoice (first or any later month). The payment state always comes from the server:
  * the `?result=success` return flag only starts a short wait and is never trusted as proof of payment.
@@ -68,6 +75,7 @@ export const InvoicePaymentActions: React.FC<{ invoice: Invoice; returnedPayment
     if (!settled) return;
     refresh();
     onResolved?.();
+    // Runs once per settle transition; refresh and onResolved are new closures every render and must not retrigger it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settled]);
 
@@ -106,8 +114,8 @@ export const InvoicePaymentActions: React.FC<{ invoice: Invoice; returnedPayment
         qc.setQueryData(trpc.payment.status.queryKey({ paymentId: res.id }), res);
         setCooldown(RECONCILE_COOLDOWN_S);
       },
-      onError: () => {
-        setError('Status pembayaran belum dapat diperiksa. Coba lagi nanti.');
+      onError: (e) => {
+        setError(messageForError(e));
         setCooldown(RECONCILE_COOLDOWN_S);
       },
     }),
@@ -132,20 +140,24 @@ export const InvoicePaymentActions: React.FC<{ invoice: Invoice; returnedPayment
 
   const active = invoice.activePayment;
   const latest = invoice.latestPayment;
-  const refundState = (current ?? latest)?.status;
+  const lastAttempt = current ?? latest;
+  const refundState = lastAttempt?.status;
   // A paid invoice has nothing to pay, but a second (late) payment on it is being refunded: say so.
-  if (invoice.status === 'PAID' && !refundState?.startsWith('REFUND_')) return null;
+  if (invoice.status === 'PAID' && !refundState?.startsWith('REFUND')) return null;
   const awaiting = waitingFor && !settled ? waitingFor : null;
-  const lapsed = latest && (latest.status === 'EXPIRED' || latest.status === 'FAILED');
+  // The server reads a PENDING attempt past its session expiry as EXPIRED, so this also covers a stale one.
+  const lapsed = refundState === 'EXPIRED' || refundState === 'FAILED';
+  const why = REFUND_REASON[lastAttempt?.refundReason ?? ''];
 
   let message: string | null = null;
-  if (refundState === 'REFUND_PENDING') message = 'Pembayaran diterima setelah masa tahan berakhir. Dana sedang dikembalikan.';
-  else if (refundState === 'REFUNDED') message = 'Dana telah dikembalikan.';
-  else if (refundState === 'REFUND_FAILED') message = 'Pengembalian dana tertunda. Hubungi KoBo.';
+  if (refundState === 'REFUND_PENDING') message = `${why ?? 'Pembayaran Anda sedang dikembalikan.'} Dana sedang dikembalikan.`;
+  else if (refundState === 'REFUNDED') message = `${why ?? 'Pembayaran Anda dikembalikan.'} Dana telah dikembalikan.`;
+  else if (refundState === 'REFUND_FAILED') message = `${why ?? 'Pembayaran Anda perlu dikembalikan.'} Pengembalian dana tertunda. Hubungi KoBo.`;
   else if (status.isError) message = 'Status pembayaran belum dapat dimuat. Periksa status untuk mencoba lagi.';
   else if (awaiting && polling && Date.now() - startedAt < POLL_WINDOW_MS) message = 'Menunggu konfirmasi pembayaran…';
   else if (awaiting) message = 'Pembayaran belum terkonfirmasi. Periksa status untuk memastikan.';
   else if (lapsed && invoice.canPay) message = 'Sesi pembayaran sebelumnya berakhir. Silakan mulai pembayaran baru.';
+  else if (lapsed && invoice.status !== 'PAID') message = 'Sesi pembayaran sebelumnya berakhir.';
 
   const demoAttempt = isDemo && active?.provider === 'MOCK' && active.status === 'PENDING' ? active : null;
   const resumeUrl = active?.provider === 'XENDIT' && active.status === 'PENDING' ? active.checkoutUrl : null;

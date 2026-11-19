@@ -40,7 +40,7 @@ export const Input: React.FC<InputProps> = ({
           <label
             htmlFor={inputId}
             style={{
-              fontSize: '0.875rem',
+              fontSize: 'var(--step--1)',
               fontWeight: 600,
               color: 'var(--text-main)',
             }}
@@ -82,7 +82,7 @@ export const Input: React.FC<InputProps> = ({
             padding: '0.625rem 0.875rem',
             paddingLeft: iconLeft ? '2.5rem' : '0.875rem',
             paddingRight: iconRight || isPassword ? '2.75rem' : '0.875rem',
-            fontSize: '0.9375rem',
+            fontSize: 'var(--step-0)',
             fontFamily: 'var(--font-sans)',
             backgroundColor: 'var(--bg-surface)',
             color: 'var(--text-main)',
@@ -120,13 +120,13 @@ export const Input: React.FC<InputProps> = ({
         )}
       </div>
       {error && (
-        <span id={noteId} style={{ fontSize: '0.8rem', color: 'var(--status-overdue-text)', fontWeight: 500 }}>
+        <span id={noteId} style={{ fontSize: 'var(--step--1)', color: 'var(--status-overdue-text)', fontWeight: 500 }}>
           <span className="sr-only">Error: </span>
           {error}
         </span>
       )}
       {!error && helperText && (
-        <span id={noteId} style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <span id={noteId} style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>
           {helperText}
         </span>
       )}

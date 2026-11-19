@@ -77,8 +77,8 @@ export const WaitlistPanel: React.FC<{ kosId: string; kosName: string }> = ({ ko
                       <span className="kobo-table__strong">{e.user.name}</span>
                       {e.user.campus ? <span className="kobo-table__muted">, {e.user.campus}</span> : null}
                       {e.user.campusVerified && (
-                        <span title="Email kampus terverifikasi" style={{ display: 'inline-flex', verticalAlign: 'middle', marginLeft: '0.3rem', color: 'var(--primary)' }}>
-                          <ShieldCheck size={14} aria-label="Email kampus terverifikasi" />
+                        <span title="Mahasiswa terverifikasi" style={{ display: 'inline-flex', verticalAlign: 'middle', marginLeft: '0.3rem', color: 'var(--primary)' }}>
+                          <ShieldCheck size={14} aria-label="Mahasiswa terverifikasi" />
                         </span>
                       )}
                     </td>
