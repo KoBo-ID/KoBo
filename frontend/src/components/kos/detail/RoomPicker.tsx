@@ -3,6 +3,8 @@ import { Check } from 'lucide-react';
 import { Room } from '../../../types';
 import { formatRupiah } from '../../../lib/format';
 
+const SHARE_LABEL: Record<number, string> = { 2: 'Bisa berdua', 3: 'Bisa bertiga', 4: 'Bisa berempat' };
+
 interface RoomPickerProps {
   rooms: Room[];
   selectedRoom: Room;
@@ -67,6 +69,22 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
                   <span>Ukuran: {shown.size}</span>
                   <span>Kasur: {shown.bedType}</span>
                 </span>
+                {(shown.maxOccupants ?? 1) >= 2 && (
+                  <span
+                    style={{
+                      alignSelf: 'flex-start',
+                      width: 'fit-content',
+                      padding: '0.1rem 0.5rem',
+                      borderRadius: 6,
+                      backgroundColor: 'var(--primary-light)',
+                      color: 'var(--primary)',
+                      fontSize: 'var(--step--2)',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {SHARE_LABEL[Math.min(shown.maxOccupants ?? 1, 4)]}
+                  </span>
+                )}
                 {reservedCount > 0 && (
                   <span className="room-picker__reserved">
                     Dipesan antrean{reservedCount > 1 ? ` (${reservedCount})` : ''}
@@ -75,8 +93,13 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
               </span>
               <span className="room-picker__footer">
                 <span className="room-picker__price">
-                  {formatRupiah(shown.priceMonthly)} <span>/bln</span>
+                  {formatRupiah(shown.priceMonthly)} <span>per kamar /bln</span>
                 </span>
+                {(shown.maxOccupants ?? 1) >= 2 && shown.pricePerPersonMonthly != null && (
+                  <span className="room-picker__reserved" style={{ color: 'var(--text-muted)' }}>
+                    {formatRupiah(shown.pricePerPersonMonthly)} per orang
+                  </span>
+                )}
                 {!isAvailable && onSelectFullType && (
                   <span className="room-picker__waitlist">Ikut daftar tunggu</span>
                 )}

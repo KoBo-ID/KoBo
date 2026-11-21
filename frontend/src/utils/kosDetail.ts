@@ -59,6 +59,8 @@ export function kosDetailToKos(d: KosDetail): Kos {
       size: r.size,
       bedType: r.bedType,
       priceMonthly: r.priceMonthly,
+      maxOccupants: r.maxOccupants,
+      pricePerPersonMonthly: r.pricePerPersonMonthly,
       status: r.status,
       reservedForWaitlist: r.reservedForWaitlist,
       offeredToMe: r.offeredToMe,

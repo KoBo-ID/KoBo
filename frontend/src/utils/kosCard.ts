@@ -1,10 +1,11 @@
+import { DISCOUNT_LABEL } from '@kobo/shared/domain';
 import type { KosCard } from '../../../backend/src/trpc/router';
 import { CAMPUSES } from '../data/campuses';
 import type { Kos } from '../types';
 
 const rb = (n: number) => `Rp ${Math.round(n / 1000)}rb`;
 
-export const studentDiscountLabel = (amount: number) => (amount > 0 ? `Diskon Mhs ${rb(amount)}` : '');
+export const studentDiscountLabel = (amount: number) => (amount > 0 ? `${DISCOUNT_LABEL} ${rb(amount)}` : '');
 
 /** Walking time at ~80 m/min, never below one minute. */
 export const walkMinutes = (meters: number | null) => Math.max(1, Math.round((meters ?? 0) / 80));

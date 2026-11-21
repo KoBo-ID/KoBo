@@ -11,6 +11,10 @@ export interface Room {
   size: string; // e.g. "3 x 4 m"
   bedType: string; // e.g. "Single Bed (120x200)"
   priceMonthly: number;
+  /** People the room fits, 1..4 (1 when unknown). */
+  maxOccupants?: number;
+  /** Price per person when shared; null/absent when priced per room. */
+  pricePerPersonMonthly?: number | null;
   status: RoomStatus;
   tenantName?: string;
   tenantPhone?: string;
