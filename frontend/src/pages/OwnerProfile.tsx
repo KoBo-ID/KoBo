@@ -9,12 +9,14 @@ import { Avatar } from '../components/ui/Avatar';
 import { Button } from '../components/ui/Button';
 import { ErrorState, NotFoundState } from '../components/ui/QueryState';
 import { useTRPC } from '../lib/trpc';
+import { useSession } from '../lib/session';
 import { isNotFound } from '../lib/queryErrors';
 import { kosCardToKos } from '../utils/kosCard';
 import { formatMonthYear } from '../utils/kosDetail';
 
 export const OwnerProfile: React.FC = () => {
   const { id = '' } = useParams<{ id: string }>();
+  const { me } = useSession();
   const trpc = useTRPC();
   const { data, isPending, error, refetch } = useQuery(trpc.owner.publicProfile.queryOptions({ id }));
   const ownerKosList = React.useMemo(() => (data?.kos ?? []).map(kosCardToKos), [data]);
@@ -53,12 +55,18 @@ export const OwnerProfile: React.FC = () => {
     );
   }
   const owner = data.owner;
+  const ownPending = me?.ownerProfileId === owner.id && me.ownerStatus !== 'DISETUJUI';
   // Only a plausible number gets a wa.me link; digits only, local 0 becomes 62.
   const digits = (owner.phone ?? '').replace(/\D/g, '');
   const waNumber = digits.length >= 8 ? digits.replace(/^0/, '62') : '';
 
   return (
     <div className="app-container" style={{ maxWidth: '1080px', paddingTop: '2.5rem', paddingBottom: '4rem' }}>
+      {ownPending && (
+        <p role="note" style={{ marginBottom: '1.25rem', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--primary-light)', border: '1px solid var(--primary)', fontSize: 'var(--step--1)', fontWeight: 600 }}>
+          Hanya Anda yang dapat melihat halaman ini sampai akun pemilik disetujui.
+        </p>
+      )}
       {/* Owner Profile Banner Card */}
       <div
         style={{

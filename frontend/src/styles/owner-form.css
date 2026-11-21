@@ -66,3 +66,47 @@
 /* Footer: stays in view while the long form scrolls inside the modal. */
 .okf-actions { position: sticky; bottom: -1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; margin: 0 -1.5rem -1.5rem; padding: 1rem 1.5rem; background: var(--bg-surface); border-top: 1px solid var(--border-subtle); }
 @media (width < 40rem) { .okf-actions { bottom: -1rem; margin: 0 -1rem -1rem; padding: 0.85rem 1rem; } }
+
+/* Owner sign-up data step: ownership type radios. */
+.owner-type { margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: var(--space-2xs, 0.5rem); min-width: 0; }
+.owner-type__legend { padding: 0; margin-bottom: 0.35rem; font-size: var(--step--1); font-weight: 600; color: var(--text-main); }
+.owner-type__opt { display: flex; gap: var(--space-xs); align-items: flex-start; padding: var(--space-xs) var(--space-s); border: 1.5px solid var(--border-strong); border-radius: 8px; background: var(--bg-surface); cursor: pointer; }
+.owner-type__opt.is-on { border-color: var(--primary); background: var(--primary-light); }
+.owner-type__opt:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+.owner-type__opt input { margin-top: 0.25rem; flex-shrink: 0; }
+.owner-type__label { display: block; font-size: var(--step-0); font-weight: 600; color: var(--text-main); }
+.owner-type__hint { display: block; font-size: var(--step--1); color: var(--text-muted); line-height: 1.45; }
+
+/* Owner documents step (OwnerDocsStep). */
+.odoc-stack { display: flex; flex-direction: column; gap: var(--space-s); min-width: 0; }
+.odoc-status { min-height: 8rem; display: flex; align-items: center; justify-content: center; font-size: var(--step--1); color: var(--text-muted); }
+.odoc-why { padding: var(--space-xs) var(--space-s); border-radius: 12px; background: var(--primary-light); font-size: var(--step--1); line-height: 1.5; color: var(--text-main); }
+.odoc-why p { margin: 0; }
+.odoc-why__title { margin: 0 0 0.25rem; font-size: var(--step-0); font-weight: 700; color: var(--primary); }
+.odoc-hint { margin: 0; font-size: var(--step--1); line-height: 1.5; color: var(--text-muted); }
+.odoc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-s); }
+.odoc-slot { display: flex; flex-direction: column; gap: var(--space-2xs, 0.5rem); padding: var(--space-s); border: 1px solid var(--border-subtle); border-radius: 12px; background: var(--bg-surface); min-width: 0; }
+.odoc-slot__head { display: flex; align-items: center; gap: 0.5rem; color: var(--primary); }
+.odoc-slot__title { font-size: var(--step-0); font-weight: 700; color: var(--text-main); }
+.odoc-slot__gloss { margin: 0; font-size: var(--step--1); color: var(--text-muted); line-height: 1.45; }
+.odoc-slot__kind, .odoc-slot__file { display: flex; flex-direction: column; gap: 0.35rem; }
+.odoc-slot__file input[type='file'] { max-width: 100%; font-size: var(--step--1); }
+.odoc-slot__state { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs, 0.5rem); font-size: var(--step--1); min-height: 1.25rem; }
+.odoc-slot__state progress { width: min(12rem, 100%); }
+.odoc-label { font-size: var(--step--1); font-weight: 600; color: var(--text-main); }
+.odoc-select { min-height: 40px; padding: 0 0.75rem; border: 1.5px solid var(--border-strong); border-radius: 8px; background: var(--bg-surface); color: var(--text-main); font: inherit; max-width: 100%; }
+.odoc-ok { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--primary); font-weight: 600; overflow-wrap: anywhere; }
+.odoc-err { color: var(--status-overdue-text); font-weight: 500; }
+.odoc-consent { display: flex; gap: 0.5rem; align-items: flex-start; font-size: var(--step--1); line-height: 1.5; }
+.odoc-consent input { margin-top: 0.2rem; flex-shrink: 0; }
+.odoc-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); justify-content: flex-end; align-items: center; }
+.odoc-contact { display: inline-flex; align-items: center; min-height: 40px; padding: 0 var(--space-s); border-radius: 8px; background: var(--primary); color: var(--text-inverse); font-weight: 600; text-decoration: none; }
+.odoc-contact:hover { filter: brightness(0.95); }
+.odoc-contact:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.odoc-closure { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-s); color: var(--primary); }
+.odoc-closure__text { margin: 0; font-size: var(--step-0); line-height: 1.5; color: var(--text-main); }
+.odoc-status-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; font-size: var(--step--1); }
+.odoc-status-list li { display: flex; justify-content: space-between; gap: var(--space-xs); align-items: center; }
+.odoc-badge { padding: 0.1rem 0.5rem; border-radius: 6px; font-weight: 600; white-space: nowrap; background: var(--bg-muted); color: var(--text-main); }
+.odoc-badge--approved { background: var(--status-paid-bg); color: var(--status-paid-text); }
+.odoc-badge--rejected { background: var(--status-overdue-bg); color: var(--status-overdue-text); }

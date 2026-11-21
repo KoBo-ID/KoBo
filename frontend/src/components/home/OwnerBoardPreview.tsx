@@ -18,6 +18,8 @@ const room = (
   size: '3x4 m',
   bedType: 'Single',
   priceMonthly,
+  maxOccupants: 1,
+  pricePerPersonMonthly: null,
   status,
   tenancyId: status === 'vacant' ? null : `demo-t-${roomNumber}`,
   tenant: null,

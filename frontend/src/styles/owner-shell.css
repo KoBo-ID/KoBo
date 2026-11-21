@@ -144,3 +144,17 @@
 .os-banner strong { color: var(--primary); }
 @media (width < 64rem) { .os-banner { padding: var(--space-xs) var(--space-s); } }
 
+
+/* Owner verification banner (BELUM_KIRIM / MENUNGGU / DITOLAK) and the inline reason next to disabled create buttons. */
+.os-banner--action { align-items: center; justify-content: space-between; }
+.os-banner--warn { background: var(--status-overdue-bg); border-bottom-color: var(--status-overdue-border); }
+.os-banner--warn strong { color: var(--status-overdue-text); }
+.os-banner__text { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; flex: 1 1 18rem; }
+.os-banner__btn { min-height: 40px; padding: 0 var(--space-s); border: 1.5px solid var(--primary); border-radius: 8px; background: var(--bg-surface); color: var(--primary); font: inherit; font-weight: 600; cursor: pointer; }
+.os-banner__btn:hover { background: var(--primary-light); }
+.os-banner__btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.os-gate { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; }
+.os-gate__reason { margin: 0; max-width: 24rem; font-size: var(--step--1); line-height: 1.45; color: var(--text-muted); text-align: right; }
+.os-gate__link { color: var(--primary); font: inherit; font-weight: 600; text-decoration: underline; background: none; border: 0; padding: 0; cursor: pointer; }
+.os-gate__link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media (width < 40rem) { .os-gate { align-items: flex-start; } .os-gate__reason { text-align: left; } }

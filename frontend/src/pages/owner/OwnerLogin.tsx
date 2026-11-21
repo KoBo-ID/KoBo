@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
@@ -7,9 +7,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { Notice } from '../../components/ui/Notice';
 import { useAuthActions, useSession } from '../../lib/session';
-import { BecomeOwnerModal } from '../../components/owner/BecomeOwnerModal';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 export const OwnerLogin: React.FC = () => {
@@ -17,7 +15,6 @@ export const OwnerLogin: React.FC = () => {
   const navigate = useNavigate();
   const { me, isLoading } = useSession();
   const { logout } = useAuthActions();
-  const [registering, setRegistering] = useState(false);
   const isDemo = !!me?.user.isDemo;
 
   // One CTA, three meanings: sign in, open the workspace, or self-register as an owner.
@@ -25,7 +22,7 @@ export const OwnerLogin: React.FC = () => {
   const onCta = () => {
     if (!me) navigate('/masuk?peran=pemilik&next=%2Fowner%2Flogin');
     else if (me.isOwner) navigate('/owner/dashboard');
-    else setRegistering(true);
+    else navigate('/masuk?peran=pemilik&langkah=3');
   };
 
   // The Demo Student cannot register as an owner: offer the way forward (sign out, then the owner side of the sign-in page).
@@ -106,7 +103,6 @@ export const OwnerLogin: React.FC = () => {
           )}
         </div>
       </div>
-      {registering && <BecomeOwnerModal onClose={() => setRegistering(false)} />}
     </div>
   );
 };

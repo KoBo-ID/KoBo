@@ -7,6 +7,7 @@ import type { BoardRoom, OwnerKos } from '../../../../backend/src/trpc/router';
 import { useAppStore } from '../../store/AppContext';
 import { useTRPC } from '../../lib/trpc';
 import { messageForError } from '../../lib/errors';
+import { useOwnerGate } from '../../lib/owner';
 import { formatRupiah, useOwnerWorkspace } from '../../lib/ownerWorkspace';
 import { KosFormModal } from '../../components/owner/KosFormModal';
 import { KosPhotosModal } from '../../components/owner/KosPhotosModal';
@@ -19,6 +20,7 @@ import { Popover } from '../../components/ui/Popover';
 import { OwnerPageHeader } from '../../components/owner/OwnerPageHeader';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import { SafeImage } from '../../components/ui/SafeImage';
 import { Link } from 'react-router-dom';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -33,6 +35,7 @@ export const KosManager: React.FC = () => {
   useDocumentTitle('Kelola properti');
   const { addToast } = useAppStore();
   const { selectedKos } = useOwnerWorkspace();
+  const gate = useOwnerGate();
   const trpc = useTRPC();
   const qc = useQueryClient();
   const deleteKosMutation = useMutation(trpc.owner.kos.delete.mutationOptions());
@@ -73,6 +76,19 @@ export const KosManager: React.FC = () => {
   const [priceMonthly, setPriceMonthly] = useState(1650000);
   const [size, setSize] = useState('3 x 4 m');
   const [bedType, setBedType] = useState('Single Bed 120x200');
+  const [maxOccupants, setMaxOccupants] = useState(1);
+  // Text so it can be empty ("per kamar").
+  const [perPerson, setPerPerson] = useState('');
+  const [perPersonTouched, setPerPersonTouched] = useState(false);
+
+  // Mirrors the server: a per-person price needs capacity >= 2 and must be at least Rp 1.
+  const perPersonValue = perPerson.trim() === '' ? null : Number(perPerson);
+  const perPersonError =
+    maxOccupants < 2 || perPersonValue === null
+      ? undefined
+      : !Number.isInteger(perPersonValue) || perPersonValue < 1
+        ? 'Harga per orang minimal Rp 1.'
+        : undefined;
 
   const openAddRoom = (kosId: string) => {
     setEditingRoom(null);
@@ -82,6 +98,9 @@ export const KosManager: React.FC = () => {
     setPriceMonthly(1650000);
     setSize('3 x 4 m');
     setBedType('Single Bed 120x200');
+    setMaxOccupants(1);
+    setPerPerson('');
+    setPerPersonTouched(false);
     setRoomModalKosId(kosId);
   };
   const openEditRoom = (kosId: string, room: BoardRoom) => {
@@ -92,13 +111,30 @@ export const KosManager: React.FC = () => {
     setPriceMonthly(room.priceMonthly);
     setSize(room.size);
     setBedType(room.bedType);
+    setMaxOccupants(room.maxOccupants);
+    setPerPerson(room.pricePerPersonMonthly != null ? String(room.pricePerPersonMonthly) : '');
+    setPerPersonTouched(false);
     setRoomModalKosId(kosId);
   };
 
   const handleSaveRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomModalKosId) return;
-    const fields = { roomNumber, floor: Number(floor), type: roomType, size, bedType, priceMonthly: Number(priceMonthly) };
+    if (perPersonError) {
+      setPerPersonTouched(true);
+      return;
+    }
+    const fields = {
+      roomNumber,
+      floor: Number(floor),
+      type: roomType,
+      size,
+      bedType,
+      priceMonthly: Number(priceMonthly),
+      maxOccupants,
+      // null clears the stored per-person price (price per kamar).
+      pricePerPersonMonthly: maxOccupants >= 2 ? perPersonValue : null,
+    };
     const ok = await attempt(
       () =>
         editingRoom
@@ -114,20 +150,41 @@ export const KosManager: React.FC = () => {
   };
 
   const openCreate = () => {
+    if (!gate.approved) {
+      gate.openDocs();
+      return;
+    }
     setEditingKos(null);
     setIsFormOpen(true);
   };
   const kos = selectedKos;
+  // Not DISETUJUI: the button stays focusable (aria-disabled), says why, and leads to the documents.
+  const createButton = (id: string) => (
+    <span className="os-gate">
+      <Button
+        variant="primary"
+        size="md"
+        onClick={openCreate}
+        icon={<Plus size={16} />}
+        aria-disabled={gate.approved ? undefined : 'true'}
+        aria-describedby={gate.approved ? undefined : `${id}-reason`}
+        style={{ minHeight: 40, opacity: gate.approved ? 1 : 0.6 }}
+      >
+        Tambah kos
+      </Button>
+      {!gate.approved && (
+        <span id={`${id}-reason`} className="os-gate__reason">
+          {gate.reason} <button type="button" className="os-gate__link" onClick={gate.openDocs}>Buka dokumen</button>
+        </span>
+      )}
+    </span>
+  );
 
   return (
     <div className="app-container owner-page owner-kos">
       <OwnerPageHeader
         title="Kelola properti"
-        actions={
-          <Button variant="primary" size="md" onClick={openCreate} icon={<Plus size={16} />} style={{ minHeight: 40 }}>
-            Tambah kos
-          </Button>
-        }
+        actions={createButton('kos-create-top')}
       />
 
       {!kos && (
@@ -139,9 +196,7 @@ export const KosManager: React.FC = () => {
             <li>Foto kos dan fasilitas utama</li>
             <li>Daftar kamar dengan tipe, ukuran, dan harga sewa bulanan</li>
           </ul>
-          <Button variant="primary" size="md" onClick={openCreate} icon={<Plus size={16} />} style={{ minHeight: 40 }}>
-            Tambah kos
-          </Button>
+          {createButton('kos-create-empty')}
         </section>
       )}
 
@@ -471,6 +526,30 @@ export const KosManager: React.FC = () => {
               onChange={(e) => setPriceMonthly(Number(e.target.value))}
               required
             />
+            <Select
+              label="Kapasitas kamar"
+              value={String(maxOccupants)}
+              onChange={(e) => setMaxOccupants(Number(e.target.value))}
+              options={[
+                { value: '1', label: '1 orang' },
+                { value: '2', label: '2 orang' },
+                { value: '3', label: '3 orang' },
+                { value: '4', label: '4 orang' },
+              ]}
+            />
+            {maxOccupants >= 2 && (
+              <Input
+                label="Harga per orang / bulan (opsional)"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={perPerson}
+                onChange={(e) => setPerPerson(e.target.value)}
+                onBlur={() => setPerPersonTouched(true)}
+                error={perPersonTouched ? perPersonError : undefined}
+                helperText="Kosongkan jika harga per kamar."
+              />
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
               <Button

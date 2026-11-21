@@ -15,6 +15,10 @@ export interface BoardRoom {
   size: string
   bedType: string
   priceMonthly: number
+  /** People the room fits, 1..4. */
+  maxOccupants: number
+  /** Price per person when shared (maxOccupants >= 2); null when priced per room. */
+  pricePerPersonMonthly: number | null
   status: RoomStatus
   /** The live (ACTIVE or unexpired PENDING) tenancy; null when the room reads vacant. */
   tenancyId: string | null
@@ -120,6 +124,8 @@ export async function loadBoardRooms(prisma: PrismaClient, kosIds: string[], now
       size: r.size,
       bedType: r.bedType,
       priceMonthly: r.priceMonthly,
+      maxOccupants: r.maxOccupants,
+      pricePerPersonMonthly: r.pricePerPersonMonthly,
       status,
       tenancyId: live?.id ?? null,
       leaseEndDate,

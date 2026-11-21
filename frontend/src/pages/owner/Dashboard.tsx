@@ -22,6 +22,7 @@ import { formatDueDate, formatRupiah, useOwnerWorkspace } from '../../lib/ownerW
 import { useRoomActions } from '../../lib/ownerActions';
 import { useOwnerVisits } from '../../lib/visits';
 import { useTRPC } from '../../lib/trpc';
+import { useOwnerGate } from '../../lib/owner';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 /** 'YYYY-MM-DD' (a WIB calendar day) as "5 Oktober 2026". */
@@ -63,6 +64,7 @@ const DashboardSkeleton: React.FC = () => (
 export const OwnerDashboard: React.FC = () => {
   useDocumentTitle('Papan okupansi');
   const { selectedKos } = useOwnerWorkspace();
+  const gate = useOwnerGate();
   const trpc = useTRPC();
   const board = useQuery({ ...trpc.owner.board.queryOptions({ kosId: selectedKos?.id ?? '' }), enabled: !!selectedKos,
     // Online payments settle by webhook: refresh while the tab is visible (React Query pauses hidden tabs by default).
@@ -111,9 +113,18 @@ export const OwnerDashboard: React.FC = () => {
               <li key={title}>{title}</li>
             ))}
           </ol>
-          <Link to="/owner/kos">
-            <Button variant="primary" size="md">Daftarkan kos</Button>
-          </Link>
+          {gate.approved ? (
+            <Link to="/owner/kos">
+              <Button variant="primary" size="md">Daftarkan kos</Button>
+            </Link>
+          ) : (
+            <div className="os-gate" style={{ alignItems: 'flex-start' }}>
+              <Button variant="primary" size="md" aria-disabled="true" aria-describedby="od-gate-reason" onClick={gate.openDocs} style={{ opacity: 0.6 }}>Daftarkan kos</Button>
+              <p id="od-gate-reason" className="os-gate__reason" style={{ textAlign: 'left' }}>
+                {gate.reason} <button type="button" className="os-gate__link" onClick={gate.openDocs}>Buka dokumen</button>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );

@@ -15,6 +15,9 @@ import { pickKos } from '../../lib/ownerWorkspace';
 import { useOwnerBadges } from '../../lib/ownerBadges';
 import type { OwnerWorkspace } from '../../lib/ownerWorkspace';
 import { ErrorState } from '../ui/QueryState';
+import { Modal } from '../ui/Modal';
+import { OwnerDocsStep } from '../auth/OwnerDocsStep';
+import { useOwnerGate, useOwnerVerification } from '../../lib/owner';
 import { MobileNav } from './MobileNav';
 import { Popover } from '../ui/Popover';
 import '../../styles/owner-shell.css';
@@ -36,6 +39,9 @@ export const OwnerLayout: React.FC = () => {
   const workspace: OwnerWorkspace = { kosList, selectedKos, selectKos };
   const badges = useOwnerBadges(selectedKos?.id);
   const { me } = useSession();
+  const gate = useOwnerGate();
+  const verification = useOwnerVerification();
+  const ownerStatus = gate.status;
   const { logout } = useAuthActions();
   const navigate = useNavigate();
   // OwnerGuard only renders this layout for a signed-in owner, so `me` is set; the fallbacks cover the sign-out frame.
@@ -190,10 +196,25 @@ export const OwnerLayout: React.FC = () => {
           </div>
         </div>
 
-        {me?.ownerApproved === false && (
-          <div className="os-banner" role="status">
-            <strong>Akun pemilik Anda sedang diperiksa KoBo.</strong>
-            <span>Anda bisa menyiapkan kos, kamar, dan foto sekarang. Kos baru tampil di pencarian setelah akun disetujui.</span>
+        {ownerStatus && ownerStatus !== 'DISETUJUI' && (
+          <div className={`os-banner os-banner--action${ownerStatus === 'DITOLAK' ? ' os-banner--warn' : ''}`} role="status" data-testid="owner-status-banner">
+            <div className="os-banner__text">
+              {ownerStatus === 'BELUM_KIRIM' && <strong>Lengkapi dokumen untuk mulai mendaftarkan kos</strong>}
+              {ownerStatus === 'MENUNGGU' && (
+                <strong>
+                  Dokumen sedang diperiksa{verification.data ? ` · ${verification.data.slaText}` : verification.isError ? '' : ' · memuat…'}
+                </strong>
+              )}
+              {ownerStatus === 'DITOLAK' && (
+                <>
+                  <strong>Dokumen ditolak</strong>
+                  <span>{verification.data?.reason ?? (verification.isPending ? 'Memuat alasan…' : 'Unggah ulang dokumen yang diminta.')}</span>
+                </>
+              )}
+              {kosList.length > 0 && <span>Kos yang sudah Anda buat tetap tersimpan; kos baru bisa dibuat setelah dokumen disetujui.</span>}
+            </div>
+            {ownerStatus === 'BELUM_KIRIM' && <button type="button" className="os-banner__btn" onClick={gate.openDocs}>Lengkapi dokumen</button>}
+            {ownerStatus === 'DITOLAK' && <button type="button" className="os-banner__btn" onClick={gate.openDocs}>Unggah ulang</button>}
           </div>
         )}
 
@@ -209,6 +230,12 @@ export const OwnerLayout: React.FC = () => {
           )}
         </main>
       </div>
+
+      {gate.docsOpen && !gate.approved && (
+        <Modal isOpen onClose={gate.closeDocs} title="Dokumen (bisa nanti)" subtitle="Verifikasi pemilik" maxWidth="md">
+          <OwnerDocsStep onDone={gate.closeDocs} onLater={gate.closeDocs} />
+        </Modal>
+      )}
 
       <MobileNav ownerBadges={badges} />
     </div>

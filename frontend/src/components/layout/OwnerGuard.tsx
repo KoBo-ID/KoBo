@@ -5,7 +5,7 @@ import { justSignedOut, useSession } from '../../lib/session';
 /**
  * Gate for the owner workspace. Persona is derived from the session: only a user with an OwnerProfile gets
  * through. A visitor without a session goes to the owner side of /masuk and comes back afterwards; a signed-in
- * non-owner goes to the owner sign-up page; right after an explicit sign-out the guard only goes home.
+ * non-owner goes to step 3 (owner data) of the owner sign-up; right after an explicit sign-out the guard only goes home.
  * (The server enforces ownership too; this guard is only the UX half.)
  */
 export const OwnerGuard: React.FC = () => {
@@ -20,7 +20,7 @@ export const OwnerGuard: React.FC = () => {
     );
   }
   if (me?.isOwner) return <Outlet />;
-  if (me) return <Navigate to="/owner/login" replace />;
+  if (me) return <Navigate to="/masuk?peran=pemilik&langkah=3" replace />;
   if (justSignedOut()) return <Navigate to="/" replace />;
   return <Navigate to={`/masuk?peran=pemilik&next=${encodeURIComponent(pathname + search)}`} replace />;
 };

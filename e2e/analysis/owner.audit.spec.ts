@@ -72,7 +72,7 @@ test('owner marks a booked room paid and opens its kuitansi', async ({ page, bro
   await link.click()
   await expect(page).toHaveURL(/\/kuitansi\/\d+$/)
   await expect(page.getByTestId('kuitansi-no')).toHaveText(/^KB\/\d{4}\/\d{2}\/\d{4}$/)
-  await expect(page.getByRole('button', { name: 'Unduh PDF' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Cetak / Simpan PDF' })).toBeVisible()
 })
 
 test('a kos created in the owner workspace appears in Kelola Properti', async ({ page }) => {

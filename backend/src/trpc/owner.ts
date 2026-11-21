@@ -19,7 +19,7 @@ import type { OwnerImage } from './ownerImages.ts'
 import { ownerVisitRouter, ownerVisits } from './visit.ts'
 import { ownerWaitlistEntries, ownerWaitlistRouter } from './waitlist.ts'
 import { advanceWaitlist, liveOffer, lockKos } from '../waitlist.ts'
-import { authedProcedure, ownerOnlyProcedure, ownerProcedure, publicProcedure, router } from './trpc.ts'
+import { OWNER_UNVERIFIED_MESSAGE, authedProcedure, ownerOnlyProcedure, ownerProcedure, publicProcedure, router } from './trpc.ts'
 
 export type { BoardRoom, BoardSummary } from '../ownerBoard.ts'
 export type { ImagePresign, OwnerImage } from './ownerImages.ts'
@@ -114,6 +114,11 @@ const slugify = (name: string) =>
     .slice(0, 50) || 'kos'
 
 const ROOM_TAKEN = 'Nomor kamar ini sudah dipakai di kos ini.'
+const PER_PERSON_NEEDS_SHARED = 'Harga per orang hanya untuk kamar yang bisa dihuni 2 orang atau lebih. Naikkan kapasitas kamar atau kosongkan harga per orang.'
+/** The per-person price only makes sense for a room that fits two or more people. */
+function assertOccupancy(maxOccupants: number, pricePerPerson: number | null | undefined): void {
+  if (pricePerPerson != null && maxOccupants < 2) throw new TRPCError({ code: 'BAD_REQUEST', message: PER_PERSON_NEEDS_SHARED })
+}
 const OFFER_ACTIVE = 'Masih ada penawaran daftar tunggu aktif.'
 
 export const ownerRouter = router({
@@ -123,18 +128,18 @@ export const ownerRouter = router({
    * Demo accounts are pre-seeded and read-only, so they are refused.
    */
   becomeOwner: authedProcedure.input(ownerRegisterInput).mutation(async ({ ctx, input }): Promise<{ ownerProfileId: string; approved: boolean }> => {
-    const user = await ctx.prisma.user.findUnique({ where: { id: ctx.user.id }, select: { isDemo: true, emailVerified: true, email: true, ownerProfile: { select: { id: true, approvedAt: true } } } })
+    const user = await ctx.prisma.user.findUnique({ where: { id: ctx.user.id }, select: { isDemo: true, emailVerified: true, email: true, ownerProfile: { select: { id: true, verificationStatus: true } } } })
     if (!user) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Silakan masuk terlebih dahulu.' })
     if (user.isDemo) throw new TRPCError({ code: 'FORBIDDEN', message: 'Akun ini bersifat hanya-baca dan tidak dapat didaftarkan sebagai pemilik.' })
     // Already an owner: idempotent, nothing is rewritten.
-    if (user.ownerProfile) return { ownerProfileId: user.ownerProfile.id, approved: user.ownerProfile.approvedAt !== null }
+    if (user.ownerProfile) return { ownerProfileId: user.ownerProfile.id, approved: user.ownerProfile.verificationStatus === 'DISETUJUI' }
     if (!user.emailVerified) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Verifikasi email Anda terlebih dahulu sebelum mendaftar sebagai pemilik.' })
     limiterFor(ctx).check(`become-owner:${ctx.user.id}`, 3, HOUR, 'Terlalu banyak percobaan mendaftar sebagai pemilik. Coba lagi dalam satu jam.')
     const approved = isAutoApproved(user.email)
     const profile = await ctx.prisma.$transaction(async (tx) => {
       await tx.user.update({ where: { id: ctx.user.id }, data: { phone: input.phone } })
       const declared = input.ownershipType ? { ownershipType: input.ownershipType, ownershipDeclaredAt: new Date() } : {}
-      return tx.ownerProfile.upsert({ where: { userId: ctx.user.id }, update: {}, create: { userId: ctx.user.id, ...declared, ...(approved ? { approvedAt: new Date() } : {}) }, select: { id: true } })
+      return tx.ownerProfile.upsert({ where: { userId: ctx.user.id }, update: {}, create: { userId: ctx.user.id, ...declared, verificationStatus: approved ? 'DISETUJUI' : 'BELUM_KIRIM', ...(approved ? { approvedAt: new Date() } : {}) }, select: { id: true } })
     })
     return { ownerProfileId: profile.id, approved }
   }),
@@ -143,7 +148,7 @@ export const ownerRouter = router({
   publicProfile: publicProcedure.input(idInput).query(async ({ ctx, input }): Promise<OwnerPublicProfile> => {
     const owner = await ctx.prisma.ownerProfile.findUnique({ where: { id: input.id }, include: { user: true } })
     // A-005: an owner KoBo has not approved (or revoked) is not public; only they themselves can open the page.
-    if (owner && owner.approvedAt === null) {
+    if (owner && owner.verificationStatus !== 'DISETUJUI') {
       const session = await ctx.getSession()
       if (session?.user.id !== owner.userId) throw new TRPCError({ code: 'NOT_FOUND', message: 'Pemilik tidak ditemukan.' })
     }
@@ -156,7 +161,7 @@ export const ownerRouter = router({
         avatar: owner.user.image,
         phone: owner.user.phone,
         bio: owner.bio,
-        verified: owner.verified,
+        verified: owner.verificationStatus === 'DISETUJUI',
         responseRate: owner.responseRate,
         memberSince: owner.memberSince.toISOString(),
         totalProperties: kos.length,
@@ -254,6 +259,7 @@ export const ownerRouter = router({
   kos: router({
     /** No kosId exists yet, so this needs an OwnerProfile rather than ownerProcedure. */
     create: ownerOnlyProcedure.input(kosCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
+      if (!ctx.ownerVerified) throw new TRPCError({ code: 'FORBIDDEN', message: OWNER_UNVERIFIED_MESSAGE })
       const { imageUrl, initialRooms, facilities, ...rest } = input
       // Demo accounts are reset nightly (demoReset), so the per-owner caps and the daily limit do not apply to them.
       if (!ctx.isDemo) {
@@ -354,6 +360,7 @@ export const ownerRouter = router({
   room: router({
     create: ownerProcedure.input(roomCreateInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
       if (!(await ctx.prisma.user.findUnique({ where: { id: ctx.user.id }, select: { isDemo: true } }))?.isDemo) limiterFor(ctx).check(`room-create:${ctx.user.id}`, 60, HOUR, 'Terlalu banyak kamar ditambahkan. Coba lagi dalam satu jam.')
+      assertOccupancy(input.maxOccupants ?? 1, input.pricePerPersonMonthly)
       try {
         // The Kos row lock comes first and is FOR UPDATE, the strength advanceWaitlist (ADR 0014) takes, so there is no
         // lock upgrade inside the transaction. It queues parallel creates for one kos, so the count cannot go stale.
@@ -380,7 +387,13 @@ export const ownerRouter = router({
       try {
         // A changed type can make the room match a queued preference.
         count = await ctx.prisma.$transaction(async (tx) => {
-          const res = await tx.room.updateMany({ where: { id: roomId, kosId }, data: fields })
+          const cur = await tx.room.findFirst({ where: { id: roomId, kosId }, select: { maxOccupants: true, pricePerPersonMonthly: true } })
+          if (!cur) return 0
+          const max = fields.maxOccupants ?? cur.maxOccupants
+          // Shrinking a room to one person drops its per-person price unless the same request sets one (which is refused).
+          const data = fields.maxOccupants === 1 && fields.pricePerPersonMonthly === undefined ? { ...fields, pricePerPersonMonthly: null } : fields
+          assertOccupancy(max, data.pricePerPersonMonthly === undefined ? cur.pricePerPersonMonthly : data.pricePerPersonMonthly)
+          const res = await tx.room.updateMany({ where: { id: roomId, kosId }, data })
           if (res.count > 0) await advanceWaitlist(tx, kosId, new Date())
           return res.count
         })

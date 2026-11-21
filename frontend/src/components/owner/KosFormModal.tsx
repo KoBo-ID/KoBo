@@ -9,12 +9,13 @@ import type { OwnerKos } from '../../../../backend/src/trpc/router';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { partnerLabelList, usePartnerCampuses } from '../booking/CampusDiscountCard';
 import { Select } from '../ui/Select';
-import { Notice } from '../ui/Notice';
 import { FacilityEditor } from './FacilityEditor';
 import { useAppStore } from '../../store/AppContext';
 import { useTRPC } from '../../lib/trpc';
 import { messageForError } from '../../lib/errors';
+import { isOwnerUnverifiedError, useOwnerGate } from '../../lib/owner';
 import { useOwnerWorkspace } from '../../lib/ownerWorkspace';
 import { CAMPUSES } from '../../data/campuses';
 
@@ -43,6 +44,7 @@ const Section: React.FC<{ title: string; intro?: string; children: React.ReactNo
 
 export const KosFormModal: React.FC<KosFormModalProps> = ({ isOpen, onClose, existingKos }) => {
   const { addToast } = useAppStore();
+  const ownerGate = useOwnerGate();
   const { selectKos } = useOwnerWorkspace();
   const trpc = useTRPC();
   const qc = useQueryClient();
@@ -63,6 +65,7 @@ export const KosFormModal: React.FC<KosFormModalProps> = ({ isOpen, onClose, exi
   const [roomCount, setRoomCount] = useState('');
   const [area, setArea] = useState(existingKos?.buildingAreaM2 ? String(existingKos.buildingAreaM2) : '');
   const [priceMonthly, setPriceMonthly] = useState('');
+  const partners = usePartnerCampuses();
   const [discount, setDiscount] = useState(existingKos ? String(existingKos.studentDiscountAmount) : '');
   const [facilities, setFacilities] = useState<FacilityItem[]>(existingKos?.facilities ?? []);
   const [coordsOpen, setCoordsOpen] = useState(false);
@@ -184,7 +187,14 @@ export const KosFormModal: React.FC<KosFormModalProps> = ({ isOpen, onClose, exi
       void qc.invalidateQueries({ queryKey: trpc.kos.pathKey() });
       onClose();
     } catch (err) {
-      setServerError(messageForError(err));
+      const msg = messageForError(err)
+      // T5: the creation gate is never a bare error; send the owner to the documents dialog instead.
+      if (!existingKos && isOwnerUnverifiedError(msg)) {
+        onClose()
+        ownerGate.openDocs()
+        return
+      }
+      setServerError(msg);
       requestAnimationFrame(() => summaryRef.current?.focus());
     }
   };
@@ -356,7 +366,8 @@ export const KosFormModal: React.FC<KosFormModalProps> = ({ isOpen, onClose, exi
             )}
             <Input
               id="okf-discount"
-              label="Potongan Diskon Mahasiswa (Rp)"
+              label="Diskon Kampus Mitra (Rp)"
+              helperText={partners.isPending ? 'Memuat daftar kampus mitra…' : partners.isError ? 'Berlaku untuk mahasiswa terverifikasi dari kampus mitra KoBo. Daftar kampus gagal dimuat.' : partners.data.length === 0 ? 'Berlaku untuk mahasiswa terverifikasi dari kampus mitra KoBo (saat ini belum ada kampus mitra).' : `Berlaku untuk mahasiswa terverifikasi dari kampus mitra KoBo (saat ini: ${partnerLabelList(partners.data)}).`}
               type="number"
               inputMode="numeric"
               min={0}
@@ -364,7 +375,7 @@ export const KosFormModal: React.FC<KosFormModalProps> = ({ isOpen, onClose, exi
               onChange={(e) => setDiscount(e.target.value)}
               error={errors.discount}
               placeholder="0 bila tidak ada"
-              info="Nominal ini dikurangkan dari tagihan pembayaran pertama, hanya untuk mahasiswa yang sudah terverifikasi (email kampus, akun Microsoft/Google kampus, atau KTM). Harga sewa per bulan tidak berubah."
+              info="Nominal ini dikurangkan dari tagihan pembayaran pertama, hanya untuk mahasiswa kampus mitra yang sudah terverifikasi, dan dikonfirmasi saat Anda menyetujui pengajuan. Harga sewa per bulan tidak berubah."
             />
           </div>
         </Section>

@@ -31,7 +31,21 @@ describe('owner.becomeOwner', () => {
     const res = await callerFor(id).owner.becomeOwner(PHONE)
     expect(res.approved).toBe(false)
     expect((await prisma.user.findUniqueOrThrow({ where: { id } })).phone).toBe(PHONE.phone)
-    expect((await prisma.ownerProfile.findUniqueOrThrow({ where: { userId: id } })).approvedAt).toBeNull()
+    const profile = await prisma.ownerProfile.findUniqueOrThrow({ where: { userId: id } })
+    expect([profile.approvedAt, profile.verificationStatus]).toEqual([null, 'BELUM_KIRIM'])
+  })
+
+  it('auto-approves listed emails: DISETUJUI plus approvedAt', async () => {
+    process.env.OWNER_AUTO_APPROVE = 'sari@example.com'
+    try {
+      await registerAndSignIn('sari@example.com')
+      const id = await userId('sari@example.com')
+      expect((await callerFor(id).owner.becomeOwner(PHONE)).approved).toBe(true)
+      const profile = await prisma.ownerProfile.findUniqueOrThrow({ where: { userId: id } })
+      expect([profile.verificationStatus, profile.approvedAt !== null]).toEqual(['DISETUJUI', true])
+    } finally {
+      delete process.env.OWNER_AUTO_APPROVE
+    }
   })
 
   it('requires a valid phone number', async () => {
@@ -58,6 +72,7 @@ describe('owner.becomeOwner', () => {
     expect(after?.isOwner).toBe(true)
     expect(after?.ownerProfileId).toBeTruthy()
     expect(after?.ownerApproved).toBe(false)
+    expect((after as { ownerStatus?: string } | null)?.ownerStatus).toBe('BELUM_KIRIM')
   })
 
   it('blocks demo accounts and creates nothing', async () => {
@@ -75,7 +90,10 @@ describe('owner approval gates the public listing', () => {
     const id = await userId('sari@example.com')
     const owner = callerFor(id)
     await owner.owner.becomeOwner(PHONE)
+    // Creating needs DISETUJUI; the owner is then sent back to MENUNGGU (e.g. a revoked approval) so the kos must hide.
+    await prisma.ownerProfile.update({ where: { userId: id }, data: { verificationStatus: 'DISETUJUI', approvedAt: new Date() } })
     const { id: kosId } = await owner.owner.kos.create(kosInput)
+    await prisma.ownerProfile.update({ where: { userId: id }, data: { verificationStatus: 'MENUNGGU', approvedAt: null } })
 
     expect((await caller.kos.list()).some((k) => k.id === kosId)).toBe(false)
     expect((await caller.kos.search({})).some((k) => k.id === kosId)).toBe(false)
@@ -83,7 +101,7 @@ describe('owner approval gates the public listing', () => {
     expect((await owner.kos.detail({ id: kosId })).id).toBe(kosId)
     expect((await owner.owner.myKos()).map((k) => k.id)).toContain(kosId)
 
-    await prisma.ownerProfile.update({ where: { userId: id }, data: { approvedAt: new Date() } })
+    await prisma.ownerProfile.update({ where: { userId: id }, data: { approvedAt: new Date(), verificationStatus: 'DISETUJUI' } })
     expect((await caller.kos.list()).some((k) => k.id === kosId)).toBe(true)
     expect((await caller.kos.detail({ id: kosId })).id).toBe(kosId)
   })
@@ -97,6 +115,7 @@ describe('abuse limits', () => {
     const id = await userId('sari@example.com')
     const owner = callerFor(id)
     await owner.owner.becomeOwner(PHONE)
+    await prisma.ownerProfile.update({ where: { userId: id }, data: { verificationStatus: 'DISETUJUI', approvedAt: new Date() } })
     for (let i = 0; i < 5; i++) await owner.owner.kos.create({ ...kosInput, name: `Kos ${i}` })
     expect(await code(owner.owner.kos.create(kosInput))).toBe('CONFLICT')
 
