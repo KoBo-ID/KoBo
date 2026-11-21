@@ -41,7 +41,9 @@ test('sign-up shows the code step; a wrong code is refused, the emailed code ver
 
   await input.fill(real)
   await dialog.getByRole('button', { name: 'Verifikasi', exact: true }).click()
-  await expect(page.getByText('Email terverifikasi. Selamat datang di KoBo!')).toBeVisible()
+  // The account is made and the email verified: sign-up moves on to the (skippable) student verification step.
+  await expect(page).toHaveURL(/langkah=3/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Verifikasi status mahasiswa' })).toBeVisible()
 })
 
 test('an unverified password sign-in shows the code step with a fresh code', async ({ page, problems }) => {
@@ -58,7 +60,8 @@ test('an unverified password sign-in shows the code step with a fresh code', asy
   const fresh = await outboxCode(email, 'verify-email', first)
   await form.getByLabel('Kode verifikasi').fill(fresh)
   await form.getByRole('button', { name: 'Verifikasi', exact: true }).click()
-  await expect(page.getByText('Email terverifikasi. Selamat datang di KoBo!')).toBeVisible()
+  await expect(page).toHaveURL(/langkah=3/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Verifikasi status mahasiswa' })).toBeVisible()
 })
 
 test('/verifikasi-email without an email never claims success and links to sign-in', async ({ page }) => {
@@ -140,19 +143,24 @@ test('the demo student has no campus form (pre-verified)', async ({ page }) => {
   await expect(page.getByLabel('Email Kampus')).toHaveCount(0)
 })
 
-test('a new user can register as an owner and reach the dashboard', async ({ page }) => {
+test('a signed-in student can register as an owner from /owner/login and reach the dashboard', async ({ page }) => {
   await signUpVerified(page, 'pemilik')
   await page.goto('/owner/login')
   await page.getByRole('button', { name: 'Daftarkan diri sebagai pemilik' }).click()
-  const dialog = page.getByRole('dialog')
-  await dialog.getByLabel('Nomor WhatsApp').fill('abc')
-  await dialog.getByRole('button', { name: 'Daftar sebagai pemilik' }).click()
-  await expect(dialog.getByText('Isi nomor WhatsApp dengan angka')).toBeVisible()
-  await dialog.getByLabel('Nomor WhatsApp').fill('0812 3456 7890')
-  await dialog.getByRole('button', { name: 'Daftar sebagai pemilik' }).click()
+  // Registering is the "Data pemilik" step of the stepped sign-up, entered at step 3 with the account already made.
+  await expect(page).toHaveURL(/\/masuk\?peran=pemilik&langkah=3/)
+  const form = page.locator('main')
+  await form.getByLabel('Nomor WhatsApp').fill('abc')
+  await form.getByRole('button', { name: 'Lanjut' }).click()
+  await expect(form.getByText('Isi nomor WhatsApp dengan angka')).toBeVisible()
+  await form.getByLabel('Nomor WhatsApp').fill('0812 3456 7890')
+  await form.getByRole('button', { name: 'Lanjut' }).click()
+  await expect(page).toHaveURL(/langkah=4/)
+  await form.getByRole('button', { name: 'Nanti saja' }).click()
+  await form.getByRole('button', { name: 'Ke dashboard' }).click()
+  // A new owner can look around, but kos can only be registered once the documents are approved.
   await expect(page).toHaveURL(/\/owner\/dashboard$/)
-  // A new owner can set everything up while the account waits for KoBo's approval.
-  await expect(page.getByText('Akun pemilik Anda sedang diperiksa KoBo.')).toBeVisible()
+  await expect(page.getByTestId('owner-status-banner')).toContainText('Lengkapi dokumen untuk mulai mendaftarkan kos')
   await expect(page.getByRole('heading', { name: 'Papan okupansi', level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Belum ada kos' })).toBeVisible()
 })

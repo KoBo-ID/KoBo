@@ -17,7 +17,7 @@ test('B1 register and verify through outbox', async ({page}) => {
   await expect(page.getByText(`Masukkan kode 6 digit yang kami kirim ke ${email}`)).toBeVisible()
   await page.getByLabel('Kode verifikasi').fill(await outboxCode(email,'verify-email'))
   await page.getByRole('button',{name:'Verifikasi',exact:true}).click()
-  await expect(page).toHaveURL(/\/$/)
+  await expect(page).toHaveURL(/langkah=3/)
 })
 test('B3 password reset and old password invalidation', async ({page}) => {
   const email = await signUpVerified(page,'audit-reset')

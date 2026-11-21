@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { User, Lock, Mail, Phone, Building2, GraduationCap, CheckCircle2, MailCheck } from 'lucide-react';
@@ -6,7 +6,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Notice } from '../ui/Notice';
 import { useAppStore } from '../../store/AppContext';
-import { GOOGLE_RETURN_FLAG, useAuthActions } from '../../lib/session';
+import { GOOGLE_RETURN_FLAG, useAuthActions, type useSession } from '../../lib/session';
 import { useTRPC } from '../../lib/trpc';
 import { TERMS_VERSION } from '@kobo/shared/domain';
 import { messageForError } from '../../lib/errors';
@@ -23,6 +23,42 @@ export const AUTH_TITLES: Record<AuthView, string> = {
   forgot: 'Lupa Kata Sandi',
   'forgot-sent': 'Cek email Anda',
 };
+
+type SessionMe = ReturnType<typeof useSession>['me'];
+
+/** Non-sensitive sign-up progress that survives a refresh. Never the password, the OTP or a file. */
+const SIGNUP_KEY = 'kobo.signup';
+export interface SignupDraft {
+  name: string;
+  email: string;
+  phone: string;
+  role: 'seeker' | 'owner';
+  /** Furthest step reached, 1-based. */
+  step: number;
+  next: string;
+}
+export function readSignup(): Partial<SignupDraft> {
+  try {
+    const raw = sessionStorage.getItem(SIGNUP_KEY);
+    return raw ? (JSON.parse(raw) as Partial<SignupDraft>) : {};
+  } catch {
+    return {};
+  }
+}
+export function writeSignup(patch: Partial<SignupDraft>): void {
+  try {
+    sessionStorage.setItem(SIGNUP_KEY, JSON.stringify({ ...readSignup(), ...patch }));
+  } catch {
+    /* storage unavailable: the flow still works, it just cannot resume */
+  }
+}
+export function clearSignup(): void {
+  try {
+    sessionStorage.removeItem(SIGNUP_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
 
 /** Where the emailed password-reset link lands (a lazy SPA page). */
 const RESET_REDIRECT = '/reset-password';
@@ -46,8 +82,14 @@ interface AuthFormProps {
   variant: 'modal' | 'page';
   /** Which side of the /masuk toggle is active; the owner side gets its own heading. */
   role?: 'seeker' | 'owner';
-  /** Called after a successful sign-in (before an owner is sent to their workspace). */
-  onDone: () => void;
+  /** Called after a successful sign-in (before an owner is sent to their workspace). Page variant: return true when the caller routed the user itself. */
+  onDone: (me?: SessionMe) => boolean | void;
+  /** Page variant: the sign-up step the URL says we are on (0 = sign-in, 1 = account form, 2 = email code). */
+  signupStep?: 0 | 1 | 2;
+  /** Page variant: the form moved to another sign-up step (the caller mirrors it in `?langkah=`). */
+  onSignupStep?: (step: 0 | 1 | 2) => void;
+  /** Page variant: the email code was accepted and the session exists; the caller shows the next step. */
+  onVerified?: () => void;
   onViewChange?: (view: AuthView) => void;
   /** Message to show on first render (a failed Google round trip). */
   initialError?: string | null;
@@ -58,7 +100,7 @@ interface AuthFormProps {
  * (pages/AuthPage). It renders two sibling blocks: `.auth-main` (form) and `.auth-quick` (one-click tester accounts),
  * so each host decides how they are laid out.
  */
-export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', onDone, onViewChange, initialError = null }) => {
+export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', onDone, signupStep, onSignupStep, onVerified, onViewChange, initialError = null }) => {
   const { addToast } = useAppStore();
   const { demoLogin, refreshSession } = useAuthActions();
   const navigate = useNavigate();
@@ -66,25 +108,44 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
   const trpc = useTRPC();
   const uid = useId();
 
-  const [view, setViewState] = useState<AuthView>('login');
+  const isPage = variant === 'page';
+  const saved = isPage ? readSignup() : {};
+  const [view, setViewState] = useState<AuthView>(() => (isPage && signupStep === 1 ? 'register' : isPage && signupStep === 2 ? (saved.email ? 'verify-sent' : 'register') : 'login'));
   const [busy, setBusy] = useState<'form' | 'student' | 'owner' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(initialError);
   const providers = useQuery({ ...trpc.auth.providers.queryOptions(), staleTime: Infinity });
   const [notice, setNotice] = useState<string | null>(null);
 
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [name, setName] = useState(saved.name ?? '');
+  const [email, setEmail] = useState(saved.email ?? '');
+  const [phone, setPhone] = useState(saved.phone ?? '');
   const [password, setPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
 
   const isRegister = view === 'register';
-  const isPage = variant === 'page';
 
+  const stepOf = (v: AuthView): 0 | 1 | 2 => (v === 'register' ? 1 : v === 'verify-sent' || v === 'unverified' ? 2 : 0);
   const setView = (next: AuthView) => {
     setViewState(next);
     onViewChange?.(next);
+    if (isPage && stepOf(next) !== stepOf(view)) onSignupStep?.(stepOf(next));
   };
+
+  // Keep what was typed (never the password) so a refresh or the browser Back button does not lose it.
+  useEffect(() => {
+    if (isPage) writeSignup({ name, email, phone });
+  }, [isPage, name, email, phone]);
+
+  // The URL is the source of truth for the sign-up step: browser Back and Forward move the form with it.
+  useEffect(() => {
+    if (!isPage || signupStep === undefined) return;
+    setViewState((v) => {
+      if (stepOf(v) === signupStep) return v;
+      if (signupStep === 1) return 'register';
+      if (signupStep === 2) return email.trim() ? 'verify-sent' : 'register';
+      return v === 'forgot' || v === 'forgot-sent' ? v : 'login';
+    });
+  }, [signupStep]); // eslint-disable-line react-hooks/exhaustive-deps -- only a step change from outside should move the view
 
   const finish = async (welcome: string) => {
     await refreshSession();
@@ -94,7 +155,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
     // (`?next`, anything but the plain home page) says otherwise; everyone else stays where they were.
     const nextParam = isPage ? new URLSearchParams(window.location.search).get('next') : null;
     const hasOwnNext = safeNext(nextParam) !== '/';
-    onDone();
+    if (onDone(me) === true) return;
     if (me?.isOwner && !hasOwnNext) navigate('/owner/dashboard');
   };
 
@@ -197,7 +258,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
   const ownerSide = role === 'owner' && (view === 'login' || view === 'register');
   const heading = isPage && (
     <>
-      <h1 className="auth-title">
+      <h1 className="auth-title" tabIndex={-1} data-step-heading>
         {ownerSide ? (isRegister ? 'Daftar Akun Pemilik Kos' : 'Masuk ke Portal Pemilik Kos') : AUTH_TITLES[view]}
       </h1>
     </>
@@ -209,8 +270,18 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
     main = (
       <VerifyCodeStep
         email={email.trim()}
-        onBack={() => switchView('login')}
-        onVerified={() => finish('Email terverifikasi. Selamat datang di KoBo!')}
+        onBack={() => switchView(view === 'verify-sent' ? 'register' : 'login')}
+        backLabel={view === 'verify-sent' ? 'Ganti email' : 'Kembali ke Masuk'}
+        onVerified={async () => {
+          // On the stepped page the account now exists: show the next step instead of leaving.
+          if (isPage && onVerified) {
+            await refreshSession();
+            addToast('Email terverifikasi.', 'success');
+            onVerified();
+            return;
+          }
+          await finish('Email terverifikasi. Selamat datang di KoBo!');
+        }}
       />
     );
   } else if (view === 'forgot-sent') {

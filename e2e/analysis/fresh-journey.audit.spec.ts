@@ -17,7 +17,7 @@ test('E2 fresh registration to mocked settlement and receipts',async({page,brows
     await expect(page.getByText(`Masukkan kode 6 digit yang kami kirim ke ${email}`)).toBeVisible()
     await page.getByLabel('Kode verifikasi').fill(await outboxCode(email,'verify-email'))
     await page.getByRole('button',{name:'Verifikasi',exact:true}).click()
-    await expect(page).toHaveURL(/\/$/)
+    await expect(page).toHaveURL(/langkah=3/)
     await page.goto('/profile')
     const campus=`audit${Date.now()}@binus.ac.id`
     await page.getByLabel('Email Kampus').fill(campus)

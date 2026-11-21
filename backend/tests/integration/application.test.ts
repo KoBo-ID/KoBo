@@ -2,6 +2,7 @@ import type { TRPCError } from '@trpc/server'
 import { addDays, todayWIB } from '@kobo/shared/domain'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetDb } from '../../src/db/seed.ts'
+import { verifyAtCampus } from './gap-helpers.ts'
 import { caller, callerFor, newStudent, prisma, vacantRoom } from '../helpers.ts'
 
 beforeEach(() => resetDb(prisma))
@@ -75,7 +76,7 @@ describe('application owner decisions', () => {
   it('approves into a 24-hour payment hold with an immutable invoice and no payment attempt', async () => {
     const room = await vacantRoom()
     const winner = await newStudent()
-    await prisma.user.update({ where: { id: winner.id }, data: { campusEmailVerifiedAt: new Date() } })
+    await verifyAtCampus(winner.id)
     const loser = await newStudent()
     const a = await callerFor(winner.id).application.create(inputFor(room.id))
     const b = await callerFor(loser.id).application.create({ ...inputFor(room.id), program: 'Hukum' })

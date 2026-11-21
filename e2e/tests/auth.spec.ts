@@ -90,7 +90,7 @@ test('/masuk role toggle keeps the typed email and honours ?peran and ?next', as
   await page.goto('/masuk?peran=pemilik&next=%2Fowner%2Fkos')
   await expect(page.getByRole('heading', { level: 1, name: 'Masuk ke Portal Pemilik Kos' })).toBeVisible()
   await page.getByLabel('Email').fill('ketik@example.com')
-  await page.getByRole('button', { name: 'Pencari kos' }).click()
+  await page.getByRole('button', { name: 'Mahasiswa', exact: true }).click()
   await expect(page).toHaveURL(/next=%2Fowner%2Fkos/)
   await expect(page).not.toHaveURL(/peran=/)
   await expect(page.getByLabel('Email')).toHaveValue('ketik@example.com')

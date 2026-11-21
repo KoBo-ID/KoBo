@@ -15,6 +15,8 @@ export interface MeResult {
   ownerProfileId: string | null
   /** False while a newly registered owner waits for KoBo's approval; their kos are not public yet. Null for non-owners. */
   ownerApproved: boolean | null
+  /** The owner's document verification state; null for non-owners. `ownerApproved` is exactly (ownerStatus === 'DISETUJUI'). */
+  ownerStatus: 'BELUM_KIRIM' | 'MENUNGGU' | 'DISETUJUI' | 'DITOLAK' | null
   campusVerified: boolean
   /** Full verification state for the Profil card. Never carries a document key. */
   studentVerification: StudentVerificationStatus
@@ -48,7 +50,7 @@ export const authRouter = router({
   me: publicProcedure.query(async ({ ctx }): Promise<MeResult | null> => {
     const session = await ctx.getSession()
     if (!session) return null
-    const u = await ctx.prisma.user.findUnique({ where: { id: session.user.id }, include: { ownerProfile: { select: { id: true, approvedAt: true } } } })
+    const u = await ctx.prisma.user.findUnique({ where: { id: session.user.id }, include: { ownerProfile: { select: { id: true, verificationStatus: true } } } })
     if (!u) return null
     const now = new Date()
     const providers = { ...ctx.auth.campusIdpProviders, sheerid: !!ctx.sheerid }
@@ -57,7 +59,8 @@ export const authRouter = router({
       user: { id: u.id, name: u.name, email: u.email, image: u.image, phone: u.phone, campus: u.campus, campusEmail: u.campusEmail, isDemo: u.isDemo },
       isOwner: u.ownerProfile !== null,
       ownerProfileId: u.ownerProfile?.id ?? null,
-      ownerApproved: u.ownerProfile ? u.ownerProfile.approvedAt !== null : null,
+      ownerApproved: u.ownerProfile ? u.ownerProfile.verificationStatus === 'DISETUJUI' : null,
+      ownerStatus: u.ownerProfile?.verificationStatus ?? null,
       campusVerified: isStudentVerified(u, now),
       studentVerification,
       emergencyContact: u.emergencyContactName && u.emergencyContactPhone && u.emergencyContactConsentAt

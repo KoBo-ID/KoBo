@@ -145,14 +145,14 @@ function koboPlugin(prisma: PrismaClient, secret: string, { mx, idp, idpProvider
     if (!challenge || challenge.consumedAt || challenge.expiresAt <= now || challenge.userId !== userId) return false
     const taken = await prisma.user.findFirst({ where: { campusEmail: challenge.email, campusEmailVerifiedAt: { not: null }, id: { not: challenge.userId } }, select: { id: true } })
     if (taken) return false
-    const campuses = await prisma.campus.findMany({ select: { shortName: true, studentEmailDomains: true }, take: CAMPUS_SCAN_CAP })
+    const campuses = await prisma.campus.findMany({ select: { id: true, shortName: true, studentEmailDomains: true }, take: CAMPUS_SCAN_CAP })
     const campus = campusForDomain(emailDomain(challenge.email) ?? '', campuses)
     try {
       await prisma.$transaction(async (tx) => {
         const claimed = await tx.campusEmailChallenge.updateMany({ where: { id: challenge.id, consumedAt: null, expiresAt: { gt: now } }, data: { consumedAt: now } })
         if (claimed.count !== 1) throw new ChallengeGone()
         await tx.user.update({ where: { id: challenge.userId }, data: { campusEmail: challenge.email } })
-        await applyVerification(tx, challenge.userId, { via: 'EMAIL', until: verificationUntil(now), campusShortName: campus?.shortName }, now)
+        await applyVerification(tx, challenge.userId, { via: 'EMAIL', until: verificationUntil(now), campusShortName: campus?.shortName, campusId: campus?.id }, now)
       })
     } catch (e) {
       // Two accounts verified the same mailbox at once: the partial unique index lets exactly one win.
@@ -282,7 +282,7 @@ function koboPlugin(prisma: PrismaClient, secret: string, { mx, idp, idpProvider
             throw ctx.redirect('/profile?campus=idp-invalid')
           }
 
-          const campuses = await prisma.campus.findMany({ select: { shortName: true, entraTenantIds: true, studentEmailDomains: true }, take: CAMPUS_SCAN_CAP })
+          const campuses = await prisma.campus.findMany({ select: { id: true, shortName: true, entraTenantIds: true, studentEmailDomains: true }, take: CAMPUS_SCAN_CAP })
           const campus =
             claims.provider === 'microsoft'
               ? campuses.find((c) => c.entraTenantIds.some((t) => t.toLowerCase() === claims.tid))
@@ -301,7 +301,7 @@ function koboPlugin(prisma: PrismaClient, secret: string, { mx, idp, idpProvider
           try {
             await prisma.$transaction(async (tx) => {
               const via = claims.provider === 'microsoft' ? 'MICROSOFT' : 'GOOGLE'
-              await applyVerification(tx, userId, { via, until: verificationUntil(now), campusShortName: campus.shortName }, now)
+              await applyVerification(tx, userId, { via, until: verificationUntil(now), campusShortName: campus.shortName, campusId: campus.id }, now)
               // The IdP identity is recorded only when this verification actually took effect; a longer-lived verification by
               // another method (applyVerification keeps it) must not be left pointing at an identity that did not win.
               const after = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { campusVerifiedVia: true } })

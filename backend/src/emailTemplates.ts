@@ -39,6 +39,50 @@ const COPY: Record<string, Copy> = {
     action: 'Lihat Kuitansi',
     outro: 'Simpan email ini sebagai bukti pembayaran. Tagihan bulan berikutnya tersedia di halaman Kos Saya.',
   },
+  // Owner document review. Deliberately no document details: the reason is read inside KoBo after signing in.
+  'owner-approved': {
+    subject: 'Verifikasi pemilik kos Anda disetujui - KoBo',
+    intro: 'Dokumen kepemilikan Anda sudah diperiksa dan disetujui. Anda sekarang dapat memasang kos di KoBo.',
+    action: 'Buka Dasbor Pemilik',
+    outro: 'Terima kasih sudah melengkapi verifikasi. Berkas dokumen Anda dihapus otomatis 90 hari setelah keputusan.',
+  },
+  'owner-rejected': {
+    subject: 'Verifikasi pemilik kos perlu diperbaiki - KoBo',
+    intro: 'Dokumen kepemilikan Anda belum dapat kami setujui. Alasannya dapat dilihat setelah Anda masuk ke KoBo, lalu Anda dapat mengunggah ulang dokumen yang diminta.',
+    action: 'Lihat Alasan dan Unggah Ulang',
+    outro: 'Pemeriksaan berikutnya memakan waktu maksimal 2×24 jam kerja. Berkas dokumen Anda dihapus otomatis 90 hari setelah keputusan.',
+  },
+  // Student KTM review. Deliberately no card details (no NIM, no photo): the reject reason is a fixed instruction, not card data.
+  'student-approved': {
+    subject: 'Status mahasiswa terverifikasi - KoBo',
+    intro: 'Status mahasiswa Anda sudah terverifikasi. Anda kini dapat memakai fitur khusus mahasiswa di KoBo.',
+    action: 'Cari Kos',
+    outro: 'Foto KTM Anda dihapus otomatis 30 hari setelah keputusan.',
+  },
+  // Teman Sekamar. Deliberately no message text, no contact and no profile detail: only that something is waiting inside KoBo.
+  'matching-request': {
+    subject: 'Ada permintaan teman sekamar baru - KoBo',
+    intro: 'Ada permintaan teman sekamar baru untuk Anda. Buka KoBo untuk melihat profilnya dan memutuskan.',
+    action: 'Lihat Permintaan',
+    outro: 'Permintaan berlaku 14 hari. Anda dapat mematikan email Teman Sekamar di halaman Pengaturan.',
+  },
+  'matching-accept': {
+    subject: 'Permintaan teman sekamar Anda diterima - KoBo',
+    intro: 'Permintaan teman sekamar Anda diterima. Kalian kini terhubung dan bisa saling berkirim pesan di KoBo.',
+    action: 'Buka Pesan',
+    outro: 'Jaga keamanan: bertemulah di tempat umum dan jangan transfer uang sebelum yakin. Anda dapat mematikan email Teman Sekamar di halaman Pengaturan.',
+  },
+}
+
+/** Digest: the sender's display name only (payload { name, url, from }), never the message. Falls back to a generic subject. */
+function matchingDigestCopy(p: { from?: unknown }): Copy {
+  const from = typeof p.from === 'string' && p.from.trim() ? p.from.trim().slice(0, 60) : 'teman sekamar Anda'
+  return {
+    subject: `Ada pesan baru dari ${from} - KoBo`,
+    intro: `Ada pesan baru dari ${from} yang belum Anda baca. Buka KoBo untuk membacanya.`,
+    action: 'Buka Pesan',
+    outro: 'Kami mengirim maksimal satu email per percakapan setiap 6 jam. Anda dapat mematikan email Teman Sekamar di halaman Pengaturan.',
+  }
 }
 
 /** Code-only mails (sign-up and campus-email verification). There is deliberately no URL, button or link in them. */
@@ -115,6 +159,24 @@ interface OwnerPaymentPayload extends LinkPayload {
   amount: number
 }
 
+interface StudentRejectedPayload extends LinkPayload {
+  reason: string
+  attempt: number
+  max: number
+}
+
+/** The reason is one of the fixed instructions (or an operator note), never card data. */
+function studentRejectedCopy(p: Partial<StudentRejectedPayload>): Copy | null {
+  if (typeof p.reason !== 'string' || typeof p.attempt !== 'number' || typeof p.max !== 'number') return null
+  const out = p.attempt >= p.max ? 'Batas percobaan KTM sudah habis. Gunakan Cara lain (email kampus atau akun kampus) atau hubungi KoBo.' : 'Anda dapat mengunggah ulang KTM dari halaman Profil.'
+  return {
+    subject: 'Verifikasi KTM perlu diperbaiki - KoBo',
+    intro: `KTM Anda belum dapat kami setujui. ${p.reason} (Percobaan ${p.attempt} dari ${p.max}.)`,
+    action: 'Buka Profil',
+    outro: `${out} Foto KTM Anda dihapus otomatis 30 hari setelah keputusan.`,
+  }
+}
+
 const rupiah = (n: number) => `Rp ${n.toLocaleString('id-ID')}`
 
 /** Tells the owner a rent payment was verified. It deliberately says nothing about payout timing. */
@@ -153,8 +215,8 @@ function reminderCopy(p: Partial<ReminderPayload>): Copy | null {
 export function renderEmail(template: string, payload: unknown): RenderedEmail | null {
   const codeCopy = CODE_COPY[template]
   if (codeCopy) return payload && typeof payload === 'object' ? renderCodeEmail(codeCopy, payload) : null
-  const p = payload as (Partial<OfferPayload> & Partial<OwnerPaymentPayload> & Partial<ReminderPayload>) | null
-  const copy = template === 'waitlist-offer' ? (p ? offerCopy(p) : null) : template === 'payment-received-owner' ? (p ? ownerPaymentCopy(p) : null) : template === 'invoice-reminder' ? (p ? reminderCopy(p) : null) : COPY[template]
+  const p = payload as (Partial<OfferPayload> & Partial<OwnerPaymentPayload> & Partial<ReminderPayload> & Partial<StudentRejectedPayload> & { from?: unknown }) | null
+  const copy = template === 'waitlist-offer' ? (p ? offerCopy(p) : null) : template === 'payment-received-owner' ? (p ? ownerPaymentCopy(p) : null) : template === 'invoice-reminder' ? (p ? reminderCopy(p) : null) : template === 'matching-digest' ? (p ? matchingDigestCopy(p) : null) : template === 'student-rejected' ? (p ? studentRejectedCopy(p) : null) : COPY[template]
   if (!copy || !p || typeof p.url !== 'string') return null
   const name = typeof p.name === 'string' && p.name.trim() ? p.name.trim() : 'Pengguna KoBo'
   const text = `Halo ${name},\n\n${copy.intro}\n\n${copy.action}: ${p.url}\n\n${copy.outro}\n\nTim KoBo`
