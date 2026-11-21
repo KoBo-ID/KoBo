@@ -1,5 +1,5 @@
 import type { TRPCError } from '@trpc/server'
-import { addDays, formatReceiptNo, todayWIB } from '@kobo/shared/domain'
+import { addDays, addMonths, formatReceiptNo, todayWIB } from '@kobo/shared/domain'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetDb } from '../../src/db/seed.ts'
 import { approveApplication, caller, callerFor, createPendingMockPayment, DEMO_STUDENT_ID, prisma, vacantRoom, cash } from '../helpers.ts'
@@ -35,6 +35,20 @@ describe('kuitansi.get', () => {
     expect(k.paidAt).toBe(pay.paidAt!.toISOString())
     expect(k.period.dueDate).toBe(addDays(todayWIB(new Date()), 2))
     expect(k.owner.name).toBeTruthy()
+    expect(k.status).toBe('PAID')
+    expect(k.breakdown.total).toBe(booked.invoice.amount)
+    expect(k.breakdown.rent + k.breakdown.applicationFee - k.breakdown.discount).toBe(k.breakdown.total)
+    expect(k.period.periodEnd).toBe(addDays(addMonths(k.period.periodStart, 1), -1))
+    expect(k.kos.city).toBeTruthy()
+    expect(k.reference).toBeNull()
+  })
+
+  it('shows a refunded receipt as REFUNDED, and keeps a refund-in-progress one PAID', async () => {
+    const { paid, ownerId } = await paidReceipt()
+    await prisma.payment.update({ where: { id: paid.paymentId }, data: { status: 'REFUND_PENDING' } })
+    expect((await callerFor(ownerId).kuitansi.get({ receiptNo: paid.receiptNumber })).status).toBe('PAID')
+    await prisma.payment.update({ where: { id: paid.paymentId }, data: { status: 'REFUNDED', refundedAt: new Date() } })
+    expect((await callerFor(ownerId).kuitansi.get({ receiptNo: paid.receiptNumber })).status).toBe('REFUNDED')
   })
 
   it('lets the owner of the kos read it', async () => {

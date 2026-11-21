@@ -26,7 +26,7 @@ async function expectReceipt(page: Page, number: number, held: HeldRoom, receipt
   await expect(page.getByTestId('kuitansi-no')).toHaveText(receiptNo)
   await expect(page.getByText(held.owner.kosName).first()).toBeVisible()
   await expect(page.getByText('Penguji E2E').first()).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Unduh PDF' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Cetak / Simpan PDF' })).toBeVisible()
 }
 
 test('scenario 24: the payer and the kos owner can open the receipt, with a KB/YYYY/MM/NNNN number', async ({ browser, problems }) => {
@@ -62,8 +62,8 @@ test('scenario 24: everyone else is refused or asked to sign in, and unknown or 
     for (const [who, page] of [['another student', stranger.page], ['another owner', otherOwner.page]] as const) {
       await test.step(`${who} is refused`, async () => {
         await page.goto(`/kuitansi/${receiptNumber}`)
-        await expect(page.getByRole('heading', { name: 'Kuitansi tidak ditemukan' })).toBeVisible()
-        await expect(page.getByText('Nomor kuitansi ini tidak ada atau belum dibayar.')).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Kuitansi belum tersedia' })).toBeVisible()
+        await expect(page.getByText('Kuitansi tersedia setelah pembayaran lunas.')).toBeVisible()
         await expect(page.getByTestId('kuitansi-no')).toHaveCount(0)
       })
     }
@@ -79,8 +79,8 @@ test('scenario 24: everyone else is refused or asked to sign in, and unknown or 
     await test.step('an unknown number and an unpaid attempt read the same as not found', async () => {
       for (const n of [999_999_999, attemptNumber]) {
         await held.student.page.goto(`/kuitansi/${n}`)
-        await expect(held.student.page.getByRole('heading', { name: 'Kuitansi tidak ditemukan' })).toBeVisible()
-        await expect(held.student.page.getByText('Nomor kuitansi ini tidak ada atau belum dibayar.')).toBeVisible()
+        await expect(held.student.page.getByRole('heading', { name: 'Kuitansi belum tersedia' })).toBeVisible()
+        await expect(held.student.page.getByText('Kuitansi tersedia setelah pembayaran lunas.')).toBeVisible()
       }
       await held.student.page.goto('/kuitansi/abc')
       await expect(held.student.page.getByText('Nomor kuitansi tidak valid.')).toBeVisible()
@@ -98,7 +98,7 @@ test('scenario 24: printing hides the site chrome and the download button but ke
   try {
     await page.goto(`/kuitansi/${receiptNumber}`)
     const chrome = page.locator('header').first()
-    const button = page.getByRole('button', { name: 'Unduh PDF' })
+    const button = page.getByRole('button', { name: 'Cetak / Simpan PDF' })
     await expect(chrome).toBeVisible()
     await expect(button).toBeVisible()
 
@@ -111,6 +111,58 @@ test('scenario 24: printing hides the site chrome and the download button but ke
     await page.emulateMedia({ media: 'screen' })
     await expect(button).toBeVisible()
     expectHttpErrors(problems)
+  } finally {
+    await closeWorld(held)
+  }
+})
+
+test('scenario 24: a paid receipt has the full kuitansi anatomy and prints without chrome or a stamp over the signature', async ({ browser, problems }) => {
+  const { held, receiptNumber } = await paidByCash(browser, 'rcpt-anatomy')
+  const { page } = held.student
+  watch(page, problems)
+  try {
+    await page.goto(`/kuitansi/${receiptNumber}`)
+    const paper = page.locator('article.kuitansi-paper')
+    await expect(paper.getByRole('heading', { level: 1, name: 'KUITANSI PEMBAYARAN SEWA' })).toBeVisible()
+    await expect(paper.getByText('Telah terima dari')).toBeVisible()
+    await expect(paper.getByText('Untuk pembayaran')).toBeVisible()
+    await expect(paper.getByText(/Rupiah$/).first()).toBeVisible() // terbilang
+    await expect(paper.getByText('Disahkan secara elektronik via KoBo')).toBeVisible()
+
+    await test.step('fields are a description list', async () => {
+      expect(await paper.locator('dl').count()).toBeGreaterThanOrEqual(2)
+      await expect(paper.locator('dl dt', { hasText: 'Telah terima dari' })).toHaveCount(1)
+      await expect(paper.locator('dl dd').first()).toContainText('Penguji E2E')
+    })
+
+    await test.step('print: no nav or footer, and the amount box does not overlap the signature', async () => {
+      await page.emulateMedia({ media: 'print' })
+      await expect(page.locator('header').first()).toBeHidden()
+      await expect(page.locator('nav:visible')).toHaveCount(0)
+      await expect(page.locator('footer:visible')).toHaveCount(0)
+      const stamp = (await page.locator('.kuitansi-rpbox').boundingBox())!
+      const sign = (await page.locator('.kuitansi-sign').boundingBox())!
+      const overlap = stamp.x < sign.x + sign.width && sign.x < stamp.x + stamp.width && stamp.y < sign.y + sign.height && sign.y < stamp.y + stamp.height
+      expect(overlap, 'amount box vs signature').toBe(false)
+      await page.emulateMedia({ media: 'screen' })
+    })
+    expectHttpErrors(problems)
+  } finally {
+    await closeWorld(held)
+  }
+})
+
+test('scenario 24: an unpaid invoice has no receipt and says it appears after full payment', async ({ browser, problems }) => {
+  const held = await heldRoom(browser, { label: 'rcpt-unpaid2' })
+  const { page } = held.student
+  watch(page, problems)
+  try {
+    const attempt = await trpcPost<{ paymentId: string }>(held.student.ctx, 'payment.start', { invoiceId: held.invoiceId })
+    const [{ receiptNo }] = await sql<{ receiptNo: number }>('SELECT "receiptNo" FROM "Payment" WHERE id = $1', [attempt.paymentId])
+    await page.goto(`/kuitansi/${receiptNo}`)
+    await expect(page.getByText('tersedia setelah pembayaran lunas')).toBeVisible()
+    await expect(page.getByTestId('kuitansi-no')).toHaveCount(0)
+    expectHttpErrors(problems, 404)
   } finally {
     await closeWorld(held)
   }
