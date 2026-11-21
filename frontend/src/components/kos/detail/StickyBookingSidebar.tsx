@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { leaseQuote } from '@kobo/shared/domain';
+import { DISCOUNT_LABEL, leaseQuote } from '@kobo/shared/domain';
+import { PartnerCampusLink, partnerLabelList, useMyDiscountStatus, usePartnerCampuses } from '../../booking/CampusDiscountCard';
 import { useSession } from '../../../lib/session';
 import { ClipboardList, Calendar, GraduationCap, ShieldCheck } from 'lucide-react';
 import type { WaitlistStatusResult } from '../../../../../backend/src/trpc/router';
 import { Room, Kos } from '../../../types';
 import { Button } from '../../ui/Button';
 import { JoinCard, OfferBanner, QueuedCard } from './WaitlistBox';
-import { useNeedsVerification, VerifyPrompt } from '../../booking/VerifyPrompt';
+import { StudentOnlyNote, useNeedsVerification, VerifyPrompt } from '../../booking/VerifyPrompt';
 import { formatRupiah } from '../../../lib/format';
 
 interface StickyBookingSidebarProps {
@@ -46,7 +47,10 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
 }) => {
   const navigate = useNavigate();
   const { me, isLoading: sessionLoading } = useSession();
-  const verified = !!me?.campusVerified;
+  const discountStatus = useMyDiscountStatus();
+  const partners = usePartnerCampuses();
+  const affiliated = !!discountStatus.data?.affiliated;
+  const notAffiliated = !!discountStatus.data?.verified && !affiliated;
   const needsVerification = useNeedsVerification();
   const isVacant = selectedRoom.status === 'vacant' && !selectedRoom.reservedForWaitlist;
   const hasDiscount = kos.studentDiscountAmount > 0;
@@ -54,14 +58,15 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
     monthlyRent: selectedRoom.priceMonthly,
     applicationFee: kos.applicationFee,
     discountAmount: kos.studentDiscountAmount,
-    campusEmailVerified: verified,
+    discountEligible: affiliated,
     months: leaseMonths,
   };
   const quote = leaseQuote(quoteInput);
-  // What a verified campus email would take off invoice #1 (shown as a hint to everyone else).
-  const hintDiscount = hasDiscount && !verified && !sessionLoading
-    ? leaseQuote({ ...quoteInput, campusEmailVerified: true }).discount
+  // What a partner-campus student would take off invoice #1 (shown as a hint to everyone who is not eligible yet).
+  const hintDiscount = hasDiscount && !affiliated && !notAffiliated && !sessionLoading && !(me && discountStatus.isPending)
+    ? leaseQuote({ ...quoteInput, discountEligible: true }).discount
     : 0;
+  const partnerList = partnerLabelList(partners.data);
 
   // Daftar tunggu: an offer to me wins, then my queue place, then the join form (full kos, or a full type picked in the list).
   const { status } = waitlist;
@@ -195,15 +200,21 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
               label="Sewa bulan pertama"
               value={formatRupiah(quote.rent)}
               note={hintDiscount > 0 ? (
-                <>Mahasiswa: <Link to="/profile" style={{ color: 'var(--primary)', fontWeight: 600 }}>verifikasi status mahasiswa</Link> untuk potongan {formatRupiah(hintDiscount)} di pembayaran pertama.</>
+                <>Potongan {formatRupiah(hintDiscount)} di pembayaran pertama untuk mahasiswa kampus mitra{partnerList ? ` (${partnerList})` : ''}. <Link to="/profile" style={{ color: 'var(--primary)', fontWeight: 600 }}>Verifikasi status mahasiswa</Link>.</>
               ) : undefined}
             />
             {quote.discount > 0 && (
               <FeeRow
                 accent
-                label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><GraduationCap size={14} aria-hidden="true" />Diskon mahasiswa</span>}
+                label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><GraduationCap size={14} aria-hidden="true" />{DISCOUNT_LABEL}</span>}
+                note="Diskon dikonfirmasi saat pemilik menyetujui."
                 value={`-${formatRupiah(quote.discount)}`}
               />
+            )}
+            {hasDiscount && notAffiliated && (
+              <div data-testid="sidebar-discount-not-affiliated" style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>
+                {DISCOUNT_LABEL} tidak berlaku untuk {discountStatus.data?.campusName ?? 'kampus Anda'}. <PartnerCampusLink />
+              </div>
             )}
             {quote.applicationFee > 0 && (
               <FeeRow label="Biaya layanan KoBo" note="sekali, di pembayaran pertama" value={formatRupiah(quote.applicationFee)} />
@@ -238,7 +249,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
         {/* Strict CTA Visual Hierarchy: Exactly ONE Dominant Primary CTA (with an offer, the banner's "Ajukan Sewa" is it) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {showBooking && !offerEntry && needsVerification && isVacant && (
-            <Button variant="primary" size="lg" fullWidth onClick={() => navigate('/profile')} icon={<GraduationCap size={18} />} style={{ minHeight: '44px', padding: '0.65rem 1.25rem' }}>
+            <Button variant="primary" size="lg" fullWidth onClick={() => navigate(`/profile?next=${encodeURIComponent(window.location.pathname)}`)} icon={<GraduationCap size={18} />} style={{ minHeight: '44px', padding: '0.65rem 1.25rem' }}>
               Verifikasi status mahasiswa
             </Button>
           )}
@@ -269,6 +280,8 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           </Button>
         </div>
 
+        <StudentOnlyNote />
+
         {showBooking && !offerEntry && isVacant && (
           <p style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', margin: '-0.25rem 0 0', fontSize: 'var(--step--2)', color: 'var(--text-muted)' }}>
             <ShieldCheck size={15} color="var(--primary)" style={{ flexShrink: 0 }} aria-hidden="true" />
@@ -288,7 +301,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           Survey
         </Button>
         {needsVerification ? (
-          <Button variant="primary" size="md" onClick={() => navigate('/profile')} style={{ minHeight: '44px' }}>Verifikasi</Button>
+          <Button variant="primary" size="md" onClick={() => navigate(`/profile?next=${encodeURIComponent(window.location.pathname)}`)} style={{ minHeight: '44px' }}>Verifikasi</Button>
         ) : (
           <Button variant="primary" size="md" onClick={onGoToCheckout} style={{ minHeight: '44px' }}>
             Ajukan

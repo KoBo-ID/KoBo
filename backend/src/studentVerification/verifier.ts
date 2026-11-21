@@ -1,18 +1,36 @@
 import type { CampusVerifyMethod, StudentVerificationStatus } from '@kobo/shared/types'
 import { isStudentVerified, STUDENT_VERIFICATION_MAX_DAYS } from '@kobo/shared/domain'
 import type { PrismaClient } from '../db/client.ts'
+import { ktmAutoReviewSeconds } from '../env.ts'
 import type { Prisma } from '../generated/prisma/client.ts'
+
+/** A student gets this many KTM rejections, then must use another way (campus email or account) or contact KoBo. */
+export const KTM_MAX_ATTEMPTS = 3
+
+/**
+ * Rejections that count toward the limit: decided by a reviewer, not withdrawn by the student (no reviewer) and not
+ * cleared by `reset` (reviewer prefixed "reset:"). Deliberately ignores deletedAt: the 30-day photo purge must not give
+ * attempts back.
+ */
+export const countedRejectionWhere = (userId: string) => ({
+  userId,
+  kind: 'KTM' as const,
+  status: 'REJECTED' as const,
+  AND: [{ reviewer: { not: null } }, { NOT: { reviewer: { startsWith: 'reset:' } } }],
+})
 
 export interface ApplyVerificationInput {
   via: CampusVerifyMethod
   until: Date
   campusShortName?: string
+  /** The Campus row the student verified with. Latest verification wins, even when the longer expiry is kept. */
+  campusId?: string
 }
 
 /**
- * The ONE write that sets campusEmailVerifiedAt = now, campusVerifiedVia and campusVerifiedUntil (and campus when empty).
+ * The ONE write that sets campusEmailVerifiedAt = now, campusVerifiedVia, campusVerifiedUntil and verifiedCampusId (and campus when empty).
  * Never shortens: a currently verified user whose stored expiry is later than the new one, verifying by a DIFFERENT
- * method, keeps via/until (an existing null "legacy never expires" counts as the latest). The new expiry is capped at now + 365 days.
+ * method, keeps via/until (but verifiedCampusId always follows the latest verification; an existing null "legacy never expires" counts as the latest). The new expiry is capped at now + 365 days.
  */
 export async function applyVerification(tx: Prisma.TransactionClient, userId: string, input: ApplyVerificationInput, now: Date = new Date()): Promise<void> {
   const cap = new Date(now.getTime() + STUDENT_VERIFICATION_MAX_DAYS * 86_400_000)
@@ -23,6 +41,7 @@ export async function applyVerification(tx: Prisma.TransactionClient, userId: st
   })
   const data: Prisma.UserUpdateInput = {}
   if (!u.campus && input.campusShortName) data.campus = input.campusShortName
+  if (input.campusId) data.verifiedCampusId = input.campusId
   const keep =
     isStudentVerified(u, now) &&
     u.campusVerifiedVia !== input.via &&
@@ -46,10 +65,13 @@ export async function getStudentVerificationStatus(
     where: { id: userId },
     select: { campus: true, campusEmailVerifiedAt: true, campusVerifiedVia: true, campusVerifiedUntil: true },
   })
-  const base = { via: u.campusVerifiedVia, until: u.campusVerifiedUntil?.toISOString() ?? null, campus: u.campus, reason: null, providers }
+  const rejected = await prisma.studentDocument.count({ where: countedRejectionWhere(userId) })
+  const slaText = ktmAutoReviewSeconds() ? 'Biasanya selesai dalam ±20 menit' : 'Biasanya selesai dalam 1×24 jam'
+  const base = { via: u.campusVerifiedVia, until: u.campusVerifiedUntil?.toISOString() ?? null, campus: u.campus, reason: null, providers, attemptsLeft: Math.max(0, KTM_MAX_ATTEMPTS - rejected), submittedAt: null as string | null, slaText }
   if (isStudentVerified(u, now)) return { ...base, state: 'VERIFIED' }
   const docs = await prisma.studentDocument.findMany({ where: { userId, deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 20, select: { status: true, reason: true, createdAt: true } })
-  if (docs.some((d) => d.status === 'PENDING')) return { ...base, state: 'PENDING' }
+  const pending = docs.find((d) => d.status === 'PENDING')
+  if (pending) return { ...base, state: 'PENDING', submittedAt: pending.createdAt.toISOString() }
   const last = docs[0]
   if (last && last.status === 'REJECTED' && (!u.campusEmailVerifiedAt || last.createdAt > u.campusEmailVerifiedAt)) return { ...base, state: 'REJECTED', reason: last.reason }
   if (u.campusEmailVerifiedAt) return { ...base, state: 'EXPIRED' }

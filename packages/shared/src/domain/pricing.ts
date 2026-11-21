@@ -1,8 +1,11 @@
+/** Shown wherever the campus discount is named. */
+export const DISCOUNT_LABEL = 'Diskon Kampus Mitra'
+
 export interface CheckoutInput {
   monthlyRent: number
   applicationFee: number
   discountAmount: number
-  campusEmailVerified: boolean
+  discountEligible: boolean
 }
 
 export interface CheckoutTotal {
@@ -21,7 +24,7 @@ export function computeCheckoutTotal(input: CheckoutInput): CheckoutTotal {
   const rent = Math.max(0, Math.trunc(input.monthlyRent))
   const applicationFee = Math.max(0, Math.trunc(input.applicationFee))
   const gross = rent + applicationFee
-  const requested = input.campusEmailVerified ? Math.max(0, Math.trunc(input.discountAmount)) : 0
+  const requested = input.discountEligible ? Math.max(0, Math.trunc(input.discountAmount)) : 0
   const discount = Math.min(requested, rent)
   return { rent, applicationFee, discount, total: gross - discount }
 }

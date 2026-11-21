@@ -3,8 +3,8 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, Footprints, Send, ShieldCheck } from 'lucide-react';
-import { addDays, computeCheckoutTotal, MAX_LEASE_MONTHS, todayWIB } from '@kobo/shared/domain';
-import { CampusDiscountCard } from '../components/booking/CampusDiscountCard';
+import { addDays, computeCheckoutTotal, DISCOUNT_LABEL, MAX_LEASE_MONTHS, todayWIB } from '@kobo/shared/domain';
+import { CampusDiscountCard, PartnerCampusLink, useMyDiscountStatus } from '../components/booking/CampusDiscountCard';
 import { useAppStore } from '../store/AppContext';
 import { useSession } from '../lib/session';
 import { useTRPC } from '../lib/trpc';
@@ -84,10 +84,12 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
     },
   }));
 
-  const roomUnavailable = !room || room.status !== 'vacant' || room.reservedForWaitlist;
+  const discountStatus = useMyDiscountStatus();
+  const roomUnavailable =!room || room.status !== 'vacant' || room.reservedForWaitlist;
   const breakdown = room
-    ? computeCheckoutTotal({ monthlyRent: room.priceMonthly, applicationFee: kos.applicationFee, discountAmount: kos.studentDiscountAmount, campusEmailVerified: !!me?.campusVerified })
+    ? computeCheckoutTotal({ monthlyRent: room.priceMonthly, applicationFee: kos.applicationFee, discountAmount: kos.studentDiscountAmount, discountEligible: !!discountStatus.data?.affiliated })
     : null;
+  const notAffiliated = kos.studentDiscountAmount > 0 && !!discountStatus.data?.verified && !discountStatus.data.affiliated;
 
   // Before a first application: the emergency contact (with consent) and the current Syarat. The server enforces it too.
   const missingProfile = !!me && me.profileConsentsRequired && (!me.emergencyContact || !me.termsCurrent);
@@ -179,7 +181,17 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
                   <span style={{ fontSize: 'var(--step--1)', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '0.75rem' }}>Perkiraan pembayaran setelah disetujui</span>
                   <div style={{ fontSize: 'var(--step--1)' }}>
                     <Row label="Sewa bulan pertama" value={formatRupiah(breakdown.rent)} />
-                    {breakdown.discount > 0 && <Row tone="primary" label="Diskon mahasiswa" value={`- ${formatRupiah(breakdown.discount)}`} />}
+                    {breakdown.discount > 0 && (
+                      <>
+                        <Row tone="primary" label={DISCOUNT_LABEL} value={`- ${formatRupiah(breakdown.discount)}`} />
+                        <p style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', margin: '-0.25rem 0 0.5rem' }}>Diskon dikonfirmasi saat pemilik menyetujui.</p>
+                      </>
+                    )}
+                    {notAffiliated && (
+                      <div style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', margin: '0 0 0.5rem' }} data-testid="discount-not-affiliated">
+                        {DISCOUNT_LABEL} tidak berlaku untuk {discountStatus.data?.campusName ?? 'kampus Anda'}. <PartnerCampusLink />
+                      </div>
+                    )}
                     <Row label="Biaya layanan KoBo" value={formatRupiah(breakdown.applicationFee)} />
                     <Row label={<strong>Total perkiraan</strong>} value={formatRupiah(breakdown.total)} tone="primary" />
                   </div>

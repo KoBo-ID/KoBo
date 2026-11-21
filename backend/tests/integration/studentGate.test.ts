@@ -16,7 +16,7 @@ afterEach(() => {
 })
 
 const verify = (id: string, via: 'EMAIL' | 'MICROSOFT' | 'GOOGLE' | 'KTM', until: Date | null = new Date(Date.now() + 30 * DAY)) =>
-  prisma.user.update({ where: { id }, data: { campusEmailVerifiedAt: new Date(), campusVerifiedVia: via, campusVerifiedUntil: until, campus: 'BINUS' } })
+  prisma.user.update({ where: { id }, data: { campusEmailVerifiedAt: new Date(), campusVerifiedVia: via, campusVerifiedUntil: until, campus: 'BINUS', verifiedCampusId: 'binus-syahdan' } })
 
 const applyIn = (userId: string, roomId: string) => callerFor(userId).application.create({ roomId, startDate: startIn(3), durationMonths: 3 })
 const visitIn = (userId: string, kosId: string) => callerFor(userId).visit.create({ kosId, date: startIn(3), timeSlot: 'PAGI' })

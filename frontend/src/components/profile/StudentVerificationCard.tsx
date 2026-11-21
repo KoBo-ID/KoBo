@@ -176,7 +176,7 @@ export const StudentVerificationCard: React.FC = () => {
   } else if (sv.state === 'REJECTED') {
     status = <Notice tone="error">Ditolak: {sv.reason ?? 'tidak ada alasan yang dicatat'}</Notice>;
   } else if (sv.state === 'EXPIRED') {
-    status = <Notice tone="error">Verifikasi kedaluwarsa, perbarui</Notice>;
+    status = <Notice tone="error">{sv.until ? `Verifikasi kedaluwarsa pada ${formatUntil(sv.until)}. ` : 'Verifikasi kedaluwarsa. '}Verifikasi ulang di bawah dengan email kampus aktif atau KTM terbaru.</Notice>;
   }
 
   const listVisible = listOpen && !picked && (campuses.data?.length ?? 0) > 0;

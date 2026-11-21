@@ -41,3 +41,12 @@ describe('safeNextPath (G2-17)', () => {
     expect(safeNextPath('/masukan', O)).toBe('/masukan')
   })
 })
+
+describe('safeNextPath for the VerifyPrompt link (X1)', () => {
+  it.each(['//evil.com', 'https://evil.com/x', '/\\evil.com', '/\\', '/masuk'])('falls back to / for %j', (raw) => {
+    expect(safeNextPath(raw, O, '/')).toBe('/')
+  })
+  it('keeps the current kos page path with its query', () => {
+    expect(safeNextPath('/kos/kos-1?room=r1', O, '/')).toBe('/kos/kos-1?room=r1')
+  })
+})

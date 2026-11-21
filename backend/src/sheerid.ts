@@ -185,9 +185,9 @@ export async function settleSheerId(prisma: PrismaClient, client: SheerIdClient,
     })
     if (res.count !== 1) return false
     if (outcome === 'SUCCESS') {
-      const campus = row.campusId ? await tx.campus.findUnique({ where: { id: row.campusId }, select: { shortName: true } }) : null
+      const campus = row.campusId ? await tx.campus.findUnique({ where: { id: row.campusId }, select: { id: true, shortName: true } }) : null
       const until = new Date(now.getTime() + STUDENT_VERIFICATION_MAX_DAYS * 86_400_000)
-      await applyVerification(tx, row.userId, { via: 'SHEERID', until, campusShortName: campus?.shortName }, now)
+      await applyVerification(tx, row.userId, { via: 'SHEERID', until, campusShortName: campus?.shortName, campusId: campus?.id }, now)
     }
     return true
   })

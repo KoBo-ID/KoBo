@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto'
-import { isStudentVerified } from '@kobo/shared/domain'
+import { isStudentVerified, todayWIB } from '@kobo/shared/domain'
 import { ktmConfirmInput, ktmPresignInput, sheeridStartInput } from '@kobo/shared/schemas'
 import type { StudentVerificationStatus } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
 import { HOUR, limiterFor } from '../rateLimit.ts'
 import { hasImageSignature, PRESIGN_EXPIRES_SECONDS } from '../storage.ts'
 import { SHEERID_CONSENT_VERSION, settleSheerId } from '../sheerid.ts'
-import { getStudentVerificationStatus } from '../studentVerification/verifier.ts'
+import { countedRejectionWhere, getStudentVerificationStatus, KTM_MAX_ATTEMPTS } from '../studentVerification/verifier.ts'
 import { authedProcedure, router, type Context } from './trpc.ts'
 
 const KTM_MAX_BYTES = 3_000_000
@@ -18,6 +18,9 @@ export interface KtmPresign {
   headers: Record<string, string>
   expiresInSeconds: number
 }
+
+const OUT_OF_ATTEMPTS = 'Percobaan unggah KTM Anda sudah habis. Gunakan Cara lain (email kampus atau akun kampus) atau hubungi KoBo.'
+const tooManyRejections = async (ctx: Context & { user: { id: string } }) => (await ctx.prisma.studentDocument.count({ where: countedRejectionWhere(ctx.user.id) })) >= KTM_MAX_ATTEMPTS
 
 const bad = (message: string) => new TRPCError({ code: 'BAD_REQUEST', message })
 
@@ -40,6 +43,7 @@ export const studentVerificationRouter = router({
     if (await ctx.prisma.studentDocument.findFirst({ where: { userId: ctx.user.id, status: 'PENDING', deletedAt: null }, select: { id: true } })) {
       throw new TRPCError({ code: 'CONFLICT', message: 'KTM Anda sedang ditinjau.' })
     }
+    if (await tooManyRejections(ctx)) throw new TRPCError({ code: 'FORBIDDEN', message: OUT_OF_ATTEMPTS })
     const key = `private/ktm/${ctx.user.id}/${randomUUID()}.${input.contentType === 'image/webp' ? 'webp' : 'jpg'}`
     const signed = await ctx.storage.presignPrivatePut(key, input.contentType, input.contentLength)
     return { key, url: signed.url, headers: signed.headers, expiresInSeconds: PRESIGN_EXPIRES_SECONDS }
@@ -55,6 +59,17 @@ export const studentVerificationRouter = router({
       // Do not keep a card photo the student no longer needs. Only objects that no document row owns are removed.
       if (!(await ctx.prisma.studentDocument.findUnique({ where: { key: input.key }, select: { id: true } }))) await ctx.storage.deletePrivate(input.key)
       throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Status mahasiswa Anda sudah terverifikasi.' })
+    }
+    const unowned = async () => {
+      if (!(await ctx.prisma.studentDocument.findUnique({ where: { key: input.key }, select: { id: true } }))) await ctx.storage.deletePrivate(input.key)
+    }
+    if (input.validUntil && input.validUntil < todayWIB(new Date())) {
+      await unowned()
+      throw bad('Masa berlaku KTM sudah lewat. Gunakan KTM yang masih berlaku atau kartu rencana studi semester ini.')
+    }
+    if (await tooManyRejections(ctx)) {
+      await unowned()
+      throw new TRPCError({ code: 'FORBIDDEN', message: OUT_OF_ATTEMPTS })
     }
     const campus = await ctx.prisma.campus.findUnique({ where: { id: input.campusId }, select: { id: true } })
     if (!campus) throw bad('Kampus tidak ditemukan.')
@@ -76,7 +91,7 @@ export const studentVerificationRouter = router({
     const now = new Date()
     try {
       await ctx.prisma.studentDocument.create({
-        data: { userId: ctx.user.id, kind: 'KTM', status: 'PENDING', key: input.key, contentType: head.contentType, campusId: input.campusId, nim: input.nim, nameOnCard: input.nameOnCard, consentAt: now },
+        data: { userId: ctx.user.id, kind: 'KTM', status: 'PENDING', key: input.key, contentType: head.contentType, campusId: input.campusId, nim: input.nim, nameOnCard: input.nameOnCard, claimedValidUntil: input.validUntil ? new Date(`${input.validUntil}T00:00:00.000Z`) : null, program: input.program || null, consentAt: now },
       })
     } catch (e) {
       if ((e as { code?: string }).code === 'P2002') {
