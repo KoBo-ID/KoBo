@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { MAX_ROOMS_PER_KOS } from './limits.ts'
 import { isCalendarDay } from './domain/calendarDay.ts'
 import { MAX_LEASE_MONTHS } from './domain/pricing.ts'
+import { containsContactInfo, LIFESTYLE_VALUES, MATCH_GENDERS, MATCH_KOS_TYPES } from './domain/matching.ts'
 import { GENDER_FILTERS, PRICE_MAX, SEARCH_RADIUS_MAX, SEARCH_RADIUS_MIN, SORT_KEYS } from './search.ts'
 
 /** 'YYYY-MM-DD' that exists on the calendar. */
@@ -66,6 +67,9 @@ export const ktmConfirmInput = z.object({
   campusId: z.string().min(1),
   nim: z.string().trim().min(3).max(30),
   nameOnCard: z.string().trim().min(2).max(80),
+  /** The expiry printed on the card, typed by the student; the reviewer decides the real validUntil. */
+  validUntil: calendarDay.optional(),
+  program: z.string().trim().max(80).optional(),
   consent: z.literal(true),
 })
 export const campusEmailCodeInput = z.object({ code: z.string().regex(/^\d{6}$/) })
@@ -175,6 +179,10 @@ export const roomFieldsInput = z.object({
   size: text(30),
   bedType: text(60),
   priceMonthly: rupiah,
+  /** People the room fits, 1..4. Omitted keeps the current value (1 for a new room: never offered as shareable). */
+  maxOccupants: z.number().int().min(1).max(4).optional(),
+  /** Price per person when shared; null clears it. */
+  pricePerPersonMonthly: rupiah.nullable().optional(),
 })
 export const roomCreateInput = roomFieldsInput.extend({ kosId: z.string().min(1).max(64) })
 export const roomUpdateInput = roomFieldsInput.extend({ kosId: z.string().min(1).max(64), roomId: z.string().min(1).max(64) })
@@ -335,3 +343,130 @@ export const ownerPlaceAddInput = ownerPlaceKosInput.extend({
   note: ownerPlaceText(140).optional(),
 })
 export type OwnerPlaceAddInput = z.input<typeof ownerPlaceAddInput>
+
+export const OWNER_DOC_KINDS = ['KTP', 'SHM', 'SHGB', 'AJB', 'GIRIK', 'SPPT_PBB', 'SURAT_KUASA', 'SURAT_KETERANGAN'] as const
+export type OwnerDocKind = (typeof OWNER_DOC_KINDS)[number]
+export const OWNER_DOC_LABEL: Record<OwnerDocKind, string> = {
+  KTP: 'KTP pemilik',
+  SHM: 'Sertifikat Hak Milik (SHM)',
+  SHGB: 'Sertifikat Hak Guna Bangunan (SHGB)',
+  AJB: 'Akta Jual Beli (AJB)',
+  GIRIK: 'Girik / Letter C',
+  SPPT_PBB: 'SPPT PBB',
+  SURAT_KUASA: 'Surat kuasa dari pemilik',
+  SURAT_KETERANGAN: 'Surat keterangan dari RT/RW atau kelurahan',
+}
+/** Land-rights and authority documents; an owner submits a KTP plus at least one of these. */
+export const OWNER_PROOF_KINDS = ['SHM', 'SHGB', 'AJB', 'GIRIK', 'SPPT_PBB', 'SURAT_KUASA', 'SURAT_KETERANGAN'] as const
+
+export const ownerDocPresignInput = z.object({
+  kind: z.enum(OWNER_DOC_KINDS),
+  contentType: z.enum(['image/jpeg', 'image/webp', 'application/pdf']),
+  contentLength: z.number().int().positive().max(10_000_000),
+})
+/** 1..4 documents: a first submit carries KTP + proof, a resubmit only the replacements; the server enforces the per-role set (Q6). */
+export const ownerDocSubmitInput = z.object({
+  documents: z.array(z.object({ kind: z.enum(OWNER_DOC_KINDS), key: z.string().min(1).max(300) })).min(1).max(4),
+  consent: z.literal(true),
+})
+export type OwnerDocPresignInput = z.infer<typeof ownerDocPresignInput>
+export type OwnerDocSubmitInput = z.infer<typeof ownerDocSubmitInput>
+
+// ---------------------------------------------------------------------------
+// Roommate matching (T1). Every input is by profileId / connectionId / requestId: the other user's userId is never exposed.
+// ---------------------------------------------------------------------------
+
+const NO_CONTACT = 'Jangan cantumkan nomor telepon, email, atau tautan. Gunakan obrolan KoBo setelah permintaan diterima.'
+const noContact = (s: string) => !containsContactInfo(s)
+const budgetStep = z.number().int().min(100_000).max(PRICE_MAX).refine((n) => n % 100_000 === 0, { message: 'Anggaran kelipatan Rp 100.000.' })
+const rowId = z.string().min(1).max(64)
+
+/**
+ * Profile upsert. Required core (P1): displayName, gender, birthYear, budget range, anchor (+ radius, default 3), moveInDate, smoking.
+ * Everything else is optional: intro empty, durationMonths 12, kosType (server default: the user's own gender), roomShare 2,
+ * the other 8 lifestyle fields BEBAS. `active` is not an input: the server activates after the core is saved (setActive toggles).
+ */
+export const matchingProfileUpsertInput = z
+  .object({
+    displayName: z.string().trim().min(2, 'Nama tampilan minimal 2 karakter.').max(40),
+    gender: z.enum(MATCH_GENDERS),
+    birthYear: z.number().int().min(1950).max(2020),
+    budgetMin: budgetStep,
+    budgetMax: budgetStep,
+    anchorLat: z.number().min(-11).max(6),
+    anchorLng: z.number().min(95).max(141),
+    anchorLabel: z.string().trim().min(1).max(80),
+    radiusKm: z.number().int().min(1).max(15).default(3),
+    moveInDate: calendarDay,
+    smoking: z.enum(LIFESTYLE_VALUES.smoking),
+    intro: z.string().trim().max(300).refine(noContact, { message: NO_CONTACT }).default(''),
+    durationMonths: z.number().int().min(1).max(12).default(12),
+    kosType: z.enum(MATCH_KOS_TYPES).optional(),
+    roomShare: z.union([z.literal(2), z.literal(3)]).default(2),
+    sleep: z.enum(LIFESTYLE_VALUES.sleep).default('BEBAS'),
+    tidiness: z.enum(LIFESTYLE_VALUES.tidiness).default('BEBAS'),
+    guests: z.enum(LIFESTYLE_VALUES.guests).default('BEBAS'),
+    noise: z.enum(LIFESTYLE_VALUES.noise).default('BEBAS'),
+    social: z.enum(LIFESTYLE_VALUES.social).default('BEBAS'),
+    study: z.enum(LIFESTYLE_VALUES.study).default('BEBAS'),
+    ac: z.enum(LIFESTYLE_VALUES.ac).default('BEBAS'),
+    expenses: z.enum(LIFESTYLE_VALUES.expenses).default('BEBAS'),
+  })
+  .refine((v) => v.budgetMin <= v.budgetMax, { message: 'Anggaran minimum tidak boleh melebihi maksimum.', path: ['budgetMax'] })
+export type MatchingProfileUpsertInput = z.input<typeof matchingProfileUpsertInput>
+
+export const matchingSetActiveInput = z.object({ active: z.boolean() })
+/** "Sudah dapat teman sekamar": pauses the profile and cancels pending requests; connections stay. */
+export const matchingMarkFoundInput = z.object({}).optional()
+export const matchingEmailOptOutInput = z.object({ emailOptOut: z.boolean() })
+
+export const DISCOVER_SORTS = ['skor', 'jarak'] as const
+export const discoverInput = z
+  .object({
+    maxDistanceKm: z.number().min(1).max(15).optional(),
+    budgetMin: z.number().int().min(0).max(PRICE_MAX).optional(),
+    budgetMax: z.number().int().min(0).max(PRICE_MAX).optional(),
+    moveInBefore: calendarDay.optional(),
+    sort: z.enum(DISCOVER_SORTS).default('skor'),
+    /** Opaque; the server encodes (sort key, lastActiveAt, profileId). */
+    cursor: z.string().max(200).optional(),
+  })
+  .default({ sort: 'skor' })
+export type DiscoverInput = z.input<typeof discoverInput>
+
+export const matchingDetailInput = z.object({ profileId: rowId })
+
+/** The intro is refused when it carries contact info (chat only warns). */
+export const requestSendInput = z.object({
+  profileId: rowId,
+  message: z.string().trim().max(300).refine(noContact, { message: NO_CONTACT }).optional(),
+})
+export const requestIdInput = z.object({ requestId: rowId })
+export const requestListInput = z.object({ box: z.enum(['sent', 'received']), cursor: rowId.optional() })
+
+export const connectionIdInput = z.object({ connectionId: rowId })
+export const messageListInput = z.object({ connectionId: rowId, cursor: z.string().max(200).optional(), limit: z.number().int().min(1).max(100).default(50) })
+/** `confirmContact`: the sender saw the warning about contact info and still wants to send. */
+export const messageSendInput = z.object({ connectionId: rowId, body: z.string().trim().min(1, 'Pesan tidak boleh kosong.').max(1000), confirmContact: z.boolean().optional() })
+
+export const shortlistAddInput = z.object({ connectionId: rowId, kosId: rowId })
+export const shortlistRemoveInput = shortlistAddInput
+
+export const blockInput = z.object({ profileId: rowId })
+export const unblockInput = z.object({ blockId: rowId })
+export const REPORT_REASONS = ['PELECEHAN', 'SPAM_PENIPUAN', 'PROFIL_PALSU', 'KONTEN_TIDAK_PANTAS', 'LAINNYA'] as const
+export const REPORT_REASON_LABEL: Record<(typeof REPORT_REASONS)[number], string> = {
+  PELECEHAN: 'Pelecehan',
+  SPAM_PENIPUAN: 'Spam atau penipuan',
+  PROFIL_PALSU: 'Profil palsu (termasuk gender tidak sesuai)',
+  KONTEN_TIDAK_PANTAS: 'Konten tidak pantas',
+  LAINNYA: 'Lainnya',
+}
+export const reportInput = z.object({
+  profileId: rowId,
+  reason: z.enum(REPORT_REASONS),
+  detail: z.string().trim().max(500).default(''),
+  connectionId: rowId.optional(),
+  messageId: rowId.optional(),
+})
+export type ReportInput = z.input<typeof reportInput>

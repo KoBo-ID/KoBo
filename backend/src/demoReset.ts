@@ -137,13 +137,34 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
             campusEmailVerifiedAt: (u.campusEmailVerifiedAt as Date | undefined) ?? null,
             campusVerifiedVia: (u.campusVerifiedVia as 'EMAIL' | undefined) ?? null,
             campusVerifiedUntil: (u.campusVerifiedUntil as Date | undefined) ?? null,
+            verifiedCampusId: (u.verifiedCampusId as string | undefined) ?? null,
             campusIdpTenant: null,
             campusIdpSubject: null,
           },
         })
       }
       const { id: _id, userId: _userId, ...profileFields } = demoProfile
-      await tx.ownerProfile.update({ where: { id: demoProfile.id }, data: profileFields as never })
+      await tx.ownerProfile.update({ where: { id: demoProfile.id }, data: { ...profileFields, verificationStatus: 'DISETUJUI', verificationReason: null, verificationAttempts: 0 } as never })
+
+      // 7b. Teman Sekamar: the demo student's profile, requests, connections, chat, blocks and own reports go back to seed. Only the
+      // counterparts that exist are restored (an older demo database may predate the seeded matching students).
+      const demoReqs = { OR: [{ fromUserId: demoStudent.id }, { toUserId: demoStudent.id }] }
+      await tx.userReport.deleteMany({ where: { reporterId: demoStudent.id } })
+      await tx.userBlock.deleteMany({ where: { OR: [{ blockerId: demoStudent.id }, { blockedId: demoStudent.id }] } })
+      // Connections first: PartnerConnection -> PartnerRequest has no cascade. Messages, read states and the shortlist cascade away.
+      await tx.partnerConnection.deleteMany({ where: { OR: [{ userAId: demoStudent.id }, { userBId: demoStudent.id }] } })
+      await tx.partnerRequest.deleteMany({ where: demoReqs })
+      await tx.matchingProfile.deleteMany({ where: { userId: demoStudent.id } })
+      const present = new Set((await tx.user.findMany({ where: { id: { in: seedUserIds } }, select: { id: true } })).map((u) => u.id))
+      const mine = (userId: string) => present.has(userId)
+      await tx.matchingProfile.createMany({ data: seed.matchingProfiles.filter((p) => p.userId === demoStudent.id) as never })
+      const requests = seed.partnerRequests.filter((r) => mine(r.fromUserId) && mine(r.toUserId))
+      const connections = seed.partnerConnections.filter((c) => mine(c.userAId) && mine(c.userBId))
+      const connIds = new Set(connections.map((c) => c.id))
+      await tx.partnerRequest.createMany({ data: requests as never })
+      await tx.partnerConnection.createMany({ data: connections as never })
+      await tx.partnerMessage.createMany({ data: seed.partnerMessages.filter((m) => connIds.has(m.connectionId)) as never })
+      await tx.connectionReadState.createMany({ data: seed.connectionReadStates.filter((s) => connIds.has(s.connectionId)) as never })
 
       // 8. Room occupancy follows the tenancies again for every room this reset could have changed.
       const touched = [...new Set([...doomed.map((d) => d.roomId), ...seedRoomIds])]

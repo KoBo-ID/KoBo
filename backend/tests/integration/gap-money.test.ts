@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetDb } from '../../src/db/seed.ts'
 import { approveApplication, callerFor, newStudent, prisma, settleMock } from '../helpers.ts'
-import { makeKos } from './gap-helpers.ts'
+import { makeKos, verifyAtCampus } from './gap-helpers.ts'
 
 beforeEach(() => resetDb(prisma))
 
 const verified = async () => {
   const s = await newStudent()
-  await prisma.user.update({ where: { id: s.id }, data: { campusEmailVerifiedAt: new Date(), campusEmail: `${s.id}@binus.ac.id` } })
+  await prisma.user.update({ where: { id: s.id }, data: { campusEmail: `${s.id}@binus.ac.id` } })
+  await verifyAtCampus(s.id)
   return s
 }
 

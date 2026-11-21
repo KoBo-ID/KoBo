@@ -84,7 +84,7 @@ export function queryCards<T = KosCard>(prisma: PrismaClient, q: CardQuery): Pro
     SELECT ${CARD_COLUMNS}${q.extraSelect ? Prisma.sql`, ${q.extraSelect}` : Prisma.empty}
     FROM "Kos" k
     JOIN "OwnerProfile" op ON op.id = k."ownerId" ${cardJoins(q.mediaBase)}
-    WHERE k."archivedAt" IS NULL AND (op."approvedAt" IS NOT NULL OR k."ownerId" = ${q.viewerOwnerId ?? ''})
+    WHERE k."archivedAt" IS NULL AND (op."verificationStatus" = 'DISETUJUI' OR k."ownerId" = ${q.viewerOwnerId ?? ''})
     ${q.where ? Prisma.sql`AND (${q.where})` : Prisma.empty}
     ORDER BY ${q.orderBy ? Prisma.sql`${q.orderBy}, ` : Prisma.empty}k."createdAt", k.id
     LIMIT ${q.limit}`)

@@ -32,6 +32,9 @@ model User {
   campusVerifiedUntil   DateTime?           @db.Timestamptz(3)
   campusIdpTenant       String?
   campusIdpSubject      String?
+  // The campus the latest verification proved (id, or a branch's own id). No FK: Campus is reference data (ADR 0016).
+  // Written only by applyVerification; the latest verification wins.
+  verifiedCampusId      String?
 
   // Emergency contact: required before a first application; the contact is only messaged when the student consented.
   emergencyContactName      String?
@@ -57,6 +60,20 @@ model User {
   studentDocuments      StudentDocument[]
   campusEmailChallenges CampusEmailChallenge[]
   sheeridVerifications  SheerIdVerification[]
+  ownerDocuments        OwnerDocument[]
+
+  // Roommate matching (T1)
+  matchingProfile      MatchingProfile?
+  partnerRequestsSent  PartnerRequest[]      @relation("PartnerRequestFrom")
+  partnerRequestsGot   PartnerRequest[]      @relation("PartnerRequestTo")
+  partnerConnectionsA  PartnerConnection[]   @relation("PartnerConnectionA")
+  partnerConnectionsB  PartnerConnection[]   @relation("PartnerConnectionB")
+  partnerMessages      PartnerMessage[]
+  connectionReadStates ConnectionReadState[]
+  blocksMade           UserBlock[]           @relation("UserBlockBlocker")
+  blocksReceived       UserBlock[]           @relation("UserBlockBlocked")
+  reportsMade          UserReport[]          @relation("UserReportReporter")
+  reportsReceived      UserReport[]          @relation("UserReportReported")
 }
 
 enum CampusVerifyMethod {
@@ -106,25 +123,28 @@ enum StudentDocumentStatus {
 }
 
 model StudentDocument {
-  id          String                @id @default(cuid(2))
-  userId      String
-  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String                @id @default(cuid(2))
+  userId            String
+  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   // No FK: Campus is reference data (ADR 0016).
-  campusId    String?
-  kind        StudentDocumentKind   @default(KTM)
-  key         String                @unique
-  contentType String
-  status      StudentDocumentStatus @default(PENDING)
-  nim         String?
-  nameOnCard  String?
-  validUntil  DateTime?             @db.Date
-  reviewer    String?
-  reason      String?
-  consentAt   DateTime              @db.Timestamptz(3)
-  createdAt   DateTime              @default(now()) @db.Timestamptz(3)
-  decidedAt   DateTime?             @db.Timestamptz(3)
-  deleteAfter DateTime?             @db.Timestamptz(3)
-  deletedAt   DateTime?             @db.Timestamptz(3)
+  campusId          String?
+  kind              StudentDocumentKind   @default(KTM)
+  key               String                @unique
+  contentType       String
+  status            StudentDocumentStatus @default(PENDING)
+  nim               String?
+  nameOnCard        String?
+  validUntil        DateTime?             @db.Date
+  // Typed by the student; the reviewer decides validUntil.
+  claimedValidUntil DateTime?             @db.Date
+  program           String?
+  reviewer          String?
+  reason            String?
+  consentAt         DateTime              @db.Timestamptz(3)
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+  decidedAt         DateTime?             @db.Timestamptz(3)
+  deleteAfter       DateTime?             @db.Timestamptz(3)
+  deletedAt         DateTime?             @db.Timestamptz(3)
 
   // Hand-written in the migration: unique ("userId") WHERE status = 'PENDING' AND "deletedAt" IS NULL.
   @@index([status, createdAt])
@@ -344,24 +364,82 @@ model Campus {
 }
 
 model OwnerProfile {
-  id                     String                 @id @default(cuid(2))
-  userId                 String                 @unique
-  user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                     String                  @id @default(cuid(2))
+  userId                 String                  @unique
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   bio                    String?
-  verified               Boolean                @default(false)
+  // LEGACY: not read anymore; dropped in a later release
+  verified               Boolean                 @default(false)
   responseRate           String?
-  memberSince            DateTime               @default(now()) @db.Timestamptz(3)
-  xenditSubaccountId     String?                @unique
-  xenditOnboardingStatus XenditOnboardingStatus @default(NOT_STARTED)
-  xenditVerifiedAt       DateTime?              @db.Timestamptz(3)
+  memberSince            DateTime                @default(now()) @db.Timestamptz(3)
+  xenditSubaccountId     String?                 @unique
+  xenditOnboardingStatus XenditOnboardingStatus  @default(NOT_STARTED)
+  xenditVerifiedAt       DateTime?               @db.Timestamptz(3)
   // Set when KoBo approves a new owner (scripts/approve-owner.ts or OWNER_AUTO_APPROVE). Until then the owner's kos are
   // visible only to the owner. Not the `verified` badge flag, which stays hidden in the UI.
-  approvedAt             DateTime?              @db.Timestamptz(3)
+  approvedAt             DateTime?               @db.Timestamptz(3)
   // Self-declared: PEMILIK, PENGELOLA_KUASA (manager with a power of attorney) or LAINNYA. Not verified; a document badge is manual.
   ownershipType          String?
-  ownershipDeclaredAt    DateTime?              @db.Timestamptz(3)
+  ownershipDeclaredAt    DateTime?               @db.Timestamptz(3)
+  verificationStatus     OwnerVerificationStatus @default(BELUM_KIRIM)
+  verificationReason     String?
+  verificationAttempts   Int                     @default(0)
 
   kos Kos[]
+}
+
+enum OwnerVerificationStatus {
+  BELUM_KIRIM
+  MENUNGGU
+  DISETUJUI
+  DITOLAK
+}
+
+enum OwnerDocumentKind {
+  KTP
+  SHM
+  SHGB
+  AJB
+  GIRIK
+  SPPT_PBB
+  SURAT_KUASA
+  SURAT_KETERANGAN
+}
+
+enum OwnerDocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model OwnerDocument {
+  id          String              @id @default(cuid(2))
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        OwnerDocumentKind
+  key         String              @unique
+  contentType String
+  status      OwnerDocumentStatus @default(PENDING)
+  consentAt   DateTime            @db.Timestamptz(3)
+  createdAt   DateTime            @default(now()) @db.Timestamptz(3)
+  decidedAt   DateTime?           @db.Timestamptz(3)
+  reviewer    String?
+  reason      String?
+  deleteAfter DateTime?           @db.Timestamptz(3)
+  deletedAt   DateTime?           @db.Timestamptz(3)
+
+  @@index([userId, status])
+  @@index([deleteAfter])
+}
+
+/// Campuses (and their branches, via parentId) whose students get "Diskon Kampus Mitra". App table, edited by CLI.
+model CampusAffiliation {
+  id        String   @id @default(cuid(2))
+  // No FK: Campus is reference data (ADR 0016).
+  campusId  String   @unique
+  label     String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
 }
 
 model Kos {
@@ -406,33 +484,38 @@ model Kos {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  rooms       Room[]
-  rules       HouseRule[]
-  pois        Poi[]
-  places      KosPlace[]
-  ownerPlaces OwnerPlace[]
-  overlays    PlaceOverlay[]
-  images      KosImage[]
-  visits      Visit[]
-  waitlist    WaitlistEntry[]
+  rooms                Room[]
+  sharedShortlistItems SharedShortlistItem[]
+  rules                HouseRule[]
+  pois                 Poi[]
+  places               KosPlace[]
+  ownerPlaces          OwnerPlace[]
+  overlays             PlaceOverlay[]
+  images               KosImage[]
+  visits               Visit[]
+  waitlist             WaitlistEntry[]
 
   @@index([ownerId])
   @@index([desaCode])
 }
 
 model Room {
-  id           String    @id @default(cuid(2))
-  kosId        String
-  kos          Kos       @relation(fields: [kosId], references: [id], onDelete: Cascade)
-  roomNumber   String
-  floor        Int
-  type         String
-  size         String
-  bedType      String
-  priceMonthly Int
-  occupancy    Occupancy @default(VACANT)
+  id                    String    @id @default(cuid(2))
+  kosId                 String
+  kos                   Kos       @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  roomNumber            String
+  floor                 Int
+  type                  String
+  size                  String
+  bedType               String
+  priceMonthly          Int
+  // People the room fits (1..4, hand-SQL CHECK). 1 means never offered as shareable; the owner sets 2+ to appear in "Cari kos bersama".
+  maxOccupants          Int       @default(1)
+  // Optional price per person when the room is shared (CHECK > 0); shown as "per orang".
+  pricePerPersonMonthly Int?
+  occupancy             Occupancy @default(VACANT)
   // Same rule as Kos.archivedAt: a room with tenancy history is archived, never deleted.
-  archivedAt   DateTime? @db.Timestamptz(3)
+  archivedAt            DateTime? @db.Timestamptz(3)
 
   tenancies          Tenancy[]
   waitlistOffers     WaitlistEntry[]
@@ -848,4 +931,275 @@ model OwnerPlace {
 
   @@index([kosId])
   @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Roommate matching (T1, ADR 0022). App tables only. No FK to Campus (ADR 0016): campusId is a plain string.
+// Hand SQL (migration 20261122100000_matching): one PENDING request per unordered pair, one live connection per pair,
+// userAId < userBId, CHECKs on ranges. Prisma cannot express those, so db:diff does not see them.
+// ---------------------------------------------------------------------------
+
+enum MatchGender {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum SleepPref {
+  AWAL
+  NORMAL
+  MALAM
+  BEBAS
+}
+
+enum TidinessPref {
+  SANTAI
+  CUKUP
+  RAPI
+  BEBAS
+}
+
+enum SmokingPref {
+  MEROKOK
+  TIDAK_MEROKOK_TOLERAN
+  TIDAK_MAU_PEROKOK
+  BEBAS
+}
+
+enum GuestsPref {
+  JARANG
+  KADANG
+  SERING
+  BEBAS
+}
+
+enum NoisePref {
+  TENANG
+  SEDANG
+  RAMAI
+  BEBAS
+}
+
+enum SocialPref {
+  INTROVERT
+  SEIMBANG
+  EKSTROVERT
+  BEBAS
+}
+
+enum StudyPref {
+  DI_KAMAR
+  CAMPUR
+  DI_LUAR
+  BEBAS
+}
+
+enum AcPref {
+  SELALU
+  MALAM_SAJA
+  TANPA_AC
+  BEBAS
+}
+
+enum ExpensesPref {
+  PATUNGAN
+  SEBAGIAN
+  TERPISAH
+  BEBAS
+}
+
+enum PartnerRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+  EXPIRED
+}
+
+enum PartnerEndReason {
+  ENDED_BY_USER
+  BLOCKED
+  PROFILE_DELETED
+  SELESAI
+}
+
+enum ReportReason {
+  PELECEHAN
+  SPAM_PENIPUAN
+  PROFIL_PALSU
+  KONTEN_TIDAK_PANTAS
+  LAINNYA
+}
+
+enum ReportStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
+model MatchingProfile {
+  id        String   @id @default(cuid(2))
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  displayName String
+  intro       String      @default("")
+  // Self-declared, shown only inside matching. Matching is same-gender only.
+  gender      MatchGender
+  // Shown as an age band, never exactly. Under 18 is refused.
+  birthYear   Int
+  // Copied from User.verifiedCampusId when the profile is saved. No FK (ADR 0016).
+  campusId    String?
+
+  // Visible in discover only while active, not paused, not hidden by reports, and seen within 30 days.
+  active            Boolean   @default(false)
+  // "Sudah dapat teman sekamar": pauses the profile without deleting it.
+  pausedAt          DateTime? @db.Timestamptz(3)
+  // Switches off matching emails (requests, accepts, digests) for this user.
+  emailOptOut       Boolean   @default(false)
+  lastActiveAt      DateTime  @default(now()) @db.Timestamptz(3)
+  // Set when 3 OPEN reports from distinct reporters accumulate; cleared by a reviewer decision.
+  hiddenByReportsAt DateTime? @db.Timestamptz(3)
+
+  // Preferences
+  budgetMin      Int
+  budgetMax      Int
+  anchorLat      Float
+  anchorLng      Float
+  anchorLabel    String
+  radiusKm       Int       @default(3)
+  moveInDate     DateTime  @db.Date
+  durationMonths Int       @default(12)
+  kosType        KosGender @default(CAMPUR)
+  roomShare      Int       @default(2)
+
+  // Lifestyle (9 fields, each with BEBAS = no preference)
+  sleep    SleepPref    @default(BEBAS)
+  tidiness TidinessPref @default(BEBAS)
+  smoking  SmokingPref
+  guests   GuestsPref   @default(BEBAS)
+  noise    NoisePref    @default(BEBAS)
+  social   SocialPref   @default(BEBAS)
+  study    StudyPref    @default(BEBAS)
+  ac       AcPref       @default(BEBAS)
+  expenses ExpensesPref @default(BEBAS)
+
+  @@index([active, lastActiveAt])
+}
+
+model PartnerRequest {
+  id         String               @id @default(cuid(2))
+  fromUserId String
+  from       User                 @relation("PartnerRequestFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId   String
+  to         User                 @relation("PartnerRequestTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  message    String               @default("")
+  status     PartnerRequestStatus @default(PENDING)
+  createdAt  DateTime             @default(now()) @db.Timestamptz(3)
+  expiresAt  DateTime             @db.Timestamptz(3)
+  decidedAt  DateTime?            @db.Timestamptz(3)
+
+  connection PartnerConnection?
+
+  @@index([toUserId, status])
+  @@index([fromUserId, status])
+  @@index([status, expiresAt])
+}
+
+model PartnerConnection {
+  id        String            @id @default(cuid(2))
+  // Ordered pair (hand-SQL CHECK userAId < userBId) so a pair has one canonical row.
+  userAId   String
+  userA     User              @relation("PartnerConnectionA", fields: [userAId], references: [id], onDelete: Cascade)
+  userBId   String
+  userB     User              @relation("PartnerConnectionB", fields: [userBId], references: [id], onDelete: Cascade)
+  requestId String            @unique
+  request   PartnerRequest    @relation(fields: [requestId], references: [id])
+  createdAt DateTime          @default(now()) @db.Timestamptz(3)
+  endedAt   DateTime?         @db.Timestamptz(3)
+  endedById String?
+  endReason PartnerEndReason?
+
+  messages   PartnerMessage[]
+  readStates ConnectionReadState[]
+  shortlist  SharedShortlistItem[]
+
+  @@index([userAId, endedAt])
+  @@index([userBId, endedAt])
+}
+
+model PartnerMessage {
+  id           String            @id @default(cuid(2))
+  connectionId String
+  connection   PartnerConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  senderId     String
+  sender       User              @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body         String
+  // The sender confirmed a contact-info warning (phone, email, link) before sending; kept for moderation.
+  hadContact   Boolean           @default(false)
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@index([connectionId, createdAt])
+  @@index([senderId])
+}
+
+model ConnectionReadState {
+  connectionId String
+  connection   PartnerConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt   DateTime          @default(now()) @db.Timestamptz(3)
+  // Last time the 6-hour "pesan baru" digest email was sent to this user for this connection.
+  lastDigestAt DateTime?         @db.Timestamptz(3)
+
+  @@id([connectionId, userId])
+}
+
+model SharedShortlistItem {
+  id           String            @id @default(cuid(2))
+  connectionId String
+  connection   PartnerConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  kosId        String
+  kos          Kos               @relation(fields: [kosId], references: [id], onDelete: Cascade)
+  addedById    String
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@unique([connectionId, kosId])
+}
+
+model UserBlock {
+  id        String   @id @default(cuid(2))
+  blockerId String
+  blocker   User     @relation("UserBlockBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("UserBlockBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model UserReport {
+  id            String       @id @default(cuid(2))
+  reporterId    String
+  reporter      User         @relation("UserReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedId    String
+  reported      User         @relation("UserReportReported", fields: [reportedId], references: [id], onDelete: Cascade)
+  reason        ReportReason
+  detail        String       @default("")
+  // Plain ids (no FK): the connection or message may be purged, the report stays.
+  connectionId  String?
+  messageId     String?
+  // The last 50 messages at report time (S4), so a purge does not destroy the evidence.
+  snapshot      Json?
+  // Counts toward the 3-reporter auto-hide only when the reporter had a request or connection with the target (S2).
+  countsForHide Boolean      @default(false)
+  status        ReportStatus @default(OPEN)
+  reviewer      String?
+  decidedAt     DateTime?    @db.Timestamptz(3)
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([status, createdAt])
+  @@index([reportedId, status])
 }

@@ -102,8 +102,8 @@ test('scenario 1: checkout total equals the first invoice, with and without a ve
         const total = checkoutTotal(c.who.page)
         await expect(total).toBeVisible()
         expect(digits(await total.textContent())).toBe(c.total)
-        if (c.discount) await expect(c.who.page.locator('aside').getByText('Diskon mahasiswa', { exact: true })).toBeVisible()
-        else await expect(c.who.page.locator('aside').getByText('Diskon mahasiswa', { exact: true })).toHaveCount(0)
+        if (c.discount) await expect(c.who.page.locator('aside').getByText('Diskon Kampus Mitra', { exact: true })).toBeVisible()
+        else await expect(c.who.page.locator('aside').getByText('Diskon Kampus Mitra', { exact: true })).toHaveCount(0)
 
         // What the page promised is what the owner's approval bills.
         const applicationId = await apply(c.who, c.room.id)

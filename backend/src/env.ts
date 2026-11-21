@@ -183,6 +183,24 @@ export function paymentEnv(env: NodeJS.ProcessEnv = process.env): PaymentConfig 
   return { provider, xendit }
 }
 
+function autoReviewSeconds(name: string, raw: string | undefined): number | null {
+  const v = raw?.trim()
+  if (!v) return null
+  const n = Number(v)
+  if (!Number.isInteger(n) || n <= 0) throw new Error(`${name} must be a positive whole number of seconds (or unset)`)
+  return n
+}
+
+/** OWNER_AUTO_REVIEW_SECONDS (demo only): approve owner documents after N seconds. Unset or empty = off; anything else must be a positive integer. */
+export function ownerAutoReviewSeconds(env: NodeJS.ProcessEnv = process.env): number | null {
+  return autoReviewSeconds('OWNER_AUTO_REVIEW_SECONDS', env.OWNER_AUTO_REVIEW_SECONDS)
+}
+
+/** KTM_AUTO_REVIEW_SECONDS (demo only): approve pending KTM photos after N seconds. Same rules as the owner variable. */
+export function ktmAutoReviewSeconds(env: NodeJS.ProcessEnv = process.env): number | null {
+  return autoReviewSeconds('KTM_AUTO_REVIEW_SECONDS', env.KTM_AUTO_REVIEW_SECONDS)
+}
+
 /**
  * Test/e2e hooks (backend/src/e2eHooks.ts): extra /api/__e2e/* routes and a network-free fake Xendit provider.
  * Off unless ALLOW_E2E_HOOKS=1, and then refused unless every guard holds, so a stray flag cannot reach a real deployment.

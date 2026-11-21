@@ -75,7 +75,7 @@ describe('B08-001 discount never exceeds the rent', () => {
     const room = await vacantRoom()
     await prisma.kos.update({ where: { id: room.kosId }, data: { studentDiscountAmount: room.priceMonthly + 50_000 } })
     const renter = await newStudent()
-    await prisma.user.update({ where: { id: renter.id }, data: { campusEmailVerifiedAt: new Date(), campusEmail: 'x@binus.ac.id' } })
+    await prisma.user.update({ where: { id: renter.id }, data: { campusEmailVerifiedAt: new Date(), campusEmail: 'x@binus.ac.id', verifiedCampusId: 'binus-syahdan' } })
     const res = await approveApplication(renter.id, room.id, { startDate: startDate() })
     expect(res.invoice.discountAmount).toBe(room.priceMonthly)
     expect(res.invoice.ownerReceivableAmount).toBe(0)

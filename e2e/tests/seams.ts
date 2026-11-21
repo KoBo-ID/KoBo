@@ -240,13 +240,17 @@ export interface Student {
  * A fresh, email-verified student in its own context. `demo` flags it isDemo (MOCK provider, Selesaikan Pembayaran);
  * without it the account takes the fake-Xendit path. `campus` gives it a verified campus email (student discount).
  */
-export async function newStudent(browser: Browser, opts: { label: string; demo?: boolean; campus?: boolean }): Promise<Student> {
+export const DEFAULT_CAMPUS_ID = 'binus-syahdan'
+/** `campus`: true = verified at the seeded affiliated campus; a string = verified at that campus id; null = verified student with no campus id (opt-out of the discount); false/undefined = not verified. */
+export type CampusOpt = boolean | string | null
+export async function newStudent(browser: Browser, opts: { label: string; demo?: boolean; campus?: CampusOpt }): Promise<Student> {
   const { ctx, page } = await newContext(browser)
   const email = await signUpVerified(page, opts.label)
   const [{ id: userId }] = await sql<{ id: string }>('SELECT id FROM "User" WHERE email = $1', [email])
   if (opts.demo) await sql('UPDATE "User" SET "isDemo" = true WHERE id = $1', [userId])
-  if (opts.campus) {
-    await sql('UPDATE "User" SET campus = $2, "campusEmail" = $3, "campusEmailVerifiedAt" = now() WHERE id = $1', [userId, 'BINUS', `${opts.label}${Date.now()}@binus.ac.id`])
+  if (opts.campus !== undefined && opts.campus !== false) {
+    const campusId = opts.campus === true ? DEFAULT_CAMPUS_ID : opts.campus
+    await sql('UPDATE "User" SET campus = $2, "campusEmail" = $3, "campusEmailVerifiedAt" = now(), "verifiedCampusId" = $4 WHERE id = $1', [userId, 'BINUS', `${opts.label}${Date.now()}@binus.ac.id`, campusId])
   }
   return { ctx, page, email, userId }
 }
@@ -266,8 +270,8 @@ export async function newOwnerWorld(browser: Browser, opts: { label: string; roo
   const email = await signUpVerified(page, opts.label)
   const [{ id: userId }] = await sql<{ id: string }>('SELECT id FROM "User" WHERE email = $1', [email])
   await trpcPost(page, 'owner.becomeOwner', { phone: '081234567890' })
-  // New owners wait for KoBo's approval before their kos are public; these worlds are public from the start.
-  await sql('UPDATE "OwnerProfile" SET "approvedAt" = now() WHERE "userId" = $1', [userId])
+  // New owners wait for KoBo's approval before their kos are public (and may create one only at DISETUJUI); these worlds are approved from the start.
+  await sql(`UPDATE "OwnerProfile" SET "approvedAt" = now(), "verificationStatus" = 'DISETUJUI' WHERE "userId" = $1`, [userId])
   const kosName = `Kos ${opts.label} ${Date.now()}`
   const { id: kosId } = await trpcPost<{ id: string }>(page, 'owner.kos.create', {
     name: kosName,
@@ -325,7 +329,7 @@ export async function hold(owner: OwnerWorld, student: Student, roomId: string, 
 }
 
 /** Owner + student + an approved application: the student holds a room and owes the first invoice (nothing paid yet). */
-export async function heldRoom(browser: Browser, opts: { label: string; demo?: boolean; campus?: boolean; price?: number; discount?: number; months?: number }): Promise<HeldRoom> {
+export async function heldRoom(browser: Browser, opts: { label: string; demo?: boolean; campus?: CampusOpt; price?: number; discount?: number; months?: number }): Promise<HeldRoom> {
   const owner = await newOwnerWorld(browser, { label: `${opts.label}-own`, rooms: 1, price: opts.price, discount: opts.discount })
   const student = await newStudent(browser, { label: `${opts.label}-stu`, demo: opts.demo, campus: opts.campus })
   const roomId = owner.rooms[0].id

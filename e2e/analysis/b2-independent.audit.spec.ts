@@ -10,7 +10,7 @@ test('B2 independent UI registration and return destination',async({page})=>{
  await expect(page.getByText(`Masukkan kode 6 digit yang kami kirim ke ${email}`)).toBeVisible()
  await page.getByLabel('Kode verifikasi').fill(await outboxCode(email,'verify-email'))
  await page.getByRole('button',{name:'Verifikasi',exact:true}).click()
- await expect(page).toHaveURL(/\/$/)
+ await expect(page).toHaveURL(/langkah=3/)
  await page.context().clearCookies();await page.goto('/masuk?next=%2Fprofile')
  await page.getByLabel('Email').fill(email);await page.getByLabel('Kata Sandi', { exact: true }).fill('Sandi-rahasia-123')
  await page.getByRole('button',{name:'Masuk ke Akun'}).click()

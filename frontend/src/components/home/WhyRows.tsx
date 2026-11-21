@@ -95,7 +95,7 @@ export const WhyRows: React.FC = () => {
       <Row
         n={2}
         flip
-        title="Diskon mahasiswa"
+        title="Diskon Kampus Mitra"
         stage={
           <div className="whyr__stage whyr__stage--teal" aria-hidden="true">
             <div className="whyr__card whyr__card--back" />
@@ -113,7 +113,7 @@ export const WhyRows: React.FC = () => {
           </div>
         }
       >
-        Aktif setelah status mahasiswa Anda terverifikasi (email kampus, akun kampus, atau KTM), dan berlaku untuk pembayaran pertama. Besarnya ditentukan tiap pemilik.
+        Berlaku untuk mahasiswa terverifikasi dari kampus mitra KoBo, di pembayaran pertama. Besarnya ditentukan tiap pemilik dan dikonfirmasi saat pemilik menyetujui pengajuan.
       </Row>
 
       <Row

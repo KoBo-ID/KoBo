@@ -8,11 +8,13 @@ import {
   CheckCircle2,
   Building2,
   LogIn,
+  Users,
 } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
 import { useScheduledVisitCount } from '../../lib/visits';
 import { useAuthActions, useSession } from '../../lib/session';
 import { useLiveTenancyCount } from '../../lib/booking';
+import { MATCH_BASE, useMatchingUnread } from '../../lib/matching';
 
 interface NavbarProps {
   onOpenAuth?: () => void;
@@ -94,6 +96,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
   const activeRentalsCount = useLiveTenancyCount();
   const activeVisitsCount = useScheduledVisitCount();
 
+  // Teman Sekamar: owners do not see it. The unread query only runs for a signed-in student; a FORBIDDEN (unverified) leaves
+  // `data` undefined, so no badge and no error is shown.
+  const showMatching = !me?.isOwner;
+  // Poll only for students who can use matching (verified, or demo): an unverified student would get a 403 every minute.
+  const unread = useMatchingUnread(!!me && showMatching && (me.campusVerified || me.user.isDemo));
+  const matchingCount = showMatching && unread.data ? unread.data.messages + unread.data.requests : 0;
+  const matchActive = location.pathname.startsWith(MATCH_BASE);
+
   return (
     <header
       className="kobo-header"
@@ -163,6 +173,52 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
 
         {/* Zone 2: Navigation Actions (Kos Saya + User Profile only) */}
         <nav className="kobo-header__nav" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+          {showMatching && (
+            <Link
+              to={MATCH_BASE}
+              aria-label={matchingCount > 0 ? `Teman Sekamar (${matchingCount} belum dibaca)` : 'Teman Sekamar'}
+              className="kobo-header__chip kobo-nav-matching"
+              style={{
+                fontSize: 'var(--step--1)',
+                fontWeight: matchActive ? 700 : 600,
+                color: matchActive ? 'var(--primary)' : 'var(--text-main)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '10px',
+                backgroundColor: chipFill,
+                border: `1px solid ${chipBorder}`,
+                transition: fade,
+                position: 'relative',
+              }}
+            >
+              <Users size={16} />
+              {/* Phones: the label hides (same rule as Kos Saya); the aria-label keeps the name. */}
+              <span className="kobo-nav-mykos__label">Teman Sekamar</span>
+              {matchingCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    minWidth: '18px',
+                    height: '18px',
+                    padding: '0 4px',
+                    borderRadius: 'var(--radius-pill)',
+                    backgroundColor: 'var(--accent-strong)',
+                    color: 'white',
+                    fontSize: 'var(--step--2)',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {matchingCount > 99 ? '99+' : matchingCount}
+                </span>
+              )}
+            </Link>
+          )}
+
           <Link
             to="/my-kos"
             aria-label={activeRentalsCount + activeVisitsCount > 0 ? `Kos Saya (${activeRentalsCount + activeVisitsCount})` : 'Kos Saya'}

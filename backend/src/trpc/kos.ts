@@ -44,6 +44,10 @@ export interface RoomView {
   size: string
   bedType: string
   priceMonthly: number
+  /** People the room fits, 1..4. */
+  maxOccupants: number
+  /** Price per person when shared (maxOccupants >= 2); null when priced per room. */
+  pricePerPersonMonthly: number | null
   /** Derived (never stored): vacant / booking / paid / due / overdue. No tenant data is exposed. */
   status: RoomStatus
   /** A live daftar tunggu offer is held for someone else: not selectable even though the room reads vacant. */
@@ -215,6 +219,8 @@ export const kosRouter = router({
           size: r.size,
           bedType: r.bedType,
           priceMonthly: r.priceMonthly,
+          maxOccupants: r.maxOccupants,
+          pricePerPersonMonthly: r.pricePerPersonMonthly,
           status: deriveRoomStatus({
             occupancy: r.occupancy,
             tenancy: tenancy ? { status: tenancy.status, expiresAt: tenancy.expiresAt?.toISOString() ?? null } : null,
@@ -271,7 +277,7 @@ export const kosRouter = router({
         avatar: kos.owner.user.image,
         phone: kos.owner.user.phone,
         bio: kos.owner.bio,
-        verified: kos.owner.verified,
+        verified: kos.owner.verificationStatus === 'DISETUJUI',
         responseRate: kos.owner.responseRate,
         memberSince: kos.owner.memberSince.toISOString(),
         totalProperties: ownerKosCount,

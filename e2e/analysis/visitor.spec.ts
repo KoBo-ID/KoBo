@@ -12,7 +12,7 @@ test('A2 gender discount persist',async({page})=>{
  await page.getByRole('button',{name:'Khusus Putri'}).click()
  await expect(page).toHaveURL(/gender=putri/)
  await page.getByRole('button',{name:/Filter/}).click()
- await page.getByRole('button',{name:'Diskon Mahasiswa'}).click()
+ await page.getByRole('button',{name:'Diskon Kampus Mitra'}).click()
  await expect(page).toHaveURL(/discount=1/)
  await page.reload()
  await expect(page.getByRole('button',{name:'Khusus Putri'})).toHaveAttribute('aria-pressed','true')

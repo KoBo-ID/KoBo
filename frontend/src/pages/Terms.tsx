@@ -43,7 +43,7 @@ const SECTIONS: { heading: string; items: React.ReactNode[] }[] = [
       'Satu akun dipakai untuk mencari kos dan, bila Anda mendaftar sebagai pemilik, mengelola kos.',
       'Data yang Anda isi harus benar dan menjadi tanggung jawab Anda. Jaga kerahasiaan kata sandi.',
       'Pengguna berusia 18 tahun ke atas. Pengguna di bawah 18 tahun memakai KoBo hanya dengan persetujuan dan pendampingan orang tua atau wali.',
-      'Diskon mahasiswa hanya berlaku setelah status mahasiswa Anda terverifikasi.',
+      'Diskon Kampus Mitra hanya berlaku untuk mahasiswa kampus mitra KoBo yang statusnya sudah terverifikasi, dan dikonfirmasi saat pemilik menyetujui pengajuan.',
     ],
   },
   {
@@ -83,7 +83,7 @@ const SECTIONS: { heading: string; items: React.ReactNode[] }[] = [
     items: [
       'Survey kos gratis dan tidak mewajibkan pembayaran apa pun. Mengirim pengajuan sewa tidak menahan kamar dan tidak memindahkan uang.',
       'Setelah pemilik menyetujui, kamar ditahan 24 jam agar Anda dapat membayar pembayaran pertama. Jika tidak dibayar dalam waktu itu, kamar dilepas kembali.',
-      'Pembayaran pertama terdiri dari sewa bulan pertama, biaya layanan KoBo (sekali), dikurangi diskon mahasiswa bila berlaku. Rinciannya tampil sebelum Anda mengirim pengajuan. Bulan berikutnya dibayar sebesar sewa bulanan.',
+      'Pembayaran pertama terdiri dari sewa bulan pertama, biaya layanan KoBo (sekali), dikurangi Diskon Kampus Mitra bila berlaku (dikonfirmasi saat pemilik menyetujui). Rinciannya tampil sebelum Anda mengirim pengajuan. Bulan berikutnya dibayar sebesar sewa bulanan.',
       'KoBo dapat mengirim pengingat tagihan lewat email dan WhatsApp antara pukul 08.00 dan 20.00 WIB. Anda dapat mematikannya di halaman Profil.',
     ],
   },

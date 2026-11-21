@@ -128,6 +128,13 @@ const STUDENT_EMAIL_DOMAINS: Record<string, string[]> = {
   'uksw-salatiga': ['student.uksw.edu'],
 }
 
+/** Kampus Mitra: students verified at these campuses get the kos discount. Hand-seeded BINUS campuses have no parent row, so each is listed. */
+export const AFFILIATED_CAMPUSES = [
+  { campusId: 'binus-syahdan', label: 'BINUS University Syahdan' },
+  { campusId: 'binus-anggrek', label: 'BINUS University Anggrek' },
+  { campusId: 'binus-kijang', label: 'BINUS University Kijang' },
+]
+
 /** Microsoft Entra tenant ids of campuses with a confirmed tenant. */
 const BINUS_TENANT = '3485b963-82ba-4a6f-810f-b5cc226ff898'
 const ENTRA_TENANT_IDS: Record<string, string[]> = {
@@ -182,11 +189,26 @@ function parseMemberSince(s: string): Date {
   return new Date(Date.UTC(Number(y), (MONTHS[m] ?? 1) - 1, 1))
 }
 
+interface OwnerDocumentSeed {
+  id: string
+  userId: string
+  kind: 'KTP' | 'SHM'
+  key: string
+  contentType: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  consentAt: Date
+  createdAt: Date
+  decidedAt?: Date
+  reviewer?: string
+  reason?: string | null
+}
+
 /** Everything the seed inserts, as plain rows. resetDemo() takes a slice of this instead of truncating. */
 export interface SeedRows {
   users: { id: string; isDemo?: boolean; [k: string]: unknown }[]
   campuses: object[]
   ownerProfiles: { id: string; userId: string; [k: string]: unknown }[]
+  ownerDocuments: OwnerDocumentSeed[]
   kos: { id: string; ownerId: string; [k: string]: unknown }[]
   images: { id: string; kosId: string }[]
   rules: { id: string; kosId: string }[]
@@ -196,6 +218,136 @@ export interface SeedRows {
   invoices: { id: string; tenancyId: string; [k: string]: unknown }[]
   payments: { id: string; invoiceId: string; [k: string]: unknown }[]
   reviews: { id: string; tenancyId: string; [k: string]: unknown }[]
+  /** Teman Sekamar: verified seeded students with profiles, plus the demo student's request, connection and chat. */
+  matchingProfiles: { id: string; userId: string; [k: string]: unknown }[]
+  partnerRequests: { id: string; fromUserId: string; toUserId: string; [k: string]: unknown }[]
+  partnerConnections: { id: string; userAId: string; userBId: string; [k: string]: unknown }[]
+  partnerMessages: { id: string; connectionId: string; [k: string]: unknown }[]
+  connectionReadStates: { connectionId: string; userId: string; [k: string]: unknown }[]
+}
+
+interface Lifestyle {
+  sleep: string
+  tidiness: string
+  smoking: string
+  guests: string
+  noise: string
+  social: string
+  study: string
+  ac: string
+  expenses: string
+}
+interface MatchSeedPerson {
+  key: string
+  name: string
+  gender: 'LAKI_LAKI' | 'PEREMPUAN'
+  birthYear: number
+  campusId: string
+  budget: [number, number]
+  moveIn: string
+  intro: string
+  life: Lifestyle
+}
+const L = (sleep: string, tidiness: string, smoking: string, guests: string, noise: string, social: string, study: string, ac: string, expenses: string): Lifestyle => ({ sleep, tidiness, smoking, guests, noise, social, study, ac, expenses })
+
+/** The demo student's own matching profile (Dimas, BINUS Syahdan). */
+const DEMO_MATCH: MatchSeedPerson = {
+  key: 'demo',
+  name: 'Dimas',
+  gender: 'LAKI_LAKI',
+  birthYear: 2004,
+  campusId: 'binus-syahdan',
+  budget: [1_200_000, 2_200_000],
+  moveIn: '2027-01-10',
+  intro: 'Mahasiswa Teknik Informatika semester 3. Cari teman sekamar yang santai dan suka patungan wifi.',
+  life: L('MALAM', 'CUKUP', 'TIDAK_MAU_PEROKOK', 'KADANG', 'SEDANG', 'SEIMBANG', 'CAMPUR', 'MALAM_SAJA', 'PATUNGAN'),
+}
+const MATCH_PEOPLE: MatchSeedPerson[] = [
+  { key: 'bayu', name: 'Bayu', gender: 'LAKI_LAKI', birthYear: 2003, campusId: 'binus-syahdan', budget: [1_000_000, 1_800_000], moveIn: '2027-01-05', intro: 'Anak rantau dari Lampung, jurusan Sistem Informasi. Jarang di kos kalau siang.', life: L('NORMAL', 'RAPI', 'TIDAK_MAU_PEROKOK', 'JARANG', 'TENANG', 'INTROVERT', 'DI_LUAR', 'SELALU', 'PATUNGAN') },
+  { key: 'rizky', name: 'Rizky', gender: 'LAKI_LAKI', birthYear: 2004, campusId: 'binus-anggrek', budget: [1_500_000, 2_500_000], moveIn: '2027-01-15', intro: 'Suka main gitar, tapi tahu waktu. Bisa bagi tugas bersih-bersih.', life: L('MALAM', 'CUKUP', 'TIDAK_MEROKOK_TOLERAN', 'SERING', 'RAMAI', 'EKSTROVERT', 'DI_KAMAR', 'MALAM_SAJA', 'SEBAGIAN') },
+  { key: 'fajar', name: 'Fajar', gender: 'LAKI_LAKI', birthYear: 2002, campusId: 'binus-syahdan', budget: [900_000, 1_500_000], moveIn: '2027-02-01', intro: 'Semester akhir, lagi skripsi. Butuh kamar yang tenang dan bebas rokok.', life: L('AWAL', 'RAPI', 'TIDAK_MAU_PEROKOK', 'JARANG', 'TENANG', 'INTROVERT', 'DI_KAMAR', 'TANPA_AC', 'TERPISAH') },
+  { key: 'kevin', name: 'Kevin', gender: 'LAKI_LAKI', birthYear: 2005, campusId: 'binus-kijang', budget: [1_300_000, 2_000_000], moveIn: '2027-01-20', intro: 'Mahasiswa baru DKV. Santai, suka nonton dan masak mi bareng.', life: L('MALAM', 'SANTAI', 'BEBAS', 'KADANG', 'SEDANG', 'SEIMBANG', 'CAMPUR', 'SELALU', 'PATUNGAN') },
+  { key: 'agus', name: 'Agus', gender: 'LAKI_LAKI', birthYear: 2003, campusId: 'binus-anggrek', budget: [1_100_000, 1_900_000], moveIn: '2027-01-08', intro: 'Aktif di UKM basket, sering pulang malam. Tidak mengganggu kalau tidur.', life: L('MALAM', 'CUKUP', 'TIDAK_MEROKOK_TOLERAN', 'KADANG', 'SEDANG', 'EKSTROVERT', 'DI_LUAR', 'MALAM_SAJA', 'SEBAGIAN') },
+  { key: 'yoga', name: 'Yoga', gender: 'LAKI_LAKI', birthYear: 2004, campusId: 'binus-syahdan', budget: [1_400_000, 2_300_000], moveIn: '2027-03-01', intro: 'Ngoding sampai larut, tapi pakai headset. Suka kamar rapi.', life: L('MALAM', 'RAPI', 'TIDAK_MAU_PEROKOK', 'JARANG', 'TENANG', 'INTROVERT', 'DI_KAMAR', 'SELALU', 'PATUNGAN') },
+  { key: 'salsa', name: 'Salsabila', gender: 'PEREMPUAN', birthYear: 2004, campusId: 'binus-syahdan', budget: [1_300_000, 2_200_000], moveIn: '2027-01-12', intro: 'Jurusan Akuntansi. Rajin bangun pagi, suka kamar bersih dan wangi.', life: L('AWAL', 'RAPI', 'TIDAK_MAU_PEROKOK', 'KADANG', 'TENANG', 'SEIMBANG', 'CAMPUR', 'SELALU', 'PATUNGAN') },
+  { key: 'putri', name: 'Putri Ayu', gender: 'PEREMPUAN', birthYear: 2003, campusId: 'binus-anggrek', budget: [1_000_000, 1_700_000], moveIn: '2027-02-10', intro: 'Dari Medan, semester 5 Manajemen. Ramah dan gampang cocok.', life: L('NORMAL', 'CUKUP', 'TIDAK_MAU_PEROKOK', 'SERING', 'SEDANG', 'EKSTROVERT', 'DI_LUAR', 'MALAM_SAJA', 'SEBAGIAN') },
+]
+
+/** Builds the matching rows and pushes the extra verified students onto `users`. Deterministic for a given `now`. */
+function buildMatchingSeed(
+  now: Date,
+  baseCreated: Date,
+  coords: (campusId: string) => { lat: number; lng: number } | undefined,
+  users: { id: string }[],
+): Pick<SeedRows, 'matchingProfiles' | 'partnerRequests' | 'partnerConnections' | 'partnerMessages' | 'connectionReadStates'> {
+  const DAYS = 86_400_000
+  const ago = (ms: number) => new Date(now.getTime() - ms)
+  const campusName: Record<string, string> = { 'binus-syahdan': 'BINUS Syahdan', 'binus-anggrek': 'BINUS Anggrek', 'binus-kijang': 'BINUS Kijang' }
+  const uid = (p: MatchSeedPerson) => (p.key === 'demo' ? 'user-demo-student' : `user-match-${p.key}`)
+  const profiles = [DEMO_MATCH, ...MATCH_PEOPLE].map((p) => {
+    const userId = uid(p)
+    if (p.key !== 'demo') {
+      users.push({
+        id: userId,
+        name: `${p.name} ${p.gender === 'LAKI_LAKI' ? 'Saputra' : 'Lestari'}`,
+        email: `match-${p.key}@kobo.test`,
+        emailVerified: true,
+        campus: campusName[p.campusId],
+        campusEmailVerifiedAt: baseCreated,
+        campusVerifiedVia: 'KTM',
+        campusVerifiedUntil: new Date(now.getTime() + 365 * DAYS),
+        verifiedCampusId: p.campusId,
+        createdAt: baseCreated,
+      } as { id: string })
+    }
+    const c = coords(p.campusId) ?? { lat: -6.2, lng: 106.78 }
+    return {
+      id: `match-profile-${p.key}`,
+      userId,
+      createdAt: baseCreated,
+      displayName: p.name,
+      intro: p.intro,
+      gender: p.gender,
+      birthYear: p.birthYear,
+      campusId: p.campusId,
+      active: true,
+      lastActiveAt: now,
+      budgetMin: p.budget[0],
+      budgetMax: p.budget[1],
+      anchorLat: c.lat,
+      anchorLng: c.lng,
+      anchorLabel: campusName[p.campusId] ?? 'Kampus',
+      radiusKm: 3,
+      moveInDate: new Date(`${p.moveIn}T00:00:00Z`),
+      durationMonths: 12,
+      kosType: p.gender === 'LAKI_LAKI' ? 'PUTRA' : 'PUTRI',
+      roomShare: 2,
+      ...p.life,
+    }
+  })
+
+  const demoId = 'user-demo-student'
+  // One request waiting for the demo student (from Bayu), one accepted request that became a live connection (Fajar).
+  const partnerRequests = [
+    { id: 'match-req-pending', fromUserId: 'user-match-bayu', toUserId: demoId, message: 'Halo Dimas, kita sama-sama di Syahdan dan budget mirip. Mau coba cocokkan?', status: 'PENDING', createdAt: ago(1 * DAYS), expiresAt: new Date(now.getTime() + 13 * DAYS) },
+    { id: 'match-req-accepted', fromUserId: demoId, toUserId: 'user-match-fajar', message: 'Halo Fajar, saya juga cari kamar tenang untuk semester depan.', status: 'ACCEPTED', createdAt: ago(5 * DAYS), expiresAt: new Date(now.getTime() + 9 * DAYS), decidedAt: ago(4 * DAYS) },
+  ]
+  const [a, b] = demoId < 'user-match-fajar' ? [demoId, 'user-match-fajar'] : ['user-match-fajar', demoId]
+  const partnerConnections = [{ id: 'match-conn-1', userAId: a, userBId: b, requestId: 'match-req-accepted', createdAt: ago(4 * DAYS) }]
+  const chat: [string, string, number][] = [
+    ['user-match-fajar', 'Makasih sudah diterima ya. Kamu biasanya kuliah jam berapa?', 4 * DAYS - 600_000],
+    [demoId, 'Sama-sama. Biasanya siang, tapi kadang ada kelas pagi.', 4 * DAYS - 3_600_000],
+    ['user-match-fajar', 'Oke cocok. Aku lagi skripsi jadi lebih banyak di kamar, nggak masalah?', 3 * DAYS],
+    [demoId, 'Nggak masalah, aku pakai headset kalau ngoding. Mau lihat kos bareng minggu ini?', 3 * DAYS - 3_600_000],
+    ['user-match-fajar', 'Boleh, nanti kita lihat dua kos dekat Syahdan bareng.', 2 * DAYS],
+  ]
+  const partnerMessages = chat.map(([senderId, body, agoMs], i) => ({ id: `match-msg-${i + 1}`, connectionId: 'match-conn-1', senderId, body, createdAt: ago(agoMs) }))
+  // The demo student has read everything except Fajar's last message. lastDigestAt is set so the worker does not mail the demo address about it.
+  const connectionReadStates = [
+    { connectionId: 'match-conn-1', userId: demoId, lastReadAt: ago(2 * DAYS + 3_600_000), lastDigestAt: now },
+    { connectionId: 'match-conn-1', userId: 'user-match-fajar', lastReadAt: now },
+  ]
+  return { matchingProfiles: profiles, partnerRequests, partnerConnections, partnerMessages, connectionReadStates }
 }
 
 export function buildSeed(now: Date): SeedRows {
@@ -227,8 +379,9 @@ export function buildSeed(now: Date): SeedRows {
     campus?: string
     campusEmail?: string
     campusEmailVerifiedAt?: Date
-    campusVerifiedVia?: 'EMAIL' | 'MICROSOFT' | 'GOOGLE' | 'KTM'
+    campusVerifiedVia?: 'EMAIL' | 'MICROSOFT' | 'GOOGLE' | 'KTM' | 'SHEERID'
     campusVerifiedUntil?: Date
+    verifiedCampusId?: string
     isDemo?: boolean
     createdAt: Date
   }
@@ -237,7 +390,7 @@ export function buildSeed(now: Date): SeedRows {
 
   const owners = new Map<string, MockKos['owner']>()
   for (const k of data.kos) owners.set(k.owner.id, k.owner)
-  const ownerProfiles = [...owners.values()].map((o, i) => {
+  const ownerProfiles: SeedRows['ownerProfiles'] = [...owners.values()].map((o, i) => {
     const demo = i === 0 // owner of the first kos is the demo owner
     users.push({
       id: `user-${o.id}`,
@@ -255,10 +408,45 @@ export function buildSeed(now: Date): SeedRows {
       bio: o.bio ?? null,
       verified: o.verified,
       approvedAt: baseCreated,
+      verificationStatus: 'DISETUJUI',
       responseRate: o.responseRate,
       memberSince: parseMemberSince(o.memberSince),
     }
   })
+
+  // Two owners still in the document workflow, for the admin review queue and the owner status UI. They have no kos, and
+  // their OwnerDocument keys are fake: no file exists in storage behind them.
+  const ownerDocuments: OwnerDocumentSeed[] = []
+  const pendingOwners = [
+    { id: 'owner-sample-menunggu', name: 'Hendra Kusuma', status: 'MENUNGGU', docStatus: 'PENDING', reason: null },
+    { id: 'owner-sample-ditolak', name: 'Sari Wulandari', status: 'DITOLAK', docStatus: 'REJECTED', reason: 'KTP_BURAM' },
+  ] as const
+  for (const p of pendingOwners) {
+    users.push({ id: `user-${p.id}`, name: p.name, email: `${p.id}@kobo.test`, emailVerified: true, phone: '081200000000', createdAt: baseCreated })
+    ownerProfiles.push({
+      id: p.id,
+      userId: `user-${p.id}`,
+      verificationStatus: p.status,
+      verificationReason: p.status === 'DITOLAK' ? 'Foto KTP buram atau tidak terbaca. Unggah ulang KTP dengan foto yang jelas.' : null,
+      verificationAttempts: 1,
+      ownershipType: 'PEMILIK',
+      ownershipDeclaredAt: baseCreated,
+      memberSince: baseCreated,
+    })
+    for (const kind of ['KTP', 'SHM'] as const) {
+      ownerDocuments.push({
+        id: `ownerdoc-${p.id}-${kind.toLowerCase()}`,
+        userId: `user-${p.id}`,
+        kind,
+        key: `owner-docs/seed/${p.id}/${kind.toLowerCase()}.jpg`,
+        contentType: 'image/jpeg',
+        status: p.status === 'DITOLAK' && kind === 'KTP' ? p.docStatus : p.status === 'DITOLAK' ? 'PENDING' : p.docStatus,
+        consentAt: baseCreated,
+        createdAt: baseCreated,
+        ...(p.status === 'DITOLAK' && kind === 'KTP' ? { decidedAt: baseCreated, reviewer: 'seed', reason: p.reason } : {}),
+      })
+    }
+  }
 
   users.push({
     id: 'user-demo-student',
@@ -271,9 +459,27 @@ export function buildSeed(now: Date): SeedRows {
     campusVerifiedVia: 'EMAIL',
     // From the real "now", not baseCreated: the seed dates are fixed in the past and the demo student must stay verified.
     campusVerifiedUntil: new Date(now.getTime() + 365 * 86_400_000),
+    verifiedCampusId: 'binus-syahdan',
     isDemo: true,
     createdAt: baseCreated,
   })
+
+  // Verified, but at a campus that is NOT on the Kampus Mitra list: sees the discount as "tidak berlaku".
+  const nonAffiliatedCampus = data.campuses.find((c) => c.id === 'ui-depok') ?? data.campuses.find((c) => !AFFILIATED_CAMPUSES.some((a) => a.campusId === c.id))
+  if (nonAffiliatedCampus) {
+    users.push({
+      id: 'user-student-non-mitra',
+      name: 'Rafi Ananda',
+      email: 'rafi.ananda@kobo.test',
+      emailVerified: true,
+      campus: nonAffiliatedCampus.shortName,
+      campusEmailVerifiedAt: baseCreated,
+      campusVerifiedVia: 'KTM',
+      campusVerifiedUntil: new Date(now.getTime() + 365 * 86_400_000),
+      verifiedCampusId: nonAffiliatedCampus.id,
+      createdAt: baseCreated,
+    })
+  }
 
   const pool: UserRow[] = []
   for (let i = 0; i < 40; i++) {
@@ -298,6 +504,8 @@ export function buildSeed(now: Date): SeedRows {
     bedType: string
     priceMonthly: number
     occupancy: 'VACANT' | 'BOOKED' | 'OCCUPIED'
+    maxOccupants?: number
+    pricePerPersonMonthly?: number
   }
   const roomRows: RoomRow[] = []
   const tenancyRows: object[] = []
@@ -468,6 +676,17 @@ export function buildSeed(now: Date): SeedRows {
       student.campus ??= kosCampus
       addActiveTenancy(row, student.id, 'paid', 0, fee)
     }
+    // Shareable rooms near the BINUS campuses, so "Cari kos bersama" has results in the demo: the first vacant rooms fit 2-3 people,
+    // two of the three with a per-person price (the other is priced per room only).
+    if (k.campusProximity.campusId.startsWith('binus-')) {
+      kosRooms
+        .filter((r) => r.occupancy === 'VACANT')
+        .slice(0, 3)
+        .forEach((r, i) => {
+          r.maxOccupants = i === 2 ? 3 : 2
+          if (i !== 1) r.pricePerPersonMonthly = Math.max(50_000, Math.round((r.priceMonthly * 0.6) / 50_000) * 50_000)
+        })
+    }
     roomRows.push(...kosRooms)
 
     // ENDED tenancies + reviews so computed count/avg ~ mock card numbers
@@ -519,10 +738,15 @@ export function buildSeed(now: Date): SeedRows {
     })
   })
 
+  // ---- Teman Sekamar demo data: verified students at the BINUS campuses; the demo student gets a profile, one pending
+  // request and one live connection with a short chat (both counterparts are seeded students, never the demo).
+  const matching = buildMatchingSeed(now, baseCreated, (id) => data.campuses.find((c) => c.id === id)?.coordinates, users)
+
   return {
     users,
     campuses,
     ownerProfiles,
+    ownerDocuments,
     kos: kosRows as SeedRows['kos'],
     images: imageRows as SeedRows['images'],
     rules: ruleRows as SeedRows['rules'],
@@ -532,6 +756,7 @@ export function buildSeed(now: Date): SeedRows {
     invoices: invoiceRows as SeedRows['invoices'],
     payments: paymentRows as SeedRows['payments'],
     reviews: reviewRows as SeedRows['reviews'],
+    ...matching,
   }
 }
 
@@ -541,7 +766,9 @@ export async function seed(prisma: PrismaClient, opts: { now?: Date } = {}): Pro
   await prisma.$transaction([
     prisma.user.createMany({ data: d.users as never }),
     prisma.campus.createMany({ data: d.campuses as never, skipDuplicates: true }),
+    prisma.campusAffiliation.createMany({ data: AFFILIATED_CAMPUSES, skipDuplicates: true }),
     prisma.ownerProfile.createMany({ data: d.ownerProfiles as never }),
+    prisma.ownerDocument.createMany({ data: d.ownerDocuments as never }),
     prisma.kos.createMany({ data: d.kos as never }),
     prisma.kosImage.createMany({ data: d.images as never }),
     prisma.houseRule.createMany({ data: d.rules as never }),
@@ -551,6 +778,11 @@ export async function seed(prisma: PrismaClient, opts: { now?: Date } = {}): Pro
     prisma.invoice.createMany({ data: d.invoices as never }),
     prisma.payment.createMany({ data: d.payments as never }),
     prisma.review.createMany({ data: d.reviews as never }),
+    prisma.matchingProfile.createMany({ data: d.matchingProfiles as never }),
+    prisma.partnerRequest.createMany({ data: d.partnerRequests as never }),
+    prisma.partnerConnection.createMany({ data: d.partnerConnections as never }),
+    prisma.partnerMessage.createMany({ data: d.partnerMessages as never }),
+    prisma.connectionReadState.createMany({ data: d.connectionReadStates as never }),
   ])
 }
 

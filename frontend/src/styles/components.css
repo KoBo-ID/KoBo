@@ -887,27 +887,6 @@
   gap: var(--space-m);
 }
 
-/* Kuitansi page: "Unduh PDF" is window.print(), so only the receipt may reach the paper. */
-@media print {
-  header,
-  footer,
-  .no-print,
-  .mobile-only-dock {
-    display: none !important;
-  }
-  body {
-    background: var(--bg-surface) !important;
-  }
-  .kuitansi-page {
-    max-width: none !important;
-    padding: 0 !important;
-  }
-  .kuitansi-paper {
-    box-shadow: none !important;
-    break-inside: avoid;
-  }
-}
-
 /* Per-invoice payment actions (MyKos): wraps cleanly at phone width. */
 .invoice-pay { display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem; min-width: 0; }
 .invoice-pay__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2xs); }
@@ -1267,15 +1246,63 @@
   .invoice-row__meta .invoice-pay { flex-basis: 100%; }
 }
 
-/* /kuitansi/:receiptNo: label column shrinks on phones; the stamp sits in flow below the signature instead of over it. */
-.kuitansi-paper { padding: var(--space-m-l); }
+/* /kuitansi/:receiptNo: a card on screen, the classic kuitansi anatomy in print. */
+.kuitansi-paper { padding: var(--space-m-l); background-color: var(--bg-surface); border: 1.5px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); color: var(--text-main); font-family: var(--font-sans); display: flex; flex-direction: column; gap: var(--space-s); }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.kuitansi-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-xs) var(--space-s); padding-bottom: var(--space-s); border-bottom: 2px solid var(--border-subtle); }
+.kuitansi-brand { display: block; font-size: var(--step-2); font-weight: 800; letter-spacing: -0.02em; }
+.kuitansi-title { font-size: var(--step--1); font-weight: 700; letter-spacing: 0.04em; color: var(--text-muted); }
+.kuitansi-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem; }
+.kuitansi-no { font-size: var(--step-0); font-weight: 800; color: var(--primary); }
+.kuitansi-status { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.15rem 0.6rem; border: 2px solid var(--primary); border-radius: 6px; color: var(--primary); font-size: var(--step--2); font-weight: 800; letter-spacing: 0.06em; }
+.kuitansi-status--void { border-color: var(--status-overdue-text); color: var(--status-overdue-text); }
+.kuitansi-void { background-color: var(--status-overdue-bg); padding: var(--space-2xs) var(--space-xs); border: 1px solid var(--status-overdue-border); border-radius: 8px; color: var(--status-overdue-text); font-size: var(--step--1); font-weight: 600; }
+.kuitansi-fields { display: flex; flex-direction: column; gap: var(--space-xs); font-size: var(--step--1); margin: 0; }
 .kuitansi-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.1rem; }
-.kuitansi-stamp { display: flex; flex-direction: column; align-items: center; width: fit-content; margin: var(--space-m) auto 0; padding: 0.6rem var(--space-s); border: 3px dashed var(--primary); border-radius: var(--radius-md); color: var(--primary); font-size: var(--step--1); font-weight: 800; text-transform: uppercase; opacity: 0.85; pointer-events: none; }
+.kuitansi-label { color: var(--text-muted); font-weight: 600; font-size: var(--step--1); }
+.kuitansi-value { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.kuitansi-words { font-style: italic; font-weight: 600; }
+.kuitansi-breakdown { margin: 0; padding: var(--space-xs) var(--space-s); background-color: var(--bg-page); border: 1px solid var(--border-subtle); border-radius: 8px; font-size: var(--step--1); display: flex; flex-direction: column; gap: 0.3rem; }
+.kuitansi-breakdown > div { display: flex; justify-content: space-between; gap: var(--space-s); }
+.kuitansi-breakdown dd { margin: 0; }
+.kuitansi-breakdown__total { padding-top: 0.3rem; border-top: 1px solid var(--border-strong); font-weight: 800; }
+.kuitansi-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: var(--space-s); padding-top: var(--space-s); border-top: 1px solid var(--border-subtle); break-inside: avoid; }
+.kuitansi-rpbox { padding: var(--space-xs) var(--space-s); border: 2px solid var(--border-strong); border-radius: 8px; font-size: var(--step-2); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--primary); }
+.kuitansi-sign { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; min-width: 12rem; font-size: var(--step--1); text-align: center; }
+.kuitansi-sign__name { margin-top: var(--space-m); text-decoration: underline; }
+.kuitansi-sign__note { font-size: var(--step--2); color: var(--text-muted); }
+.kuitansi-note { font-size: var(--step--2); color: var(--text-muted); overflow-wrap: anywhere; }
+.kuitansi-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-xs) var(--space-s); margin-top: var(--space-s); }
+.kuitansi-hint { font-size: var(--step--2); color: var(--text-muted); }
+.kuitansi-back { color: var(--primary); font-weight: 600; font-size: var(--step--1); }
 @media (width >= 40rem) {
-  .kuitansi-row { grid-template-columns: 180px minmax(0, 1fr); gap: var(--space-2xs); }
+  .kuitansi-row { grid-template-columns: 11rem minmax(0, 1fr); gap: var(--space-2xs); }
 }
-@media (width >= 64rem) {
-  .kuitansi-stamp { position: absolute; right: 13.5rem; bottom: 1.75rem; margin: 0; }
+@media print {
+  @page { size: A4; margin: 12mm; }
+  header:not(.kuitansi-head),
+  footer,
+  .no-print,
+  .mobile-only-dock {
+    display: none !important;
+  }
+  body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .kuitansi-page { max-width: none !important; padding: 0 !important; }
+  /* Classic anatomy: the receipt fills the top half of the A4 sheet. */
+  .kuitansi-paper { padding: 6mm; gap: 3mm; box-shadow: none; border: 1.5px solid #000; border-radius: 0; background: #fff; color: #000; font-family: Georgia, 'Times New Roman', serif; font-size: 10pt; break-inside: avoid; }
+  .kuitansi-paper * { break-inside: avoid; }
+  .kuitansi-head { padding-bottom: 2mm; border-bottom: 1.5px solid #000; }
+  .kuitansi-brand { font-size: 14pt; }
+  .kuitansi-title { color: #000; font-size: 12pt; }
+  .kuitansi-label, .kuitansi-sign__note, .kuitansi-note { color: #333; }
+  .kuitansi-fields, .kuitansi-breakdown, .kuitansi-sign { font-size: 10pt; }
+  .kuitansi-fields { gap: 1.5mm; }
+  .kuitansi-row { grid-template-columns: 38mm minmax(0, 1fr); }
+  .kuitansi-breakdown { padding: 2mm 3mm; background: #fff; border-color: #000; }
+  .kuitansi-rpbox { font-size: 14pt; border: 2px solid #000; color: #000; }
+  .kuitansi-sign__name { margin-top: 10mm; }
+  .kuitansi-status, .kuitansi-status--void { border-color: #000; color: #000; }
+  .kuitansi-note { font-size: 8pt; }
 }
 
 /* Tables that become label/value cards on phones (data-label on each td). */
@@ -1324,6 +1351,8 @@
 /* Phones: the bottom dock (shown up to 767px) already says "Kos Saya", so the header link keeps only its icon and count (its aria-label stays). */
 @media (width < 48rem) {
   .kobo-nav-mykos__label { display: none; }
+  /* Teman Sekamar moves to the dock on phones: the header chip made 320px headers overflow. */
+  .kobo-nav-matching { display: none !important; }
 }
 
 /* Header at 200% text: container units follow the header's own font size, so a 390px phone at 200% (12em) compacts
@@ -1452,3 +1481,10 @@
 
 /* Kos header: the rating/address separator dangles once the address wraps on a phone. */
 @media (width < 40rem) { .detail-meta-sep { display: none; } }
+
+/* Thin per-session reminder under the navbar for unverified students (VerifyBanner). */
+.verify-banner { display: flex; align-items: center; gap: var(--space-2xs); padding: 0.4rem var(--space-s); background-color: var(--primary-light); border-bottom: 1px solid var(--primary); color: var(--text-main); font-size: var(--step--1); }
+.verify-banner__text { flex: 1; min-width: 0; }
+.verify-banner__link { color: var(--primary); font-weight: 700; text-decoration: underline; }
+.verify-banner__close { display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; margin: -0.4rem -0.5rem -0.4rem 0; background: none; border: 0; border-radius: 8px; color: inherit; cursor: pointer; }
+.verify-banner__close:hover { background-color: var(--bg-muted); }

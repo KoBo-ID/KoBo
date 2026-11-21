@@ -12,7 +12,7 @@ export async function signUpVerifiedOwner(browser: Browser, label: string) {
   const email = await signUpVerified(page, label)
   const [{ id: userId }] = await sql<{ id: string }>('SELECT id FROM "User" WHERE email = $1', [email])
   await trpcPost(page, 'owner.becomeOwner', { phone: '081234567890' })
-  await sql('UPDATE "OwnerProfile" SET "approvedAt" = now() WHERE "userId" = $1', [userId])
+  await sql(`UPDATE "OwnerProfile" SET "approvedAt" = now(), "verificationStatus" = 'DISETUJUI' WHERE "userId" = $1`, [userId])
   return { ctx, page, email, userId }
 }
 

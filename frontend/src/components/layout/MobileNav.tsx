@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, Calendar, User, Building2 } from 'lucide-react';
+import { Home, Search, Calendar, User, Building2, Users } from 'lucide-react';
 import { useScheduledVisitCount } from '../../lib/visits';
 import { useLiveTenancyCount } from '../../lib/booking';
 
@@ -104,6 +104,23 @@ export const MobileNav: React.FC<{ ownerBadges?: { dashboard: number; reviews: n
                 {totalBadges}
               </span>
             )}
+          </Link>
+
+          <Link
+            to="/teman-sekamar"
+            aria-label="Teman Sekamar"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '0.2rem',
+              color: location.pathname.startsWith('/teman-sekamar') ? 'var(--primary)' : 'var(--text-muted)',
+              fontSize: 'var(--step--2)',
+              fontWeight: location.pathname.startsWith('/teman-sekamar') ? 700 : 500,
+            }}
+          >
+            <Users size={20} />
+            <span>Teman</span>
           </Link>
 
           <Link

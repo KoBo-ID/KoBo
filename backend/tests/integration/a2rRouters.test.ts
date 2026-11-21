@@ -49,7 +49,7 @@ describe('A-005: an unapproved owner is closed to students', () => {
   async function unapproved() {
     const k = await makeKos([{ n: 'U1', type: 'Standar' }])
     const profile = await prisma.ownerProfile.findFirstOrThrow({ where: { kos: { some: { id: k.kos.id } } } })
-    await prisma.ownerProfile.update({ where: { id: profile.id }, data: { approvedAt: null } })
+    await prisma.ownerProfile.update({ where: { id: profile.id }, data: { approvedAt: null, verificationStatus: 'BELUM_KIRIM' } })
     return { k, profile }
   }
 
@@ -69,7 +69,7 @@ describe('A-005: an unapproved owner is closed to students', () => {
 
   it('works again once approved', async () => {
     const { k, profile } = await unapproved()
-    await prisma.ownerProfile.update({ where: { id: profile.id }, data: { approvedAt: new Date() } })
+    await prisma.ownerProfile.update({ where: { id: profile.id }, data: { approvedAt: new Date(), verificationStatus: 'DISETUJUI' } })
     const s = await newStudent()
     expect((await callerFor(s.id).application.create({ roomId: k.room('U1').id, startDate: startIn(3), durationMonths: 3 })).status).toBe('PENDING')
   })

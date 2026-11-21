@@ -12,11 +12,27 @@ import { AccountSecurityCard } from '../components/auth/AccountSecurityCard';
 import { StudentVerificationCard } from '../components/profile/StudentVerificationCard';
 import { EmergencyContactCard, RemindersAndTermsCard } from '../components/profile/ConsentCards';
 import { useSession } from '../lib/session';
+import { safeNext } from '../lib/safeNext';
+import { useMyDiscountStatus } from '../components/booking/CampusDiscountCard';
 import { BecomeOwnerModal } from '../components/owner/BecomeOwnerModal';
 import { useTRPC } from '../lib/trpc';
 import { CAMPUS_RETURN_MESSAGES, messageForError } from '../lib/errors';
 
-/** Headline student discount shown on the verification card (the per-kos amount applies at checkout). */
+/** "Kampus terverifikasi: X" with the Kampus Mitra status (the discount applies only to partner campuses). */
+const MitraStatusLine: React.FC = () => {
+  const status = useMyDiscountStatus();
+  if (status.isPending) return <p role="status" style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', marginTop: '0.4rem' }}>Memeriksa kampus…</p>;
+  if (status.isError) return <p role="alert" style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', marginTop: '0.4rem' }}>Gagal memeriksa kampus mitra. <button type="button" onClick={() => void status.refetch()} style={{ background: 'none', border: 0, padding: 0, color: 'var(--primary)', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}>Coba lagi</button></p>;
+  if (!status.data.campusName) return null;
+  return (
+    <p style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', fontSize: 'var(--step--1)', color: 'var(--text-main)', marginTop: '0.4rem' }}>
+      <span>Kampus terverifikasi: <strong>{status.data.campusName}</strong></span>
+      {status.data.affiliated
+        ? <span style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary)', padding: '0.1rem 0.5rem', borderRadius: 'var(--radius-badge)', fontSize: 'var(--step--2)', fontWeight: 700 }}>Kampus Mitra</span>
+        : <span style={{ color: 'var(--text-muted)', fontSize: 'var(--step--2)' }}>bukan kampus mitra</span>}
+    </p>
+  );
+};
 
 export const Profile: React.FC = () => {
   useDocumentTitle('Profil');
@@ -38,6 +54,9 @@ export const Profile: React.FC = () => {
   const campusResult = params.get('campus');
   const [campusNotice, setCampusNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const signedIn = !!me;
+  // Sent here from a kos to verify: once verified or waiting for review, offer the way back (open redirects refused by safeNext).
+  const nextParam = params.get('next');
+  const backToKos = nextParam && (me?.campusVerified || me?.studentVerification.state === 'PENDING') ? safeNext(nextParam, '') || null : null;
   useEffect(() => {
     if (!campusResult || !signedIn) return;
     const known = CAMPUS_RETURN_MESSAGES[campusResult];
@@ -100,6 +119,11 @@ export const Profile: React.FC = () => {
         <p style={{ fontSize: 'var(--step-0)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
           Kelola informasi identitas dan verifikasi status mahasiswa Anda.
         </p>
+        {backToKos && (
+          <Link to={backToKos} data-testid="back-to-kos" style={{ display: 'inline-flex', alignItems: 'center', minHeight: '40px', marginTop: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>
+            Kembali ke kos
+          </Link>
+        )}
       </div>
 
       <div
@@ -155,6 +179,7 @@ export const Profile: React.FC = () => {
                   <span>Mahasiswa Terverifikasi</span>
                 </div>
               )}
+              {me?.campusVerified && <MitraStatusLine />}
             </div>
           </div>
 

@@ -4,17 +4,19 @@ import { bookingRouter } from './booking.ts'
 import { demoRouter } from './demo.ts'
 import { kosRouter } from './kos.ts'
 import { kuitansiRouter } from './kuitansi.ts'
+import { matchingRouter } from './matching.ts'
 import { campusRouter, catalogRouter, regionRouter } from './location.ts'
 import { ownerRouter } from './owner.ts'
 import { paymentRouter } from './payment.ts'
 import { placeRouter } from './place.ts'
 import { reviewRouter } from './review.ts'
 import { studentVerificationRouter } from './studentVerification.ts'
+import { ownerVerificationRouter } from './ownerVerification.ts'
 import { router } from './trpc.ts'
 import { visitRouter } from './visit.ts'
 import { waitlistRouter } from './waitlist.ts'
 
-export const appRouter = router({ auth: authRouter, kos: kosRouter, owner: ownerRouter, application: applicationRouter, booking: bookingRouter, payment: paymentRouter, place: placeRouter, kuitansi: kuitansiRouter, review: reviewRouter, visit: visitRouter, waitlist: waitlistRouter, demo: demoRouter, region: regionRouter, campus: campusRouter, catalog: catalogRouter, studentVerification: studentVerificationRouter })
+export const appRouter = router({ auth: authRouter, kos: kosRouter, owner: ownerRouter, application: applicationRouter, booking: bookingRouter, payment: paymentRouter, place: placeRouter, kuitansi: kuitansiRouter, review: reviewRouter, visit: visitRouter, waitlist: waitlistRouter, demo: demoRouter, region: regionRouter, campus: campusRouter, catalog: catalogRouter, studentVerification: studentVerificationRouter, ownerVerification: ownerVerificationRouter, matching: matchingRouter })
 export type AppRouter = typeof appRouter
 export type { Place } from '../geocode.ts'
 export type { RegionView, CampusView, CatalogStatus } from './location.ts'

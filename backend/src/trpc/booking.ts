@@ -120,7 +120,7 @@ interface ApprovedTenancyInput {
   userId: string
   startDate: string
   durationMonths: number
-  campusEmailVerified: boolean
+  discountEligible: boolean
   room: {
     id: string
     kosId: string
@@ -141,7 +141,7 @@ export async function createApprovedTenancyObligation(
     monthlyRent: room.priceMonthly,
     applicationFee: room.kos.applicationFee,
     discountAmount: clampDiscount(room.priceMonthly, room.kos.applicationFee, room.kos.studentDiscountAmount),
-    campusEmailVerified: input.campusEmailVerified,
+    discountEligible: input.discountEligible,
   })
   const dueDate = new Date(`${input.startDate}T00:00:00Z`)
 

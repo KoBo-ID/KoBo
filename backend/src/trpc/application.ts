@@ -5,6 +5,7 @@ import type { Prisma } from '../generated/prisma/client.ts'
 import { assertApplicationConsents } from '../consents.ts'
 import { assertDemoIsolation } from '../demoIsolation.ts'
 import { advanceWaitlist, liveOffer, lockKos } from '../waitlist.ts'
+import { isDiscountEligible } from '../affiliation.ts'
 import { CONFLICT_MESSAGE, createApprovedTenancyObligation, isRoomTakenError, OFFERED_ELSEWHERE, OFFERED_ELSEWHERE_MESSAGE } from './booking.ts'
 import type { CampusVerifyMethod } from '@kobo/shared/types'
 import { authedProcedure, ownerProcedure, router, studentProcedure } from './trpc.ts'
@@ -193,7 +194,7 @@ export const applicationRouter = router({
         await lockKos(tx, input.kosId)
         const application = await tx.rentalApplication.findFirst({
           where: { id: input.applicationId, room: { kosId: input.kosId } },
-          include: { room: { include: { kos: true } }, user: { select: { campusEmailVerifiedAt: true, campusVerifiedUntil: true } } },
+          include: { room: { include: { kos: true } }, user: { select: { campusEmailVerifiedAt: true, campusVerifiedUntil: true, verifiedCampusId: true } } },
         })
         if (!application) throw new TRPCError({ code: 'NOT_FOUND', message: 'Pengajuan tidak ditemukan.' })
         if (application.status !== 'PENDING') throw new TRPCError({ code: 'CONFLICT', message: 'Pengajuan ini sudah diputuskan.' })
@@ -219,8 +220,8 @@ export const applicationRouter = router({
           userId: application.userId,
           startDate: dateOnly(application.startDate),
           durationMonths: application.durationMonths,
-          // The student discount is judged at DECIDE time (the moment the price is fixed), expiry-aware.
-          campusEmailVerified: isStudentVerified(application.user, now),
+          // "Diskon Kampus Mitra" is judged at DECIDE time (the moment the price is fixed): verified now AND an affiliated campus.
+          discountEligible: await isDiscountEligible(tx, application.user, now),
           room: application.room,
           now,
         })

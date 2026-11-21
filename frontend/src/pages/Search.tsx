@@ -563,7 +563,7 @@ export const Search: React.FC = () => {
                       onClick={() => setFilterDiscountOnly(!filterDiscountOnly)}
                     >
                       <GraduationCap size={16} />
-                      <span>Diskon Mahasiswa</span>
+                      <span>Diskon Kampus Mitra</span>
                     </button>
                     {/* URL/API name stays "surveyOnly"; it filters kos that have a bookable room. */}
                     <button

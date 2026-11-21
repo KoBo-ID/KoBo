@@ -3,7 +3,11 @@ import { fileURLToPath } from 'node:url'
 import { createApp } from './app.ts'
 import { createPrisma } from './db/client.ts'
 import { startDemoReset } from './demoSchedule.ts'
-import { e2eHooksEnabled, requireEnv } from './env.ts'
+import { e2eHooksEnabled, ktmAutoReviewSeconds, ownerAutoReviewSeconds, requireEnv } from './env.ts'
+import { startKtmAutoReview } from './studentVerification/ktmAutoReview.ts'
+import { startOwnerDocRetention } from './ownerDocRetention.ts'
+import { startOwnerAutoReview } from './ownerVerification/autoReview.ts'
+import { startMatchingMaintenance } from './matching/maintenance.ts'
 import { startNotificationWorker, whatsappFromEnv } from './notifications.ts'
 import { startOutboxWorker, transportFromEnv } from './outbox.ts'
 import { startPaymentSweep } from './payment/reconcile.ts'
@@ -52,8 +56,18 @@ const stopDemoReset: () => void = e2e ? () => {} : startDemoReset(prisma)
 // Also not started from createApp: tests call purgeStudentDocuments() directly. Deletes KTM photos 30 days after a decision.
 // e2e: skipped, the fake private storage is in memory.
 const stopStudentDocs: () => void = e2e ? () => {} : startStudentDocRetention(prisma, storage)
+// Owner documents: deleted 90 days after the decision. Same rules as the KTM purge (not from createApp, skipped under e2e).
+const stopOwnerDocs: () => void = e2e ? () => {} : startOwnerDocRetention(prisma, storage)
+// Demo only: approves owners N seconds after they submit. Runs under e2e too when the variable is set.
+const ownerAutoSeconds = ownerAutoReviewSeconds()
+const stopOwnerAutoReview = ownerAutoSeconds ? startOwnerAutoReview(prisma, ownerAutoSeconds) : () => Promise.resolve()
+// Demo only: approves pending KTM photos N seconds after upload. Runs under e2e too when the variable is set.
+const ktmAutoSeconds = ktmAutoReviewSeconds()
+const stopKtmAutoReview = ktmAutoSeconds ? startKtmAutoReview(prisma, ktmAutoSeconds) : () => Promise.resolve()
 // Daily purge of sign-ups that never verified their email (7 days). Not started from createApp; e2e keeps its seeded users.
 const stopUnverified: () => void = e2e ?() => {} : startUnverifiedCleanup(prisma)
+// Hourly: expires and cancels matching requests, sends 6 h chat digests, purges messages 90 days after a connection ends. e2e: skipped.
+const stopMatching: () => void = e2e ? () => {} : startMatchingMaintenance(prisma)
 
 // Compose gives the container 10 s (stop_grace_period). Stop taking requests, let the running ticks and in-flight
 // requests finish (max 8 s), then close the pool, so a refund or email send is not cut off between the provider call
@@ -64,7 +78,7 @@ const shutdown = async () => {
   if (shuttingDown) return
   shuttingDown = true
   const httpClosed = new Promise<void>((resolve) => server.close(() => resolve()))
-  const workers = [stopOutbox(), stopNotifications(), stopRefunds(), stopPaymentSweep(), stopWaitlist(), Promise.resolve(stopDemoReset()), Promise.resolve(stopStudentDocs()), Promise.resolve(stopUnverified())]
+  const workers = [stopOutbox(), stopNotifications(), stopRefunds(), stopPaymentSweep(), stopWaitlist(), Promise.resolve(stopDemoReset()), Promise.resolve(stopStudentDocs()), Promise.resolve(stopOwnerDocs()), stopOwnerAutoReview(), stopKtmAutoReview(), Promise.resolve(stopUnverified()), Promise.resolve(stopMatching())]
   await Promise.race([Promise.allSettled([httpClosed, ...workers]), new Promise((resolve) => setTimeout(resolve, SHUTDOWN_WAIT_MS).unref())])
   await prisma.$disconnect().catch(() => undefined)
   process.exit(0)

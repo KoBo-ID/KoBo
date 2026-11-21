@@ -1,6 +1,8 @@
 import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import { campusBoxInput, campusSearchInput, regionChildrenInput, regionLookupInput, regionSearchInput } from '@kobo/shared/schemas'
+import { isAffiliatedCampus, isStudentVerified } from '@kobo/shared/domain'
+import { loadAffiliatedSet } from '../affiliation.ts'
 import { parseList } from '../env.ts'
 import { Prisma } from '../generated/prisma/client.ts'
 import { normalizeRegionName } from '../regionLookup.ts'
@@ -112,6 +114,24 @@ export const campusRouter = router({
       WHERE lat BETWEEN ${input.minLat} AND ${input.maxLat} AND lng BETWEEN ${input.minLng} AND ${input.maxLng}
       ORDER BY (lat - ${cLat}) ^ 2 + (lng - ${cLng}) ^ 2
       LIMIT ${input.limit}`)
+  }),
+
+  /** The active "Kampus Mitra" list (public: the checkout, kos form and FAQ name the partner campuses). */
+  affiliations: publicProcedure.query(async ({ ctx }): Promise<{ campusId: string; label: string; shortName: string }[]> => {
+    const rows = await ctx.prisma.campusAffiliation.findMany({ where: { active: true }, orderBy: { label: 'asc' }, take: 500 })
+    const campuses = await ctx.prisma.campus.findMany({ where: { id: { in: rows.map((r) => r.campusId) } }, select: { id: true, shortName: true }, take: 500 })
+    const short = new Map(campuses.map((c) => [c.id, c.shortName]))
+    return rows.map((r) => ({ campusId: r.campusId, label: r.label, shortName: short.get(r.campusId) ?? r.label }))
+  }),
+
+  /** Whether the signed-in student's verified campus is a partner campus (for the checkout row and Profile). */
+  myDiscountStatus: authedProcedure.query(async ({ ctx }): Promise<{ campusId: string | null; campusName: string | null; affiliated: boolean; verified: boolean }> => {
+    const user = await ctx.prisma.user.findUnique({ where: { id: ctx.user.id }, select: { campusEmailVerifiedAt: true, campusVerifiedUntil: true, verifiedCampusId: true } })
+    if (!user) return { campusId: null, campusName: null, affiliated: false, verified: false }
+    const verified = isStudentVerified(user, new Date())
+    const campus = user.verifiedCampusId ? await ctx.prisma.campus.findUnique({ where: { id: user.verifiedCampusId }, select: { id: true, name: true, parentId: true } }) : null
+    const affiliated = verified && !!campus && isAffiliatedCampus(campus, await loadAffiliatedSet(ctx.prisma))
+    return { campusId: campus?.id ?? null, campusName: campus?.name ?? null, affiliated, verified }
   }),
 })
 

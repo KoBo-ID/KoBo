@@ -47,7 +47,7 @@ test('toggling filters updates the URL, refetches, and survives a reload', async
 
   await searchAfter(page, async () => {
     await page.getByRole('button', { name: /Filter/ }).click()
-    await page.getByRole('button', { name: 'Diskon Mahasiswa' }).click()
+    await page.getByRole('button', { name: 'Diskon Kampus Mitra' }).click()
   })
   await expect(page).toHaveURL(/discount=1/)
   // The badge counts exactly the applied secondary filter, not a permanent price filter (maxPrice default = PRICE_MAX).

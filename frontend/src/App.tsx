@@ -64,6 +64,29 @@ const Privacy = lazyWithReload(() =>
 );
 const Licenses = lazyWithReload(() => import('./pages/Licenses'));
 
+// Teman Sekamar (roommate matching)
+const MatchDiscover = lazyWithReload(() =>
+  import('./pages/matching/Discover').then((m) => ({ default: m.Discover }))
+);
+const MatchDetail = lazyWithReload(() =>
+  import('./pages/matching/Detail').then((m) => ({ default: m.Detail }))
+);
+const MatchProfileForm = lazyWithReload(() =>
+  import('./pages/matching/ProfileForm').then((m) => ({ default: m.ProfileForm }))
+);
+const MatchRequests = lazyWithReload(() =>
+  import('./pages/matching/Requests').then((m) => ({ default: m.Requests }))
+);
+const MatchMessages = lazyWithReload(() =>
+  import('./pages/matching/Messages').then((m) => ({ default: m.Messages }))
+);
+const MatchKosTogether = lazyWithReload(() =>
+  import('./pages/matching/KosTogether').then((m) => ({ default: m.KosTogether }))
+);
+const MatchSettings = lazyWithReload(() =>
+  import('./pages/matching/Settings').then((m) => ({ default: m.Settings }))
+);
+
 // The one sign-in / register page. `openAuthModal` redirects here (see AuthRedirect).
 const AuthPage = lazyWithReload(() =>
   import('./pages/AuthPage').then((m) => ({ default: m.AuthPage }))
@@ -184,6 +207,14 @@ export function App() {
               <Route path="/my-kos" element={<MyKos />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/kuitansi/:receiptNo" element={<Kuitansi />} />
+              <Route path="/teman-sekamar" element={<MatchDiscover />} />
+              <Route path="/teman-sekamar/profil" element={<MatchProfileForm />} />
+              <Route path="/teman-sekamar/p/:id" element={<MatchDetail />} />
+              <Route path="/teman-sekamar/permintaan" element={<MatchRequests />} />
+              <Route path="/teman-sekamar/pesan" element={<MatchMessages />} />
+              <Route path="/teman-sekamar/pesan/:connectionId" element={<MatchMessages />} />
+              <Route path="/teman-sekamar/kos/:connectionId" element={<MatchKosTogether />} />
+              <Route path="/teman-sekamar/pengaturan" element={<MatchSettings />} />
               <Route path="/owner/:id" element={<OwnerProfile />} />
               <Route path="/owner/login" element={<OwnerLogin />} />
               <Route path="/reset-password" element={<ResetPassword />} />

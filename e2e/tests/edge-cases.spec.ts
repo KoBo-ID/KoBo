@@ -195,7 +195,7 @@ test('scenario 27: the detail sidebar, checkout total and first invoice agree', 
     await test.step('one month, no verified campus e-mail', async () => {
       await plain.page.goto(`/kos/${owner.kosId}`)
       expect(digits(await sidebarFirst(plain.page).textContent())).toBe(1_525_000)
-      await expect(plain.page.getByText(/potongan Rp\s100\.000 di pembayaran pertama/)).toBeVisible()
+      await expect(plain.page.getByText(/Potongan Rp\s100\.000 di pembayaran pertama untuk mahasiswa kampus mitra/)).toBeVisible()
       // An unverified student is steered to /profile by the sidebar button; the form itself stays reachable.
       await expect(plain.page.getByRole('link', { name: 'Verifikasi status mahasiswa' })).toBeVisible()
       await plain.page.goto(`/checkout/${owner.kosId}?room=${owner.rooms[0].id}`)

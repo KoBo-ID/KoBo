@@ -18,12 +18,18 @@ const SIGNED_IN_ONLY = [
   'auth.updateProfile', 'auth.updateEmergencyContact', 'auth.clearEmergencyContact', 'auth.acceptTerms', 'auth.setNotifyOptOut', 'owner.becomeOwner',
   'application.create', 'application.mine', 'booking.mine', 'payment.start', 'payment.status', 'payment.reconcile', 'payment.simulate', 'place.resolveAddress',
   'place.reverse', 'kuitansi.get', 'review.create', 'review.update', 'visit.create', 'visit.mine', 'visit.cancel', 'waitlist.join', 'waitlist.leave',
-  'waitlist.decline', 'waitlist.mine', 'demo.reset', 'catalog.status',
+  'waitlist.decline', 'waitlist.mine', 'demo.reset', 'catalog.status', 'campus.myDiscountStatus',
   'studentVerification.status', 'studentVerification.ktmPresign', 'studentVerification.ktmConfirm', 'studentVerification.ktmWithdraw',
   'studentVerification.sheeridStart', 'studentVerification.sheeridRefresh',
+  'ownerVerification.status', 'ownerVerification.presign', 'ownerVerification.submit',
+  'matching.profile.get', 'matching.profile.upsert', 'matching.profile.setActive', 'matching.profile.setEmailOptOut', 'matching.profile.delete', 'matching.profile.markFound',
+  'matching.discover', 'matching.detail', 'matching.request.send', 'matching.request.cancel', 'matching.request.accept', 'matching.request.decline', 'matching.request.list',
+  'matching.connection.list', 'matching.connection.end', 'matching.message.list', 'matching.message.send', 'matching.message.markRead', 'matching.message.unreadCount',
+  'matching.shortlist.list', 'matching.shortlist.add', 'matching.shortlist.remove', 'matching.shortlist.kosCandidates', 'matching.shortlist.applicationNoteFor',
+  'matching.safety.block', 'matching.safety.unblock', 'matching.safety.blocks', 'matching.safety.report',
 ]
 // Public procedures (15): a missing session never produces UNAUTHORIZED.
-const PUBLIC = ['auth.providers', 'auth.me', 'kos.list', 'kos.search', 'kos.detail', 'owner.publicProfile', 'place.search', 'waitlist.status', 'region.children', 'region.get', 'region.outline', 'region.search', 'campus.search', 'campus.inBox', 'catalog.licenses']
+const PUBLIC = ['auth.providers', 'auth.me', 'kos.list', 'kos.search', 'kos.detail', 'owner.publicProfile', 'place.search', 'waitlist.status', 'region.children', 'region.get', 'region.outline', 'region.search', 'campus.search', 'campus.inBox', 'campus.affiliations', 'catalog.licenses']
 
 describe('[G-001][R-001] application.decide across owners', () => {
   it('refuses another owner and leaves the application PENDING, with no tenancy or invoice', async () => {

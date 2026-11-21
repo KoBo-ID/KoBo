@@ -1,6 +1,7 @@
 import { initTRPC, TRPCError } from '@trpc/server'
 import { z } from 'zod'
 import type { Auth } from '../auth.ts'
+import type { Prisma } from '../generated/prisma/client.ts'
 import type { Geocoder } from '../geocode.ts'
 import type { PrismaClient } from '../db/client.ts'
 import type { PaymentService } from '../payment/service.ts'
@@ -67,27 +68,43 @@ export const authedProcedure = t.procedure.use(async ({ ctx, next }) => {
  */
 export const studentProcedure = authedProcedure.use(async ({ ctx, next, getRawInput }) => {
   await assertStudentVerified(ctx.prisma, ctx.user.id, new Date())
-  const raw = (await getRawInput()) as { kosId?: unknown; roomId?: unknown } | null | undefined
-  const kosId = typeof raw?.kosId === 'string' ? raw.kosId : undefined
-  const roomId = typeof raw?.roomId === 'string' ? raw.roomId : undefined
-  if (kosId || roomId) {
-    const unapproved = await ctx.prisma.kos.findFirst({
-      where: kosId ? { id: kosId, owner: { approvedAt: null } } : { rooms: { some: { id: roomId } }, owner: { approvedAt: null } },
-      select: { id: true },
-    })
-    if (unapproved) throw new TRPCError({ code: 'NOT_FOUND', message: roomId && !kosId ? 'Kamar tidak ditemukan.' : 'Kos tidak ditemukan.' })
+  const raw = (await getRawInput()) as Record<string, unknown> | null | undefined
+  const notApproved = { owner: { verificationStatus: { not: 'DISETUJUI' as const } } }
+  // Every rental input key a student procedure can receive, mapped to the kos filter it implies.
+  const filters: Record<(typeof STUDENT_KOS_KEYS)[number], (id: string) => Prisma.KosWhereInput> = {
+    kosId: (id) => ({ id }),
+    roomId: (id) => ({ rooms: { some: { id } } }),
+    applicationId: (id) => ({ rooms: { some: { rentalApplications: { some: { id } } } } }),
+    visitId: (id) => ({ visits: { some: { id } } }),
+    waitlistEntryId: (id) => ({ waitlist: { some: { id } } }),
+    invoiceId: (id) => ({ rooms: { some: { tenancies: { some: { invoices: { some: { id } } } } } } }),
+    tenancyId: (id) => ({ rooms: { some: { tenancies: { some: { id } } } } }),
+    paymentId: (id) => ({ rooms: { some: { tenancies: { some: { invoices: { some: { payments: { some: { id } } } } } } } } }),
+  }
+  const present = STUDENT_KOS_KEYS.filter((k) => typeof raw?.[k] === 'string' && (raw[k] as string).length > 0)
+  // Fail closed: an input that names no kos-bearing key cannot be checked against the owner's approval.
+  if (present.length === 0) throw new TRPCError({ code: 'FORBIDDEN', message: 'Permintaan tidak dapat diproses.' })
+  for (const key of present) {
+    const unapproved = await ctx.prisma.kos.findFirst({ where: { AND: [filters[key](raw![key] as string), notApproved] }, select: { id: true } })
+    if (unapproved) throw new TRPCError({ code: 'NOT_FOUND', message: key === 'roomId' ? 'Kamar tidak ditemukan.' : 'Kos tidak ditemukan.' })
   }
   return next()
 })
+
+/** Input keys studentProcedure resolves to a kos. Exported for the table-driven test. */
+export const STUDENT_KOS_KEYS = ['kosId', 'roomId', 'applicationId', 'visitId', 'waitlistEntryId', 'invoiceId', 'tenancyId', 'paymentId'] as const
+
+/** Thrown by owner.kos.create for an owner whose documents are not approved. The UI detects it by this exact prefix. */
+export const OWNER_UNVERIFIED_MESSAGE = 'Akun pemilik belum terverifikasi. Unggah KTP dan dokumen tanah, lalu tunggu persetujuan tim KoBo sebelum mendaftarkan kos.'
 
 /**
  * For owner procedures that have no kos yet (listing and creating). Requires an OwnerProfile; exposes
  * ctx.ownerProfileId and ctx.isDemo. Anything scoped to an existing kos uses ownerProcedure instead.
  */
 export const ownerOnlyProcedure = authedProcedure.use(async ({ ctx, next }) => {
-  const owner = await ctx.prisma.ownerProfile.findUnique({ where: { userId: ctx.user.id }, select: { id: true, user: { select: { isDemo: true } } } })
+  const owner = await ctx.prisma.ownerProfile.findUnique({ where: { userId: ctx.user.id }, select: { id: true, verificationStatus: true, user: { select: { isDemo: true } } } })
   if (!owner) throw new TRPCError({ code: 'FORBIDDEN', message: 'Fitur ini khusus pemilik kos.' })
-  return next({ ctx: { ...ctx, ownerProfileId: owner.id, isDemo: owner.user.isDemo } })
+  return next({ ctx: { ...ctx, ownerProfileId: owner.id, isDemo: owner.user.isDemo, ownerVerified: owner.verificationStatus === 'DISETUJUI' } })
 })
 
 const kosIdInput = z.object({ kosId: z.string().min(1) })

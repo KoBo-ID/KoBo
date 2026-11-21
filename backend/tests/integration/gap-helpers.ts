@@ -105,7 +105,7 @@ let ownerSeq = 0
 export async function newOwner() {
   const n = ++ownerSeq
   const user = await prisma.user.create({ data: { id: `gap-owner-${Date.now()}-${n}`, name: `Pemilik Gap ${n}`, email: `gap-owner-${Date.now()}-${n}@kobo.test`, emailVerified: true } })
-  const profile = await prisma.ownerProfile.create({ data: { userId: user.id, approvedAt: new Date() } })
+  const profile = await prisma.ownerProfile.create({ data: { userId: user.id, approvedAt: new Date(), verificationStatus: 'DISETUJUI' } })
   return { userId: user.id, ownerId: profile.id, c: callerFor(user.id) }
 }
 
@@ -122,4 +122,12 @@ export async function paidTenancy(userId: string, nth = 0) {
     },
   })
   return { tenancy, room }
+}
+
+/** Marks a student verified right now at `campusId` (default: the affiliated seeded BINUS campus). `until: null` is the legacy "never expires". */
+export async function verifyAtCampus(userId: string, campusId = 'binus-syahdan', until: Date | null = new Date(Date.now() + 30 * 86_400_000)) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { campusEmailVerifiedAt: new Date(), campusVerifiedVia: 'EMAIL', campusVerifiedUntil: until, verifiedCampusId: campusId },
+  })
 }

@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { test, expect, loginAs } from './fixtures'
+import { ownIp } from './accounts'
 
 // Responsive regression gate: every top-level route stays free of horizontal page scroll at phone, tablet, short
 // laptop and desktop widths, and the overlays that matter on a phone fit the viewport. Layout only, no pixel snapshots.
@@ -12,7 +13,7 @@ const VIEWPORTS = [
   { name: '1600x900 desktop', width: 1600, height: 900 },
 ] as const
 
-const STUDENT_ROUTES = ['/', '/search', '/kos/kos-1', '/my-kos', '/profile', '/does-not-exist', '/verifikasi-email', '/reset-password', '/owner/owner-1', '/kontak', '/syarat', '/privasi']
+const STUDENT_ROUTES = ['/', '/search', '/kos/kos-1', '/my-kos', '/profile', '/does-not-exist', '/verifikasi-email', '/reset-password', '/owner/owner-1', '/kontak', '/syarat', '/privasi', '/teman-sekamar', '/teman-sekamar/profil', '/teman-sekamar/pesan']
 const OWNER_ROUTES = ['/owner/dashboard', '/owner/dashboard?tab=tindakan', '/owner/kos', '/owner/reviews']
 
 /** The page may not scroll sideways. A negative value is the reserved scrollbar gutter. */
@@ -126,6 +127,44 @@ for (const vp of VIEWPORTS) {
       expect(box.x).toBeGreaterThanOrEqual(0)
       expect(box.x + box.width).toBeLessThanOrEqual(vp.width)
       expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0)
+    })
+
+    test('the stepped sign-in (steps 1 and 2) and a long kuitansi fit', async ({ page }) => {
+      await ownIp(page)
+      await settle(page, '/masuk')
+      expect(await horizontalOverflow(page), `/masuk step 1 at ${vp.name}`).toBeLessThanOrEqual(0)
+      await settle(page, '/masuk?peran=pemilik')
+      await page.locator('main').getByRole('button', { name: 'Daftar baru' }).click()
+      expect(await horizontalOverflow(page), `/masuk register at ${vp.name}`).toBeLessThanOrEqual(0)
+      // Step 2 (email code) needs a real registration; the code comes from the e2e outbox.
+      const email = `resp-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`
+      const form = page.locator('main')
+      await form.getByLabel('Nama Lengkap').fill('Penguji Responsif Dengan Nama Yang Sangat Panjang Sekali')
+      await form.getByLabel('Email').fill(email)
+      await form.getByLabel('Kata Sandi', { exact: true }).fill('Sandi-rahasia-123')
+      await form.getByLabel(/Saya menyetujui/).check()
+      await form.getByRole('button', { name: 'Daftar Sekarang' }).click()
+      await expect(page).toHaveURL(/langkah=2/)
+      await expect(form.getByLabel('Kode verifikasi')).toBeVisible()
+      expect(await horizontalOverflow(page), `/masuk step 2 at ${vp.name}`).toBeLessThanOrEqual(0)
+
+      await loginAs(page, 'student')
+      const long = (n: number) => 'Sangat Panjang '.repeat(n).trim()
+      await page.route('**/api/trpc/kuitansi.get*', (r) =>
+        r.fulfill(trpc({
+          receiptNumber: 7, receiptNo: 'KB/2026/11/0007', paidAt: '2026-11-03T05:00:00.000Z', amount: 1_425_000, status: 'PAID',
+          breakdown: { rent: 1_500_000, applicationFee: 25_000, discount: 100_000, total: 1_425_000 },
+          reference: 'py_e2e_' + 'x'.repeat(60), method: 'XENDIT', manual: null,
+          payer: { name: long(3), campus: 'BINUS' },
+          kos: { id: 'kos-1', name: long(4), address: `Jl. ${long(5)} No. 12`, city: 'Jakarta Barat' },
+          room: { roomNumber: '101', floor: 1, type: 'Deluxe AC' },
+          period: { periodStart: '2026-11-03', periodEnd: '2026-12-02', dueDate: '2026-11-03' },
+          owner: { name: long(3) },
+        })),
+      )
+      await settle(page, '/kuitansi/7')
+      await expect(page.getByTestId('kuitansi-no')).toBeVisible()
+      expect(await horizontalOverflow(page), `/kuitansi/7 at ${vp.name}`).toBeLessThanOrEqual(0)
     })
 
     test('my kos invoice rows wrap in every payment state', async ({ page }) => {
