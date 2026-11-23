@@ -12,6 +12,7 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
   const displayImages = images.slice(0, 5);
+  const lightboxRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
@@ -21,15 +22,40 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setLightboxOpen(false);
-      else if (e.key === 'ArrowLeft') setActivePhotoIdx((p) => (p > 0 ? p - 1 : images.length - 1));
-      else if (e.key === 'ArrowRight') setActivePhotoIdx((p) => (p < images.length - 1 ? p + 1 : 0));
-      else if (e.key === 'Tab') { e.preventDefault(); closeRef.current?.focus(); } // only the close button and arrows act; keep focus in the lightbox
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        setLightboxOpen(false);
+      } else if (e.key === 'ArrowLeft') {
+        setActivePhotoIdx((p) => (p > 0 ? p - 1 : images.length - 1));
+      } else if (e.key === 'ArrowRight') {
+        setActivePhotoIdx((p) => (p < images.length - 1 ? p + 1 : 0));
+      } else if (e.key === 'Tab') {
+        const container = lightboxRef.current;
+        const items = container
+          ? Array.from(container.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'))
+          : [];
+        if (items.length === 0) {
+          e.preventDefault();
+          return;
+        }
+        const first = items[0];
+        const last = items[items.length - 1];
+        const active = document.activeElement;
+        if (e.shiftKey) {
+          if (active === first || active === container || !container?.contains(active)) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else if (active === last || !container?.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
-      openerRef.current?.focus();
+      if (openerRef.current?.isConnected) openerRef.current.focus();
     };
   }, [lightboxOpen, images.length]);
 
@@ -193,6 +219,8 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
       {/* Fullscreen Lightbox Modal */}
       {lightboxOpen && (
         <div
+          ref={lightboxRef}
+          tabIndex={-1}
           role="dialog"
           aria-modal="true"
           aria-label={`Galeri foto ${kosName}`}
@@ -322,28 +350,43 @@ export const PhotoHeroMosaic: React.FC<PhotoHeroMosaicProps> = ({ images, kosNam
             onClick={(e) => e.stopPropagation()}
           >
             {images.map((img, i) => (
-              <SafeImage
+              <button
                 key={i}
-                src={img}
-                alt={`Foto ${i + 1}`}
-                width={60}
-                height={42}
-                sizes="60px"
-                {...widthSrcSet(img, [120, 240])}
-                loading="lazy"
-                iconSize={16}
+                type="button"
+                aria-label={`Lihat foto ${i + 1}`}
+                aria-pressed={i === activePhotoIdx}
                 onClick={() => setActivePhotoIdx(i)}
                 style={{
+                  padding: 0,
+                  background: 'none',
+                  cursor: 'pointer',
+                  flexShrink: 0,
                   width: '60px',
                   height: '42px',
-                  objectFit: 'cover',
+                  overflow: 'hidden',
                   borderRadius: 'var(--radius-xs)',
-                  cursor: 'pointer',
                   border: i === activePhotoIdx ? '2px solid var(--accent)' : '2px solid transparent',
                   opacity: i === activePhotoIdx ? 1 : 0.6,
-                  transition: 'background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease',
+                  transition: 'border-color 0.2s ease, opacity 0.2s ease',
                 }}
-              />
+              >
+                <SafeImage
+                  src={img}
+                  alt=""
+                  width={60}
+                  height={42}
+                  sizes="60px"
+                  {...widthSrcSet(img, [120, 240])}
+                  loading="lazy"
+                  iconSize={16}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
+                />
+              </button>
             ))}
           </div>
         </div>

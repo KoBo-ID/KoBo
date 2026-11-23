@@ -119,6 +119,17 @@ export const NearbyList: React.FC<{ nearby: NearbyView }> = ({ nearby }) => {
             );
           })()}
         </div>
+        <p style={{ margin: '0.75rem 0 0', fontSize: 'var(--step--2)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          Jarak &amp; waktu tempuh merupakan perkiraan ({nearby.distanceNote}). Data peta &amp; tempat:{' '}
+          {(nearby.attributions?.length ? nearby.attributions : [nearby.attribution]).map((a, i) => (
+            <React.Fragment key={`${a.href}-${i}`}>
+              {i > 0 && ', '}
+              <a href={a.href} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                {a.text}
+              </a>
+            </React.Fragment>
+          ))}
+        </p>
         </>
       )}
     </section>

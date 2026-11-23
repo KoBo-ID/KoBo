@@ -8,7 +8,7 @@ import { ReviewFormModal } from '../components/kos/ReviewFormModal';
 import { InvoicePaymentActions } from '../components/booking/InvoicePaymentActions';
 import { WaitlistSection } from '../components/booking/WaitlistSection';
 import { useAppStore } from '../store/AppContext';
-import { Button } from '../components/ui/Button';
+import { Button, ButtonAnchor, ButtonLink } from '../components/ui/Button';
 import { Notice } from '../components/ui/Notice';
 import { ErrorState } from '../components/ui/QueryState';
 import { SafeImage } from '../components/ui/SafeImage';
@@ -35,6 +35,12 @@ const ListSkeleton: React.FC<{ label: string; rows?: number }> = ({ label, rows 
 /** 'YYYY-MM-DD' (a WIB calendar day) as "5 Oktober 2026". */
 const formatDate = (d: string) =>
   new Date(`${d}T00:00:00+07:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
+
+const formatEndedWIB = (iso: string) =>
+  `${new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })} WIB`;
+
+const formatExpiryWIB = (iso: string) =>
+  `${new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' })} WIB`;
 
 /** True once the lease end day (a WIB calendar day) has arrived. */
 const leaseOver = (d: string) => d <= todayWIB(new Date());
@@ -214,6 +220,9 @@ export const MyKos: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   // From the gateway return URL. Only used to start a short wait; the server decides what actually happened.
   const returnedPayment = searchParams.get('payment');
+  const rawResult = searchParams.get('result');
+  const returnedResult: 'success' | 'cancel' | null = rawResult === 'success' || rawResult === 'cancel' ? rawResult : null;
+  const cancelToastShown = useRef<string | null>(null);
   const [chosenTab, setActiveTab] = useState<TabId | null>(null);
   const [reviewing, setReviewing] = useState<{ tenancyId: string; kosName: string; existing: MyReview | null } | null>(null);
 
@@ -241,16 +250,26 @@ export const MyKos: React.FC = () => {
   const rentals = allTenancies.filter(
     (t) => t.status === 'ACTIVE' || (t.status === 'PENDING' && t.derivedStatus === 'booking') || t.invoices.some((i) => i.status === 'PAID') || refunding(t),
   );
-  const liveCardFor = (a: { kos: { id: string }; room: { roomNumber: string } }) =>
-    rentals.some((t) => t.kos.id === a.kos.id && t.room.roomNumber === a.room.roomNumber && (t.status === 'ACTIVE' || t.derivedStatus === 'booking'));
+  const liveCardFor = (a: { tenancyId?: string | null; kos: { id: string }; room: { roomNumber: string } }) => {
+    if (a.tenancyId) {
+      const t = rentals.find((r) => r.id === a.tenancyId);
+      return !!t && (t.status === 'ACTIVE' || t.derivedStatus === 'booking');
+    }
+    return rentals.some((t) => t.kos.id === a.kos.id && t.room.roomNumber === a.room.roomNumber && (t.status === 'ACTIVE' || t.derivedStatus === 'booking'));
+  };
   const applications = me ? (applicationQuery.data ?? []) : [];
   // What an approved application says depends on what became of its tenancy: still waiting for payment, paid and
   // later ended, or never paid within the 24 hours (the room is released and the tenancy is no longer live).
-  const approvedNote = (a: { kos: { id: string }; room: { roomNumber: string } }) => {
+  const approvedNote = (a: { tenancyId?: string | null; kos: { id: string }; room: { roomNumber: string } }) => {
     if (liveCardFor(a)) return 'Pengajuan diterima. Bayar tagihan pertama di tab Kamar yang Disewa sebelum batas waktunya.';
     // Every tenancy counts here, not only the visible rentals: an unpaid booking the owner cancelled is hidden from the rentals tab.
-    const over = allTenancies.filter((t) => t.kos.id === a.kos.id && t.room.roomNumber === a.room.roomNumber && t.endCause !== null);
-    const cause = over.find((t) => t.endCause === 'MOVED_OUT')?.endCause ?? over.find((t) => t.endCause === 'CANCELLED_BY_OWNER')?.endCause ?? null;
+    let cause: MyTenancy['endCause'] = null;
+    if (a.tenancyId) {
+      cause = allTenancies.find((t) => t.id === a.tenancyId)?.endCause ?? null;
+    } else {
+      const over = allTenancies.filter((t) => t.kos.id === a.kos.id && t.room.roomNumber === a.room.roomNumber && t.endCause !== null);
+      cause = over.find((t) => t.endCause === 'MOVED_OUT')?.endCause ?? over.find((t) => t.endCause === 'CANCELLED_BY_OWNER')?.endCause ?? null;
+    }
     if (cause === 'MOVED_OUT') return 'Pengajuan diterima dan sewanya sudah berakhir.';
     if (cause === 'CANCELLED_BY_OWNER') return 'Pengajuan diterima, tetapi pemilik membatalkan pemesanan sebelum tagihan pertama dibayar.';
     return 'Pengajuan diterima, tetapi tagihan pertama tidak dibayar dalam 24 jam, jadi kamar dilepas. Ajukan lagi bila kamar masih tersedia.';
@@ -263,21 +282,50 @@ export const MyKos: React.FC = () => {
   const settling = !chosenTab && !!me && (mine.isPending || applicationQuery.isPending || visitsQuery.isPending || waitlistQuery.isPending);
   const activeTab: TabId | null = chosenTab ?? (settling ? null : defaultTab);
 
-  // A return link that matches no invoice, or an invoice that is already settled, must not linger in the URL.
+  const clearPaymentParams = () =>
+    setSearchParams(
+      (prev) => {
+        if (!prev.has('payment') && !prev.has('result')) return prev;
+        const next = new URLSearchParams(prev);
+        next.delete('payment');
+        next.delete('result');
+        return next;
+      },
+      { replace: true },
+    );
+
+  // Returning from a cancelled gateway session clears the query params immediately and avoids any polling lockout.
   useEffect(() => {
-    if (!returnedPayment || !mine.isSuccess) return;
-    const inv = (mine.data ?? []).flatMap((t) => t.invoices).find((i) => i.activePayment?.id === returnedPayment || i.latestPayment?.id === returnedPayment);
+    if (returnedResult !== 'cancel') return;
+    const cancelKey = returnedPayment ?? '__cancel__';
+    if (cancelToastShown.current !== cancelKey) {
+      cancelToastShown.current = cancelKey;
+      addToast('Pembayaran dibatalkan. Anda dapat melanjutkan pembayaran sebelum sesi berakhir.', 'info');
+    }
+    clearPaymentParams();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [returnedResult, returnedPayment]);
+
+  // A return link that matches no active rental invoice, or an invoice that is already settled, must not linger in the URL.
+  useEffect(() => {
+    if (!returnedPayment || returnedResult === 'cancel' || mine.isPending || !mine.isSuccess) return;
+    const inv = rentals
+      .flatMap((t) => t.invoices)
+      .find((i) => i.activePayment?.id === returnedPayment || i.latestPayment?.id === returnedPayment);
     if (!inv) {
       addToast('Pembayaran tidak ditemukan di akun Anda.', 'info');
     } else if (inv.status === 'PAID') {
       addToast('Pembayaran sudah tercatat. Kuitansi tersedia di kartu kamar.', 'success');
+    } else if (returnedResult !== 'success') {
+      clearPaymentParams();
+      return;
     } else {
-      return; // still pending: InvoicePaymentActions waits and clears it
+      return; // still pending with ?result=success: InvoicePaymentActions waits and clears it
     }
-    setSearchParams({}, { replace: true });
+    clearPaymentParams();
     // Runs when the return flag or the first answer arrives; addToast / setSearchParams change identity and would repeat the toast.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [returnedPayment, mine.isSuccess]);
+  }, [returnedPayment, returnedResult, mine.isPending, mine.isSuccess]);
 
   const tabs: TabDef[] = [
     { id: 'visits', icon: <Calendar size={18} />, name: 'Jadwal Survey Gratis', count: countLabel(visitsQuery, scheduledCount) },
@@ -286,9 +334,7 @@ export const MyKos: React.FC = () => {
   ];
   const signInAction = <Button variant="primary" size="md" onClick={openAuthModal}>Masuk</Button>;
   const searchAction = (label: string) => (
-    <Link to="/search">
-      <Button variant="primary" size="md">{label}</Button>
-    </Link>
+    <ButtonLink to="/search" variant="primary" size="md">{label}</ButtonLink>
   );
 
   return (
@@ -371,7 +417,8 @@ export const MyKos: React.FC = () => {
                             <InvoicePaymentActions
                               invoice={inv}
                               returnedPaymentId={returnedPayment && (inv.activePayment?.id === returnedPayment || inv.latestPayment?.id === returnedPayment) ? returnedPayment : undefined}
-                              onResolved={() => setSearchParams({}, { replace: true })}
+                              returnedResult={returnedResult}
+                              onResolved={clearPaymentParams}
                             />
                             {inv.receiptNumber !== null && (
                               <Link to={`/kuitansi/${inv.receiptNumber}`} className="mk-link">{inv.receiptNo}</Link>
@@ -388,11 +435,11 @@ export const MyKos: React.FC = () => {
                           {t.endCause === 'HOLD_LAPSED'
                             ? 'Masa tahan kamar sudah berakhir sebelum tagihan pertama lunas.'
                             : t.endCause === 'CANCELLED_BY_OWNER'
-                              ? `Pemilik membatalkan pemesanan ini${t.endedAt ? ` pada ${new Date(t.endedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}.`
+                              ? `Pemilik membatalkan pemesanan ini${t.endedAt ? ` pada ${formatEndedWIB(t.endedAt)}` : ''}.`
                               : t.status === 'ENDED'
-                                ? `Sewa berakhir${t.endedAt ? ` pada ${new Date(t.endedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}`
+                                ? `Sewa berakhir${t.endedAt ? ` pada ${formatEndedWIB(t.endedAt)}` : ''}`
                                 : t.status === 'PENDING' && t.expiresAt
-                                  ? `Kamar ditahan sampai ${new Date(t.expiresAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}`
+                                  ? `Kamar ditahan sampai ${formatExpiryWIB(t.expiresAt)}`
                                   : 'Pembayaran tercatat di KoBo'}
                         </span>
                       </div>
@@ -408,21 +455,23 @@ export const MyKos: React.FC = () => {
                           </Button>
                         )}
                         {firstReceipt && (
-                          <Link to={`/kuitansi/${firstReceipt.receiptNumber}`}>
-                            <Button variant="outline" size="sm" icon={<FileText size={15} />}>Lihat Kuitansi Resmi</Button>
-                          </Link>
+                          <ButtonLink to={`/kuitansi/${firstReceipt.receiptNumber}`} variant="outline" size="sm" icon={<FileText size={15} />}>
+                            Lihat Kuitansi Resmi
+                          </ButtonLink>
                         )}
                         {t.kos.ownerPhone && (
-                          <a
-                            href={`https://wa.me/${t.kos.ownerPhone.replace(/^0/, '62')}?text=${encodeURIComponent(`Halo ${t.kos.ownerName}, saya penghuni Kamar ${t.room.roomNumber}`)}`}
+                          <ButtonAnchor
+                            href={`https://wa.me/${t.kos.ownerPhone.replace(/[^0-9]/g, '').replace(/^0/, '62')}?text=${encodeURIComponent(`Halo ${t.kos.ownerName}, saya penghuni Kamar ${t.room.roomNumber}`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="mk-wa"
+                            variant="primary"
+                            size="sm"
+                            icon={<MessageSquare size={15} />}
+                            style={{ backgroundColor: 'var(--whatsapp)', borderColor: 'var(--whatsapp)' }}
                           >
-                            <Button type="button" variant="primary" size="sm" icon={<MessageSquare size={15} />} style={{ backgroundColor: 'var(--whatsapp)', borderColor: 'var(--whatsapp)' }}>
-                              Hubungi Pemilik (WA)
-                            </Button>
-                          </a>
+                            Hubungi Pemilik (WA)
+                          </ButtonAnchor>
                         )}
                       </div>
                     </div>
@@ -474,7 +523,7 @@ export const MyKos: React.FC = () => {
                             {application.status === 'APPROVED' && <p className={`mk-row__note${liveCardFor(application) ? ' mk-row__note--good' : ''}`}>{approvedNote(application)}</p>}
                           </div>
                         </div>
-                        <Link to={`/kos/${application.kos.id}`} className="application-card__action"><Button variant="outline" size="sm">Lihat Kos</Button></Link>
+                        <ButtonLink to={`/kos/${application.kos.id}`} className="application-card__action" variant="outline" size="sm">Lihat Kos</ButtonLink>
                       </div>
                     );
                   })}
@@ -528,9 +577,7 @@ export const MyKos: React.FC = () => {
                         </div>
                       </div>
                       <div className="mk-row__actions">
-                        <Link to={`/kos/${vis.kos.id}`}>
-                          <Button variant="outline" size="sm">Lihat Kos</Button>
-                        </Link>
+                        <ButtonLink to={`/kos/${vis.kos.id}`} variant="outline" size="sm">Lihat Kos</ButtonLink>
                         {vis.status === 'SCHEDULED' && (
                           <Button variant="ghost" size="sm" isLoading={cancelVisit.isPending && cancelVisit.variables?.visitId === vis.id} disabled={cancelVisit.isPending} onClick={() => cancelVisit.mutate({ visitId: vis.id })} style={{ color: 'var(--status-overdue-text)' }}>
                             Batalkan Survey

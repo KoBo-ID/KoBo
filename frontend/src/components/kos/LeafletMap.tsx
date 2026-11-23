@@ -39,6 +39,16 @@ const PIN_ZOOM = 15;
 const REGION_RADIUS_METERS = SEARCH_RADIUS_METERS;
 const NEARBY_CAMPUS_METERS = 3000;
 
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+const escapeHtml = (s: string): string => s.replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]);
+
 const gradCapSvg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/>
@@ -250,7 +260,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         />
 
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="/lisensi">Data tempat</a>'
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
@@ -285,7 +295,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
               zIndexOffset={1000}
               icon={L.divIcon({
                 className: 'kobo-location-marker-wrapper',
-                html: `<div class="kobo-location-pin"><span class="kobo-location-pin__chip">${locationTargetSvg}<span>Titik Lokasi &middot; ${activeLocation.label}</span></span><span class="kobo-location-pin__dot"></span></div>`,
+                html: `<div class="kobo-location-pin"><span class="kobo-location-pin__chip">${locationTargetSvg}<span>Titik Lokasi &middot; ${escapeHtml(activeLocation.label)}</span></span><span class="kobo-location-pin__dot"></span></div>`,
                 iconSize: [0, 0],
                 iconAnchor: [0, 0],
               })}
@@ -321,7 +331,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
             position={[campus.coordinates.lat, campus.coordinates.lng]}
             icon={L.divIcon({
               className: 'kobo-poi-marker-wrapper',
-              html: `<div class="kobo-poi-pin" title="${campus.name.replace(/"/g, '&quot;')}">${gradCapSvg}<span>${campus.name.replace(/</g, '&lt;')}</span></div>`,
+              html: `<div class="kobo-poi-pin" title="${escapeHtml(campus.name)}">${gradCapSvg}<span>${escapeHtml(campus.name)}</span></div>`,
               iconSize: [0, 0],
               iconAnchor: [0, 0],
             })}
@@ -345,8 +355,8 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
 
           const priceIcon = L.divIcon({
             className: 'kobo-price-marker-wrapper',
-            html: `<div class="kobo-price-pin ${isActive ? 'is-active' : ''}">${formatPriceChip(
-              kos.priceMonthlyStart
+            html: `<div class="kobo-price-pin ${isActive ? 'is-active' : ''}">${escapeHtml(
+              formatPriceChip(kos.priceMonthlyStart)
             )}</div>`,
             iconSize: [76, 28],
             iconAnchor: [38, 14],
