@@ -15,6 +15,14 @@ const pairWhere = (a: string, b: string) => [
   { userAId: b, userBId: a },
 ]
 
+/** Cancels all PENDING requests involving a user when auto-hidden or actioned. */
+async function cancelPendingForUser(tx: Db, userId: string, now: Date): Promise<void> {
+  await tx.partnerRequest.updateMany({
+    where: { status: 'PENDING', OR: [{ fromUserId: userId }, { toUserId: userId }] },
+    data: { status: 'CANCELLED', decidedAt: now },
+  })
+}
+
 /** Creates the block, ends any live connection with BLOCKED and cancels PENDING requests in both directions. Idempotent. */
 export async function blockInTx(tx: Db, blockerId: string, blockedId: string, now = new Date()): Promise<void> {
   await tx.userBlock.upsert({ where: { blockerId_blockedId: { blockerId, blockedId } }, create: { blockerId, blockedId }, update: {} })
@@ -126,6 +134,7 @@ export async function reportProfile(prisma: PrismaClient, me: string, input: Rep
     if (related && input.reason === 'PELECEHAN') await blockInTx(tx, me, target.userId, now)
     if ((await hideCount(tx, target.userId)) >= HIDE_THRESHOLD) {
       await tx.matchingProfile.updateMany({ where: { id: target.id, hiddenByReportsAt: null }, data: { hiddenByReportsAt: now, active: false } })
+      await cancelPendingForUser(tx, target.userId, now)
     }
   })
   return { ok: true }
@@ -196,6 +205,11 @@ export async function actionReport(prisma: PrismaClient, id: string, opts: { rev
       data: { status: 'ACTIONED', reviewer: reviewerLabel(opts.reviewer, opts.note), decidedAt: now },
     })
     await tx.matchingProfile.updateMany({ where: { userId: r.reportedId }, data: { active: false, hiddenByReportsAt: now } })
+    await cancelPendingForUser(tx, r.reportedId, now)
+    await tx.partnerConnection.updateMany({
+      where: { endedAt: null, OR: [{ userAId: r.reportedId }, { userBId: r.reportedId }] },
+      data: { endedAt: now, endedById: null, endReason: 'BLOCKED' },
+    })
     return { closed: res.count }
   })
 }

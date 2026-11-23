@@ -4,14 +4,13 @@ import { discoverInput, matchingDetailInput, matchingEmailOptOutInput, matchingM
 import type { DiscoverResult, MatchCandidate, MyMatchingProfile } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
 import { blockedUserIds, engagedUserIds, loadEligiblePair } from '../../matching/eligibility.ts'
-import { campusNamesFor, defaultKosType, scoreView, toCandidate, toMatchInput, toMyProfile, touchActive, visibleWhere, type Db } from '../../matching/profiles.ts'
+import { campusNamesFor, defaultKosType, MAX_RADIUS_KM, scoreView, toCandidate, toMatchInput, toMyProfile, touchActive, visibleWhere, type Db } from '../../matching/profiles.ts'
 import { router } from '../trpc.ts'
 import { matchingProcedure } from './guard.ts'
 
 export const PAGE_SIZE = 20
 export const MAX_RESULTS = 100
 const WIDEN_KM = 2
-const MAX_RADIUS_KM = 15
 const CANDIDATE_SCAN_LIMIT = 2000
 const NOT_VISIBLE = 'Profil tidak tersedia.'
 const NO_PROFILE_MESSAGE = 'Buat profil teman sekamar dulu.'
@@ -55,7 +54,13 @@ const profile = router({
 
   setActive: matchingProcedure.input(matchingSetActiveInput).mutation(async ({ ctx, input }): Promise<MyMatchingProfile> => {
     const now = new Date()
-    await myRow(ctx.prisma, ctx.user.id)
+    const existing = await myRow(ctx.prisma, ctx.user.id)
+    if (input.active && existing.hiddenByReportsAt !== null) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Profil Anda sedang disembunyikan karena laporan dan tidak dapat diaktifkan kembali.',
+      })
+    }
     const row = await ctx.prisma.$transaction(async (tx) => {
       if (!input.active) await cancelPendingRequests(tx, ctx.user.id, now)
       return tx.matchingProfile.update({
@@ -118,10 +123,10 @@ const discover = matchingProcedure.input(discoverInput).query(async ({ ctx, inpu
     take: CANDIDATE_SCAN_LIMIT,
   })
 
-  const mineInput = toMatchInput(mine)
+  const effectiveRadius = input.maxDistanceKm !== undefined ? Math.min(MAX_RADIUS_KM, Math.max(1, input.maxDistanceKm)) : mine.radiusKm
+  const mineInput = { ...toMatchInput(mine), radiusKm: effectiveRadius }
   const moveInBefore = input.moveInBefore ? new Date(`${input.moveInBefore}T00:00:00.000Z`).getTime() : null
-  const passesFilters = (o: (typeof rows)[number], km: number, extraKm: number) =>
-    (input.maxDistanceKm === undefined || km <= input.maxDistanceKm + extraKm) &&
+  const passesNonDistanceFilters = (o: (typeof rows)[number]) =>
     (input.budgetMin === undefined || o.budgetMax >= input.budgetMin) &&
     (input.budgetMax === undefined || o.budgetMin <= input.budgetMax) &&
     (moveInBefore === null || o.moveInDate.getTime() <= moveInBefore)
@@ -131,7 +136,7 @@ const discover = matchingProcedure.input(discoverInput).query(async ({ ctx, inpu
     const oi = toMatchInput(o)
     if (hardFilter(mineInput, oi) !== null) continue
     const km = anchorDistanceKm(mineInput, oi)
-    if (!passesFilters(o, km, 0)) continue
+    if (km > effectiveRadius || !passesNonDistanceFilters(o)) continue
     scored.push({ o, km, score: scoreView(mine, o).score })
   }
   const time = (x: { o: { lastActiveAt: Date } }) => x.o.lastActiveAt.getTime()
@@ -149,13 +154,15 @@ const discover = matchingProcedure.input(discoverInput).query(async ({ ctx, inpu
   if (capped.length === 0) {
     if (rows.length === 0) return empty('COLD_START')
     // Too narrow: count who a radius two km wider would add (counts only, no identities).
-    const widened = Math.min(mine.radiusKm + WIDEN_KM, MAX_RADIUS_KM)
+    const widened = Math.min(effectiveRadius + WIDEN_KM, MAX_RADIUS_KM)
     const wider = { ...mineInput, radiusKm: widened }
     let extra = 0
-    for (const o of rows) {
-      const oi = toMatchInput(o)
-      if (hardFilter(wider, oi) !== null) continue
-      if (passesFilters(o, anchorDistanceKm(wider, oi), WIDEN_KM)) extra += 1
+    if (effectiveRadius < MAX_RADIUS_KM) {
+      for (const o of rows) {
+        const oi = toMatchInput(o)
+        if (hardFilter(wider, oi) !== null) continue
+        if (passesNonDistanceFilters(o) && anchorDistanceKm(wider, oi) <= widened) extra += 1
+      }
     }
     return empty('TOO_NARROW', { widenHint: { radiusKm: widened, extra } })
   }

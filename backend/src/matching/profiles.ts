@@ -3,11 +3,13 @@ import { ageBand, anchorDistanceKm, matchBand, matchScore, todayWIB } from '@kob
 import type { MatchInput } from '@kobo/shared/domain'
 import type { MatchCandidate, MatchScoreView, MyMatchingProfile } from '@kobo/shared/types'
 import type { PrismaClient } from '../db/client.ts'
+import { demoIsolationOn } from '../demoIsolation.ts'
 import type { MatchingProfile, Prisma } from '../generated/prisma/client.ts'
 
 export type Db = PrismaClient | Prisma.TransactionClient
 
 export const IDLE_DAYS = 30
+export const MAX_RADIUS_KM = 15
 export const DAY_MS = 86_400_000
 export const TOUCH_INTERVAL_MS = 3_600_000
 
@@ -42,19 +44,25 @@ export function toMatchInput(p: MatchingProfile): MatchInput {
 /**
  * The visibility predicate: who may appear in someone else's discover (and be the target of a new request).
  * Active, not paused, not hidden by reports, seen within 30 days, move-in not past, and a currently verified student.
- * Demo profiles are visible only to demo viewers; a demo viewer also sees real verified students.
+ * Demo profiles are visible only to demo viewers; when demo isolation is on, a demo viewer sees demo profiles and
+ * accountless showcase seed profiles, otherwise any verified student.
  */
 export function visibleWhere(now: Date, viewerIsDemo: boolean): Prisma.MatchingProfileWhereInput {
   const verified: Prisma.UserWhereInput = {
     AND: [{ campusEmailVerifiedAt: { not: null } }, { OR: [{ campusVerifiedUntil: null }, { campusVerifiedUntil: { gt: now } }] }],
   }
+  const userFilter: Prisma.UserWhereInput = viewerIsDemo
+    ? demoIsolationOn()
+      ? { OR: [{ isDemo: true }, { isDemo: false, accounts: { none: {} }, ...verified }] }
+      : { OR: [{ isDemo: true }, verified] }
+    : { isDemo: false, ...verified }
   return {
     active: true,
     pausedAt: null,
     hiddenByReportsAt: null,
     lastActiveAt: { gte: new Date(now.getTime() - IDLE_DAYS * DAY_MS) },
     moveInDate: { gte: new Date(`${todayWIB(now)}T00:00:00.000Z`) },
-    user: viewerIsDemo ? { OR: [{ isDemo: true }, verified] } : { isDemo: false, ...verified },
+    user: userFilter,
   }
 }
 

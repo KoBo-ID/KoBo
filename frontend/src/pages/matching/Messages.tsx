@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
+import { ButtonLink } from '../../components/ui/Button';
 import { ErrorState } from '../../components/ui/QueryState';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ChatThread } from '../../components/matching/ChatThread';
@@ -40,7 +40,7 @@ const MessagesBody: React.FC = () => {
       <MatchEmptyState
         icon={<MessageCircle size={40} />}
         title="Belum ada koneksi"
-        actions={<Link to={MATCH_BASE}><Button variant="primary">Cari teman sekamar</Button></Link>}
+        actions={<ButtonLink to={MATCH_BASE} variant="primary">Cari teman sekamar</ButtonLink>}
       >
         Obrolan muncul di sini setelah ada permintaan yang diterima.
       </MatchEmptyState>
@@ -60,7 +60,7 @@ const MessagesBody: React.FC = () => {
         {current ? (
           <ChatThread key={current.id} connection={current} />
         ) : connectionId ? (
-          <MatchEmptyState title="Percakapan tidak ditemukan" actions={<Link to={`${MATCH_BASE}/pesan`}><Button variant="outline">Lihat semua percakapan</Button></Link>}>
+          <MatchEmptyState title="Percakapan tidak ditemukan" actions={<ButtonLink to={`${MATCH_BASE}/pesan`} variant="outline">Lihat semua percakapan</ButtonLink>}>
             Percakapan ini tidak ada atau bukan milikmu.
           </MatchEmptyState>
         ) : (

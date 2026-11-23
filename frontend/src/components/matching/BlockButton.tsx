@@ -38,7 +38,7 @@ export const BlockButton: React.FC<{
             <>
               Kalian tidak akan saling melihat di pencarian, dan koneksi atau permintaan yang ada diakhiri. Obrolan lama menjadi hanya-baca.
               Membuka blokir nanti tidak memulihkan koneksi. Kamu bisa membuka blokir di Pengaturan.
-              {error && <span style={{ display: 'block', marginTop: '0.75rem' }}><Notice tone="error">{error}</Notice></span>}
+              {error && <div style={{ marginTop: '0.75rem' }}><Notice tone="error">{error}</Notice></div>}
             </>
           }
           confirmLabel="Blokir"

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Inbox, Send } from 'lucide-react';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
-import { Button } from '../../components/ui/Button';
+import { Button, ButtonLink } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ErrorState } from '../../components/ui/QueryState';
 import { Notice } from '../../components/ui/Notice';
@@ -130,7 +130,7 @@ const RequestsBody: React.FC = () => {
           <MatchEmptyState
             icon={box === 'received' ? <Inbox size={40} /> : <Send size={40} />}
             title={box === 'received' ? 'Belum ada permintaan masuk' : 'Belum ada permintaan terkirim'}
-            actions={<Link to={MATCH_BASE}><Button variant="primary">Cari teman sekamar</Button></Link>}
+            actions={<ButtonLink to={MATCH_BASE} variant="primary">Cari teman sekamar</ButtonLink>}
           >
             {box === 'received' ? 'Saat ada yang mengajakmu jadi teman sekamar, permintaannya muncul di sini.' : 'Ajak kandidat yang cocok dari halaman Cari.'}
           </MatchEmptyState>

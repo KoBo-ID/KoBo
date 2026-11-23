@@ -126,24 +126,27 @@ const FormBody: React.FC = () => {
 
   const upsert = useMutation({ ...trpc.matching.profile.upsert.mutationOptions(), onError: (e) => setServerError(messageForError(e)) });
 
-  const payload = () => ({
-    displayName: draft.displayName.trim(),
-    gender: draft.gender!,
-    birthYear: Number(draft.birthYear),
-    budgetMin: draft.budgetMin,
-    budgetMax: draft.budgetMax,
-    anchorLat: draft.anchor!.lat,
-    anchorLng: draft.anchor!.lng,
-    anchorLabel: draft.anchor!.label,
-    radiusKm: draft.radiusKm,
-    moveInDate: draft.moveInDate,
-    smoking: draft.smoking!,
-    intro: draft.intro.trim(),
-    durationMonths: draft.durationMonths,
-    kosType,
-    roomShare: draft.roomShare,
-    ...(draft.lifestyle as Record<OptionalKey, never>),
-  });
+  const payload = () => {
+    if (!draft.gender || !draft.anchor || !draft.smoking) return null;
+    return {
+      displayName: draft.displayName.trim(),
+      gender: draft.gender,
+      birthYear: Number(draft.birthYear),
+      budgetMin: draft.budgetMin,
+      budgetMax: draft.budgetMax,
+      anchorLat: draft.anchor.lat,
+      anchorLng: draft.anchor.lng,
+      anchorLabel: draft.anchor.label,
+      radiusKm: draft.radiusKm,
+      moveInDate: draft.moveInDate,
+      smoking: draft.smoking,
+      intro: draft.intro.trim(),
+      durationMonths: draft.durationMonths,
+      kosType,
+      roomShare: draft.roomShare,
+      ...(draft.lifestyle as Record<OptionalKey, never>),
+    };
+  };
 
   const saveCore = (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,7 +154,9 @@ const FormBody: React.FC = () => {
     setErrors(found);
     setServerError(null);
     if (Object.keys(found).length) return;
-    upsert.mutate(payload(), {
+    const data = payload();
+    if (!data) return;
+    upsert.mutate(data, {
       onSuccess: () => { void invalidate(); setSaved('Profilmu aktif. Lengkapi preferensi supaya skornya lebih akurat, atau lewati.'); setFurthest(1); setStep(1); },
     });
   };
@@ -159,9 +164,21 @@ const FormBody: React.FC = () => {
   const saveOptional = (e: React.FormEvent) => {
     e.preventDefault();
     setServerError(null);
+    const coreErrors = validateCore(draft);
+    if (Object.keys(coreErrors).length) {
+      setErrors(coreErrors);
+      setSaved(null);
+      setStep(0);
+      return;
+    }
     if (draft.intro.trim() && containsContactInfo(draft.intro)) { setErrors({ intro: CONTACT_MESSAGE }); return; }
+    const data = payload();
+    if (!data) {
+      setStep(0);
+      return;
+    }
     setErrors({});
-    upsert.mutate(payload(), { onSuccess: () => { void invalidate(); navigate(MATCH_BASE); } });
+    upsert.mutate(data, { onSuccess: () => { void invalidate(); navigate(MATCH_BASE); } });
   };
 
   const onAnchorText = (text: string) => {

@@ -1,10 +1,9 @@
 import React, { useId, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Check, Send } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { containsContactInfo } from '@kobo/shared/domain';
 import type { MatchCandidate } from '@kobo/shared/types';
-import { Button } from '../ui/Button';
+import { Button, ButtonLink } from '../ui/Button';
 import { Notice } from '../ui/Notice';
 import { useTRPC } from '../../lib/trpc';
 import { CONTACT_MESSAGE, MATCH_BASE, refusalMessage, useInvalidateMatching, useMatchingProfile } from '../../lib/matching';
@@ -46,14 +45,14 @@ export const RequestButton: React.FC<{ candidate: MatchCandidate }> = ({ candida
 
   if (candidate.relation === 'CONNECTED') {
     return candidate.connectionId
-      ? <Link to={`${MATCH_BASE}/pesan/${candidate.connectionId}`}><Button variant="primary" size="md">Buka obrolan</Button></Link>
+      ? <ButtonLink to={`${MATCH_BASE}/pesan/${candidate.connectionId}`} variant="primary" size="md">Buka obrolan</ButtonLink>
       : <Notice tone="success">Kalian sudah terhubung.</Notice>;
   }
   if (candidate.relation === 'REQUEST_RECEIVED') {
     return (
       <div className="mt-stack">
         <p className="mt-help">{candidate.displayName} sudah mengajakmu. Jawab di halaman Permintaan.</p>
-        <div><Link to={`${MATCH_BASE}/permintaan`}><Button variant="primary" size="md">Lihat permintaan</Button></Link></div>
+        <div><ButtonLink to={`${MATCH_BASE}/permintaan`} variant="primary" size="md">Lihat permintaan</ButtonLink></div>
       </div>
     );
   }

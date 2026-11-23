@@ -94,6 +94,17 @@
 .mt-meter { display: flex; align-items: center; gap: var(--space-xs); }
 .mt-meter .mt-bar { flex: 1; margin: 0; }
 
+@media (width < 48rem) {
+  .mt-nav {
+    gap: 2px;
+    padding: 3px;
+    padding-inline-end: 1.5rem;
+    scroll-padding-inline: 1rem;
+    box-shadow: inset -14px 0 12px -12px rgba(15, 23, 42, 0.14);
+  }
+  .mt-nav__link { padding: 0 0.65rem; }
+}
+
 @media (width < 40rem) {
   .mt-form { grid-template-columns: minmax(0, 1fr); }
   .mt-title { font-size: var(--step-2); }

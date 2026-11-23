@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import { Link2, Search, UserPlus, UsersRound } from 'lucide-react';
+import { isCalendarDay } from '@kobo/shared/domain';
+import { PRICE_MAX } from '@kobo/shared/search';
 import type { DiscoverInput } from '@kobo/shared/schemas';
 import type { DiscoverResult } from '@kobo/shared/types';
-import { Button } from '../../components/ui/Button';
+import { Button, ButtonLink } from '../../components/ui/Button';
 import { ErrorState } from '../../components/ui/QueryState';
 import { Notice } from '../../components/ui/Notice';
 import { CandidateCard, CandidateCardSkeleton } from '../../components/matching/CandidateCard';
@@ -21,13 +23,23 @@ const BUDGETS = Array.from({ length: 7 }, (_, i) => (i + 1) * 500_000); // up to
 
 /** The filters live in the URL: ?jarak=5&min=1000000&maks=2000000&pindah=2027-01-15&urut=jarak. */
 function readFilters(sp: URLSearchParams) {
-  const num = (k: string) => { const n = Number(sp.get(k)); return sp.get(k) && Number.isFinite(n) && n > 0 ? n : undefined; };
+  const raw = (k: string) => {
+    const v = sp.get(k)?.trim();
+    if (!v) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  const jarak = raw('jarak');
+  const clampBudget = (k: string) => {
+    const n = raw(k);
+    return n !== null && n >= 0 ? Math.min(PRICE_MAX, Math.max(0, Math.round(n))) : undefined;
+  };
   const day = sp.get('pindah');
   return {
-    maxDistanceKm: num('jarak'),
-    budgetMin: num('min'),
-    budgetMax: num('maks'),
-    moveInBefore: day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : undefined,
+    maxDistanceKm: jarak !== null && jarak > 0 ? Math.min(15, Math.max(1, Math.round(jarak))) : undefined,
+    budgetMin: clampBudget('min'),
+    budgetMax: clampBudget('maks'),
+    moveInBefore: day && isCalendarDay(day) ? day : undefined,
     sort: sp.get('urut') === 'jarak' ? ('jarak' as const) : ('skor' as const),
   };
 }
@@ -100,7 +112,7 @@ const EmptyByReason: React.FC<{ data: DiscoverResult; hasFilters: boolean; onWid
   switch (data.emptyReason) {
     case 'NO_PROFILE':
       return (
-        <MatchEmptyState icon={<UserPlus size={40} />} title="Buat profil dulu" actions={<Link to={`${MATCH_BASE}/profil`}><Button variant="primary">Buat profil</Button></Link>}>
+        <MatchEmptyState icon={<UserPlus size={40} />} title="Buat profil dulu" actions={<ButtonLink to={`${MATCH_BASE}/profil`} variant="primary">Buat profil</ButtonLink>}>
           Isi data intinya (sekitar 2 menit) supaya kami bisa mencocokkanmu dengan mahasiswa lain. Profilmu langsung aktif setelah langkah pertama.
         </MatchEmptyState>
       );
@@ -123,7 +135,7 @@ const EmptyByReason: React.FC<{ data: DiscoverResult; hasFilters: boolean; onWid
         <MatchEmptyState
           icon={<UsersRound size={40} />}
           title="Belum ada teman yang cocok"
-          actions={<><InviteHint /><Link to="/search"><Button variant="ghost" size="md" icon={<Search size={16} />}>Cari kos sendiri dulu</Button></Link></>}
+          actions={<><InviteHint /><ButtonLink to="/search" variant="ghost" size="md" icon={<Search size={16} />}>Cari kos sendiri dulu</ButtonLink></>}
         >
           Belum ada mahasiswa lain yang cocok di sekitarmu. Coba lagi beberapa hari lagi, atau perluas radius dan budget di profilmu. Kenal calon teman sekamar? Ajak dia membuat profil; dia tetap harus lolos filter kalian berdua.
         </MatchEmptyState>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Button } from '../../components/ui/Button';
+import { Button, ButtonLink } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ErrorState } from '../../components/ui/QueryState';
 import { Notice } from '../../components/ui/Notice';
@@ -47,7 +47,7 @@ const SettingsBody: React.FC = () => {
   const me = profile.data;
   if (!me) {
     return (
-      <MatchEmptyState title="Kamu belum punya profil" actions={<Link to={`${MATCH_BASE}/profil`}><Button variant="primary">Buat profil</Button></Link>}>
+      <MatchEmptyState title="Kamu belum punya profil" actions={<ButtonLink to={`${MATCH_BASE}/profil`} variant="primary">Buat profil</ButtonLink>}>
         Pengaturan tersedia setelah kamu membuat profil Teman Sekamar.
       </MatchEmptyState>
     );

@@ -1,9 +1,10 @@
 import { ageBand, containsContactInfo, hardFilter, isStudentVerified, matchBand, matchScore } from '@kobo/shared/domain'
-import type { MatchInput } from '@kobo/shared/domain'
 import type { MatchScoreView, PartnerConnectionView, PartnerRef, PartnerRequestList, PartnerRequestView } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
 import type { PrismaClient } from '../db/client.ts'
+import { demoIsolationOn } from '../demoIsolation.ts'
 import type { Prisma } from '../generated/prisma/client.ts'
+import { MAX_RADIUS_KM, toMatchInput } from './profiles.ts'
 
 /*
  * Partner requests and connections (T1). Every function takes `now` so tests pin the clock; the tRPC layer passes new Date().
@@ -46,33 +47,33 @@ async function isBlockedEither(db: Db, a: string, b: string): Promise<boolean> {
 }
 
 type ProfileRow = Prisma.MatchingProfileGetPayload<object>
-type ProfileWithUser = Prisma.MatchingProfileGetPayload<{ include: { user: { select: { email: true; isDemo: true; campusEmailVerifiedAt: true; campusVerifiedUntil: true; name: true } } } }>
+type MineWithUser = Prisma.MatchingProfileGetPayload<{ include: { user: { select: { isDemo: true } } } }>
+type ProfileWithUser = Prisma.MatchingProfileGetPayload<{
+  include: { user: { select: { email: true; isDemo: true; campusEmailVerifiedAt: true; campusVerifiedUntil: true; name: true; accounts: { select: { id: true }; take: 1 } } } }
+}>
 
-const userSelect = { email: true, isDemo: true, campusEmailVerifiedAt: true, campusVerifiedUntil: true, name: true } as const
+const userSelect = { email: true, isDemo: true, campusEmailVerifiedAt: true, campusVerifiedUntil: true, name: true, accounts: { select: { id: true }, take: 1 } } as const
 
-/** The other side may be written to / accepted: verified, active, visible, same gender, recently seen, not blocked. */
-async function isEligible(db: Db, mine: ProfileRow, other: ProfileWithUser, now: Date): Promise<boolean> {
+/** The other side may be written to / accepted: verified, active, visible, demo-isolated, hard-filter compatible, recently seen, not blocked. */
+async function isEligible(db: Db, mine: MineWithUser, other: ProfileWithUser, now: Date, mode: 'send' | 'accept'): Promise<boolean> {
   if (other.userId === mine.userId) return false
   if (!other.active || other.pausedAt || other.hiddenByReportsAt) return false
   if (other.gender !== mine.gender) return false
   if (other.lastActiveAt.getTime() < now.getTime() - SEEN_DAYS * DAY) return false
   if (!other.user.isDemo && !isStudentVerified(other.user, now)) return false
+  if (!mine.user.isDemo && other.user.isDemo) return false
+  if (mine.user.isDemo && demoIsolationOn() && !other.user.isDemo && other.user.accounts.length > 0) return false
+  const mineInput = { ...toMatchInput(mine), radiusKm: MAX_RADIUS_KM }
+  const otherInput = mode === 'accept' ? { ...toMatchInput(other), radiusKm: MAX_RADIUS_KM } : toMatchInput(other)
+  if (hardFilter(mineInput, otherInput) !== null) return false
   return !(await isBlockedEither(db, mine.userId, other.userId))
-}
-
-function toInput(p: ProfileRow): MatchInput {
-  return {
-    sleep: p.sleep, tidiness: p.tidiness, smoking: p.smoking, guests: p.guests, noise: p.noise, social: p.social, study: p.study, ac: p.ac, expenses: p.expenses,
-    gender: p.gender, budgetMin: p.budgetMin, budgetMax: p.budgetMax, anchorLat: p.anchorLat, anchorLng: p.anchorLng, radiusKm: p.radiusKm,
-    moveInDate: p.moveInDate.toISOString().slice(0, 10), durationMonths: p.durationMonths, kosType: p.kosType, roomShare: p.roomShare,
-  }
 }
 
 function scoreView(a: ProfileRow | undefined, b: ProfileRow | undefined): MatchScoreView | null {
   if (!a || !b) return null
-  const x = toInput(a)
-  const y = toInput(b)
-  if (hardFilter(x, y)) return null
+  const x = toMatchInput(a)
+  const y = toMatchInput(b)
+  if (hardFilter({ ...x, radiusKm: MAX_RADIUS_KM }, { ...y, radiusKm: MAX_RADIUS_KM })) return null
   const r = matchScore(x, y)
   return { score: r.score, band: matchBand(r.score), approximate: r.approximate, parts: r.parts }
 }
@@ -141,16 +142,21 @@ export async function sendRequest(prisma: PrismaClient, meId: string, input: { p
   try {
     return await prisma.$transaction(async (tx) => {
       await lockUsers(tx, [meId])
-      const mine = await tx.matchingProfile.findUnique({ where: { userId: meId } })
-      if (!mine || !mine.active || mine.pausedAt) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Aktifkan profil Teman Sekamar Anda untuk mengirim permintaan.' })
+      const mine = await tx.matchingProfile.findUnique({ where: { userId: meId }, include: { user: { select: { isDemo: true } } } })
+      if (!mine || !mine.active || mine.pausedAt || mine.hiddenByReportsAt) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: mine?.hiddenByReportsAt
+            ? 'Profil Anda sedang disembunyikan karena laporan.'
+            : 'Aktifkan profil Teman Sekamar Anda untuk mengirim permintaan.',
+        })
       }
       if (mine.createdAt.getTime() > now.getTime() - MIN_PROFILE_AGE_HOURS * 3600_000) {
         throw new TRPCError({ code: 'FORBIDDEN', message: YOUNG_PROFILE_MESSAGE })
       }
       const target = await tx.matchingProfile.findUnique({ where: { id: input.profileId }, include: { user: { select: userSelect } } })
       if (target && target.userId === meId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Anda tidak bisa mengirim permintaan ke diri sendiri.' })
-      if (!target || !(await isEligible(tx, mine, target, now))) throw new TRPCError({ code: 'NOT_FOUND', message: 'Profil tidak ditemukan.' })
+      if (!target || !(await isEligible(tx, mine, target, now, 'send'))) throw new TRPCError({ code: 'NOT_FOUND', message: 'Profil tidak ditemukan.' })
 
       await expireRequests(tx, now, [meId, target.userId])
       const [a, b] = pairOf(meId, target.userId)
@@ -222,9 +228,9 @@ export async function acceptRequest(prisma: PrismaClient, meId: string, requestI
       const res = await tx.partnerRequest.updateMany({ where: { id: requestId, toUserId: meId, status: 'PENDING', expiresAt: { gt: now } }, data: { status: 'ACCEPTED', decidedAt: now } })
       if (res.count === 0) return null
       // Anything thrown from here rolls the update back: the request stays PENDING.
-      const mine = await tx.matchingProfile.findUnique({ where: { userId: meId } })
+      const mine = await tx.matchingProfile.findUnique({ where: { userId: meId }, include: { user: { select: { isDemo: true } } } })
       const sender = await tx.matchingProfile.findUnique({ where: { userId: peek.fromUserId }, include: { user: { select: userSelect } } })
-      if (!mine || !mine.active || mine.pausedAt || !sender || !(await isEligible(tx, mine, sender, now))) {
+      if (!mine || !mine.active || mine.pausedAt || mine.hiddenByReportsAt || !sender || !(await isEligible(tx, mine, sender, now, 'accept'))) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Permintaan ini tidak lagi tersedia.' })
       }
       if ((await liveCount(tx, meId)) >= MAX_LIVE_CONNECTIONS) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: CAP_MESSAGE })

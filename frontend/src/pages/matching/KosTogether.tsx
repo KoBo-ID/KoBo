@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Building2 } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Button } from '../../components/ui/Button';
+import { ButtonLink } from '../../components/ui/Button';
 import { ErrorState } from '../../components/ui/QueryState';
 import { Notice } from '../../components/ui/Notice';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -44,7 +44,7 @@ const KosTogetherBody: React.FC = () => {
   if (connections.isError) return <ErrorState message={messageForError(connections.error)} onRetry={() => void connections.refetch()} minHeight="12rem" />;
   if (!conn) {
     return (
-      <MatchEmptyState title="Koneksi tidak ditemukan" actions={<Link to={`${MATCH_BASE}/pesan`}><Button variant="outline">Ke Pesan</Button></Link>}>
+      <MatchEmptyState title="Koneksi tidak ditemukan" actions={<ButtonLink to={`${MATCH_BASE}/pesan`} variant="outline">Ke Pesan</ButtonLink>}>
         Koneksi ini tidak ada atau bukan milikmu.
       </MatchEmptyState>
     );

@@ -1,6 +1,8 @@
 // Pair eligibility for matching: blocks, existing requests and connections, and the shared "may this pair meet" check.
+import { hardFilter } from '@kobo/shared/domain'
+import { demoIsolationOn } from '../demoIsolation.ts'
 import type { MatchingProfile } from '../generated/prisma/client.ts'
-import { NO_RELATION, visibleWhere, type Db, type Relation } from './profiles.ts'
+import { MAX_RADIUS_KM, NO_RELATION, toMatchInput, visibleWhere, type Db, type Relation } from './profiles.ts'
 
 /** True when either user blocked the other. */
 export async function isBlockedEither(db: Db, a: string, b: string): Promise<boolean> {
@@ -47,7 +49,14 @@ export async function loadEligiblePair(db: Db, viewerUserId: string, profileId: 
   if (!mine || !other || other.userId === viewerUserId) return null
   if (await isBlockedEither(db, viewerUserId, other.userId)) return null
 
-  const [reqs, conns, viewer] = await Promise.all([
+  const [viewer, otherUser] = await Promise.all([
+    db.user.findUnique({ where: { id: viewerUserId }, select: { isDemo: true } }),
+    db.user.findUnique({ where: { id: other.userId }, select: { isDemo: true, accounts: { select: { id: true }, take: 1 } } }),
+  ])
+  if (!viewer?.isDemo && otherUser?.isDemo) return null
+  if (viewer?.isDemo && demoIsolationOn() && !otherUser?.isDemo && (otherUser?.accounts.length ?? 0) > 0) return null
+
+  const [reqs, conns] = await Promise.all([
     db.partnerRequest.findMany({
       where: { OR: [{ fromUserId: viewerUserId, toUserId: other.userId }, { fromUserId: other.userId, toUserId: viewerUserId }] },
       select: { id: true, fromUserId: true, status: true },
@@ -56,7 +65,6 @@ export async function loadEligiblePair(db: Db, viewerUserId: string, profileId: 
       where: { OR: [{ userAId: viewerUserId, userBId: other.userId }, { userAId: other.userId, userBId: viewerUserId }] },
       select: { id: true, endedAt: true },
     }),
-    db.user.findUnique({ where: { id: viewerUserId }, select: { isDemo: true } }),
   ])
   const live = conns.find((c) => c.endedAt === null)
   const pending = reqs.find((r) => r.status === 'PENDING')
@@ -65,6 +73,13 @@ export async function loadEligiblePair(db: Db, viewerUserId: string, profileId: 
   else if (pending) relation = { relation: pending.fromUserId === viewerUserId ? 'REQUEST_SENT' : 'REQUEST_RECEIVED', requestId: pending.id, connectionId: null }
 
   const visible = await db.matchingProfile.count({ where: { id: other.id, ...visibleWhere(now, viewer?.isDemo ?? false) } })
-  const eligible = visible > 0 && mine.active && mine.pausedAt === null && mine.hiddenByReportsAt === null && mine.gender === other.gender && relation.relation === 'NONE'
+  const eligible =
+    visible > 0 &&
+    mine.active &&
+    mine.pausedAt === null &&
+    mine.hiddenByReportsAt === null &&
+    mine.gender === other.gender &&
+    hardFilter({ ...toMatchInput(mine), radiusKm: MAX_RADIUS_KM }, toMatchInput(other)) === null &&
+    relation.relation === 'NONE'
   return { mine, other, eligible, related: reqs.length > 0 || conns.length > 0, relation }
 }

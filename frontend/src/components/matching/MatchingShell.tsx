@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { BadgeCheck, LogIn, Users } from 'lucide-react';
-import { Button } from '../ui/Button';
+import { ButtonLink } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
 import { ErrorState } from '../ui/QueryState';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -32,7 +32,7 @@ export const MatchingGate: React.FC<{ kind: 'signed-out' | 'unverified' }> = ({ 
       <MatchEmptyState
         icon={<Users size={40} />}
         title="Masuk untuk mencari teman sekamar"
-        actions={<Link to={`/masuk?next=${encodeURIComponent(pathname + search)}`}><Button variant="primary" icon={<LogIn size={16} />}>Masuk atau daftar</Button></Link>}
+        actions={<ButtonLink to={`/masuk?next=${encodeURIComponent(pathname + search)}`} variant="primary" icon={<LogIn size={16} />}>Masuk atau daftar</ButtonLink>}
       >
         {EXPLAINER} Fitur ini khusus mahasiswa: setelah masuk kamu diminta memverifikasi status mahasiswa.
       </MatchEmptyState>
@@ -42,7 +42,7 @@ export const MatchingGate: React.FC<{ kind: 'signed-out' | 'unverified' }> = ({ 
     <MatchEmptyState
       icon={<BadgeCheck size={40} />}
       title="Verifikasi status mahasiswa dulu"
-      actions={<Link to="/profile"><Button variant="primary" icon={<BadgeCheck size={16} />}>Verifikasi status mahasiswa</Button></Link>}
+      actions={<ButtonLink to="/profile" variant="primary" icon={<BadgeCheck size={16} />}>Verifikasi status mahasiswa</ButtonLink>}
     >
       {EXPLAINER} Fitur ini hanya untuk mahasiswa terverifikasi supaya tiap profil nyata dan satu kampus dengan kamu.
     </MatchEmptyState>
@@ -82,7 +82,7 @@ export const MatchingShell: React.FC<{ active: MatchingTab; title: string; lead?
   else body = children;
 
   return (
-    <main className="app-container mt-page">
+    <div className="app-container mt-page">
       <header className="mt-head">
         <h1 className="mt-title">{title}</h1>
         {lead && <p className="mt-lead">{lead}</p>}
@@ -101,6 +101,6 @@ export const MatchingShell: React.FC<{ active: MatchingTab; title: string; lead?
         </nav>
       )}
       {body}
-    </main>
+    </div>
   );
 };

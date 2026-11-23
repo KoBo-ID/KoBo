@@ -2,7 +2,7 @@ import React, { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Copy, Trash2 } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Button } from '../ui/Button';
+import { Button, ButtonLink } from '../ui/Button';
 import { ErrorState } from '../ui/QueryState';
 import { Notice } from '../ui/Notice';
 import { Skeleton } from '../ui/Skeleton';
@@ -68,7 +68,7 @@ export const ShortlistPanel: React.FC<{ connectionId: string; live: boolean }> =
               </div>
               <p className="mt-help">Ditambahkan oleh {e.addedBy}</p>
               <div className="mt-row">
-                <Link to={`/kos/${e.kosId}`}><Button size="sm" variant="primary">Lamar kos ini</Button></Link>
+                <ButtonLink to={`/kos/${e.kosId}`} size="sm" variant="primary">Lamar kos ini</ButtonLink>
                 {live && (
                   <Button
                     size="sm"

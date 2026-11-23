@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Flag } from 'lucide-react';
 import { LIFESTYLE_KEYS, LIFESTYLE_LABEL, LIFESTYLE_VALUE_LABEL } from '@kobo/shared/domain';
-import { Button } from '../../components/ui/Button';
+import { Button, ButtonLink } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/QueryState';
 import { BlockButton } from '../../components/matching/BlockButton';
@@ -49,7 +49,7 @@ const DetailBody: React.FC = () => {
       return (
         <div className="mt-stack">
           {back}
-          <MatchEmptyState title="Profil tidak tersedia" actions={<Link to={MATCH_BASE}><Button variant="primary">Kembali ke pencarian</Button></Link>}>
+          <MatchEmptyState title="Profil tidak tersedia" actions={<ButtonLink to={MATCH_BASE} variant="primary">Kembali ke pencarian</ButtonLink>}>
             Profil ini tidak bisa dilihat saat ini. Coba lihat kandidat lainnya.
           </MatchEmptyState>
         </div>
