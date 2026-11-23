@@ -25,6 +25,7 @@ export function safeNextPath(raw: string | null | undefined, origin: string, fal
     return fallback
   }
   if (path.includes('\\') || path.startsWith('//')) return fallback
-  if (path === '/masuk' || path.startsWith('/masuk/')) return fallback
+  const blocked = ['/masuk', '/reset-password', '/verifikasi-email']
+  if (blocked.some((b) => path === b || path.startsWith(`${b}/`))) return fallback
   return u.pathname + u.search + u.hash
 }

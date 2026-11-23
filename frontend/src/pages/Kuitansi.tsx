@@ -113,7 +113,7 @@ export const Kuitansi: React.FC = () => {
 
         <dl className="kuitansi-breakdown" aria-label="Rincian pembayaran">
           <div><dt>Sewa kamar</dt><dd className="tabular-nums">{formatRupiah(k.breakdown.rent)}</dd></div>
-          {k.breakdown.applicationFee > 0 && <div><dt>Biaya aplikasi</dt><dd className="tabular-nums">{formatRupiah(k.breakdown.applicationFee)}</dd></div>}
+          {k.breakdown.applicationFee > 0 && <div><dt>Biaya layanan KoBo</dt><dd className="tabular-nums">{formatRupiah(k.breakdown.applicationFee)}</dd></div>}
           {k.breakdown.discount > 0 && <div><dt>{DISCOUNT_LABEL}</dt><dd className="tabular-nums">-{formatRupiah(k.breakdown.discount)}</dd></div>}
           <div className="kuitansi-breakdown__total"><dt>Total</dt><dd className="tabular-nums">{formatRupiah(k.breakdown.total)}</dd></div>
         </dl>
@@ -146,7 +146,11 @@ export const Kuitansi: React.FC = () => {
           Cetak / Simpan PDF
         </Button>
         <span className="kuitansi-hint">Pilih &lsquo;Simpan sebagai PDF&rsquo; di jendela cetak</span>
-        <Link to="/my-kos" className="kuitansi-back">Kembali ke Kos Saya</Link>
+        {k.viewerRole === 'OWNER' ? (
+          <Link to="/owner/dashboard" className="kuitansi-back">Kembali ke Papan Okupansi</Link>
+        ) : (
+          <Link to="/my-kos" className="kuitansi-back">Kembali ke Kos Saya</Link>
+        )}
       </div>
     </div>
   );

@@ -11,7 +11,7 @@ import { useTRPC } from '../lib/trpc';
 import { errorCode } from '../lib/queryErrors';
 import { isStudentGateError, messageForError } from '../lib/errors';
 import { VerifyPrompt } from '../components/booking/VerifyPrompt';
-import { Button } from '../components/ui/Button';
+import { Button, ButtonLink } from '../components/ui/Button';
 import { BackButton } from '../components/ui/BackButton';
 import { Input } from '../components/ui/Input';
 import { Notice } from '../components/ui/Notice';
@@ -81,6 +81,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
     onSuccess: () => {
       setSubmitted(true);
       void qc.invalidateQueries({ queryKey: trpc.application.mine.queryKey() });
+      void qc.invalidateQueries({ queryKey: trpc.waitlist.pathKey() });
     },
   }));
 
@@ -110,8 +111,8 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
           <h1 style={{ fontSize: 'var(--step-2)', fontWeight: 800 }}>Pengajuan Terkirim</h1>
           <p style={{ color: 'var(--text-muted)', margin: '0.5rem auto 0', maxWidth: '430px' }}>Pemilik {kos.name} akan meninjau rencana sewa Anda. Kamar belum ditahan dan Anda belum perlu membayar sebelum pengajuan diterima.</p>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap', marginTop: '1.75rem' }}>
-            <Link to="/my-kos"><Button variant="primary" size="md">Pantau Pengajuan</Button></Link>
-            <Link to={`/kos/${kos.id}`}><Button variant="outline" size="md">Kembali ke Detail Kos</Button></Link>
+            <ButtonLink to="/my-kos" variant="primary" size="md">Pantau Pengajuan</ButtonLink>
+            <ButtonLink to={`/kos/${kos.id}`} variant="outline" size="md">Kembali ke Detail Kos</ButtonLink>
           </div>
         </div>
       </div>
@@ -130,13 +131,13 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
         <div style={{ ...card, textAlign: 'center', padding: '2.5rem 1.5rem' }} role="status" data-testid="checkout-pick-room">
           <h2 style={{ fontSize: 'var(--step-1)', fontWeight: 700 }}>Pilih kamar terlebih dahulu</h2>
           <p style={{ color: 'var(--text-muted)', margin: '0.4rem auto 1.25rem', maxWidth: '380px' }}>Pengajuan sewa dibuat untuk satu kamar. Buka halaman kos, pilih kamar yang kosong, lalu ajukan sewa.</p>
-          <Link to={`/kos/${kos.id}`}><Button variant="primary" size="md">Pilih Kamar di {kos.name}</Button></Link>
+          <ButtonLink to={`/kos/${kos.id}`} variant="primary" size="md">Pilih Kamar di {kos.name}</ButtonLink>
         </div>
       ) : roomUnavailable ? (
         <div style={{ ...card, textAlign: 'center', padding: '2.5rem 1.5rem' }} role="alert">
           <h2 style={{ fontSize: 'var(--step-1)', fontWeight: 700 }}>Kamar ini sudah tidak tersedia</h2>
           <p style={{ color: 'var(--text-muted)', margin: '0.4rem auto 1.25rem', maxWidth: '380px' }}>Pilih kamar lain sebelum mengirim pengajuan.</p>
-          <Link to={`/kos/${kos.id}`}><Button variant="primary" size="md">Pilih Kamar Lain</Button></Link>
+          <ButtonLink to={`/kos/${kos.id}`} variant="primary" size="md">Pilih Kamar Lain</ButtonLink>
         </div>
       ) : (
         <form onSubmit={submit}>
@@ -192,7 +193,9 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
                         {DISCOUNT_LABEL} tidak berlaku untuk {discountStatus.data?.campusName ?? 'kampus Anda'}. <PartnerCampusLink />
                       </div>
                     )}
-                    <Row label="Biaya layanan KoBo" value={formatRupiah(breakdown.applicationFee)} />
+                    {breakdown.applicationFee > 0 && (
+                      <Row label="Biaya layanan KoBo" value={formatRupiah(breakdown.applicationFee)} />
+                    )}
                     <Row label={<strong>Total perkiraan</strong>} value={formatRupiah(breakdown.total)} tone="primary" />
                   </div>
                 </div>

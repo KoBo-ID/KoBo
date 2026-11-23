@@ -1,4 +1,5 @@
-import { addMonths, computeCheckoutTotal, deriveRoomStatus, formatReceiptNo, todayWIB } from '@kobo/shared/domain'
+import { addMonths, clampDiscount, computeCheckoutTotal, deriveRoomStatus, formatReceiptNo, MIN_FIRST_INVOICE, todayWIB } from '@kobo/shared/domain'
+export { clampDiscount, MIN_FIRST_INVOICE }
 import type { RoomStatus } from '@kobo/shared/types'
 import type { Prisma } from '../generated/prisma/client.ts'
 import { isLiveAttempt, toPaymentSummary } from '../payment/summary.ts'
@@ -107,15 +108,6 @@ export function isRoomTakenError(e: unknown): boolean {
   return text.includes('tenancy_one_active_per_room') || text.includes('23505')
 }
 
-/** Invoice #1 is never below this (or below rent + fee when that is smaller): Rp 0 cannot be paid online or recorded by the owner. */
-export const MIN_FIRST_INVOICE = 10_000
-
-/** G2-02: a student discount at or above the rent would leave invoice #1 at Rp 0 (fee 0). Cap it so the invoice stays payable. */
-export function clampDiscount(rent: number, applicationFee: number, discount: number): number {
-  const gross = Math.max(0, rent) + Math.max(0, applicationFee)
-  return Math.min(discount, Math.max(0, gross - Math.min(gross, MIN_FIRST_INVOICE)))
-}
-
 interface ApprovedTenancyInput {
   userId: string
   startDate: string
@@ -140,7 +132,7 @@ export async function createApprovedTenancyObligation(
   const breakdown = computeCheckoutTotal({
     monthlyRent: room.priceMonthly,
     applicationFee: room.kos.applicationFee,
-    discountAmount: clampDiscount(room.priceMonthly, room.kos.applicationFee, room.kos.studentDiscountAmount),
+    discountAmount: room.kos.studentDiscountAmount,
     discountEligible: input.discountEligible,
   })
   const dueDate = new Date(`${input.startDate}T00:00:00Z`)
@@ -240,7 +232,7 @@ export const bookingRouter = router({
           ownerName: t.room.kos.owner.user.name,
           ownerPhone: t.room.kos.owner.user.phone,
         },
-        room: { id: t.room.id, roomNumber: t.room.roomNumber, floor: t.room.floor, type: t.room.type, priceMonthly: t.room.priceMonthly },
+        room: { id: t.room.id, roomNumber: t.room.roomNumber, floor: t.room.floor, type: t.room.type, priceMonthly: t.agreedMonthlyRent ?? t.room.priceMonthly },
         invoices: t.invoices.map((i) => {
           const paid = i.payments.find((p) => p.status === 'PAID')
           const active = i.payments.find((p) => isLiveAttempt(p, now))

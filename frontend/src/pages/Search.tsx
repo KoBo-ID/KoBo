@@ -94,9 +94,19 @@ export const Search: React.FC = () => {
   const updateFilters = (patch: Partial<SearchFilters>) =>
     setSearchParams((prev) => serializeSearchParams({ ...parseSearchParams(prev), ...patch }), { replace: true });
 
+  const defaultedCampusRef = useRef<string | null>(null);
   useEffect(() => {
-    if (filters.campus && !searchParams.has('sort')) updateFilters({ sort: 'distance_asc' });
-    // The URL is the authority; this only fills the campus-specific missing default once.
+    if (!filters.campus) {
+      defaultedCampusRef.current = null;
+      return;
+    }
+    if (defaultedCampusRef.current !== filters.campus) {
+      defaultedCampusRef.current = filters.campus;
+      if (!searchParams.has('sort')) {
+        updateFilters({ sort: 'distance_asc' });
+      }
+    }
+    // Only default sort once per campus selection; choosing "Rating Tertinggi" omits ?sort from URL and must not snap back.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.campus, searchParams]);
 
@@ -381,9 +391,10 @@ export const Search: React.FC = () => {
 
   const handlePickCampus = (campusId: string) => {
     setTypedInput(null);
+    defaultedCampusRef.current = campusId;
     updateFilters({
       q: '', loc: null, campus: campusId, lat: null, lng: null, place: null, radius: null, region: null,
-      sort: searchParams.has('sort') ? filters.sort : 'distance_asc',
+      sort: 'distance_asc',
     });
   };
 
@@ -441,11 +452,11 @@ export const Search: React.FC = () => {
           zIndex: 'var(--z-sticky)',
           backgroundColor: 'var(--bg-surface)',
           borderBottom: '1px solid var(--border-subtle)',
-          padding: '0.85rem 0',
+          padding: '0.6rem 0',
           boxShadow: 'var(--shadow-xs)',
         }}
       >
-        <div className="app-container" style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+        <div className="app-container" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {/* Row 1: Full-width location search */}
           <div style={{ position: 'relative' }}>
             <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -509,7 +520,7 @@ export const Search: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'space-between',
               flexWrap: 'wrap',
-              gap: '0.75rem',
+              gap: '0.5rem',
             }}
           >
             <div className="kobo-segmented kobo-segmented--wrap" role="group" aria-label="Tipe kos">
@@ -627,6 +638,7 @@ export const Search: React.FC = () => {
               </Popover>
 
               <Popover
+                role="menu"
                 label="Urutkan hasil"
                 trigger={(p) => (
                   <button {...p} type="button" className="kobo-control">
@@ -661,7 +673,7 @@ export const Search: React.FC = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="app-container" style={{ flex: 1, paddingBottom: '3rem', paddingTop: '1.25rem' }}>
+      <div className="app-container" style={{ flex: 1, paddingBottom: '1.5rem', paddingTop: '0.85rem' }}>
         {/* Location reference strip */}
         {filters.region && !activeLocation && (
           <div
@@ -699,8 +711,9 @@ export const Search: React.FC = () => {
             style={{
               display: mobileViewMode === 'map' ? 'none' : 'flex',
               flexDirection: 'column',
-              gap: '1rem',
+              gap: '0.75rem',
               minWidth: 0,
+              paddingBottom: '6.5rem',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem' }}>
@@ -788,14 +801,16 @@ export const Search: React.FC = () => {
       <div
         style={{
           position: 'fixed',
-          bottom: '5rem',
+          bottom: 'calc(4.75rem + env(safe-area-inset-bottom, 0px))',
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 35,
+          maxWidth: 'calc(100vw - 2rem)',
         }}
         className="mobile-map-toggle"
       >
         <button
+          type="button"
           onClick={() => {
             setMobileViewMode(mobileViewMode === 'list' ? 'map' : 'list');
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -804,13 +819,14 @@ export const Search: React.FC = () => {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.5rem',
+            gap: '0.45rem',
             backgroundColor: 'var(--text-main)',
             color: 'white',
-            padding: '0.65rem 1.25rem',
+            padding: '0.5rem 1.15rem',
             borderRadius: 'var(--radius-btn)',
             fontSize: 'var(--step--1)',
             fontWeight: 700,
+            whiteSpace: 'nowrap',
             boxShadow: 'var(--shadow-xl)',
             border: 'none',
           }}

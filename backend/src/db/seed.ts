@@ -128,12 +128,17 @@ const STUDENT_EMAIL_DOMAINS: Record<string, string[]> = {
   'uksw-salatiga': ['student.uksw.edu'],
 }
 
-/** Kampus Mitra: students verified at these campuses get the kos discount. Hand-seeded BINUS campuses have no parent row, so each is listed. */
+/** Kampus Mitra is per institution: every campus whose parentId is listed here (any BINUS branch) gets the kos discount. */
 export const AFFILIATED_CAMPUSES = [
-  { campusId: 'binus-syahdan', label: 'BINUS University Syahdan' },
-  { campusId: 'binus-anggrek', label: 'BINUS University Anggrek' },
-  { campusId: 'binus-kijang', label: 'BINUS University Kijang' },
+  { campusId: 'binus', label: 'BINUS University' },
 ]
+
+/** Branch campuses that belong to an institution on the Kampus Mitra list (parentId). */
+const CAMPUS_PARENT: Record<string, string> = {
+  'binus-syahdan': 'binus',
+  'binus-anggrek': 'binus',
+  'binus-kijang': 'binus',
+}
 
 /** Microsoft Entra tenant ids of campuses with a confirmed tenant. */
 const BINUS_TENANT = '3485b963-82ba-4a6f-810f-b5cc226ff898'
@@ -364,6 +369,7 @@ export function buildSeed(now: Date): SeedRows {
     lat: c.coordinates.lat,
     lng: c.coordinates.lng,
     emailDomains: EMAIL_DOMAINS[c.id] ?? [],
+    parentId: CAMPUS_PARENT[c.id] ?? null,
     studentEmailDomains: STUDENT_EMAIL_DOMAINS[c.id] ?? [],
     entraTenantIds: ENTRA_TENANT_IDS[c.id] ?? [],
   }))

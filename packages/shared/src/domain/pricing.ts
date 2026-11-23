@@ -1,6 +1,22 @@
 /** Shown wherever the campus discount is named. */
 export const DISCOUNT_LABEL = 'Diskon Kampus Mitra'
 
+/** Invoice #1 is never below this (or below rent + fee when that is smaller): Rp 0 cannot be paid online or recorded by the owner. */
+export const MIN_FIRST_INVOICE = 10_000
+
+/**
+ * G2-02 / FL-11: a student discount at or above the rent would leave invoice #1 at Rp 0 (when applicationFee is 0).
+ * Cap the discount so invoice #1 stays payable (>= min(rent + fee, MIN_FIRST_INVOICE)), and never exceeds rent.
+ */
+export function clampDiscount(rent: number, applicationFee: number, discount: number): number {
+  const safeRent = Math.max(0, Math.trunc(rent))
+  const safeFee = Math.max(0, Math.trunc(applicationFee))
+  const safeDiscount = Math.max(0, Math.trunc(discount))
+  const gross = safeRent + safeFee
+  const maxByFloor = Math.max(0, gross - Math.min(gross, MIN_FIRST_INVOICE))
+  return Math.min(safeDiscount, safeRent, maxByFloor)
+}
+
 export interface CheckoutInput {
   monthlyRent: number
   applicationFee: number
@@ -16,16 +32,15 @@ export interface CheckoutTotal {
 }
 
 /**
- * Integer rupiah. Discount only when campus email verified. It is capped at the monthly rent, not at rent + fee:
- * the invoice constraints require discountAmount <= rentAmount (the application fee is never discounted), so a
- * larger cap would produce an invoice the database refuses.
+ * Integer rupiah. Discount applies only when eligible, is capped at monthly rent (the application fee is never
+ * discounted), and clamped via `clampDiscount` so invoice #1 never drops below min(rent + fee, MIN_FIRST_INVOICE).
  */
 export function computeCheckoutTotal(input: CheckoutInput): CheckoutTotal {
   const rent = Math.max(0, Math.trunc(input.monthlyRent))
   const applicationFee = Math.max(0, Math.trunc(input.applicationFee))
   const gross = rent + applicationFee
   const requested = input.discountEligible ? Math.max(0, Math.trunc(input.discountAmount)) : 0
-  const discount = Math.min(requested, rent)
+  const discount = clampDiscount(rent, applicationFee, requested)
   return { rent, applicationFee, discount, total: gross - discount }
 }
 

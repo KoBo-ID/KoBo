@@ -28,9 +28,15 @@ const REFUND_REASON: Record<string, string> = {
  * Payment actions for one invoice (first or any later month). The payment state always comes from the server:
  * the `?result=success` return flag only starts a short wait and is never trusted as proof of payment.
  */
-export const InvoicePaymentActions: React.FC<{ invoice: Invoice; returnedPaymentId?: string; onResolved?: () => void }> = ({
+export const InvoicePaymentActions: React.FC<{
+  invoice: Invoice;
+  returnedPaymentId?: string;
+  returnedResult?: 'success' | 'cancel' | null;
+  onResolved?: () => void;
+}> = ({
   invoice,
   returnedPaymentId,
+  returnedResult,
   onResolved,
 }) => {
   const trpc = useTRPC();
@@ -38,9 +44,10 @@ export const InvoicePaymentActions: React.FC<{ invoice: Invoice; returnedPayment
   const { me } = useSession();
   const isDemo = me?.user.isDemo === true;
 
-  const [waitingFor, setWaitingFor] = useState<string | null>(returnedPaymentId ?? null);
+  const shouldWaitOnMount = Boolean(returnedPaymentId && returnedResult === 'success');
+  const [waitingFor, setWaitingFor] = useState<string | null>(shouldWaitOnMount ? returnedPaymentId! : null);
   const [startedAt, setStartedAt] = useState(() => Date.now());
-  const [polling, setPolling] = useState(true);
+  const [polling, setPolling] = useState(shouldWaitOnMount);
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef(false);

@@ -1,10 +1,10 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { GraduationCap, CheckCircle2 } from 'lucide-react';
 import { DISCOUNT_LABEL } from '@kobo/shared/domain';
-import { Button } from '../ui/Button';
+import { Button, ButtonLink } from '../ui/Button';
 import { Popover } from '../ui/Popover';
+import { useVerifyLink } from './VerifyPrompt';
 import { useAppStore } from '../../store/AppContext';
 import { useSession } from '../../lib/session';
 import { useTRPC } from '../../lib/trpc';
@@ -74,6 +74,7 @@ interface CampusDiscountCardProps {
 export const CampusDiscountCard: React.FC<CampusDiscountCardProps> = ({ studentDiscountAmount }) => {
   const { me } = useSession();
   const { openAuthModal } = useAppStore();
+  const verifyLink = useVerifyLink();
   const status = useMyDiscountStatus();
   const verified = !!status.data?.verified;
   const affiliated = !!status.data?.affiliated;
@@ -118,9 +119,7 @@ export const CampusDiscountCard: React.FC<CampusDiscountCardProps> = ({ studentD
         </div>
       ) : me ? (
         !verified && !status.isPending && !status.isError && !me.user.isDemo && (
-          <Link to="/profile">
-            <Button size="sm" variant="primary">Verifikasi</Button>
-          </Link>
+          <ButtonLink to={verifyLink} size="sm" variant="primary">Verifikasi</ButtonLink>
         )
       ) : (
         <Button size="sm" variant="primary" onClick={openAuthModal}>Masuk</Button>

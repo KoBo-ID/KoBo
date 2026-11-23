@@ -33,12 +33,25 @@ describe('safeNextPath (G2-17)', () => {
     expect(safeNextPath(raw, O)).toBe('/')
   })
 
-  it.each(['/masuk', '/Masuk', '/MASUK?next=/x', '/%6Dasuk', '/masuk/'])('never returns to the sign-in page itself (%j)', (raw) => {
+  it.each([
+    '/masuk',
+    '/Masuk',
+    '/MASUK?next=/x',
+    '/%6Dasuk',
+    '/masuk/',
+    '/reset-password',
+    '/reset-password?token=secret123',
+    '/RESET-PASSWORD/step',
+    '/verifikasi-email',
+    '/Verifikasi-Email?code=123456',
+    '/verifikasi-email/done',
+  ])('never returns to auth/recovery pages (%j)', (raw) => {
     expect(safeNextPath(raw, O, '/home')).toBe('/home')
   })
 
-  it('does not treat other paths that merely start with masuk as the sign-in page', () => {
+  it('does not treat other paths that merely start with blocked prefixes as auth pages', () => {
     expect(safeNextPath('/masukan', O)).toBe('/masukan')
+    expect(safeNextPath('/reset-passwords', O)).toBe('/reset-passwords')
   })
 })
 

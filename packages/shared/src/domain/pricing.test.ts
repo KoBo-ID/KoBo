@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import fc from 'fast-check'
-import { computeCheckoutTotal, leaseQuote } from './pricing.ts'
+import { clampDiscount, computeCheckoutTotal, leaseQuote, MIN_FIRST_INVOICE } from './pricing.ts'
 
 describe('computeCheckoutTotal', () => {
   it('applies discount when verified', () => {
@@ -13,12 +13,20 @@ describe('computeCheckoutTotal', () => {
       computeCheckoutTotal({ monthlyRent: 1_000_000, applicationFee: 50_000, discountAmount: 100_000, discountEligible: false }).total,
     ).toBe(1_050_000)
   })
-  it('discount larger than the rent is capped at the rent, total 0 without a fee', () => {
+  it('clamps discount so invoice #1 never falls below MIN_FIRST_INVOICE (FL-11)', () => {
+    expect(computeCheckoutTotal({ monthlyRent: 500_000, applicationFee: 0, discountAmount: 500_000, discountEligible: true })).toEqual({
+      rent: 500_000,
+      applicationFee: 0,
+      discount: 490_000,
+      total: MIN_FIRST_INVOICE,
+    })
+    expect(clampDiscount(500_000, 0, 500_000)).toBe(490_000)
+    // When gross is already below MIN_FIRST_INVOICE, discount clamps to 0 so total stays gross.
     expect(computeCheckoutTotal({ monthlyRent: 100, applicationFee: 0, discountAmount: 500, discountEligible: true })).toEqual({
       rent: 100,
       applicationFee: 0,
-      discount: 100,
-      total: 0,
+      discount: 0,
+      total: 100,
     })
   })
   it('never discounts the application fee (invoice constraint: discount <= rent)', () => {
@@ -36,13 +44,14 @@ describe('computeCheckoutTotal', () => {
     discountAmount: fc.integer({ min: 0, max: 100_000_000 }),
     discountEligible: fc.boolean(),
   })
-  it('property: total >= 0, integer, total = rent + fee - discount', () => {
+  it('property: total >= min(gross, MIN_FIRST_INVOICE), integer, total = rent + fee - discount', () => {
     fc.assert(
       fc.property(arb, (i) => {
         const r = computeCheckoutTotal(i)
-        expect(r.total).toBeGreaterThanOrEqual(0)
+        const gross = r.rent + r.applicationFee
+        expect(r.total).toBeGreaterThanOrEqual(Math.min(gross, MIN_FIRST_INVOICE))
         expect(Number.isInteger(r.total)).toBe(true)
-        expect(r.total).toBe(r.rent + r.applicationFee - r.discount)
+        expect(r.total).toBe(gross - r.discount)
         expect(r.discount).toBeLessThanOrEqual(i.discountAmount)
         expect(r.discount).toBeLessThanOrEqual(r.rent)
       }),

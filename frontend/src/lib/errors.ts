@@ -104,6 +104,7 @@ export function messageForError(error: unknown): string {
   // better-auth client: { status, code }.
   if (e.status === 429) return RATE_LIMIT;
   if (e.status === 403 && e.code === 'TOO_MANY_ATTEMPTS') return AUTH_CODES.TOO_MANY_ATTEMPTS;
+  if (e.code === 'INVALID_PROFILE' && typeof e.message === 'string' && e.message.trim()) return e.message;
   if (e.code && AUTH_CODES[e.code]) return AUTH_CODES[e.code];
   // Code verification: a bad or expired code is a bare 400, a lockout a 403.
   if (e.status === 400 && (!e.code || e.code === 'INVALID_OTP' || e.code === 'OTP_EXPIRED')) return 'Kode salah atau sudah kedaluwarsa.';

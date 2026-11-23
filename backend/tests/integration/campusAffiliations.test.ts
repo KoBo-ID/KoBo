@@ -8,7 +8,7 @@ beforeEach(() => resetDb(prisma))
 describe('campus.affiliations', () => {
   it('is public and lists the active partner campuses with label and short name', async () => {
     const list = await caller.campus.affiliations()
-    expect(list.map((r) => r.campusId)).toEqual(expect.arrayContaining(['binus-syahdan', 'binus-anggrek', 'binus-kijang']))
+    expect(list.map((r) => r.campusId)).toEqual(expect.arrayContaining(['binus']))
     for (const r of list) {
       expect(r.label).toBeTruthy()
       expect(r.shortName).toBeTruthy()
@@ -16,8 +16,8 @@ describe('campus.affiliations', () => {
   })
 
   it('omits inactive rows and returns [] when none is active', async () => {
-    await prisma.campusAffiliation.updateMany({ where: { campusId: 'binus-syahdan' }, data: { active: false } })
-    expect((await caller.campus.affiliations()).map((r) => r.campusId)).not.toContain('binus-syahdan')
+    await prisma.campusAffiliation.updateMany({ where: { campusId: 'binus' }, data: { active: false } })
+    expect((await caller.campus.affiliations()).map((r) => r.campusId)).not.toContain('binus')
     await prisma.campusAffiliation.updateMany({ data: { active: false } })
     expect(await caller.campus.affiliations()).toEqual([])
   })

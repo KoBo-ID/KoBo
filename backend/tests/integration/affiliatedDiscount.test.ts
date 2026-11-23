@@ -21,7 +21,7 @@ async function invoiceFor(verify: (id: string) => Promise<void>) {
 describe('Diskon Kampus Mitra', () => {
   it('seeds BINUS as affiliated and keeps the list through resetDb', async () => {
     const rows = await prisma.campusAffiliation.findMany({ where: { active: true } })
-    expect(rows.map((r) => r.campusId)).toEqual(expect.arrayContaining(['binus-syahdan', 'binus-anggrek', 'binus-kijang']))
+    expect(rows.map((r) => r.campusId)).toEqual(expect.arrayContaining(['binus']))
     const demo = await prisma.user.findUniqueOrThrow({ where: { id: 'user-demo-student' } })
     expect(demo.verifiedCampusId).toBe('binus-syahdan')
   })
@@ -60,7 +60,7 @@ describe('Diskon Kampus Mitra', () => {
   })
 
   it('gives 0 once the affiliation is inactive', async () => {
-    await prisma.campusAffiliation.updateMany({ where: { campusId: 'binus-syahdan' }, data: { active: false } })
+    await prisma.campusAffiliation.updateMany({ where: { campusId: 'binus' }, data: { active: false } })
     const { invoice } = await invoiceFor((id) => verifyAtCampus(id, 'binus-syahdan'))
     expect(invoice.discountAmount).toBe(0)
   })

@@ -59,9 +59,10 @@ const cardJoins = (mediaBase: string) => Prisma.sql`
           AND (t.status = 'ACTIVE' OR (t.status = 'PENDING' AND t."expiresAt" > now()))
       ) AND NOT EXISTS (
         SELECT 1 FROM "WaitlistEntry" w
+        LEFT JOIN "RentalApplication" a ON a.id = w."applicationId"
         WHERE w."offeredRoomId" = ro.id
           AND w.status = 'OFFERED'
-          AND w."offerExpiresAt" >= now()
+          AND (a.status = 'PENDING' OR (w."offerExpiresAt" >= now() AND (a.status IS NULL OR a.status NOT IN ('REJECTED', 'WITHDRAWN'))))
       )) AS available
     FROM "Room" ro WHERE ro."kosId" = k.id AND ro."archivedAt" IS NULL
   ) rm ON true`

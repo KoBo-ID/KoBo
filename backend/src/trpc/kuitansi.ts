@@ -26,6 +26,8 @@ export interface KuitansiView {
   /** The month this payment covers (YYYY-MM-DD, WIB calendar days): periodStart through periodEnd inclusive. */
   period: { periodStart: string; periodEnd: string; dueDate: string }
   owner: { name: string }
+  /** Whether the signed-in caller is viewing as the tenant who paid or as the owner of the kos. */
+  viewerRole: 'TENANT' | 'OWNER'
 }
 
 const PAID_STATES = ['PAID', 'REFUND_PENDING', 'REFUND_FAILED', 'REFUNDED']
@@ -73,6 +75,7 @@ export const kuitansiRouter = router({
       room: { roomNumber: tenancy.room.roomNumber, floor: tenancy.room.floor, type: tenancy.room.type },
       period: { periodStart, periodEnd: addDays(addMonths(periodStart, 1), -1), dueDate: dateOnly(p.invoice.dueDate) },
       owner: { name: kos.owner.user.name },
+      viewerRole: tenancy.user.id === ctx.user.id ? 'TENANT' : 'OWNER',
     }
   }),
 })
