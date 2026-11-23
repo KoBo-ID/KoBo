@@ -10,8 +10,7 @@ test.skip(!!process.env.BASE_URL, 'needs the e2e hooks and database, which only 
 
 const digits = (text: string | null) => Number((text ?? '').replace(/\D/g, ''))
 const origin = () => ({ origin: new URL(test.info().project.use.baseURL as string).origin })
-const sidebarFirst = (page: Page) => page.getByTestId('sidebar-first-payment')
-const sidebarLease = (page: Page) => page.getByTestId('sidebar-lease-total')
+const sidebarTotal = (page: Page) => page.getByTestId('sidebar-lease-total')
 const checkoutTotal = (page: Page) => page.getByText('Total perkiraan', { exact: true }).locator('xpath=../..')
 
 test('the three-month price box fits the sticky window and phone width', async ({ browser, problems }) => {
@@ -23,7 +22,7 @@ test('the three-month price box fits the sticky window and phone width', async (
       watch(student.page, problems)
       await student.page.setViewportSize({ width: 1280, height: 650 })
       await student.page.goto(`/kos/${owner.kosId}`)
-      await expect(sidebarFirst(student.page)).toHaveText(student === campus ? /Rp\s1\.525\.000/ : /Rp\s1\.675\.000/)
+      await expect(sidebarTotal(student.page)).toHaveText(student === campus ? /Rp\s1\.525\.000/ : /Rp\s1\.675\.000/)
       await student.page.getByRole('button', { name: '3 Bulan' }).click()
       const sidebar = student.page.locator('.booking-sidebar')
       const size = await sidebar.evaluate((el) => ({ height: el.getBoundingClientRect().height, scroll: el.scrollHeight, client: el.clientHeight }))
@@ -194,10 +193,8 @@ test('scenario 27: the detail sidebar, checkout total and first invoice agree', 
   try {
     await test.step('one month, no verified campus e-mail', async () => {
       await plain.page.goto(`/kos/${owner.kosId}`)
-      expect(digits(await sidebarFirst(plain.page).textContent())).toBe(1_525_000)
-      await expect(plain.page.getByText(/Potongan Rp\s100\.000 di pembayaran pertama untuk mahasiswa kampus mitra/)).toBeVisible()
-      // An unverified student is steered to /profile by the sidebar button; the form itself stays reachable.
-      await expect(plain.page.getByRole('link', { name: 'Verifikasi status mahasiswa' })).toBeVisible()
+      expect(digits(await sidebarTotal(plain.page).textContent())).toBe(1_525_000)
+      await expect(plain.page.locator('.booking-sidebar')).not.toContainText('Diskon Kampus Mitra')
       await plain.page.goto(`/checkout/${owner.kosId}?room=${owner.rooms[0].id}`)
       await expect(checkoutTotal(plain.page)).toBeVisible()
       expect(digits(await checkoutTotal(plain.page).textContent())).toBe(1_525_000)
@@ -208,7 +205,7 @@ test('scenario 27: the detail sidebar, checkout total and first invoice agree', 
 
     await test.step('one month, verified campus e-mail: sidebar, checkout and invoice agree', async () => {
       await campus.page.goto(`/kos/${owner.kosId}`)
-      expect(digits(await sidebarFirst(campus.page).textContent())).toBe(1_425_000)
+      expect(digits(await sidebarTotal(campus.page).textContent())).toBe(1_425_000)
       await campus.page.getByRole('button', { name: 'Ajukan Sewa' }).click()
       await expect(checkoutTotal(campus.page)).toBeVisible()
       expect(digits(await checkoutTotal(campus.page).textContent())).toBe(1_425_000)
@@ -220,8 +217,7 @@ test('scenario 27: the detail sidebar, checkout total and first invoice agree', 
     await test.step('three months: the sidebar total agrees with the invoices', async () => {
       await campus.page.goto(`/kos/${owner.kosId}`)
       await campus.page.getByRole('button', { name: '3 Bulan' }).click()
-      expect(digits(await sidebarFirst(campus.page).textContent())).toBe(1_425_000)
-      expect(digits(await sidebarLease(campus.page).textContent())).toBe(4_425_000)
+      expect(digits(await sidebarTotal(campus.page).textContent())).toBe(4_425_000)
 
       const third = await newStudent(browser, { label: 'prices-three', campus: true })
       try {
