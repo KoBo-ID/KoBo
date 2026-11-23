@@ -65,6 +65,7 @@ export function useWaitlistActions() {
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: trpc.waitlist.pathKey() });
     void qc.invalidateQueries({ queryKey: trpc.kos.detail.pathKey() });
+    void qc.invalidateQueries({ queryKey: trpc.application.mine.queryKey() });
   };
   const run = async (job: () => Promise<unknown>, ok: string, tone: 'success' | 'info' = 'success') => {
     try {

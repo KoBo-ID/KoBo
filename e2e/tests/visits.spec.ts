@@ -10,7 +10,7 @@ test('demo student schedules a survey, the demo owner sees it and marks it done'
   await page.getByRole('button', { name: 'Jadwalkan Survey Gratis' }).first().click()
   await page.getByLabel('Nomor WhatsApp').fill('081234567890')
   await page.getByRole('button', { name: 'Konfirmasi Jadwal Survey Gratis' }).click()
-  await expect(page.getByText('berhasil dikonfirmasi')).toBeVisible()
+  await expect(page.getByText('berhasil dibuat')).toBeVisible()
 
   await page.goto('/my-kos')
   await page.getByRole('tab', { name: /Jadwal Survey Gratis/ }).click()

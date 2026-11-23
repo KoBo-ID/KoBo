@@ -37,13 +37,13 @@ test('scenario 26: the modal offers only the next five days and refuses a bad ph
       await expect(dialog).toBeVisible()
     })
 
-    await test.step('a malformed number is rejected by the server and nothing is scheduled', async () => {
+    await test.step('a malformed number is rejected and nothing is scheduled', async () => {
       await dialog.getByLabel('Nomor WhatsApp').fill('abc')
       await dialog.getByRole('button', { name: 'Konfirmasi Jadwal Survey Gratis' }).click()
-      await expect(dialog.getByRole('alert')).toHaveText('Data yang dikirim tidak valid. Periksa kembali isian Anda.') // generic: the field is not named (finding)
+      await expect(dialog.getByRole('alert')).toHaveText('Isi nomor WhatsApp dengan angka yang valid, misalnya 0812 3456 7890.')
       expect(await visitRows(owner.kosId, student.userId)).toHaveLength(0)
     })
-    expectHttpErrors(problems, 400)
+    expectHttpErrors(problems)
   } finally {
     await closeAll(owner.ctx, student.ctx)
   }
@@ -84,7 +84,7 @@ test('scenario 26: one scheduled visit per kos; the owner sees it and completes 
       await dialog.getByLabel('Nomor WhatsApp').fill('081234567890')
       await dialog.getByRole('textbox').last().fill('Datang bersama orang tua')
       await dialog.getByRole('button', { name: 'Konfirmasi Jadwal Survey Gratis' }).click()
-      await expect(student.page.getByText(`Jadwal survey ke ${owner.kosName} berhasil dikonfirmasi!`)).toBeVisible()
+      await expect(student.page.getByText(`Jadwal survey ke ${owner.kosName} berhasil dibuat!`)).toBeVisible()
       const rows = await visitRows(owner.kosId, student.userId)
       expect(rows.map((r) => [r.status, r.timeSlot])).toEqual([['SCHEDULED', 'PAGI']])
     })

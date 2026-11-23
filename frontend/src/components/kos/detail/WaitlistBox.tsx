@@ -39,6 +39,7 @@ export const OfferBanner: React.FC<{ entry: MyWaitlistEntry; onBook: (roomId: st
   const now = useNow();
   const offer = entry.offer;
   if (!offer) return null;
+  const hasPendingApp = entry.applicationStatus === 'PENDING';
   return (
     <div
       data-testid="waitlist-offer"
@@ -53,13 +54,27 @@ export const OfferBanner: React.FC<{ entry: MyWaitlistEntry; onBook: (roomId: st
           </div>
         </div>
       </div>
-      <Button variant="primary" size="lg" fullWidth disabled={busy} onClick={() => onBook(offer.roomId)}>
-        Ajukan Sewa
-      </Button>
-      <p style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>Tawaran ditahan selama pemilik meninjau pengajuan Anda.</p>
-      <Button variant="outline" size="md" fullWidth disabled={busy} onClick={() => void decline(entry.id)}>
-        Lewati
-      </Button>
+      {hasPendingApp ? (
+        <>
+          <p role="status" style={{ fontSize: 'var(--step--1)', fontWeight: 600, color: 'var(--primary)', lineHeight: 1.5, margin: 0 }}>
+            Pengajuan Anda sedang ditinjau pemilik
+          </p>
+          <p style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>Tawaran ditahan selama pemilik meninjau pengajuan Anda.</p>
+          <Button variant="outline" size="md" fullWidth disabled={busy} onClick={() => void decline(entry.id)}>
+            Batalkan Pengajuan
+          </Button>
+        </>
+      ) : (
+        <>
+          <Button variant="primary" size="lg" fullWidth disabled={busy} onClick={() => onBook(offer.roomId)}>
+            Ajukan Sewa
+          </Button>
+          <p style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>Tawaran ditahan selama pemilik meninjau pengajuan Anda.</p>
+          <Button variant="outline" size="md" fullWidth disabled={busy} onClick={() => void decline(entry.id)}>
+            Lewati
+          </Button>
+        </>
+      )}
     </div>
   );
 };
@@ -78,12 +93,14 @@ export const JoinCard: React.FC<JoinCardProps> = ({ kosId, status, initialType, 
   const { me } = useSession();
   const { openAuthModal } = useAppStore();
   const { join, busy } = useWaitlistActions();
-  const [type, setType] = useState<string>(initialType ?? ANY);
-
-  const options = [
-    { value: ANY, label: 'Tipe apa saja' },
-    ...status.types.map((t) => ({ value: t.roomType ?? ANY, label: t.waiting > 0 ? `${t.roomType} · ${t.waiting} mengantre` : `${t.roomType}` })),
-  ];
+  const fullTypeSet = new Set(status.fullTypes);
+  const typeOptions = (status.full ? status.types : status.types.filter((t) => t.roomType !== null && fullTypeSet.has(t.roomType)))
+    .map((t) => ({ value: t.roomType ?? ANY, label: t.waiting > 0 ? `${t.roomType} · ${t.waiting} mengantre` : `${t.roomType}` }));
+  const options = status.full ? [{ value: ANY, label: 'Tipe apa saja' }, ...typeOptions] : typeOptions;
+  const [type, setType] = useState<string>(() =>
+    status.full ? (initialType ?? ANY) : (initialType && fullTypeSet.has(initialType) ? initialType : (status.fullTypes[0] ?? ANY)),
+  );
+  const selectedType = options.some((o) => o.value === type) ? type : (options[0]?.value ?? ANY);
 
   if (status.rentingHere) {
     return (
@@ -109,15 +126,15 @@ export const JoinCard: React.FC<JoinCardProps> = ({ kosId, status, initialType, 
           <div style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Antre dulu, Anda dapat giliran sesuai nomor antrean.</div>
         </div>
       </div>
-      <Select label="Tipe kamar yang dicari" value={type} onChange={(e) => setType(e.target.value)} options={options} />
+      <Select label="Tipe kamar yang dicari" value={selectedType} onChange={(e) => setType(e.target.value)} options={options} />
       <Button
         variant="primary"
         size="lg"
         fullWidth
-        disabled={busy}
+        disabled={busy || (!status.full && options.length === 0)}
         onClick={() => {
           if (!me) return openAuthModal();
-          void join(kosId, type === ANY ? null : type);
+          void join(kosId, selectedType === ANY ? null : selectedType);
         }}
       >
         Ikut Daftar Tunggu

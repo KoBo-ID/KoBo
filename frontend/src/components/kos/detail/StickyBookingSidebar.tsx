@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { DISCOUNT_LABEL, leaseQuote } from '@kobo/shared/domain';
-import { PartnerCampusLink, partnerLabelList, useMyDiscountStatus, usePartnerCampuses } from '../../booking/CampusDiscountCard';
-import { useSession } from '../../../lib/session';
+import { PartnerCampusLink, useMyDiscountStatus } from '../../booking/CampusDiscountCard';
 import { ClipboardList, Calendar, GraduationCap, ShieldCheck } from 'lucide-react';
 import type { WaitlistStatusResult } from '../../../../../backend/src/trpc/router';
 import { Room, Kos } from '../../../types';
@@ -29,7 +28,7 @@ interface StickyBookingSidebarProps {
 }
 
 const FeeRow: React.FC<{ label: React.ReactNode; note?: React.ReactNode; value: string; accent?: boolean; strong?: boolean; testId?: string }> = ({ label, note, value, accent, strong, testId }) => (
-  <div className={`booking-fee-row${strong ? ' booking-fee-row--strong' : ''}`}>
+  <div className={`booking-fee-row${strong ? ' booking-fee-row--strong' : ''}`} style={accent ? { fontSize: '0.8125rem' } : undefined}>
     <span style={{ minWidth: 0 }}>{label}</span>
     <span className="booking-fee-row__value" data-testid={testId} style={accent ? { color: 'var(--accent-strong)', fontWeight: 600 } : undefined}>{value}</span>
     {note && <span className="booking-fee-row__note">{note}</span>}
@@ -46,9 +45,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
   waitlist,
 }) => {
   const navigate = useNavigate();
-  const { me, isLoading: sessionLoading } = useSession();
   const discountStatus = useMyDiscountStatus();
-  const partners = usePartnerCampuses();
   const affiliated = !!discountStatus.data?.affiliated;
   const notAffiliated = !!discountStatus.data?.verified && !affiliated;
   const needsVerification = useNeedsVerification();
@@ -62,11 +59,6 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
     months: leaseMonths,
   };
   const quote = leaseQuote(quoteInput);
-  // What a partner-campus student would take off invoice #1 (shown as a hint to everyone who is not eligible yet).
-  const hintDiscount = hasDiscount && !affiliated && !notAffiliated && !sessionLoading && !(me && discountStatus.isPending)
-    ? leaseQuote({ ...quoteInput, discountEligible: true }).discount
-    : 0;
-  const partnerList = partnerLabelList(partners.data);
 
   // Daftar tunggu: an offer to me wins, then my queue place, then the join form (full kos, or a full type picked in the list).
   const { status } = waitlist;
@@ -156,12 +148,12 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
         {/* Rent headline: the number people compare across kos. */}
         <div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' /* G2-12: '/ bulan' wraps at 200% text */ }}>
-            <span style={{ fontSize: 'var(--step-2)', fontWeight: 800, lineHeight: 1.1, color: 'var(--text-main)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: '1.65rem', fontWeight: 800, lineHeight: 1.1, color: 'var(--text-main)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
               {formatRupiah(selectedRoom.priceMonthly)}
             </span>
-            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--step--1)', whiteSpace: 'nowrap' }}>/ bulan</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>/ bulan</span>
           </div>
-          <span style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             Kamar {selectedRoom.roomNumber} ({selectedRoom.roomType})
           </span>
         </div>
@@ -179,7 +171,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
                 minHeight: '44px',
                 padding: '0.5rem 0.25rem',
                 borderRadius: 'var(--radius-btn)',
-                fontSize: 'var(--step--1)',
+                fontSize: '0.8125rem',
                 fontWeight: leaseMonths === m ? 700 : 500,
                 backgroundColor: leaseMonths === m ? 'var(--primary-light)' : 'var(--bg-page)',
                 color: leaseMonths === m ? 'var(--primary)' : 'var(--text-main)',
@@ -199,9 +191,6 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
             <FeeRow
               label="Sewa bulan pertama"
               value={formatRupiah(quote.rent)}
-              note={hintDiscount > 0 ? (
-                <>Potongan {formatRupiah(hintDiscount)} di pembayaran pertama untuk mahasiswa kampus mitra{partnerList ? ` (${partnerList})` : ''}. <Link to="/profile" style={{ color: 'var(--primary)', fontWeight: 600 }}>Verifikasi status mahasiswa</Link>.</>
-              ) : undefined}
             />
             {quote.discount > 0 && (
               <FeeRow
@@ -212,7 +201,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
               />
             )}
             {hasDiscount && notAffiliated && (
-              <div data-testid="sidebar-discount-not-affiliated" style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>
+              <div data-testid="sidebar-discount-not-affiliated" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {DISCOUNT_LABEL} tidak berlaku untuk {discountStatus.data?.campusName ?? 'kampus Anda'}. <PartnerCampusLink />
               </div>
             )}
@@ -223,25 +212,13 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
 
           <div className="booking-lines__total" aria-live="polite">
             <div className="booking-lines__total-main">
-              <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>Pembayaran pertama</span>
-              <strong data-testid="sidebar-first-payment" style={{ fontSize: 'var(--step-1)', fontWeight: 800, color: 'var(--text-main)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                {formatRupiah(quote.firstPayment)}
+              <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>Total</span>
+              <strong data-testid="sidebar-lease-total" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                {formatRupiah(quote.leaseTotal)}
               </strong>
             </div>
-            <small>perkiraan, setelah pengajuan disetujui</small>
+            <small>{leaseMonths > 1 ? `pembayaran pertama + ${quote.laterMonths} × ${formatRupiah(quote.rent)}` : 'pembayaran pertama'}</small>
           </div>
-
-          {leaseMonths > 1 && (
-            <div className="booking-lines__sum">
-              <FeeRow
-                strong
-                testId="sidebar-lease-total"
-                label={`Total ${leaseMonths} bulan (estimasi)`}
-                note={`pembayaran pertama + ${quote.laterMonths} × ${formatRupiah(quote.rent)}`}
-                value={formatRupiah(quote.leaseTotal)}
-              />
-            </div>
-          )}
         </div>
         )}
         </>)}
@@ -283,7 +260,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
         <StudentOnlyNote />
 
         {showBooking && !offerEntry && isVacant && (
-          <p style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', margin: '-0.25rem 0 0', fontSize: 'var(--step--2)', color: 'var(--text-muted)' }}>
+          <p style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', margin: '-0.25rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             <ShieldCheck size={15} color="var(--primary)" style={{ flexShrink: 0 }} aria-hidden="true" />
             <span>Mengajukan sewa tidak menahan kamar dan tidak memindahkan uang. Anda membayar setelah pemilik menyetujui.</span>
           </p>

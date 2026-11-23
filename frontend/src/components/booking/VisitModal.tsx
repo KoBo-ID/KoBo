@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { addDays, todayWIB } from '@kobo/shared/domain';
@@ -14,6 +14,8 @@ import { isStudentGateError, messageForError } from '../../lib/errors';
 import { VerifyPrompt } from './VerifyPrompt';
 import { useAppStore } from '../../store/AppContext';
 
+const PHONE = /^\+?[0-9][0-9 ()-]{7,18}$/;
+
 interface VisitModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,6 +27,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
   const { me } = useSession();
   const trpc = useTRPC();
   const qc = useQueryClient();
+  const notesId = useId();
 
   // The next 5 days, as WIB calendar days (the server only accepts dates after today in WIB).
   const availableDays = useMemo(() => {
@@ -40,15 +43,22 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
   }, [isOpen]);
 
   const [selectedDate, setSelectedDate] = useState(availableDays[0].isoStr);
-  useEffect(() => {
-    if (isOpen) setSelectedDate(availableDays[0].isoStr);
-  }, [isOpen, availableDays]);
   const [timeSlot, setTimeSlot] = useState<'PAGI' | 'SIANG'>('SIANG');
   // undefined = untouched: show the profile value.
   const [phoneInput, setPhoneInput] = useState<string | undefined>(undefined);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [gateError, setGateError] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setSelectedDate(availableDays[0].isoStr);
+    setTimeSlot('SIANG');
+    setPhoneInput(undefined);
+    setNotes('');
+    setError(null);
+    setGateError(false);
+  }, [isOpen, availableDays]);
 
   const updateProfile = useMutation(trpc.auth.updateProfile.mutationOptions());
   const create = useMutation(trpc.visit.create.mutationOptions());
@@ -59,15 +69,28 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
     e.preventDefault();
     if (!me) return;
     setError(null);
+    setGateError(false);
+    const trimmedPhone = phone.trim();
+    const phoneChanged = trimmedPhone !== (me.user.phone ?? '');
+    if (phoneChanged && trimmedPhone && !PHONE.test(trimmedPhone)) {
+      setError('Isi nomor WhatsApp dengan angka yang valid, misalnya 0812 3456 7890.');
+      return;
+    }
     try {
-      // The owner contacts the student on the WhatsApp number saved in their profile.
-      if (phone.trim() !== (me.user.phone ?? '')) {
-        await updateProfile.mutateAsync({ name: me.user.name, phone: phone.trim() || null, campus: me.user.campus });
-        void qc.invalidateQueries({ queryKey: trpc.auth.me.queryKey() });
-      }
       await create.mutateAsync({ kosId: kos.id, date: selectedDate, timeSlot, notes: notes.trim() || undefined });
       void qc.invalidateQueries({ queryKey: trpc.visit.mine.queryKey() });
-      addToast(`Jadwal survey ke ${kos.name} berhasil dikonfirmasi!`, 'success');
+      // The owner contacts the student on the WhatsApp number saved in their profile; update only after visit.create succeeds.
+      if (phoneChanged) {
+        try {
+          await updateProfile.mutateAsync({ name: me.user.name, phone: trimmedPhone || null, campus: me.user.campus });
+          void qc.invalidateQueries({ queryKey: trpc.auth.me.queryKey() });
+        } catch {
+          addToast(`Jadwal survey ke ${kos.name} berhasil dibuat, namun pembaruan nomor WhatsApp gagal disimpan.`, 'info');
+          onClose();
+          return;
+        }
+      }
+      addToast(`Jadwal survey ke ${kos.name} berhasil dibuat!`, 'success');
       onClose();
     } catch (err) {
       setError(messageForError(err));
@@ -112,10 +135,10 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
         </div>
 
         {/* 1. Pilih Tanggal Kunjungan */}
-        <div>
-          <label style={{ fontSize: 'var(--step--1)', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>
+        <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+          <legend style={{ fontSize: 'var(--step--1)', fontWeight: 600, padding: 0, marginBottom: '0.5rem' }}>
             1. Pilih Tanggal Kunjungan:
-          </label>
+          </legend>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem' }}>
             {availableDays.map((day) => {
               const isSelected = selectedDate === day.isoStr;
@@ -123,6 +146,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
                 <button
                   type="button"
                   key={day.isoStr}
+                  aria-pressed={isSelected}
                   onClick={() => setSelectedDate(day.isoStr)}
                   className="interactive-tap"
                   style={{
@@ -151,16 +175,17 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
               );
             })}
           </div>
-        </div>
+        </fieldset>
 
         {/* 2. Pilih Sesi Waktu */}
-        <div>
-          <label style={{ fontSize: 'var(--step--1)', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>
+        <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+          <legend style={{ fontSize: 'var(--step--1)', fontWeight: 600, padding: 0, marginBottom: '0.5rem' }}>
             2. Pilih Sesi Waktu Kunjungan:
-          </label>
+          </legend>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <button
               type="button"
+              aria-pressed={timeSlot === 'PAGI'}
               onClick={() => setTimeSlot('PAGI')}
               className="interactive-tap"
               style={{
@@ -175,7 +200,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
                 textAlign: 'left',
               }}
             >
-              <Clock size={18} />
+              <Clock size={18} aria-hidden="true" />
               <div>
                 <span style={{ fontSize: 'var(--step--1)', fontWeight: 700, display: 'block' }}>Sesi Pagi</span>
                 <span style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)' }}>09.00 - 12.00 WIB</span>
@@ -184,6 +209,7 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
 
             <button
               type="button"
+              aria-pressed={timeSlot === 'SIANG'}
               onClick={() => setTimeSlot('SIANG')}
               className="interactive-tap"
               style={{
@@ -198,14 +224,14 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
                 textAlign: 'left',
               }}
             >
-              <Clock size={18} />
+              <Clock size={18} aria-hidden="true" />
               <div>
                 <span style={{ fontSize: 'var(--step--1)', fontWeight: 700, display: 'block' }}>Sesi Siang/Sore</span>
                 <span style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)' }}>13.00 - 17.00 WIB</span>
               </div>
             </button>
           </div>
-        </div>
+        </fieldset>
 
         {/* 3. Kontak */}
         {me ? (
@@ -223,12 +249,13 @@ export const VisitModal: React.FC<VisitModalProps> = ({ isOpen, onClose, kos }) 
         )}
 
         <div>
-          <label htmlFor="visit-notes" style={{ fontSize: 'var(--step--1)', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>
+          <label htmlFor={notesId} style={{ fontSize: 'var(--step--1)', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>
             Catatan Khusus ke Pengelola Kos (Opsional):
           </label>
           <textarea
-            id="visit-notes"
+            id={notesId}
             rows={2}
+            maxLength={300}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Contoh: Mau cek colokan meja belajar atau bawa motor…"

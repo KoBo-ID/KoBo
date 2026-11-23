@@ -28,6 +28,8 @@ export interface MyWaitlistEntry {
   createdAt: string
   kos: { id: string; slug: string; name: string; image: string | null }
   offer: WaitlistOffer | null
+  applicationId: string | null
+  applicationStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN' | null
 }
 
 export interface WaitlistStatusResult {
@@ -35,6 +37,8 @@ export interface WaitlistStatusResult {
   full: boolean
   /** Each distinct room type with how many WAITING entries compete for it. */
   types: { roomType: string | null; waiting: number }[]
+  /** Sorted distinct room types with no currently open (unclaimed, bookable) room. */
+  fullTypes: string[]
   /** Signed in and already renting (live or paid tenancy) in this kos: a second room here is not queued. */
   rentingHere: boolean
   mine: MyWaitlistEntry | null
@@ -108,23 +112,53 @@ async function toMyEntries(db: Tx, storage: Storage, rows: EntryRow[], now: Date
         status === 'OFFERED' && r.offeredRoom && r.offerExpiresAt
           ? { roomId: r.offeredRoom.id, roomNumber: r.offeredRoom.roomNumber, priceMonthly: r.offeredRoom.priceMonthly, expiresAt: r.offerExpiresAt.toISOString() }
           : null,
+      applicationId: r.applicationId ?? null,
+      applicationStatus: r.application?.status ?? null,
     }
   })
+}
+
+/** When an OFFERED entry ends (leave / decline / owner remove), withdraw any linked PENDING application before passing the room on. */
+async function releaseOffer(
+  tx: Tx,
+  entry: { kosId: string; status: WaitlistStatus; applicationId: string | null },
+  now: Date,
+): Promise<void> {
+  if (entry.status !== 'OFFERED') return
+  if (entry.applicationId) {
+    await tx.rentalApplication.updateMany({
+      where: { id: entry.applicationId, status: 'PENDING' },
+      data: { status: 'WITHDRAWN', decidedAt: now },
+    })
+  }
+  await advanceWaitlist(tx, entry.kosId, now)
 }
 
 export const waitlistRouter = router({
   /** Is this kos full, how long is the queue per type, and (signed in) where am I. Public. */
   status: publicProcedure.input(kosIdOnly).query(async ({ ctx, input }): Promise<WaitlistStatusResult> => {
+    const [kos, session] = await Promise.all([
+      ctx.prisma.kos.findUnique({
+        where: { id: input.kosId },
+        select: { archivedAt: true, owner: { select: { userId: true, verificationStatus: true } } },
+      }),
+      ctx.getSession(),
+    ])
+    if (!kos || kos.archivedAt !== null || (kos.owner.verificationStatus !== 'DISETUJUI' && kos.owner.userId !== session?.user.id)) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Kos tidak ditemukan.' })
+    }
     const now = new Date()
-    const [rooms, bookable, claims, waiting, session] = await Promise.all([
+    const [rooms, bookable, claims, waiting] = await Promise.all([
       ctx.prisma.room.findMany({ where: { kosId: input.kosId, archivedAt: null }, select: { type: true } }),
       bookableRooms(ctx.prisma, input.kosId, now),
       roomClaims(ctx.prisma, input.kosId, now),
       ctx.prisma.waitlistEntry.findMany({ where: { kosId: input.kosId, status: 'WAITING' }, select: { roomType: true } }),
-      ctx.getSession(),
     ])
     const open = bookable.filter((r) => !claims.has(r.id))
-    const types = [...new Set(rooms.map((r) => r.type))].sort().map((roomType) => ({ roomType, waiting: waiting.filter((w) => competes(w.roomType, roomType)).length }))
+    const openTypes = new Set(open.map((r) => r.type))
+    const distinctTypes = [...new Set(rooms.map((r) => r.type))].sort()
+    const types = distinctTypes.map((roomType) => ({ roomType, waiting: waiting.filter((w) => competes(w.roomType, roomType)).length }))
+    const fullTypes = distinctTypes.filter((roomType) => !openTypes.has(roomType))
     let mine: MyWaitlistEntry | null = null
     let rentingHere = false
     if (session) {
@@ -135,7 +169,7 @@ export const waitlistRouter = router({
       }
       rentingHere = (await rentingInKos(ctx.prisma, session.user.id, input.kosId, now)) > 0
     }
-    return { full: open.length === 0, types, rentingHere, mine }
+    return { full: open.length === 0, types, fullTypes, rentingHere, mine }
   }),
 
   /** Join a full kos's queue. Advances the kos first, so a lapsed hold or offer is settled before "is it full?" is decided. */
@@ -171,16 +205,16 @@ export const waitlistRouter = router({
   /** Own WAITING or OFFERED entry. Leaving a live offer passes the room on. */
   leave: authedProcedure.input(waitlistEntryInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
     return ctx.prisma.$transaction(async (tx) => {
-      // Kos lock first (A-001); the entry's kos never changes, so the unlocked read is safe. Status is re-read under the lock.
+      // Kos lock first (A-001); the entry's kos never changes, so the unlocked read is safe. Status and applicationId are re-read under the lock.
       const unlocked = await tx.waitlistEntry.findUnique({ where: { id: input.entryId }, select: { userId: true, kosId: true } })
       if (!unlocked || unlocked.userId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: NOT_OWN })
       await lockKos(tx, unlocked.kosId)
-      const entry = await tx.waitlistEntry.findUniqueOrThrow({ where: { id: input.entryId }, select: { userId: true, kosId: true, status: true } })
+      const entry = await tx.waitlistEntry.findUniqueOrThrow({ where: { id: input.entryId }, select: { kosId: true, status: true, applicationId: true } })
       if (entry.status !== 'WAITING' && entry.status !== 'OFFERED') throw new TRPCError({ code: 'CONFLICT', message: NOT_LIVE })
       const now = new Date()
       const res = await tx.waitlistEntry.updateMany({ where: { id: input.entryId, status: entry.status }, data: { status: 'LEFT', resolvedAt: now } })
       if (res.count === 0) throw new TRPCError({ code: 'CONFLICT', message: NOT_LIVE })
-      if (entry.status === 'OFFERED') await advanceWaitlist(tx, entry.kosId, now)
+      await releaseOffer(tx, entry, now)
       return { id: input.entryId }
     })
   }),
@@ -188,13 +222,14 @@ export const waitlistRouter = router({
   /** Turn down an offer. The room goes to the next entry; the place in the queue is gone. */
   decline: authedProcedure.input(waitlistEntryInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
     return ctx.prisma.$transaction(async (tx) => {
-      const entry = await tx.waitlistEntry.findUnique({ where: { id: input.entryId }, select: { userId: true, kosId: true } })
-      if (!entry || entry.userId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: NOT_OWN })
-      await lockKos(tx, entry.kosId)
+      const unlocked = await tx.waitlistEntry.findUnique({ where: { id: input.entryId }, select: { userId: true, kosId: true } })
+      if (!unlocked || unlocked.userId !== ctx.user.id) throw new TRPCError({ code: 'FORBIDDEN', message: NOT_OWN })
+      await lockKos(tx, unlocked.kosId)
+      const entry = await tx.waitlistEntry.findUniqueOrThrow({ where: { id: input.entryId }, select: { kosId: true, status: true, applicationId: true } })
       const now = new Date()
       const res = await tx.waitlistEntry.updateMany({ where: { id: input.entryId, status: 'OFFERED' }, data: { status: 'DECLINED', resolvedAt: now } })
       if (res.count === 0) throw new TRPCError({ code: 'CONFLICT', message: 'Penawaran ini sudah tidak berlaku.' })
-      await advanceWaitlist(tx, entry.kosId, now)
+      await releaseOffer(tx, entry, now)
       return { id: input.entryId }
     })
   }),
@@ -239,13 +274,13 @@ export const ownerWaitlistRouter = router({
   remove: ownerProcedure.input(ownerWaitlistRemoveInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
     return ctx.prisma.$transaction(async (tx) => {
       await lockKos(tx, input.kosId)
-      const entry = await tx.waitlistEntry.findFirst({ where: { id: input.entryId, kosId: input.kosId }, select: { id: true, status: true } })
+      const entry = await tx.waitlistEntry.findFirst({ where: { id: input.entryId, kosId: input.kosId }, select: { id: true, kosId: true, status: true, applicationId: true } })
       if (!entry) throw new TRPCError({ code: 'NOT_FOUND', message: 'Antrean tidak ditemukan.' })
       if (entry.status !== 'WAITING' && entry.status !== 'OFFERED') throw new TRPCError({ code: 'CONFLICT', message: NOT_LIVE })
       const now = new Date()
       const res = await tx.waitlistEntry.updateMany({ where: { id: entry.id, status: entry.status }, data: { status: 'REMOVED', resolvedAt: now } })
       if (res.count === 0) throw new TRPCError({ code: 'CONFLICT', message: NOT_LIVE })
-      if (entry.status === 'OFFERED') await advanceWaitlist(tx, input.kosId, now)
+      await releaseOffer(tx, entry, now)
       return { id: entry.id }
     })
   }),
