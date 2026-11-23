@@ -106,7 +106,7 @@ export const Hero: React.FC = () => {
                     onSubmitText={submitText}
                     onPickCampus={(branch) => navigate(`/search?campus=${encodeURIComponent(branch.id)}&sort=distance_asc`)}
                     onPickRegion={(region) => navigate(`/search?region=${encodeURIComponent(region.code)}`)}
-                    onPickPoint={(p) => navigate(`/search?lat=${p.lat}&lng=${p.lng}&place=${encodeURIComponent(p.label)}&radius=3000&sort=distance_asc`)}
+                    onPickPoint={(p) => navigate(`/search?lat=${p.lat}&lng=${p.lng}&place=${encodeURIComponent(p.label)}&r=3000&sort=distance_asc`)}
                     style={{ boxShadow: 'var(--shadow-md)' }}
                   />
 

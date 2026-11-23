@@ -27,10 +27,10 @@ export const Privacy: React.FC = () => {
             'Versi syarat yang Anda setujui dan waktunya',
             'Riwayat pengingat tagihan yang kami kirim',
             'Alamat IP dan jenis browser pada sesi masuk',
-            'Untuk pemilik kos: jenis kepemilikan yang Anda nyatakan sendiri',
+            'Untuk pemilik kos: jenis kepemilikan yang Anda nyatakan, KTP, serta dokumen bukti kepemilikan atau kewenangan pengelolaan (SHM, SHGB, AJB, Girik/Letter C, SPPT PBB, atau surat kuasa/perjanjian pengelolaan)',
           ]}
         />
-        <p>KoBo belum meminta foto atau nomor KTP. Foto kartu mahasiswa (KTM) hanya dipakai untuk verifikasi status mahasiswa, lihat bagian 11.</p>
+        <p>KoBo tidak meminta KTP dari mahasiswa; mahasiswa cukup memakai email kampus, akun kampus, atau foto kartu mahasiswa (KTM) yang hanya dipakai untuk verifikasi status mahasiswa, lihat bagian 11. Untuk pemilik kos, foto KTP dan dokumen kepemilikan atau kewenangan dikumpulkan semata-mata untuk verifikasi pemilik, disimpan di penyimpanan privat, dan dihapus otomatis 90 hari setelah keputusan peninjauan.</p>
       </InfoSection>
       <InfoSection heading="3. Tujuan dan dasar pemrosesan">
         <InfoList

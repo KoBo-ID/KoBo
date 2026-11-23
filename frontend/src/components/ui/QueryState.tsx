@@ -1,7 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { SearchX } from 'lucide-react';
-import { Button } from './Button';
+import { Button, ButtonLink } from './Button';
 
 /** Failed request: Indonesian message and a retry button. Reserves vertical space like the content it replaces. */
 export const ErrorState: React.FC<{ message: string; onRetry: () => void; minHeight?: string }> = ({
@@ -43,10 +42,8 @@ export const NotFoundState: React.FC<{ title: string; text: string; linkTo: stri
     <SearchX size={40} color="var(--text-subtle)" style={{ margin: '0 auto 1rem' }} />
     <h1 style={{ fontSize: 'var(--step-2)', fontWeight: 800 }}>{title}</h1>
     <p style={{ color: 'var(--text-muted)', margin: '0.5rem auto 1.5rem', maxWidth: '420px' }}>{text}</p>
-    <Link to={linkTo}>
-      <Button variant="primary" size="md">
-        {linkLabel}
-      </Button>
-    </Link>
+    <ButtonLink to={linkTo} variant="primary" size="md">
+      {linkLabel}
+    </ButtonLink>
   </div>
 );

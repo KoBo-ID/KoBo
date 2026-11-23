@@ -12,9 +12,9 @@ export const ConfirmDialog: React.FC<{
   onConfirm: () => void;
   onCancel: () => void;
 }> = ({ title, message, confirmLabel, danger = false, busy = false, onConfirm, onCancel }) => (
-  <Modal isOpen onClose={onCancel} title={title} maxWidth="sm">
+  <Modal isOpen onClose={busy ? () => {} : onCancel} title={title} maxWidth="sm">
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', lineHeight: 1.55 }}>{message}</p>
+      <div style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', lineHeight: 1.55 }}>{message}</div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }}>
         <Button variant="outline" size="sm" onClick={onCancel} disabled={busy}>Batal</Button>
         <Button

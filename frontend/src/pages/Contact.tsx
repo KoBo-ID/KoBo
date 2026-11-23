@@ -13,13 +13,16 @@ export const Contact: React.FC = () => {
         <p>Status pengajuan, tagihan, dan kuitansi ada di <Link to="/my-kos" style={link}>Kos Saya</Link>. Dari sana Anda juga dapat melanjutkan pembayaran dan melihat jadwal survey.</p>
       </InfoSection>
       <InfoSection heading="Akun dan verifikasi mahasiswa">
-        <p>Ubah nama, nomor telepon, kampus, dan verifikasi status mahasiswa di <Link to="/profile" style={link}>Profil</Link>. Lupa kata sandi? Gunakan tautan atur ulang di jendela masuk.</p>
+        <p>Ubah nama, nomor telepon, kampus, dan verifikasi status mahasiswa di <Link to="/profile" style={link}>Profil</Link>. Lupa kata sandi? Gunakan tautan atur ulang di halaman masuk.</p>
       </InfoSection>
       <InfoSection heading="Pertanyaan tentang kos tertentu">
         <p>Buka halaman kos lalu pilih <strong>Jadwalkan Survey Gratis</strong> untuk bertemu pemilik langsung, atau buka profil pemilik di halaman kos untuk menghubunginya lewat WhatsApp.</p>
       </InfoSection>
       <InfoSection heading="Pemilik kos">
         <p>Kelola kamar, pengajuan, dan tata tertib dari <Link to="/owner/dashboard" style={link}>portal pemilik</Link>. Belum punya akun pemilik? <Link to="/owner/login" style={link}>Daftar atau masuk di sini</Link>.</p>
+      </InfoSection>
+      <InfoSection heading="Email dukungan">
+        <p>Untuk hal lain yang belum terjawab di atas, hubungi kami di <a href="mailto:support@kobo.rent" style={link}>support@kobo.rent</a>.</p>
       </InfoSection>
     </InfoPage>
   );

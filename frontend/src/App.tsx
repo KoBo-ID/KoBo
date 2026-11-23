@@ -7,6 +7,7 @@ import { AppProvider, useAppStore } from './store/AppContext';
 import { StudentLayout } from './components/layout/StudentLayout';
 import { OwnerLayout } from './components/layout/OwnerLayout';
 import { OwnerGuard } from './components/layout/OwnerGuard';
+import { AppErrorBoundary } from './components/ui/ErrorBoundary';
 import { ToastContainer } from './components/ui/Toast';
 
 // Home stays eagerly imported: it is the landing route, so splitting it would
@@ -62,7 +63,6 @@ const Terms = lazyWithReload(() =>
 const Privacy = lazyWithReload(() =>
   import('./pages/Privacy').then((m) => ({ default: m.Privacy }))
 );
-const Licenses = lazyWithReload(() => import('./pages/Licenses'));
 
 // Teman Sekamar (roommate matching)
 const MatchDiscover = lazyWithReload(() =>
@@ -178,6 +178,11 @@ const AuthRedirect: React.FC = () => {
   return null;
 };
 
+const RouteErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { pathname } = useLocation();
+  return <AppErrorBoundary key={pathname}>{children}</AppErrorBoundary>;
+};
+
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -196,48 +201,49 @@ export function App() {
           Lewati ke konten utama
         </a>
         <ScrollToTop />
-        <Suspense fallback={<RouteFallback />}>
-          <Routes>
-            {/* Tenant / Student Portal Route Tree */}
-            <Route element={<StudentLayout />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/kos/:id" element={<Detail />} />
-              <Route path="/checkout/:id" element={<Checkout />} />
-              <Route path="/my-kos" element={<MyKos />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/kuitansi/:receiptNo" element={<Kuitansi />} />
-              <Route path="/teman-sekamar" element={<MatchDiscover />} />
-              <Route path="/teman-sekamar/profil" element={<MatchProfileForm />} />
-              <Route path="/teman-sekamar/p/:id" element={<MatchDetail />} />
-              <Route path="/teman-sekamar/permintaan" element={<MatchRequests />} />
-              <Route path="/teman-sekamar/pesan" element={<MatchMessages />} />
-              <Route path="/teman-sekamar/pesan/:connectionId" element={<MatchMessages />} />
-              <Route path="/teman-sekamar/kos/:connectionId" element={<MatchKosTogether />} />
-              <Route path="/teman-sekamar/pengaturan" element={<MatchSettings />} />
-              <Route path="/owner/:id" element={<OwnerProfile />} />
-              <Route path="/owner/login" element={<OwnerLogin />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/verifikasi-email" element={<VerifyEmail />} />
-              <Route path="/kontak" element={<Contact />} />
-              <Route path="/syarat" element={<Terms />} />
-              <Route path="/privasi" element={<Privacy />} />
-              <Route path="/lisensi" element={<Licenses />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
-
-            <Route path="/masuk" element={<AuthPage />} />
-
-            {/* Owner SaaS Workspace Route Tree */}
-            <Route element={<OwnerGuard />}>
-              <Route element={<OwnerLayout />}>
-                <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-                <Route path="/owner/kos" element={<KosManager />} />
-                <Route path="/owner/reviews" element={<ReviewsManager />} />
+        <RouteErrorBoundary>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              {/* Tenant / Student Portal Route Tree */}
+              <Route element={<StudentLayout />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/kos/:id" element={<Detail />} />
+                <Route path="/checkout/:id" element={<Checkout />} />
+                <Route path="/my-kos" element={<MyKos />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/kuitansi/:receiptNo" element={<Kuitansi />} />
+                <Route path="/teman-sekamar" element={<MatchDiscover />} />
+                <Route path="/teman-sekamar/profil" element={<MatchProfileForm />} />
+                <Route path="/teman-sekamar/p/:id" element={<MatchDetail />} />
+                <Route path="/teman-sekamar/permintaan" element={<MatchRequests />} />
+                <Route path="/teman-sekamar/pesan" element={<MatchMessages />} />
+                <Route path="/teman-sekamar/pesan/:connectionId" element={<MatchMessages />} />
+                <Route path="/teman-sekamar/kos/:connectionId" element={<MatchKosTogether />} />
+                <Route path="/teman-sekamar/pengaturan" element={<MatchSettings />} />
+                <Route path="/owner/:id" element={<OwnerProfile />} />
+                <Route path="/owner/login" element={<OwnerLogin />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/verifikasi-email" element={<VerifyEmail />} />
+                <Route path="/kontak" element={<Contact />} />
+                <Route path="/syarat" element={<Terms />} />
+                <Route path="/privasi" element={<Privacy />} />
+                <Route path="*" element={<NotFound />} />
               </Route>
-            </Route>
-          </Routes>
-        </Suspense>
+
+              <Route path="/masuk" element={<AuthPage />} />
+
+              {/* Owner SaaS Workspace Route Tree */}
+              <Route element={<OwnerGuard />}>
+                <Route element={<OwnerLayout />}>
+                  <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+                  <Route path="/owner/kos" element={<KosManager />} />
+                  <Route path="/owner/reviews" element={<ReviewsManager />} />
+                </Route>
+              </Route>
+            </Routes>
+          </Suspense>
+        </RouteErrorBoundary>
 
         <AuthRedirect />
         <ToastContainer />

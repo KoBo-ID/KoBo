@@ -20,7 +20,6 @@ const HELP: { to: string; label: string }[] = [
   { to: '/kontak', label: 'Hubungi kami' },
   { to: '/syarat', label: 'Syarat dan ketentuan' },
   { to: '/privasi', label: 'Kebijakan privasi' },
-  { to: '/lisensi', label: 'Data peta & tempat' },
 ];
 
 const Flyer: React.FC<{ cls: string; title: string; label: string; links: TabLink[] }> = ({

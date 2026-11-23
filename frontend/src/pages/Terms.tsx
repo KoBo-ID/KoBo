@@ -65,7 +65,7 @@ const SECTIONS: { heading: string; items: React.ReactNode[] }[] = [
   {
     heading: 'Verifikasi pemilik',
     items: [
-      'Pemilik menyatakan sendiri jenis kepemilikannya. KoBo belum memeriksa dokumen kepemilikan.',
+      'Sebelum mendaftarkan kos baru, pemilik atau pengelola wajib mengunggah KTP serta bukti kepemilikan atau kewenangan pengelolaan (SHM, SHGB, AJB, Girik/Letter C, SPPT PBB, atau surat kuasa/perjanjian pengelolaan) untuk ditinjau oleh tim KoBo.',
       'Lencana "Pemilik terverifikasi" hanya tampil bila KoBo telah memverifikasi pemilik tersebut, dan dapat dicabut. Lencana bukan jaminan hukum atas properti.',
     ],
   },

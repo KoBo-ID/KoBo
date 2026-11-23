@@ -1,11 +1,10 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Kos } from '../../types';
 import { ListingCard } from '../kos/ListingCard';
 import { KosCardSkeleton } from '../kos/KosCardSkeleton';
-import { Button } from '../ui/Button';
+import { Button, ButtonLink } from '../ui/Button';
 import { useTRPC } from '../../lib/trpc';
 import { kosCardToKos } from '../../utils/kosCard';
 
@@ -30,11 +29,9 @@ export const FeaturedKos: React.FC<FeaturedKosProps> = ({ onOpenSurvey }) => {
         <section className="app-container">
           <div className="featured-head">
             <h2 className="featured-head__title">Kos yang bisa Anda survey</h2>
-            <Link to="/search">
-              <Button variant="outline" size="sm" icon={<ArrowRight size={16} />} iconPosition="right">
-                {data ? `Lihat Semua (${kosList.length})` : 'Lihat Semua'}
-              </Button>
-            </Link>
+            <ButtonLink to="/search" variant="outline" size="sm" icon={<ArrowRight size={16} />} iconPosition="right">
+              {data ? `Lihat Semua (${kosList.length})` : 'Lihat Semua'}
+            </ButtonLink>
           </div>
 
           {isError ? (

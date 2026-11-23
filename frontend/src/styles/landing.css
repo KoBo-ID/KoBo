@@ -425,8 +425,8 @@
    transform/opacity move; the dotted route is wiped with clip-path (a
    dashoffset would slide the dots) and two small colour fades mark "selected". */
 @media (prefers-reduced-motion: no-preference) {
-  /* About 25% quicker than the site-wide beat, so each row's story finishes in roughly a second. */
-  .whyr { --dur-base: 440ms; --dur-slow: 700ms; --stagger: 60ms; }
+  /* Quicker than the site-wide beat: each row starts as it reaches the viewport and its story finishes in about a second. */
+  .whyr { --dur-base: 300ms; --dur-slow: 480ms; --stagger: 40ms; }
   [data-reveal='armed'] .whyr__promise { opacity: 0; transform: translateY(var(--rise)); }
   .whyr__promise { transition: opacity var(--dur-base) var(--ease-apple-out), transform var(--dur-base) var(--ease-apple-out); }
   [data-reveal='armed'] .whyr__stage { opacity: 0; transform: translateY(var(--rise)) scale(0.985); }

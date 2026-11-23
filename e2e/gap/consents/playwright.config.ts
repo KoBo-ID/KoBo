@@ -7,6 +7,9 @@ const port = process.env.GAP_CONSENTS_PORT ?? '3102'
 const database = process.env.E2E_DATABASE_URL ?? 'postgresql://kobo:kobo@127.0.0.1:5433/kobo_e2e_consents'
 if (!database.includes('kobo_e2e_consents')) throw new Error('the consents project must use its own database (kobo_e2e_consents), not the main e2e database')
 
+// The specs read the outbox and the tables through e2e/tests/seams.ts, which uses this variable.
+process.env.E2E_DATABASE_URL = database
+
 export default defineConfig({
   testDir: '.',
   outputDir: '../../test-results-consents',

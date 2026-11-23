@@ -12,6 +12,14 @@ export interface ModalProps {
   showCloseButton?: boolean;
 }
 
+const openModals: HTMLElement[] = [];
+
+function isTopModal(dialog: HTMLElement | null): boolean {
+  if (!dialog) return false;
+  const leaves = openModals.filter((m) => !openModals.some((other) => other !== m && m.contains(other)));
+  return leaves[leaves.length - 1] === dialog;
+}
+
 export const Modal: React.FC<ModalProps> = ({
   isOpen,
   onClose,
@@ -32,29 +40,43 @@ export const Modal: React.FC<ModalProps> = ({
     if (!isOpen) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const dialog = dialogRef.current;
+    if (dialog) openModals.push(dialog);
     const focusables = () =>
       Array.from(dialog?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []);
     (dialog?.querySelector<HTMLElement>('[autofocus], input:not([disabled]), textarea:not([disabled])') ?? focusables()[0] ?? dialog)?.focus();
     const trap = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
+      if (e.key !== 'Tab' || !isTopModal(dialog)) return;
       const items = focusables();
       if (items.length === 0) return e.preventDefault();
       const first = items[0];
       const last = items[items.length - 1];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || active === dialog || !dialog?.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !dialog?.contains(active))) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', trap);
     return () => {
       document.removeEventListener('keydown', trap);
-      opener?.focus();
+      if (dialog) {
+        const idx = openModals.lastIndexOf(dialog);
+        if (idx !== -1) openModals.splice(idx, 1);
+      }
+      if (opener?.isConnected) opener.focus();
     };
   }, [isOpen]);
 
   // ESC listener
   useEffect(() => {
+    if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape' && isTopModal(dialogRef.current)) {
+        e.stopImmediatePropagation();
+        e.stopPropagation();
         onClose();
       }
     };
@@ -103,6 +125,7 @@ export const Modal: React.FC<ModalProps> = ({
             </div>
             {showCloseButton && (
               <button
+                type="button"
                 onClick={onClose}
                 aria-label="Tutup modal"
                 className="kobo-modal__close interactive-tap"
