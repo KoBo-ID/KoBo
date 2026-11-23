@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { GraduationCap, Mail, MailCheck, ShieldCheck } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CampusVerifyMethod } from '@kobo/shared/types';
@@ -40,7 +41,10 @@ export const StudentVerificationCard: React.FC = () => {
   const { addToast } = useAppStore();
   const trpc = useTRPC();
   const qc = useQueryClient();
-  const refreshMe = () => qc.invalidateQueries({ queryKey: trpc.auth.me.queryKey() });
+  const refreshMe = () => Promise.all([
+    qc.invalidateQueries({ queryKey: trpc.auth.me.queryKey() }),
+    qc.invalidateQueries({ queryKey: trpc.campus.myDiscountStatus.queryKey() }),
+  ]);
 
   const [email, setEmail] = useState('');
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -158,6 +162,10 @@ export const StudentVerificationCard: React.FC = () => {
     }
   };
 
+  const listVisible = listOpen && !picked && (campuses.data?.length ?? 0) > 0;
+  const showActions = !isDemo && !verified && sv.state !== 'PENDING';
+  const ktmExhausted = sv.state !== 'PENDING' && sv.attemptsLeft <= 0;
+
   let status: React.ReactNode = null;
   if (sv.state === 'VERIFIED' || verified) {
     status = (
@@ -176,11 +184,13 @@ export const StudentVerificationCard: React.FC = () => {
   } else if (sv.state === 'REJECTED') {
     status = <Notice tone="error">Ditolak: {sv.reason ?? 'tidak ada alasan yang dicatat'}</Notice>;
   } else if (sv.state === 'EXPIRED') {
-    status = <Notice tone="error">{sv.until ? `Verifikasi kedaluwarsa pada ${formatUntil(sv.until)}. ` : 'Verifikasi kedaluwarsa. '}Verifikasi ulang di bawah dengan email kampus aktif atau KTM terbaru.</Notice>;
+    status = (
+      <Notice tone="error">
+        {sv.until ? `Verifikasi kedaluwarsa pada ${formatUntil(sv.until)}. ` : 'Verifikasi kedaluwarsa. '}
+        {ktmExhausted ? 'Verifikasi ulang di bawah dengan email atau akun kampus aktif.' : 'Verifikasi ulang di bawah dengan email kampus aktif atau KTM terbaru.'}
+      </Notice>
+    );
   }
-
-  const listVisible = listOpen && !picked && (campuses.data?.length ?? 0) > 0;
-  const showActions = !isDemo && !verified && sv.state !== 'PENDING';
 
   return (
     <section data-testid="student-verification" aria-labelledby="student-verif-title" style={{ backgroundColor: verified ? 'var(--primary-light)' : 'var(--bg-page)', border: `1.5px solid ${verified ? 'var(--primary)' : 'var(--border-strong)'}`, borderRadius: 'var(--radius-lg)', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -235,7 +245,12 @@ export const StudentVerificationCard: React.FC = () => {
 
           {sv.providers.sheerid && <SheerIdPanel />}
 
-          {!ktmOpen ? (
+          {ktmExhausted ? (
+            <Notice tone="error">
+              <strong>Percobaan unggah KTM habis (0 tersisa).</strong> Gunakan email kampus atau akun kampus di atas, atau{' '}
+              <Link to="/kontak" style={{ color: 'var(--primary)', fontWeight: 700 }}>hubungi KoBo</Link>.
+            </Notice>
+          ) : !ktmOpen ? (
             <button type="button" className="student-verif__link" onClick={() => setKtmOpen(true)}>Tidak punya email atau akun kampus? Unggah KTM</button>
           ) : (
             <form onSubmit={(e) => void submitKtm(e)} style={box} aria-label="Unggah KTM">

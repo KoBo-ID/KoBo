@@ -72,7 +72,10 @@ export const studentVerificationRouter = router({
       throw new TRPCError({ code: 'FORBIDDEN', message: OUT_OF_ATTEMPTS })
     }
     const campus = await ctx.prisma.campus.findUnique({ where: { id: input.campusId }, select: { id: true } })
-    if (!campus) throw bad('Kampus tidak ditemukan.')
+    if (!campus) {
+      await unowned()
+      throw bad('Kampus tidak ditemukan.')
+    }
     const head = await ctx.storage.headPrivate(input.key)
     if (!head) throw bad('Foto KTM belum terunggah. Silakan coba unggah ulang.')
     if (!(KTM_TYPES as readonly string[]).includes(head.contentType)) {

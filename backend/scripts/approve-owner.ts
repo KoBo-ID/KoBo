@@ -31,8 +31,22 @@ try {
       })),
     )
   } else if (first === 'revoke' && second) {
-    const res = await prisma.ownerProfile.updateMany({ where: { user: { email: second.toLowerCase() } }, data: { approvedAt: null, verificationStatus: 'BELUM_KIRIM', verificationReason: null } })
-    console.log(res.count ? `Hidden: ${second}` : `No owner with email ${second}`)
+    const email = second.toLowerCase()
+    const revoked = await prisma.$transaction(async (tx) => {
+      const profile = await tx.ownerProfile.findFirst({ where: { user: { email } }, select: { id: true, userId: true } })
+      if (!profile) return false
+      const now = new Date()
+      await tx.ownerDocument.updateMany({
+        where: { userId: profile.userId, status: 'APPROVED' },
+        data: { status: 'REJECTED', reason: 'Persetujuan dicabut — unggah ulang dokumen', decidedAt: now },
+      })
+      await tx.ownerProfile.update({
+        where: { id: profile.id },
+        data: { approvedAt: null, verificationStatus: 'BELUM_KIRIM', verificationReason: null, verificationAttempts: 0 },
+      })
+      return true
+    })
+    console.log(revoked ? `Hidden: ${second}` : `No owner with email ${second}`)
   } else if (first && first.includes('@')) {
     const email = first.toLowerCase()
     const res = await prisma.ownerProfile.updateMany({

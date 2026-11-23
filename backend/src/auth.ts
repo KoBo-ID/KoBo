@@ -419,8 +419,21 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAdd
             const claimed = (user as { termsVersion?: unknown }).termsVersion
             const accepted = claimed === TERMS_VERSION
             // Backstop for every creation path: the sign-up endpoint hook refuses a long name; a Google display name is clamped, never blocking.
-            const name = typeof user.name === 'string' ? user.name.slice(0, MAX_NAME) : user.name
-            return { data: { ...user, name, image: null, termsVersion: accepted ? TERMS_VERSION : null, termsAcceptedAt: accepted ? new Date() : null } }
+            const raw = user as typeof user & { phone?: unknown; campus?: unknown }
+            const name = typeof raw.name === 'string' ? raw.name.trim().slice(0, MAX_NAME) : raw.name
+            const phone = typeof raw.phone === 'string' ? raw.phone.trim() : raw.phone
+            const campus = typeof raw.campus === 'string' ? raw.campus.trim() : raw.campus
+            return {
+              data: {
+                ...user,
+                name,
+                ...(raw.phone !== undefined ? { phone } : {}),
+                ...(raw.campus !== undefined ? { campus } : {}),
+                image: null,
+                termsVersion: accepted ? TERMS_VERSION : null,
+                termsAcceptedAt: accepted ? new Date() : null,
+              },
+            }
           },
         },
       },
@@ -442,8 +455,14 @@ export function createAuth({ prisma, baseURL, secret, trustedOrigins = [], ipAdd
           const extras = checkSignUpExtras(body)
           if (extras) throw new APIError('BAD_REQUEST', { message: extras, code: 'INVALID_PROFILE' })
           const name = body?.name
-          if (typeof name === 'string' && !profileUpdateInput.shape.name.safeParse(name).success && name.trim().length > 0) {
-            throw new APIError('BAD_REQUEST', { message: 'Nama terlalu panjang (maksimal 80 karakter).', code: 'INVALID_PROFILE' })
+          if (typeof name === 'string') {
+            const trimmed = name.trim()
+            if (trimmed.length === 0) {
+              throw new APIError('BAD_REQUEST', { message: 'Nama lengkap wajib diisi.', code: 'INVALID_PROFILE' })
+            }
+            if (!profileUpdateInput.shape.name.safeParse(trimmed).success) {
+              throw new APIError('BAD_REQUEST', { message: 'Nama terlalu panjang (maksimal 80 karakter).', code: 'INVALID_PROFILE' })
+            }
           }
         }
         if (isOtpPath(ctx.path)) {

@@ -316,7 +316,7 @@ export const AuthPage: React.FC = () => {
 
   return (
     <div className="auth-page landing-backdrop">
-      <main className="auth-shell">
+      <main id="main" tabIndex={-1} className="auth-shell">
         <aside className="auth-shell__aside">
           {/* Both photos stay mounted and cross-fade with the role toggle. */}
           {/* Lazy: below 860px this panel is display:none, so the browser never fetches them there. Intrinsic sizes avoid layout shift. */}

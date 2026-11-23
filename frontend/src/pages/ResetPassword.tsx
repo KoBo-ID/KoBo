@@ -1,22 +1,23 @@
 import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { KeyRound, Lock, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { AuthCard } from '../components/auth/AuthCard';
 import { EmailActionForm } from '../components/auth/EmailActionForm';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Notice } from '../components/ui/Notice';
-import { useAppStore } from '../store/AppContext';
+import { useAuthActions } from '../lib/session';
 import { messageForError } from '../lib/errors';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 /** Landing page of the emailed reset link: /reset-password?token=... (or ?error=INVALID_TOKEN). */
 export const ResetPassword: React.FC = () => {
   useDocumentTitle('Atur ulang kata sandi');
+  const navigate = useNavigate();
   const [params] = useSearchParams();
   const token = params.get('token');
   const linkError = params.get('error');
-  const { openAuthModal } = useAppStore();
+  const { refreshSession } = useAuthActions();
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -33,8 +34,12 @@ export const ResetPassword: React.FC = () => {
     try {
       const { authClient } = await import('../lib/authClient');
       const { error: err } = await authClient.resetPassword({ newPassword: password, token: token ?? '' });
-      if (err) setError(messageForError(err));
-      else setDone(true);
+      if (err) {
+        setError(messageForError(err));
+      } else {
+        await refreshSession().catch(() => {});
+        setDone(true);
+      }
     } catch (err) {
       setError(messageForError(err));
     } finally {
@@ -46,7 +51,7 @@ export const ResetPassword: React.FC = () => {
     return (
       <AuthCard icon={<CheckCircle2 size={40} color="var(--primary)" />} title="Kata sandi diperbarui">
         <p style={{ color: 'var(--text-muted)', lineHeight: 1.55 }}>Kata sandi baru Anda sudah aktif. Silakan masuk dengan kata sandi tersebut.</p>
-        <Button variant="primary" fullWidth onClick={openAuthModal}>
+        <Button variant="primary" fullWidth onClick={() => navigate('/masuk', { replace: true })}>
           Masuk
         </Button>
       </AuthCard>

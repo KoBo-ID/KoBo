@@ -78,10 +78,16 @@ export const ownerTenantRouter = router({
       ctx.prisma.review.findMany({ where: { tenancy: { userId } }, select: { rating: true } }),
       ctx.prisma.invoice.findMany({
         where: { tenancy: { userId } },
-        select: { status: true, dueDate: true, payments: { where: { status: 'PAID' }, select: { paidAt: true }, orderBy: { paidAt: 'asc' }, take: 1 } },
+        select: {
+          status: true,
+          dueDate: true,
+          tenancy: { select: { status: true, expiresAt: true } },
+          payments: { where: { status: 'PAID' }, select: { paidAt: true }, orderBy: { paidAt: 'asc' }, take: 1 },
+        },
       }),
     ])
-    const today = todayWIB(new Date())
+    const now = new Date()
+    const today = todayWIB(now)
     const payments = { onTime: 0, late: 0, overdue: 0 }
     for (const inv of invoices) {
       const due = inv.dueDate.toISOString().slice(0, 10)
@@ -89,7 +95,11 @@ export const ownerTenantRouter = router({
         const paidAt = inv.payments[0]?.paidAt
         if (paidAt && compareDates(todayWIB(paidAt), due) > 0) payments.late += 1
         else payments.onTime += 1
-      } else if (compareDates(today, due) > 0) {
+      } else if (
+        compareDates(today, due) > 0 &&
+        (inv.tenancy.status === 'ACTIVE' ||
+          (inv.tenancy.status === 'PENDING' && (inv.tenancy.expiresAt === null || inv.tenancy.expiresAt.getTime() > now.getTime())))
+      ) {
         payments.overdue += 1
       }
     }
@@ -100,7 +110,7 @@ export const ownerTenantRouter = router({
     return {
       name: u.name,
       campus: u.campus,
-      campusVerified: isStudentVerified(u, new Date()),
+      campusVerified: isStudentVerified(u, now),
       phone: accepted ? u.phone : null,
       basis,
       accepted,

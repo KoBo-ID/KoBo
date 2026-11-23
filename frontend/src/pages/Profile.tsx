@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { ShieldCheck, Building2 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/AppContext';
-import { Button } from '../components/ui/Button';
+import { Button, ButtonLink } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Notice } from '../components/ui/Notice';
 import { Avatar } from '../components/ui/Avatar';
@@ -65,6 +65,7 @@ export const Profile: React.FC = () => {
       if (known.tone === 'success') {
         addToast(known.text, 'success');
         void qc.invalidateQueries({ queryKey: trpc.auth.me.queryKey() });
+        void qc.invalidateQueries({ queryKey: trpc.campus.myDiscountStatus.queryKey() });
       }
     }
     const next = new URLSearchParams(params);
@@ -153,9 +154,9 @@ export const Profile: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
             <Avatar src={user.image} name={user.name} size={72} style={{ border: '3px solid var(--primary-light)' }} />
             <div>
-              <h3 style={{ fontSize: 'var(--step-1)', fontWeight: 800, color: 'var(--text-main)' }}>
+              <h2 style={{ fontSize: 'var(--step-1)', fontWeight: 800, color: 'var(--text-main)' }}>
                 {user.name}
-              </h3>
+              </h2>
               <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>
                 {user.email}
               </p>
@@ -241,9 +242,15 @@ export const Profile: React.FC = () => {
         {campusNotice && <Notice tone={campusNotice.tone}>{campusNotice.text}</Notice>}
         {!me.isOwner && <StudentVerificationCard />}
 
-        {me && !me.user.isDemo && <EmergencyContactCard />}
-
-        {me && !me.user.isDemo && <RemindersAndTermsCard />}
+        {me && !me.user.isDemo && (
+          <section aria-labelledby="profile-consent-title">
+            <h3 id="profile-consent-title" className="sr-only">Kontak darurat dan persetujuan</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <EmergencyContactCard />
+              <RemindersAndTermsCard />
+            </div>
+          </section>
+        )}
 
         {me && !me.user.isDemo && <AccountSecurityCard />}
 
@@ -260,22 +267,24 @@ export const Profile: React.FC = () => {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Building2 size={18} color="var(--primary)" />
-              <h4 style={{ fontSize: 'var(--step-0)', fontWeight: 700 }}>Punya kos?</h4>
+              <Building2 size={18} color="var(--primary)" aria-hidden="true" />
+              <h2 style={{ fontSize: 'var(--step-0)', fontWeight: 700 }}>Punya kos?</h2>
             </div>
             {me.isOwner ? (
               <>
                 <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Akun Anda sudah terdaftar sebagai pemilik.</p>
-                <Link to="/owner/dashboard">
-                  <Button variant="outline" size="sm">Buka Dasbor Pemilik</Button>
-                </Link>
+                <div>
+                  <ButtonLink to="/owner/dashboard" variant="outline" size="sm">Buka Dasbor Pemilik</ButtonLink>
+                </div>
               </>
             ) : (
               <>
                 <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Kelola kamar, tagihan, dan kuitansi dari dashboard pemilik. Gratis.</p>
-                <Button variant="primary" size="sm" onClick={() => setRegistering(true)}>
-                  Daftarkan diri sebagai pemilik
-                </Button>
+                <div>
+                  <Button variant="primary" size="sm" onClick={() => setRegistering(true)}>
+                    Daftarkan diri sebagai pemilik
+                  </Button>
+                </div>
               </>
             )}
           </div>

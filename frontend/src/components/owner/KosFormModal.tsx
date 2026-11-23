@@ -190,9 +190,11 @@ export const KosFormModal: React.FC<KosFormModalProps> = ({ isOpen, onClose, exi
       const msg = messageForError(err)
       // T5: the creation gate is never a bare error; send the owner to the documents dialog instead.
       if (!existingKos && isOwnerUnverifiedError(msg)) {
-        onClose()
-        ownerGate.openDocs()
-        return
+        void qc.invalidateQueries({ queryKey: trpc.auth.me.queryKey() });
+        void qc.invalidateQueries({ queryKey: trpc.ownerVerification.status.queryKey() });
+        onClose();
+        ownerGate.openDocs();
+        return;
       }
       setServerError(msg);
       requestAnimationFrame(() => summaryRef.current?.focus());

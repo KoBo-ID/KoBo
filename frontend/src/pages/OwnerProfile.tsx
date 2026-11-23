@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ListingCard } from '../components/kos/ListingCard';
 import { KosCardSkeleton } from '../components/kos/KosCardSkeleton';
 import { Avatar } from '../components/ui/Avatar';
-import { Button } from '../components/ui/Button';
+import { ButtonAnchor } from '../components/ui/Button';
 import { ErrorState, NotFoundState } from '../components/ui/QueryState';
 import { useTRPC } from '../lib/trpc';
 import { useSession } from '../lib/session';
@@ -110,22 +110,17 @@ export const OwnerProfile: React.FC = () => {
           </div>
 
           {waNumber && (
-          <a
+          <ButtonAnchor
             href={`https://wa.me/${waNumber}?text=Halo%20${encodeURIComponent(owner.name)},%20saya%20tertarik%20dengan%20properti%20kos%20Anda%20di%20KoBo`}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ textDecoration: 'none' }}
+            variant="primary"
+            size="md"
+            icon={<MessageSquare size={16} />}
+            style={{ backgroundColor: 'var(--whatsapp)', borderColor: 'var(--whatsapp)' }}
           >
-            <Button
-              type="button"
-              variant="primary"
-              size="md"
-              icon={<MessageSquare size={16} />}
-              style={{ backgroundColor: 'var(--whatsapp)', borderColor: 'var(--whatsapp)' }}
-            >
-              Hubungi via WhatsApp
-            </Button>
-          </a>
+            Hubungi via WhatsApp
+          </ButtonAnchor>
           )}
         </div>
 

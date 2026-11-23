@@ -9,6 +9,7 @@ const LEGEND_ORDER: RoomStatus[] = ['paid', 'due', 'overdue', 'booking', 'vacant
 
 interface OwnerOverviewProps {
   summary: BoardSummary;
+  kosId?: string;
   /** Jump the room board to the rooms with this status. */
   onShowStatus: (status: RoomStatus) => void;
 }
@@ -17,7 +18,7 @@ interface OwnerOverviewProps {
  * Three tiles: money collected, money overdue, and the building. Only figures the board query returns.
  * Occupancy is a proportional bar, so it stays the same size for 1 room or 100. The status counts jump to the room board, which holds the per-room and per-floor detail.
  */
-export const OwnerOverview: React.FC<OwnerOverviewProps> = ({ summary, onShowStatus }) => {
+export const OwnerOverview: React.FC<OwnerOverviewProps> = ({ summary, kosId, onShowStatus }) => {
   const { collectedThisMonth, expectedThisMonth, overdueAmount, counts, totalRooms, occupiedRooms, waitlistCount } = summary;
   const collectedPct = expectedThisMonth > 0 ? Math.min(100, Math.round((collectedThisMonth / expectedThisMonth) * 100)) : 0;
   const occupancyPct = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
@@ -82,7 +83,7 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({ summary, onShowSta
           ))}
         </ul>
         {waitlistCount > 0 && (
-          <Link to="/owner/kos" className="od-link">
+          <Link to={kosId ? `/owner/kos?kos=${encodeURIComponent(kosId)}` : '/owner/kos'} className="od-link">
             {waitlistCount} pengantre di daftar tunggu
           </Link>
         )}

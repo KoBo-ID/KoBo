@@ -14,8 +14,11 @@ export function useOwnerBadges(kosId: string | undefined): { dashboard: number; 
   const visits = useQuery({ ...trpc.owner.visits.queryOptions({ kosId: id }), enabled });
   const reviews = useQuery({ ...trpc.owner.reviews.queryOptions({ kosId: id }), enabled });
 
-  const late = (board.data?.rooms ?? []).filter((r) => r.status === 'overdue' || r.status === 'due').length;
-  const dashboard = late + (applications.data?.length ?? 0) + (visits.data ?? []).filter((v) => v.status === 'SCHEDULED').length;
+  const rooms = board.data?.rooms ?? [];
+  const late = rooms.filter((r) => r.status === 'overdue' || r.status === 'due').length;
+  const needsReview = rooms.filter((r) => r.payment?.state === 'NEEDS_REVIEW').length;
+  const leaseEnded = rooms.filter((r) => r.leaseEnded && r.tenancyId).length;
+  const dashboard = late + needsReview + leaseEnded + (applications.data?.length ?? 0) + (visits.data ?? []).filter((v) => v.status === 'SCHEDULED').length;
   const unanswered = (reviews.data ?? []).filter((r) => !r.ownerReply).length;
   return { dashboard, reviews: unanswered };
 }

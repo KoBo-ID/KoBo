@@ -1,9 +1,9 @@
 import React from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MailCheck } from 'lucide-react';
 import { AuthCard } from '../components/auth/AuthCard';
 import { VerifyCodeStep } from '../components/auth/VerifyCodeStep';
-import { Button } from '../components/ui/Button';
+import { ButtonLink } from '../components/ui/Button';
 import { useAuthActions } from '../lib/session';
 import { useAppStore } from '../store/AppContext';
 import { safeNext } from '../lib/safeNext';
@@ -24,11 +24,9 @@ export const VerifyEmail: React.FC = () => {
         <p style={{ color: 'var(--text-muted)', lineHeight: 1.55 }}>
           Verifikasi email memakai kode 6 digit yang dikirim saat Anda mendaftar atau masuk. Masuk untuk menerima kode baru.
         </p>
-        <Link to="/masuk">
-          <Button variant="primary" fullWidth>
-            Ke Halaman Masuk
-          </Button>
-        </Link>
+        <ButtonLink to="/masuk" variant="primary" fullWidth>
+          Ke Halaman Masuk
+        </ButtonLink>
       </AuthCard>
     );
   }

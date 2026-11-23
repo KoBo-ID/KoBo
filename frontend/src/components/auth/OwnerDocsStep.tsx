@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { Notice } from '../ui/Notice';
 import { ErrorState } from '../ui/QueryState';
 import { useTRPC } from '../../lib/trpc';
+import { useSession } from '../../lib/session';
 import { messageForError } from '../../lib/errors';
 import { UploadError } from '../../lib/imageUpload';
 import { recalledOwnershipType, useOwnerVerification, type OwnershipType } from '../../lib/owner';
@@ -71,6 +72,7 @@ function putWithProgress(url: string, headers: Record<string, string>, file: Fil
 export const OwnerDocsStep: React.FC<{ onDone: () => void; onLater?: () => void }> = ({ onDone, onLater }) => {
   const trpc = useTRPC();
   const qc = useQueryClient();
+  const { me } = useSession();
   const state = useOwnerVerification();
   const presign = useMutation(trpc.ownerVerification.presign.mutationOptions());
   const submit = useMutation(trpc.ownerVerification.submit.mutationOptions());
@@ -80,6 +82,16 @@ export const OwnerDocsStep: React.FC<{ onDone: () => void; onLater?: () => void 
   const [landKind, setLandKind] = useState<OwnerDocKind>('SHM');
   const [consent, setConsent] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const approvedClosure = (
+    <div className="odoc-closure" role="status">
+      <ShieldCheck size={28} aria-hidden="true" />
+      <p className="odoc-closure__text">Akun pemilik Anda sudah disetujui. Anda bisa mendaftarkan kos.</p>
+      <Button variant="primary" onClick={onDone}>Ke dashboard</Button>
+    </div>
+  );
+
+  if (me?.ownerStatus === 'DISETUJUI') return approvedClosure;
 
   if (state.isPending) {
     return (
@@ -94,15 +106,7 @@ export const OwnerDocsStep: React.FC<{ onDone: () => void; onLater?: () => void 
   const docs = st.documents;
   const sla = st.slaText;
 
-  if (st.status === 'DISETUJUI') {
-    return (
-      <div className="odoc-closure" role="status">
-        <ShieldCheck size={28} aria-hidden="true" />
-        <p className="odoc-closure__text">Akun pemilik Anda sudah disetujui. Anda bisa mendaftarkan kos.</p>
-        <Button variant="primary" onClick={onDone}>Ke dashboard</Button>
-      </div>
-    );
-  }
+  if (st.status === 'DISETUJUI') return approvedClosure;
   if (st.status === 'MENUNGGU') {
     return (
       <div className="odoc-closure" role="status">
@@ -114,8 +118,10 @@ export const OwnerDocsStep: React.FC<{ onDone: () => void; onLater?: () => void 
   }
 
   const rejected = st.status === 'DITOLAK';
+  const allSlots = slotsFor(role);
   const approvedKinds = new Set(docs.filter((d) => d.status === 'APPROVED').map((d) => d.kind));
-  const slots = slotsFor(role).filter((s) => !s.kinds.some((k) => approvedKinds.has(k)));
+  const filteredSlots = rejected ? allSlots.filter((s) => !s.kinds.some((k) => approvedKinds.has(k))) : allSlots;
+  const slots = filteredSlots.length > 0 ? filteredSlots : allSlots;
   const kindOf = (s: Slot): OwnerDocKind => (s.kinds.length > 1 ? landKind : s.kinds[0]!);
 
   if (rejected && st.attemptsLeft <= 0) {

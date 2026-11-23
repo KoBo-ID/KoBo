@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { MessageSquare, Copy, ExternalLink, Heart } from 'lucide-react';
 import type { BoardRoom } from '../../../../backend/src/trpc/router';
 import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
+import { Button, ButtonAnchor } from '../ui/Button';
 import { useAppStore } from '../../store/AppContext';
 import { useSession } from '../../lib/session';
 import { formatDueDate, formatRupiah } from '../../lib/ownerWorkspace';
@@ -187,22 +187,17 @@ Mohon kabari kami setelah pembayaran dilakukan. Terima kasih atas perhatian dan 
             <Button variant="ghost" size="sm" onClick={onClose}>
               Tutup
             </Button>
-            <a
+            <ButtonAnchor
               href={waLink}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ textDecoration: 'none' }}
+              variant="primary"
+              size="sm"
+              icon={<ExternalLink size={15} />}
+              style={{ backgroundColor: 'var(--whatsapp)', borderColor: 'var(--whatsapp)' }}
             >
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                icon={<ExternalLink size={15} />}
-                style={{ backgroundColor: 'var(--whatsapp)', borderColor: 'var(--whatsapp)' }}
-              >
-                Buka WhatsApp (wa.me)
-              </Button>
-            </a>
+              Buka WhatsApp (wa.me)
+            </ButtonAnchor>
           </div>
         </div>
       </div>

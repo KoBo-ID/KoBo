@@ -11,37 +11,37 @@
   margin-bottom: var(--space-m);
 }
 .od-tile {
-  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2xs); min-width: 0;
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2xs); min-width: 0; max-width: 100%;
   padding: 1.25rem;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-card);
 }
-.od-eyebrow { margin: 0; font-size: var(--step--1); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
-.od-figure { margin: 0; color: var(--text-main); font-size: var(--step-3); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.od-eyebrow { margin: 0; max-width: 100%; overflow-wrap: anywhere; font-size: var(--step--1); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.od-figure { margin: 0; max-width: 100%; overflow-wrap: anywhere; color: var(--text-main); font-size: var(--step-3); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .od-figure span { font-size: var(--step--1); font-weight: 500; letter-spacing: 0; color: var(--text-muted); }
 .od-figure--brand { color: var(--primary); }
 .od-figure--late { color: var(--status-overdue-text); }
 .od-meta--late { color: var(--status-overdue-text); font-weight: 600; }
-.od-meta { margin: 0; font-size: var(--step--1); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.od-meta { margin: 0; max-width: 100%; overflow-wrap: anywhere; font-size: var(--step--1); color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .od-bar { align-self: stretch; height: 0.5rem; margin-top: 0.25rem; border-radius: var(--radius-pill); background: var(--bg-muted); overflow: hidden; }
 .od-bar > span { display: block; height: 100%; background: var(--primary); border-radius: inherit; transform-origin: left; animation: od-grow 500ms cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes od-grow { from { transform: scaleX(0); } }
-.od-link { display: inline-flex; align-items: baseline; gap: 0.4rem; min-height: 2rem; padding: 0; background: none; border: 0; font: inherit; font-size: var(--step--1); font-weight: 700; color: var(--primary); text-decoration: none; cursor: pointer; border-radius: var(--radius-sm); }
+.od-link { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 0.4rem; min-height: 2rem; max-width: 100%; padding: 0; background: none; border: 0; font: inherit; font-size: var(--step--1); font-weight: 700; color: var(--primary); text-align: left; text-decoration: none; cursor: pointer; border-radius: var(--radius-sm); }
 .od-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .od-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .od-ok { color: var(--status-paid-text); }
 
 /* Occupancy: one proportional bar (size never depends on room count) + status counts that filter the room board. */
-.od-split { align-self: stretch; display: flex; gap: 2px; height: 1rem; margin-top: 0.25rem; }
+.od-split { align-self: stretch; display: flex; gap: 2px; height: 1rem; margin-top: 0.25rem; min-width: 0; max-width: 100%; }
 .od-split__seg { flex-basis: 0; min-width: 6px; border-radius: 3px; }
 .od-split__seg--paid { background: var(--status-paid); }
 .od-split__seg--due { background: var(--status-due); }
 .od-split__seg--overdue { background: var(--status-overdue); }
 .od-split__seg--booking { background: var(--status-booking); }
 .od-split__seg--vacant { background: repeating-linear-gradient(135deg, var(--bg-muted) 0 4px, var(--border-strong) 4px 5px); border: 1px dashed var(--text-muted); }
-.od-legend { display: flex; flex-wrap: wrap; gap: var(--space-2xs); list-style: none; margin: 0; padding: 0; }
-.od-stat { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 2.25rem; padding: 0 0.6rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font: inherit; font-size: var(--step--1); color: var(--text-main); cursor: pointer; }
+.od-legend { display: flex; flex-wrap: wrap; max-width: 100%; min-width: 0; gap: 0.4rem; list-style: none; margin: 0; padding: 0; }
+.od-stat { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2rem; max-width: 100%; padding: 0 0.45rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); font: inherit; font-size: 0.8125rem; white-space: nowrap; color: var(--text-main); cursor: pointer; }
 .od-stat strong { font-variant-numeric: tabular-nums; }
 .od-stat:hover { background: var(--bg-muted); }
 .od-stat:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
@@ -56,37 +56,38 @@
 /* ---- Sections: the shared container (.od-section, .od-board, .os-card) lives in owner.css ---- */
 .od-count { font-size: var(--step--1); font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .od-empty { font-size: var(--step--1); color: var(--text-muted); line-height: 1.5; margin: 0; max-width: 60ch; }
-.od-clear { display: flex; align-items: center; gap: var(--space-2xs); margin: 0 0 var(--space-m); padding: 0.85rem 1.25rem; background: var(--status-paid-bg); border: 1px solid var(--status-paid-border); border-radius: var(--radius-card); font-size: var(--step-0); font-weight: 600; color: var(--status-paid-text); }
+.od-clear { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2xs); min-width: 0; max-width: 100%; margin: 0 0 var(--space-m); padding: 0.85rem 1.25rem; background: var(--status-paid-bg); border: 1px solid var(--status-paid-border); border-radius: var(--radius-card); font-size: var(--step-0); font-weight: 600; color: var(--status-paid-text); }
 .od-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---- Work rows: the same tracks in every list, so amounts, dates and actions line up from row to row ---- */
-.od-list { display: flex; flex-direction: column; gap: 0.25rem; list-style: none; margin: 0; padding: 0; }
+.od-list { display: flex; flex-direction: column; gap: 0.25rem; list-style: none; margin: 0; padding: 0; min-width: 0; }
 .od-row {
   display: grid;
   grid-template-columns: minmax(0, 15rem) minmax(0, 16rem) minmax(0, 1fr);
   align-items: center;
   column-gap: var(--space-m);
   row-gap: var(--space-2xs);
+  min-width: 0;
   padding: var(--space-xs);
   font-size: var(--step--1);
   border-radius: var(--radius-md);
 }
 .od-row:hover { background: var(--bg-page); }
-.od-row--attention { grid-template-columns: minmax(0, 15rem) 8rem 11rem minmax(0, 1fr); }
+.od-row--attention { grid-template-columns: minmax(0, 15rem) minmax(0, 8rem) minmax(0, 11rem) minmax(0, 1fr); }
 .od-row__main { min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
-.od-row__title { font-weight: 700; }
+.od-row__title { font-weight: 700; overflow-wrap: anywhere; }
 .od-row__sub { color: var(--text-muted); font-size: var(--step--1); overflow-wrap: anywhere; }
-.od-row__amount { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.od-row__amount { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; min-width: 0; }
 .od-row__due { display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem; min-width: 0; }
 .od-row__late { color: var(--status-overdue-text); font-weight: 700; font-size: var(--step--1); }
 .od-row__soon { font-weight: 700; font-size: var(--step--1); }
-.od-row__actions { display: flex; gap: var(--space-2xs); flex-wrap: wrap; justify-content: flex-end; }
+.od-row__actions { display: flex; gap: var(--space-2xs); flex-wrap: wrap; justify-content: flex-end; min-width: 0; max-width: 100%; }
 .od-row__note { color: var(--text-main); font-size: var(--step--1); max-width: 60ch; margin-top: 0.2rem; }
-.od-row__oneline { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
+.od-row__oneline { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; }
 /* A person's name that opens their profile: link colour, underline and a chevron so it reads as clickable. */
 .od-person {
-  display: inline-flex; align-items: center; gap: 0.15rem; align-self: flex-start;
-  padding: 0; background: none; border: 0; font: inherit; font-weight: 700; color: var(--primary); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 0.15rem; align-self: flex-start; max-width: 100%; min-width: 0;
+  padding: 0; background: none; border: 0; font: inherit; font-weight: 700; color: var(--primary); cursor: pointer; text-align: left;
   text-decoration: underline; text-decoration-color: var(--primary-glow); text-decoration-thickness: 1.5px; text-underline-offset: 3px;
   transition: text-decoration-color 150ms ease;
 }
@@ -125,7 +126,7 @@
 
 /* ---- Loading ---- */
 .od-skel-list { display: flex; flex-direction: column; }
-.od-skel-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 1.25rem; padding: var(--space-xs); }
+.od-skel-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; padding: var(--space-xs); }
 
 /* ---- Responsive ---- */
 @media (width < 64rem) {
@@ -138,13 +139,13 @@
   .od-figure { font-size: var(--step-2); }
   .od-row,
   .od-row--attention {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     padding: 0.85rem 0;
   }
   .od-row > .od-row__main { grid-column: 1 / -1; }
   .od-row > .od-row__actions { grid-column: 1 / -1; justify-content: flex-start; }
   .od-row__amount { text-align: left; }
-  .od-skel-row { grid-template-columns: 1fr 1fr; }
+  .od-skel-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
 /* Touch: 44px targets for row actions and the board's icon buttons. */
 @media (pointer: coarse), (width < 48rem) {
@@ -173,7 +174,7 @@
   .od-board .kobo-table tbody td.kobo-table__empty { height: 8rem; }
   .od-board .kobo-table tbody td[data-cell='actions'] { overflow: visible; }
 }
-@media (48rem <= width < 80rem) {
+@media (48rem <= width < 64rem) {
   .od-board .kobo-table { min-width: 44rem; }
   .od-col-room { width: 9.5rem; }
   .od-col-price { width: 8.5rem; }
@@ -193,7 +194,7 @@
 .od-history[open] > summary { margin-bottom: var(--space-2xs); }
 
 /* ---- Tabs: overview / things to act on ---- */
-.od-tabs { margin-bottom: var(--space-m); }
+.od-tabs { margin-bottom: var(--space-m); max-width: 100%; }
 .od-tabs button { gap: var(--space-2xs); }
 .od-tabs button[aria-selected='true'] { background-color: var(--bg-surface); color: var(--text-main); font-weight: 700; box-shadow: var(--shadow-xs); }
 .od-count-bubble { display: inline-flex; align-items: center; justify-content: center; min-width: 1.25rem; height: 1.25rem; padding: 0 0.35rem; border-radius: var(--radius-pill); background: var(--status-overdue-text); color: var(--text-inverse); font-size: var(--step--2); font-weight: 700; font-variant-numeric: tabular-nums; }

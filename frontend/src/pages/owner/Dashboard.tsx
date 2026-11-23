@@ -1,6 +1,6 @@
 import '../../styles/owner-dashboard.css';
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MessageSquare, CheckCircle2, ChevronRight } from 'lucide-react';
 import type { BoardRoom } from '../../../../backend/src/trpc/router';
@@ -15,7 +15,7 @@ import { Notice } from '../../components/ui/Notice';
 import { WhatsAppModal } from '../../components/owner/WhatsAppModal';
 import { OwnerPageHeader } from '../../components/owner/OwnerPageHeader';
 import { RoomStatus } from '../../types';
-import { Button } from '../../components/ui/Button';
+import { Button, ButtonLink } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/ui/QueryState';
 import { formatDueDate, formatRupiah, useOwnerWorkspace } from '../../lib/ownerWorkspace';
@@ -114,9 +114,7 @@ export const OwnerDashboard: React.FC = () => {
             ))}
           </ol>
           {gate.approved ? (
-            <Link to="/owner/kos">
-              <Button variant="primary" size="md">Daftarkan kos</Button>
-            </Link>
+            <ButtonLink to="/owner/kos" variant="primary" size="md">Daftarkan kos</ButtonLink>
           ) : (
             <div className="os-gate" style={{ alignItems: 'flex-start' }}>
               <Button variant="primary" size="md" aria-disabled="true" aria-describedby="od-gate-reason" onClick={gate.openDocs} style={{ opacity: 0.6 }}>Daftarkan kos</Button>
@@ -164,7 +162,7 @@ export const OwnerDashboard: React.FC = () => {
   const applicationCount = applications.data?.length ?? 0;
   const hasApplications = applicationCount > 0;
   const hasLeaseEnded = leaseEndedRooms.length > 0;
-  const allClear = !hasAttention && !hasVisitAttention && !hasApplications && !hasLeaseEnded;
+  const allClear = !hasAttention && !hasVisitAttention && !hasApplications && !hasLeaseEnded && needsReview.length === 0;
   const actionCount = attentionRooms.length + scheduledVisits + applicationCount + needsReview.length + leaseEndedRooms.length;
   const showStatus = (status: RoomStatus) => {
     setStatusFilter(status);
@@ -216,7 +214,7 @@ export const OwnerDashboard: React.FC = () => {
       <div id="od-panel" role="tabpanel" aria-labelledby={`od-tab-${tab}`}>
         {tab === 'ringkasan' ? (
           <>
-            <OwnerOverview summary={summary} onShowStatus={showStatus} />
+            <OwnerOverview summary={summary} kosId={selectedKos.id} onShowStatus={showStatus} />
       <RoomOccupancyBoard
         kosName={selectedKos.name}
         rooms={rooms}
@@ -273,7 +271,8 @@ export const OwnerDashboard: React.FC = () => {
                     variant="outline"
                     size="sm"
                     icon={<CheckCircle2 size={14} />}
-                    disabled={busyRoomId === room.id}
+                    disabled={busyRoomId === room.id || room.payment?.state === 'AWAITING_ONLINE'}
+                    title={room.payment?.state === 'AWAITING_ONLINE' ? 'Penyewa sedang membayar online. Tunggu sesi pembayaran berakhir.' : undefined}
                     aria-label={`Tandai Lunas Kamar ${room.roomNumber}`}
                     onClick={() => pay(room)}
                   >
