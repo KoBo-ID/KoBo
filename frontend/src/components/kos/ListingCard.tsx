@@ -189,6 +189,7 @@ const ListingCardBase: React.FC<ListingCardProps> = ({ kos, onOpenSurvey, distan
           }}
         >
           <GenderBadge gender={kos.gender} size="sm" />
+          {kos.isDemoListing === true && <Badge variant="subtle" size="sm">Kos contoh</Badge>}
           {kos.studentDiscountAmount > 0 && (
             <Badge variant="discount" size="sm" icon={<GraduationCap size={11} />}>
               {kos.studentDiscountLabel}

@@ -1,9 +1,7 @@
 import React from 'react';
-import { Check } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { Room } from '../../../types';
 import { formatRupiah } from '../../../lib/format';
-
-const SHARE_LABEL: Record<number, string> = { 2: 'Bisa berdua', 3: 'Bisa bertiga', 4: 'Bisa berempat' };
 
 interface RoomPickerProps {
   rooms: Room[];
@@ -11,6 +9,8 @@ interface RoomPickerProps {
   onSelectRoom: (room: Room) => void;
   /** A type with no bookable room was clicked: the student wants its daftar tunggu. */
   onSelectFullType?: (roomType: string) => void;
+  /** The viewer's live queue entry: a room type (or null = any type). Matching full types read "Anda sudah di daftar tunggu". */
+  queued?: { roomType: string | null } | null;
 }
 
 export const RoomPicker: React.FC<RoomPickerProps> = ({
@@ -18,6 +18,7 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
   selectedRoom,
   onSelectRoom,
   onSelectFullType,
+  queued,
 }) => {
   const grouped = rooms.reduce((acc, room) => {
     if (!acc[room.roomType]) acc[room.roomType] = [];
@@ -44,6 +45,7 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
           const vacantCount = vacantRooms.length;
           const isAvailable = vacantCount > 0;
           const isSelected = isAvailable && selectedRoom.roomType === roomType;
+          const alreadyQueued = !isAvailable && !!queued && (queued.roomType === null || queued.roomType === roomType);
 
           return (
             <button
@@ -51,16 +53,22 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
               type="button"
               className={`room-picker__option${isSelected ? ' is-selected' : ''}${!isAvailable ? ' is-full' : ''}`}
               aria-pressed={isAvailable ? isSelected : undefined}
-              disabled={!isAvailable && !onSelectFullType}
+              disabled={!isAvailable && (!onSelectFullType || alreadyQueued)}
               onClick={() => {
                 if (isAvailable) onSelectRoom(vacantRooms[0]);
-                else onSelectFullType?.(roomType);
+                else if (!alreadyQueued) onSelectFullType?.(roomType);
               }}
             >
               <span className="room-picker__main">
                 <span className="room-picker__title">
                   <span>{roomType}</span>
-                  {isSelected && <span className="room-picker__chosen"><Check size={13} strokeWidth={3} aria-hidden="true" />Dipilih</span>}
+                  {(shown.maxOccupants ?? 1) >= 2 && (
+                    <span className="room-picker__capacity" title={`Muat ${shown.maxOccupants} orang`}>
+                      <Users size={14} strokeWidth={2.25} aria-hidden="true" />
+                      <span aria-hidden="true">{shown.maxOccupants}</span>
+                      <span className="sr-only">Muat {shown.maxOccupants} orang</span>
+                    </span>
+                  )}
                 </span>
                 <span className="room-picker__availability">
                   <span>{vacantCount} dari {groupRooms.length}</span> kamar tersedia
@@ -69,22 +77,6 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
                   <span>Ukuran: {shown.size}</span>
                   <span>Kasur: {shown.bedType}</span>
                 </span>
-                {(shown.maxOccupants ?? 1) >= 2 && (
-                  <span
-                    style={{
-                      alignSelf: 'flex-start',
-                      width: 'fit-content',
-                      padding: '0.1rem 0.5rem',
-                      borderRadius: 6,
-                      backgroundColor: 'var(--primary-light)',
-                      color: 'var(--primary)',
-                      fontSize: 'var(--step--2)',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {SHARE_LABEL[Math.min(shown.maxOccupants ?? 1, 4)]}
-                  </span>
-                )}
                 {reservedCount > 0 && (
                   <span className="room-picker__reserved">
                     Dipesan antrean{reservedCount > 1 ? ` (${reservedCount})` : ''}
@@ -100,8 +92,10 @@ export const RoomPicker: React.FC<RoomPickerProps> = ({
                     {formatRupiah(shown.pricePerPersonMonthly)} per orang
                   </span>
                 )}
-                {!isAvailable && onSelectFullType && (
-                  <span className="room-picker__waitlist">Ikut daftar tunggu</span>
+                {alreadyQueued ? (
+                  <span className="room-picker__reserved" style={{ color: 'var(--text-muted)' }}>Anda sudah di daftar tunggu</span>
+                ) : (
+                  !isAvailable && onSelectFullType && <span className="room-picker__waitlist">Ikut daftar tunggu</span>
                 )}
               </span>
             </button>

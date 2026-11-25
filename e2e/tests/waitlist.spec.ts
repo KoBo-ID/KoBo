@@ -95,5 +95,7 @@ test('demo student queues for a full kos, gets the room when the owner frees it,
   // 6. Clean up: decline, so the demo student keeps no live entry for the other specs.
   await page.goto(`/kos/${kosId}`)
   await page.getByTestId('waitlist-offer').getByRole('button', { name: 'Lewati' }).click()
+  // Audit 2026-11-24: skipping an offer now asks first ("Lewati tawaran ini?").
+  await page.getByRole('dialog', { name: 'Lewati tawaran ini?' }).getByRole('button', { name: 'Lewati tawaran' }).click()
   await expect(page.getByText('Penawaran dilewati.')).toBeVisible()
 })

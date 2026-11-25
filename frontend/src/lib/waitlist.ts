@@ -4,6 +4,7 @@ import { useSession } from './session';
 import { useTRPC } from './trpc';
 import { messageForError } from './errors';
 import { useAppStore } from '../store/AppContext';
+import { formatDateTimeWIB } from './dates';
 
 /** Re-renders every `intervalMs` so countdowns stay live. */
 export function useNow(intervalMs = 30_000): number {
@@ -101,6 +102,17 @@ export const WAITLIST_STATUS_LABEL = {
   LEFT: 'Keluar antrean',
   REMOVED: 'Dihapus pemilik',
 } as const;
+
+/** Notice for a WAITING entry while a room is out on offer to someone else; null when there is nothing to say. */
+export function aheadOfferNotice(entry: { status: string; aheadOffer: { expiresAt: string } | null }): string | null {
+  if (entry.status !== 'WAITING' || !entry.aheadOffer) return null;
+  return `Kamar sedang ditawarkan ke pengantre sebelum Anda sampai ${formatDateTimeWIB(entry.aheadOffer.expiresAt)}. Jika tidak diambil, Anda berikutnya.`;
+}
+
+/** "Antrean berikutnya" when first in line behind a live offer, else "Antrean #n". */
+export function queueLabel(entry: { position: number | null; aheadOffer: { expiresAt: string } | null }): string {
+  return entry.position === 1 && entry.aheadOffer ? 'Antrean berikutnya' : `Antrean #${entry.position}`;
+}
 
 /** "Tipe apa saja" for a null preference. */
 export const roomTypeLabel = (roomType: string | null) => roomType ?? 'Tipe apa saja';

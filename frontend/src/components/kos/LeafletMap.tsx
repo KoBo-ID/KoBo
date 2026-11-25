@@ -14,6 +14,7 @@ import { formatDistance, haversineMeters } from '../../utils/geo';
 import { SafeImage } from '../ui/SafeImage';
 import { formatRupiah } from '../../lib/format';
 import { SEARCH_RADIUS_METERS } from '@kobo/shared/search';
+import { ClusteredMarkers } from './ClusteredMarkers';
 
 /** A searched province / regency: its boundary (when one is stored) and bounding box, from region.outline. */
 export interface RegionOutline {
@@ -48,6 +49,30 @@ const HTML_ESCAPES: Record<string, string> = {
 };
 
 const escapeHtml = (s: string): string => s.replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]);
+
+/** Compact money: "Rp 900rb" under a million, "Rp 1,5jt" from a million up. */
+export const formatCompactRupiah = (price: number): string => {
+  const thousands = Math.round(price / 1000);
+  if (thousands < 1000) return `Rp ${thousands}rb`;
+  return `Rp ${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(price / 1000000)}jt`;
+};
+
+// One DivIcon per label and state, so a hover does not hand every marker a fresh icon.
+const priceIconCache = new Map<string, L.DivIcon>();
+const priceIconFor = (label: string, isActive: boolean): L.DivIcon => {
+  const key = `${label}|${isActive}`;
+  let icon = priceIconCache.get(key);
+  if (!icon) {
+    icon = L.divIcon({
+      className: 'kobo-price-marker-wrapper',
+      html: `<div class="kobo-price-pin ${isActive ? 'is-active' : ''}">${escapeHtml(label)}</div>`,
+      iconSize: [76, 28],
+      iconAnchor: [38, 14],
+    });
+    priceIconCache.set(key, icon);
+  }
+  return icon;
+};
 
 const gradCapSvg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -213,7 +238,9 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       const b = regionOutline.bbox;
       return CAMPUSES.filter((c) => c.coordinates.lat >= b.minLat && c.coordinates.lat <= b.maxLat && c.coordinates.lng >= b.minLng && c.coordinates.lng <= b.maxLng);
     }
-    if (!activeLocation) return CAMPUSES;
+    // SIM-009: with no location the map shows the whole country, where every campus cap would pile up over Java and
+    // intercept taps on the clustered price pins. The hint card asks the user to pick a location instead.
+    if (!activeLocation) return [];
     return CAMPUSES.filter(
       (campus) => haversineMeters(activeLocation.coordinates, campus.coordinates) <= NEARBY_CAMPUS_METERS
     );
@@ -222,10 +249,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   const center: [number, number] = activeLocation
     ? [activeLocation.coordinates.lat, activeLocation.coordinates.lng]
     : [-6.24, 106.81];
-  const formatPriceChip = (price: number) => {
-    const inJuta = price / 1000000;
-    return `Rp ${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(inJuta)}jt`;
-  };
 
   return (
     <div
@@ -350,17 +373,11 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           </Marker>
         ))}
 
+        <ClusteredMarkers>
         {kosList.map((kos) => {
           const isActive = hoveredKosId === kos.id;
 
-          const priceIcon = L.divIcon({
-            className: 'kobo-price-marker-wrapper',
-            html: `<div class="kobo-price-pin ${isActive ? 'is-active' : ''}">${escapeHtml(
-              formatPriceChip(kos.priceMonthlyStart)
-            )}</div>`,
-            iconSize: [76, 28],
-            iconAnchor: [38, 14],
-          });
+          const priceIcon = priceIconFor(formatCompactRupiah(kos.priceMonthlyStart), isActive);
 
           return (
             <Marker
@@ -424,6 +441,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
             </Marker>
           );
         })}
+        </ClusteredMarkers>
       </MapContainer>
 
       {!activeLocation && (

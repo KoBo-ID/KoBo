@@ -22,6 +22,7 @@ import {
   PRICE_MAX,
   PRICE_MIN,
   PRICE_STEP,
+  DEFAULT_FILTERS,
   SEARCH_RADIUS_METERS,
   parseSearchParams,
   serializeSearchParams,
@@ -35,7 +36,7 @@ import { VisitModal } from '../components/booking/VisitModal';
 import { KosCardSkeleton } from '../components/kos/KosCardSkeleton';
 import { CampusSearchField } from '../components/search/CampusSearchField';
 import { ErrorState } from '../components/ui/QueryState';
-import { LeafletMap } from '../components/kos/LeafletMap';
+import { LeafletMap, formatCompactRupiah } from '../components/kos/LeafletMap';
 import { Button } from '../components/ui/Button';
 import { Popover } from '../components/ui/Popover';
 import { useResizeObserver } from '../hooks/useResizeObserver';
@@ -45,11 +46,7 @@ import { averageLatLng, formatDistance, haversineMeters } from '../utils/geo';
 
 const NEARBY_CAMPUS_METERS = 3000;
 
-const formatJuta = (value: number) => {
-  const juta = value / 1000000;
-  const formatted = Number.isInteger(juta) ? `${juta}` : juta.toFixed(1).replace('.', ',');
-  return `Rp ${formatted}jt`;
-};
+const formatJuta = formatCompactRupiah;
 
 const priceFillPercent = (value: number) =>
   `${((value - PRICE_MIN) / (PRICE_MAX - PRICE_MIN)) * 100}%`;
@@ -292,6 +289,9 @@ export const Search: React.FC = () => {
   // G2-08: results for a newly typed query re-render 30 cards + the map (~780 ms on a throttled phone). Deferred, React
   // renders them interruptibly, so keystrokes that arrive meanwhile are handled first instead of queueing behind it.
   const deferredResults = useDeferredValue(search.data);
+  // The deferred copy lags one render behind search.data, so sortedKos can be [] while data has already arrived:
+  // that gap must show the skeleton, never "0 pilihan" or the empty state.
+  const listPending = searchPending || deferredResults !== search.data;
 
   // Back/forward onto this page: the browser restores the scroll before the list exists (a cold cache fetches it
   // first), so it clamps to a short page. Remember scrollY per URL and re-apply it once the results are rendered.
@@ -415,8 +415,6 @@ export const Search: React.FC = () => {
     : [];
 
   const hasActiveFilters =
-    !!activeLocation ||
-    !!filters.region ||
     genderFilter !== 'all' ||
     !!searchQuery ||
     filterDiscountOnly ||
@@ -427,7 +425,12 @@ export const Search: React.FC = () => {
     window.clearTimeout(priceTimer.current);
     setPriceDraft(null);
     setTypedInput(null);
-    setSearchParams({}, { replace: true });
+    // The place and the sort order stay; every other filter goes back to its default.
+    const { campus, loc, lat, lng, place, radius, region, sort } = filters;
+    setSearchParams(
+      serializeSearchParams({ ...DEFAULT_FILTERS, campus, loc, lat, lng, place, radius, region, sort }),
+      { replace: true },
+    );
   };
 
   const secondaryFilterCount =
@@ -626,7 +629,7 @@ export const Search: React.FC = () => {
                           onClick={handleResetFilters}
                           style={{ fontSize: 'var(--step--1)', fontWeight: 600, color: 'var(--text-muted)' }}
                         >
-                          Reset
+                          Reset filter
                         </button>
                       )}
                       <Button type="button" variant="primary" size="sm" onClick={close}>
@@ -722,7 +725,7 @@ export const Search: React.FC = () => {
                   {activeLocation ? `Kos di Sekitar ${activeLocation.label}` : 'Semua Kos'}
                 </h1>
                 <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                  {searchFailed ? null : searchPending ? (
+                  {searchFailed ? null : listPending ? (
                     'Memuat daftar kos…'
                   ) : (
                     <>
@@ -740,8 +743,8 @@ export const Search: React.FC = () => {
               />
             )}
 
-            <div className="search-cards-grid" aria-busy={searchPending} style={searchFailed ? { display: 'none' } : undefined}>
-              {searchPending && [0, 1, 2, 3, 4, 5].map((i) => <KosCardSkeleton key={i} />)}
+            <div className="search-cards-grid" aria-busy={listPending} style={searchFailed ? { display: 'none' } : undefined}>
+              {listPending && [0, 1, 2, 3, 4, 5].map((i) => <KosCardSkeleton key={i} />)}
               {sortedKos.map((kos, index) => (
                 <div key={kos.id}>
                   <ListingCard kos={kos} index={index} onOpenSurvey={setVisitKos} distance={activeLocation ? (distanceById.get(kos.id) ?? undefined) : undefined} />
@@ -749,7 +752,7 @@ export const Search: React.FC = () => {
               ))}
             </div>
 
-            {!searchPending && !searchFailed && sortedKos.length === 0 && (
+            {!listPending && !searchFailed && sortedKos.length === 0 && (
               <div
                 style={{
                   textAlign: 'center',
@@ -765,7 +768,7 @@ export const Search: React.FC = () => {
                   Coba perluas titik lokasi, naikkan batas sewa, atau kurangi kriteria filter.
                 </p>
                 <Button variant="outline" size="sm" onClick={handleResetFilters}>
-                  Reset Semua Filter
+                  Reset filter
                 </Button>
               </div>
             )}

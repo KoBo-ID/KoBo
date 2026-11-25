@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Home, Calendar, FileText, MessageSquare, ShieldCheck, Star, ClipboardList } from 'lucide-react';
+import { Home, Calendar, FileText, MessageSquare, ShieldCheck, AlertTriangle, Star, ClipboardList } from 'lucide-react';
 import type { MyReview, MyTenancy } from '../../../backend/src/trpc/router';
 import { ReviewFormModal } from '../components/kos/ReviewFormModal';
 import { InvoicePaymentActions } from '../components/booking/InvoicePaymentActions';
@@ -19,7 +19,11 @@ import { useMyWaitlist } from '../lib/waitlist';
 import { messageForError } from '../lib/errors';
 import { formatVisitDate, VISIT_SLOT_LABEL } from '../lib/visits';
 import { formatRupiah } from '../lib/format';
+import { formatDateTimeWIB } from '../lib/dates';
 import { todayWIB } from '@kobo/shared/domain';
+import { billingStateLabel } from '../lib/billingState';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { DecisionReasonText } from '../components/booking/DecisionReasonText';
 
 type TabId = 'rentals' | 'applications' | 'visits';
 const PAGE_TITLE: Record<TabId, string> = { visits: 'Jadwal Survey', applications: 'Pengajuan Sewa', rentals: 'Kamar yang Disewa' };
@@ -39,8 +43,7 @@ const formatDate = (d: string) =>
 const formatEndedWIB = (iso: string) =>
   `${new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })} WIB`;
 
-const formatExpiryWIB = (iso: string) =>
-  `${new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jakarta' })} WIB`;
+const formatExpiryWIB = (iso: string) => formatDateTimeWIB(iso);
 
 /** True once the lease end day (a WIB calendar day) has arrived. */
 const leaseOver = (d: string) => d <= todayWIB(new Date());
@@ -113,7 +116,8 @@ const MkEmpty: React.FC<{ icon: React.ReactNode; title: string; body: React.Reac
   </div>
 );
 
-type TabDef = { id: TabId; icon: React.ReactNode; name: string; count: string };
+/** count: a string once known, null while it is still loading (skeleton), undefined when signed out (no bubble). */
+type TabDef = { id: TabId; icon: React.ReactNode; name: string; count: string | null | undefined };
 
 /** Underline tabs with one sliding indicator and roving focus (arrows, Home, End). */
 const MkTabs: React.FC<{ tabs: TabDef[]; active: TabId | null; onSelect: (id: TabId) => void }> = ({ tabs, active, onSelect }) => {
@@ -121,7 +125,7 @@ const MkTabs: React.FC<{ tabs: TabDef[]; active: TabId | null; onSelect: (id: Ta
   const [bar, setBar] = useState<{ x: number; w: number } | null>(null);
   const [ready, setReady] = useState(false);
   const mounted = useRef(false);
-  const countKey = tabs.map((t) => t.count).join('|');
+  const countKey = tabs.map((t) => t.count ?? (t.count === null ? '…' : '')).join('|');
 
   useLayoutEffect(() => {
     const list = listRef.current;
@@ -173,14 +177,18 @@ const MkTabs: React.FC<{ tabs: TabDef[]; active: TabId | null; onSelect: (id: Ta
             type="button"
             aria-selected={selected}
             aria-controls="mk-panel"
-            aria-label={`${tab.name} (${tab.count})`}
+            aria-label={tab.count ? `${tab.name} (${tab.count})` : tab.name}
             tabIndex={selected || (!active && tab.id === tabs[0].id) ? 0 : -1}
             onClick={() => onSelect(tab.id)}
             className="mk-tab interactive-tap"
           >
             {tab.icon}
             <span>{tab.name}</span>
-            <span className="mk-count" aria-hidden="true">{tab.count}</span>
+            {tab.count !== undefined && (
+              <span className="mk-count" aria-hidden="true">
+                {tab.count ?? <span className="mk-count__skeleton" />}
+              </span>
+            )}
           </button>
         );
       })}
@@ -200,7 +208,9 @@ const MonthTimeline: React.FC<{ t: MyTenancy; nextId?: string }> = ({ t, nextId 
   <div className="mk-timeline" aria-hidden="true">
     <div className="mk-timeline__bars">
       {t.invoices.map((inv) => {
-        const state = inv.status === 'PAID' ? 'paid' : t.status === 'ENDED' || t.endCause !== null ? 'ended' : inv.id === nextId ? 'due' : 'later';
+        const b = inv.billingState;
+        const state =
+          b === 'PAID' ? 'paid' : b === 'OVERDUE' ? 'overdue' : b === 'WAIVED' || b === 'NOT_BILLED' || t.status === 'ENDED' || t.endCause !== null ? 'ended' : inv.id === nextId ? 'due' : 'later';
         return <span key={inv.id} className={`mk-timeline__bar${state === 'later' ? '' : ` mk-timeline__bar--${state}`}`} />;
       })}
     </div>
@@ -232,10 +242,12 @@ export const MyKos: React.FC = () => {
   const waitlistQuery = useMyWaitlist(); // same query WaitlistSection reads, so no extra request
   const visits = me ? (visitsQuery.data ?? []) : [];
   const scheduledCount = visits.filter((v) => v.status === 'SCHEDULED').length;
-  // A count is shown only once its query has answered; while the session or the query is loading, or after a failure, it reads "–", never "(0)".
-  const countLabel = (q: { isSuccess: boolean }, n: number) => ((!me && !sessionLoading) || q.isSuccess ? String(n) : '–');
+  // Signed out: no count bubble. Signed in: the number once its query answered, else null (an inline skeleton), never "(0)".
+  const countLabel = (q: { isSuccess: boolean }, n: number): string | null | undefined => (!me && !sessionLoading ? undefined : me && q.isSuccess ? String(n) : null);
+  const [cancelTarget, setCancelTarget] = useState<{ id: string; kos: string; date: string; slot: string } | null>(null);
   const cancelVisit = useMutation(
     trpc.visit.cancel.mutationOptions({
+      onSettled: () => setCancelTarget(null),
       onSuccess: () => {
         void qc.invalidateQueries({ queryKey: trpc.visit.mine.queryKey() });
         addToast('Jadwal survey telah dibatalkan.', 'info');
@@ -247,9 +259,16 @@ export const MyKos: React.FC = () => {
   // 'REFUND' (no underscore) so a finished REFUNDED stays visible after reload, not only REFUND_PENDING / REFUND_FAILED.
   const refunding = (t: MyTenancy) => t.invoices.some((i) => i.latestPayment?.status.startsWith('REFUND'));
   const allTenancies = me ? (mine.data ?? []) : [];
+  // An ended tenancy that still has an overdue invoice stays listed: the arrears must not vanish (SIM-001).
   const rentals = allTenancies.filter(
-    (t) => t.status === 'ACTIVE' || (t.status === 'PENDING' && t.derivedStatus === 'booking') || t.invoices.some((i) => i.status === 'PAID') || refunding(t),
+    (t) =>
+      t.status === 'ACTIVE' ||
+      (t.status === 'PENDING' && t.derivedStatus === 'booking') ||
+      t.invoices.some((i) => i.status === 'PAID') ||
+      refunding(t) ||
+      (t.status === 'ENDED' && t.invoices.some((i) => i.billingState === 'OVERDUE')),
   );
+  const campus = me?.studentVerification;
   const liveCardFor = (a: { tenancyId?: string | null; kos: { id: string }; room: { roomNumber: string } }) => {
     if (a.tenancyId) {
       const t = rentals.find((r) => r.id === a.tenancyId);
@@ -340,7 +359,13 @@ export const MyKos: React.FC = () => {
   return (
     <div className="app-container my-kos">
       <div className="mk-head">
-        <h1 className="page-title">{activeTab ? PAGE_TITLE[activeTab] : 'Kos Saya'}</h1>
+        {activeTab ? (
+          <h1 className="page-title">{PAGE_TITLE[activeTab]}</h1>
+        ) : (
+          <div role="status" aria-label="Memuat Kos Saya">
+            <Skeleton width="14rem" height="2.2rem" />
+          </div>
+        )}
       </div>
 
       <MkTabs tabs={tabs} active={activeTab} onSelect={setActiveTab} />
@@ -369,7 +394,11 @@ export const MyKos: React.FC = () => {
                 // A tenancy that is over has no "next" bill, whatever its unpaid invoices say.
                 const over = t.endCause !== null;
                 const nextInvoice = over ? undefined : t.invoices.find((i) => i.status === 'UNPAID');
-                const unbilled = t.endCause === 'HOLD_LAPSED' ? 'Tidak ditagih, masa tahan berakhir' : t.endCause === 'CANCELLED_BY_OWNER' ? 'Tidak ditagih, dibatalkan pemilik' : 'Tidak ditagih, sewa berakhir';
+                // Ended with arrears: the debt stays visible on the card (SIM-001).
+                const arrears = t.status === 'ENDED' ? t.invoices.filter((i) => i.billingState === 'OVERDUE').reduce((sum, i) => sum + i.amount, 0) : 0;
+                const hasArrears = arrears > 0;
+                const cardBadge = hasArrears ? { label: 'Selesai · Ada tunggakan', tone: 'overdue' as Tone } : badge;
+                const today = todayWIB(new Date());
                 const firstReceipt = t.invoices.find((i) => i.receiptNumber !== null);
                 return (
                   <div key={t.id} data-testid="tenancy-card" data-status={t.status} className="mk-pass">
@@ -377,7 +406,7 @@ export const MyKos: React.FC = () => {
                       <div className="mk-pass__id">
                         {t.kos.image && <SafeImage src={t.kos.image} alt={t.kos.name} className="mk-pass__img" />}
                         <div style={{ minWidth: 0 }}>
-                          <Badge tone={badge.tone}>{badge.label}</Badge>
+                          <Badge tone={cardBadge.tone}>{cardBadge.label}</Badge>
                           <h3 className="mk-pass__name">{t.kos.name}</h3>
                           <p className="mk-pass__meta">
                             Kamar <strong>{t.room.roomNumber}</strong> (Lt. {t.room.floor}) · {t.kos.address}
@@ -394,7 +423,11 @@ export const MyKos: React.FC = () => {
                     <div className="mk-facts">
                       <Fact label="Mulai Sewa" value={formatDate(t.startDate)} />
                       <Fact label="Durasi Sewa" value={`${t.durationMonths} Bulan`} />
-                      <Fact label={t.status === 'PENDING' ? 'Tagihan Pertama' : 'Jatuh Tempo Berikutnya'} value={nextInvoice ? formatDate(nextInvoice.dueDate) : over ? 'Tidak ada' : 'Lunas'} strong />
+                      {hasArrears ? (
+                        <Fact label="Tunggakan" value={formatRupiah(arrears)} strong />
+                      ) : (
+                        <Fact label={t.status === 'PENDING' ? 'Tagihan Pertama' : 'Jatuh Tempo Berikutnya'} value={nextInvoice ? formatDate(nextInvoice.dueDate) : over ? 'Tidak ada' : 'Lunas'} strong />
+                      )}
                       <Fact label="Pemilik Kos" value={t.kos.ownerName} />
                     </div>
                     {t.status === 'ACTIVE' && t.leaseEndDate && (
@@ -408,34 +441,51 @@ export const MyKos: React.FC = () => {
                     <MonthTimeline t={t} nextId={nextInvoice?.id} />
 
                     <div role="table" aria-label="Tagihan" className="mk-invoices">
-                      {t.invoices.map((inv, i) => (
-                        <div key={inv.id} role="row" className="invoice-row" style={{ borderTop: i ? '1px solid var(--border-subtle)' : undefined }}>
-                          <span role="cell">Bulan {i + 1} · jatuh tempo {formatDate(inv.dueDate)}</span>
-                          <span role="cell" className="invoice-row__meta">
-                            <strong>{formatRupiah(inv.amount)}</strong>
-                            <span className={`mk-invoice-status${inv.status === 'PAID' ? ' mk-invoice-status--paid' : ''}`}>{inv.status === 'PAID' ? 'Lunas' : over ? unbilled : 'Belum dibayar'}</span>
-                            <InvoicePaymentActions
-                              invoice={inv}
-                              returnedPaymentId={returnedPayment && (inv.activePayment?.id === returnedPayment || inv.latestPayment?.id === returnedPayment) ? returnedPayment : undefined}
-                              returnedResult={returnedResult}
-                              onResolved={clearPaymentParams}
-                            />
-                            {inv.receiptNumber !== null && (
-                              <Link to={`/kuitansi/${inv.receiptNumber}`} className="mk-link">{inv.receiptNo}</Link>
-                            )}
-                          </span>
-                        </div>
-                      ))}
+                      {t.invoices.map((inv, i) => {
+                        const bl = billingStateLabel(inv.billingState, { dueDate: inv.dueDate, today, endCause: t.endCause, status: inv.status });
+                        const returnedHere = returnedPayment && (inv.activePayment?.id === returnedPayment || inv.latestPayment?.id === returnedPayment) ? returnedPayment : undefined;
+                        // Back from checkout and not yet confirmed by the server: say so instead of "Belum dibayar" (SIM-016).
+                        const confirming = !!returnedHere && returnedResult === 'success' && inv.status !== 'PAID';
+                        return (
+                          <div key={inv.id} role="row" className="invoice-row" style={{ borderTop: i ? '1px solid var(--border-subtle)' : undefined }}>
+                            <span role="cell">Bulan {i + 1} · jatuh tempo {formatDate(inv.dueDate)}</span>
+                            <span role="cell" className="invoice-row__meta">
+                              <strong>{formatRupiah(inv.amount)}</strong>
+                              <span className={`mk-invoice-status${confirming ? '' : bl.tone === 'paid' ? ' mk-invoice-status--paid' : bl.tone === 'overdue' ? ' mk-invoice-status--overdue' : bl.tone === 'muted' ? ' mk-invoice-status--muted' : ''}`}>
+                                {confirming ? 'Menunggu konfirmasi' : bl.label}
+                                {!confirming && bl.srSuffix && <span className="sr-only">, {bl.srSuffix}</span>}
+                              </span>
+                              <InvoicePaymentActions
+                                invoice={inv}
+                                returnedPaymentId={returnedHere}
+                                returnedResult={returnedResult}
+                                onResolved={clearPaymentParams}
+                              />
+                              {inv.receiptNumber !== null && (
+                                <Link to={`/kuitansi/${inv.receiptNumber}`} className="mk-link">{inv.receiptNo}</Link>
+                              )}
+                              {inv.billingState === 'WAIVED' && inv.waiverReason && (
+                                <span className="mk-row__note mk-invoice-note">Alasan pemilik: {inv.waiverReason}</span>
+                              )}
+                              {t.status === 'ENDED' && inv.billingState === 'OVERDUE' && (
+                                <span className="mk-row__note mk-invoice-note">Bayar langsung ke pemilik, lalu minta pemilik mencatatnya di KoBo.</span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
 
                     <div className="mk-pass__foot">
-                      <div className="mk-pass__note">
-                        <ShieldCheck size={16} />
+                      <div className={`mk-pass__note${t.status === 'ENDED' && hasArrears ? ' mk-pass__note--late' : ''}`}>
+                        {t.status === 'ENDED' && hasArrears ? <AlertTriangle size={16} aria-hidden="true" /> : <ShieldCheck size={16} />}
                         <span>
                           {t.endCause === 'HOLD_LAPSED'
                             ? 'Masa tahan kamar sudah berakhir sebelum tagihan pertama lunas.'
                             : t.endCause === 'CANCELLED_BY_OWNER'
                               ? `Pemilik membatalkan pemesanan ini${t.endedAt ? ` pada ${formatEndedWIB(t.endedAt)}` : ''}.`
+                              : t.status === 'ENDED' && hasArrears
+                                ? `Sewa berakhir${t.endedAt ? ` pada ${formatEndedWIB(t.endedAt)}` : ''}. Masih ada tunggakan ${formatRupiah(arrears)} yang perlu dibayar ke pemilik.`
                               : t.status === 'ENDED'
                                 ? `Sewa berakhir${t.endedAt ? ` pada ${formatEndedWIB(t.endedAt)}` : ''}`
                                 : t.status === 'PENDING' && t.expiresAt
@@ -521,9 +571,23 @@ export const MyKos: React.FC = () => {
                             <p className="mk-row__meta">Kamar {application.room.roomNumber} · mulai {formatDate(application.startDate)} · {application.durationMonths} bulan</p>
                             {application.status === 'PENDING' && <p className="mk-row__note">Kamar belum ditahan. Pemilik sedang meninjau pengajuan.</p>}
                             {application.status === 'APPROVED' && <p className={`mk-row__note${liveCardFor(application) ? ' mk-row__note--good' : ''}`}>{approvedNote(application)}</p>}
+                            {application.status === 'REJECTED' && <DecisionReasonText reason={application.decisionReason} note={application.decisionNote} />}
                           </div>
                         </div>
-                        <ButtonLink to={`/kos/${application.kos.id}`} className="application-card__action" variant="outline" size="sm">Lihat Kos</ButtonLink>
+                        {application.status === 'REJECTED' ? (
+                          <div className="mk-row__actions">
+                            <ButtonLink
+                              to={campus?.campusId ? `/search?campus=${encodeURIComponent(campus.campusId)}` : '/search'}
+                              variant="primary"
+                              size="sm"
+                            >
+                              {campus?.campusId && campus.campusName ? `Cari kos lain di sekitar ${campus.campusName}` : 'Cari kos lain'}
+                            </ButtonLink>
+                            <ButtonLink to={`/kos/${application.kos.id}`} variant="outline" size="sm">Lihat Kos</ButtonLink>
+                          </div>
+                        ) : (
+                          <ButtonLink to={`/kos/${application.kos.id}`} className="application-card__action" variant="outline" size="sm">Lihat Kos</ButtonLink>
+                        )}
                       </div>
                     );
                   })}
@@ -579,7 +643,7 @@ export const MyKos: React.FC = () => {
                       <div className="mk-row__actions">
                         <ButtonLink to={`/kos/${vis.kos.id}`} variant="outline" size="sm">Lihat Kos</ButtonLink>
                         {vis.status === 'SCHEDULED' && (
-                          <Button variant="ghost" size="sm" isLoading={cancelVisit.isPending && cancelVisit.variables?.visitId === vis.id} disabled={cancelVisit.isPending} onClick={() => cancelVisit.mutate({ visitId: vis.id })} style={{ color: 'var(--status-overdue-text)' }}>
+                          <Button variant="ghost" size="sm" isLoading={cancelVisit.isPending && cancelVisit.variables?.visitId === vis.id} disabled={cancelVisit.isPending} onClick={() => setCancelTarget({ id: vis.id, kos: vis.kos.name, date: formatVisitDate(vis.date), slot: VISIT_SLOT_LABEL[vis.timeSlot] })} style={{ color: 'var(--status-overdue-text)' }}>
                             Batalkan Survey
                           </Button>
                         )}
@@ -602,6 +666,17 @@ export const MyKos: React.FC = () => {
         </div>
       </section>
 
+      {cancelTarget && (
+        <ConfirmDialog
+          title="Batalkan survey?"
+          message={`Survey ke ${cancelTarget.kos} pada ${cancelTarget.date}, sesi ${cancelTarget.slot} akan dibatalkan. Pemilik akan melihat pembatalan ini.`}
+          confirmLabel="Batalkan survey"
+          danger
+          busy={cancelVisit.isPending}
+          onConfirm={() => cancelVisit.mutate({ visitId: cancelTarget.id })}
+          onCancel={() => setCancelTarget(null)}
+        />
+      )}
       {reviewing && <ReviewFormModal onClose={() => setReviewing(null)} {...reviewing} />}
     </div>
   );

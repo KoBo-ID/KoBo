@@ -199,11 +199,19 @@
 .mk-timeline__bar--paid { background: var(--status-paid); }
 .mk-timeline__bar--due { background: var(--status-due); }
 .mk-timeline__bar--ended { background: var(--bg-muted); }
+.mk-timeline__bar--overdue { background: var(--status-overdue); }
 .mk-timeline__labels { display: flex; justify-content: space-between; font-size: var(--step--2); color: var(--text-muted); }
 
 .mk-invoices { display: flex; flex-direction: column; font-size: var(--step--1); }
 .mk-invoice-status { font-weight: 600; color: var(--text-muted); }
 .mk-invoice-status--paid { color: var(--status-paid-text); }
+.mk-invoice-status--overdue { color: var(--status-overdue-text); font-weight: 700; }
+.mk-invoice-status--muted { color: var(--text-muted); }
+.mk-invoice-note { flex-basis: 100%; text-align: right; }
+@media (width < 40rem) { .mk-invoice-note { text-align: left; } }
+.mk-count__skeleton { display: inline-block; width: 0.9rem; height: 0.75rem; vertical-align: middle; border-radius: var(--radius-xs); background: var(--border-strong); opacity: 0.6; animation: mk-count-pulse 1.2s ease-in-out infinite; }
+@keyframes mk-count-pulse { 50% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) { .mk-count__skeleton { animation: none; } }
 .mk-link { color: var(--primary); font-weight: 600; display: inline-flex; align-items: center; min-block-size: 24px; } /* G2-14: WCAG 2.5.8 target */
 
 .mk-pass__foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-xs); }
@@ -235,3 +243,4 @@
   .mk-row__actions button { width: 100%; }
 }
 
+.mk-pass__note--late { color: var(--status-overdue-text); }

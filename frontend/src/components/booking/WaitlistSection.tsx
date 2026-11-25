@@ -4,7 +4,7 @@ import { Hourglass } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { SafeImage } from '../ui/SafeImage';
 import { OfferBanner } from '../kos/detail/WaitlistBox';
-import { useMyWaitlist, roomTypeLabel, useWaitlistActions, WAITLIST_STATUS_LABEL } from '../../lib/waitlist';
+import { aheadOfferNotice, queueLabel, useMyWaitlist, roomTypeLabel, useWaitlistActions, WAITLIST_STATUS_LABEL } from '../../lib/waitlist';
 
 /** "Daftar Tunggu" on /my-kos: live entries first (an offer shows its banner), the history folded away. */
 export const WaitlistSection: React.FC = () => {
@@ -41,10 +41,15 @@ export const WaitlistSection: React.FC = () => {
                   {e.status === 'WAITING' && (
                     <>
                       {' · '}
-                      <strong style={{ color: 'var(--primary)' }}>Antrean #{e.position}</strong>
+                      <strong style={{ color: 'var(--primary)' }}>{queueLabel(e)}</strong>
                     </>
                   )}
                 </p>
+                {aheadOfferNotice(e) && (
+                  <p data-testid="waitlist-ahead-offer" role="status" style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: '0.35rem' }}>
+                    {aheadOfferNotice(e)}
+                  </p>
+                )}
               </div>
             </div>
             {e.status === 'WAITING' && (

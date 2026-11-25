@@ -7,13 +7,14 @@ import { PRICE_MAX, SEARCH_LIMIT, SEARCH_RADIUS_METERS } from '@kobo/shared/sear
 import type { RoomStatus } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
 import type { PrismaClient } from '../db/client.ts'
+import { demoIsolationOn } from '../demoIsolation.ts'
 import { Prisma } from '../generated/prisma/client.ts'
 import { liveOffer, roomClaims } from '../waitlist.ts'
 import { loadNearby } from '../placeCatalog.ts'
 import type { NearbyView } from '../placeCatalog.ts'
 import { haversineSql, queryCards } from './kosQueries.ts'
 import type { KosCard } from './kosQueries.ts'
-import { publicProcedure, router } from './trpc.ts'
+import { publicProcedure, router, type Context } from './trpc.ts'
 
 export type { KosCard } from './kosQueries.ts'
 
@@ -83,6 +84,8 @@ export interface OwnerPublic {
 }
 
 export interface KosDetail extends KosCard {
+  /** True when DEMO_ISOLATION is on and the viewer (anonymous counts as non-demo) is on the other side of the demo split from this listing. */
+  demoBlocked: boolean
   address: string
   applicationFee: number
   privateAmenities: string[]
@@ -108,9 +111,21 @@ const REVIEW_LIMIT = 50
 const round1 = (n: number | null | undefined) => (n == null ? null : Math.round(n * 10) / 10)
 const dateOnly = (d: Date) => d.toISOString().slice(0, 10)
 
+/** True when DEMO_ISOLATION is active and the viewer is not a demo user (including anonymous callers) (SIM-011). */
+async function shouldExcludeDemoListings(ctx: Context): Promise<boolean> {
+  if (!demoIsolationOn()) return false
+  const session = await ctx.getSession()
+  if (!session) return true
+  const u = session.user as { id: string; isDemo?: boolean }
+  if (u.isDemo === true) return false
+  const row = await ctx.prisma.user.findUnique({ where: { id: u.id }, select: { isDemo: true } })
+  return row?.isDemo !== true
+}
+
 export const kosRouter = router({
-  list: publicProcedure.input(kosListInput).query(({ ctx, input }): Promise<KosCard[]> => {
-    return queryCards(ctx.prisma, { mediaBase: ctx.storage.publicUrl(''), limit: input?.limit ?? SEARCH_LIMIT })
+  list: publicProcedure.input(kosListInput).query(async ({ ctx, input }): Promise<KosCard[]> => {
+    const excludeDemo = await shouldExcludeDemoListings(ctx)
+    return queryCards(ctx.prisma, { mediaBase: ctx.storage.publicUrl(''), limit: input?.limit ?? SEARCH_LIMIT, excludeDemo })
   }),
 
   /**
@@ -118,6 +133,7 @@ export const kosRouter = router({
    * No pagination and no bbox (spec section 10): the list and the map render the same array.
    */
   search: publicProcedure.input(kosSearchInput).query(async ({ ctx, input }): Promise<KosSearchCard[]> => {
+    const excludeDemo = await shouldExcludeDemoListings(ctx)
     const { q, lat, lng, radius, regionCode, gender, maxPrice, discountOnly, surveyOnly, sort } = input
     const geo = lat !== undefined && lng !== undefined
     const dist = geo ? haversineSql(lat, lng) : null
@@ -156,6 +172,7 @@ export const kosRouter = router({
       where: conds.length ? Prisma.join(conds, ' AND ') : undefined,
       orderBy,
       limit: SEARCH_LIMIT,
+      excludeDemo,
     })
   }),
 
@@ -238,8 +255,10 @@ export const kosRouter = router({
         return ka < kb ? -1 : ka > kb ? 1 : 0
       })
 
+    const viewerIsDemo = !(await shouldExcludeDemoListings(ctx))
     return {
       ...card,
+      demoBlocked: demoIsolationOn() && card.isDemoListing !== viewerIsDemo,
       address: kos.address,
       applicationFee: kos.applicationFee,
       privateAmenities: kos.privateAmenities,

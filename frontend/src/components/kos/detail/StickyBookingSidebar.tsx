@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { useSession } from '../../../lib/session';
+import { useTRPC } from '../../../lib/trpc';
 import { DISCOUNT_LABEL, leaseQuote } from '@kobo/shared/domain';
 import { PartnerCampusLink, useMyDiscountStatus } from '../../booking/CampusDiscountCard';
 import { ClipboardList, Calendar, GraduationCap, ShieldCheck } from 'lucide-react';
 import type { WaitlistStatusResult } from '../../../../../backend/src/trpc/router';
 import { Room, Kos } from '../../../types';
-import { Button } from '../../ui/Button';
+import { Button, ButtonLink } from '../../ui/Button';
 import { JoinCard, OfferBanner, QueuedCard } from './WaitlistBox';
 import { StudentOnlyNote, useNeedsVerification, VerifyPrompt } from '../../booking/VerifyPrompt';
 import { formatRupiah } from '../../../lib/format';
@@ -25,6 +28,8 @@ interface StickyBookingSidebarProps {
     onBookOffer: (roomId: string) => void;
     onBackToBooking: () => void;
   };
+  /** Server verdict: demo and real accounts are kept apart, so no booking actions are offered. */
+  demoBlocked?: boolean;
 }
 
 const FeeRow: React.FC<{ label: React.ReactNode; note?: React.ReactNode; value: string; accent?: boolean; strong?: boolean; testId?: string }> = ({ label, note, value, accent, strong, testId }) => (
@@ -43,8 +48,14 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
   onGoToCheckout,
   onOpenSurveyModal,
   waitlist,
+  demoBlocked = false,
 }) => {
   const navigate = useNavigate();
+  const trpc = useTRPC();
+  const { me } = useSession();
+  // A PENDING request for this kos replaces "Ajukan Sewa" with its status (the list is cached app-wide).
+  const myApplications = useQuery({ ...trpc.application.mine.queryOptions(), enabled: !!me && !demoBlocked });
+  const hasPendingApplication = !!myApplications.data?.some((a) => a.kos.id === kos.id && a.status === 'PENDING');
   const discountStatus = useMyDiscountStatus();
   const affiliated = !!discountStatus.data?.affiliated;
   const notAffiliated = !!discountStatus.data?.verified && !affiliated;
@@ -62,11 +73,11 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
 
   // Daftar tunggu: an offer to me wins, then my queue place, then the join form (full kos, or a full type picked in the list).
   const { status } = waitlist;
-  const mine = status?.mine ?? null;
+  const mine = demoBlocked ? null : (status?.mine ?? null);
   const offerEntry = mine?.status === 'OFFERED' ? mine : null;
   const queuedEntry = mine?.status === 'WAITING' ? mine : null;
   const full = status?.full ?? false;
-  const showJoin = !!status && !offerEntry && !queuedEntry && (full || waitlist.joinType !== undefined);
+  const showJoin = !demoBlocked && !!status && !offerEntry && !queuedEntry && (full || waitlist.joinType !== undefined);
   const showBooking = !showJoin && !(queuedEntry && full);
 
   // Phones: once the booking box has scrolled out of view, a thin bar keeps the price and both actions in reach.
@@ -92,7 +103,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
     window.addEventListener('resize', update);
     return () => { ro?.disconnect(); window.removeEventListener('resize', update); };
   }, []);
-  const phoneBarEligible = showBooking && !offerEntry && isVacant;
+  const phoneBarEligible = showBooking && !offerEntry && isVacant && !demoBlocked && !hasPendingApplication;
   useEffect(() => {
     const el = asideRef.current;
     if (!el || !phoneBarEligible || typeof IntersectionObserver === 'undefined') {
@@ -156,6 +167,16 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             Kamar {selectedRoom.roomNumber} ({selectedRoom.roomType})
           </span>
+          {hasDiscount && affiliated && !!me && quote.discount > 0 && (
+            <p data-testid="sidebar-price-eligible" style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: 'var(--accent-strong)', fontWeight: 600 }}>
+              Harga Anda: {formatRupiah(selectedRoom.priceMonthly - quote.discount)} / bulan ({DISCOUNT_LABEL}).
+            </p>
+          )}
+          {hasDiscount && !affiliated && !notAffiliated && (
+            <p data-testid="sidebar-price-discount-hint" style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Mahasiswa kampus mitra hemat {formatRupiah(kos.studentDiscountAmount)} per bulan setelah verifikasi.
+            </p>
+          )}
         </div>
 
         {/* Lease duration */}
@@ -224,13 +245,26 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
         </>)}
 
         {/* Strict CTA Visual Hierarchy: Exactly ONE Dominant Primary CTA (with an offer, the banner's "Ajukan Sewa" is it) */}
+        {demoBlocked ? (
+          <p data-testid="sidebar-demo-blocked" style={{ margin: 0, fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>
+            Tidak tersedia untuk akun Anda
+          </p>
+        ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {showBooking && !offerEntry && needsVerification && isVacant && (
-            <Button variant="primary" size="lg" fullWidth onClick={() => navigate(`/profile?next=${encodeURIComponent(window.location.pathname)}`)} icon={<GraduationCap size={18} />} style={{ minHeight: '44px', padding: '0.65rem 1.25rem' }}>
+          {showBooking && !offerEntry && hasPendingApplication && (
+            <div data-testid="sidebar-application-pending" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              <p role="status" style={{ margin: 0, fontSize: 'var(--step--1)', color: 'var(--text-main)', lineHeight: 1.5 }}>
+                Anda sudah mengajukan sewa kos ini. Pemilik sedang meninjau pengajuan Anda.
+              </p>
+              <ButtonLink to="/my-kos" variant="primary" size="lg" fullWidth style={{ minHeight: '44px' }}>Lihat pengajuan</ButtonLink>
+            </div>
+          )}
+          {showBooking && !offerEntry && !hasPendingApplication && needsVerification && isVacant && (
+            <Button variant="primary" size="lg" fullWidth onClick={() => navigate(`/profile/verifikasi?next=${encodeURIComponent(window.location.pathname)}`)} icon={<GraduationCap size={18} />} style={{ minHeight: '44px', padding: '0.65rem 1.25rem' }}>
               Verifikasi status mahasiswa
             </Button>
           )}
-          {showBooking && !offerEntry && !(needsVerification && isVacant) && (
+          {showBooking && !offerEntry && !hasPendingApplication && !(needsVerification && isVacant) && (
             <Button
               variant="primary"
               size="lg"
@@ -256,10 +290,11 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
             Jadwalkan Survey Gratis
           </Button>
         </div>
+        )}
 
-        <StudentOnlyNote />
+        {!demoBlocked && <StudentOnlyNote />}
 
-        {showBooking && !offerEntry && isVacant && (
+        {!demoBlocked && !hasPendingApplication && showBooking && !offerEntry && isVacant && (
           <p style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', margin: '-0.25rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             <ShieldCheck size={15} color="var(--primary)" style={{ flexShrink: 0 }} aria-hidden="true" />
             <span>Mengajukan sewa tidak menahan kamar dan tidak memindahkan uang. Anda membayar setelah pemilik menyetujui.</span>
@@ -278,7 +313,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           Survey
         </Button>
         {needsVerification ? (
-          <Button variant="primary" size="md" onClick={() => navigate(`/profile?next=${encodeURIComponent(window.location.pathname)}`)} style={{ minHeight: '44px' }}>Verifikasi</Button>
+          <Button variant="primary" size="md" onClick={() => navigate(`/profile/verifikasi?next=${encodeURIComponent(window.location.pathname)}`)} style={{ minHeight: '44px' }}>Verifikasi</Button>
         ) : (
           <Button variant="primary" size="md" onClick={onGoToCheckout} style={{ minHeight: '44px' }}>
             Ajukan

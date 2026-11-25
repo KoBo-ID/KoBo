@@ -30,6 +30,8 @@ export interface MyWaitlistEntry {
   offer: WaitlistOffer | null
   applicationId: string | null
   applicationStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN' | null
+  /** WAITING only: deadline of a live offer to another student for a room this entry competes for. Never says who. */
+  aheadOffer: { expiresAt: string } | null
 }
 
 export interface WaitlistStatusResult {
@@ -95,7 +97,17 @@ type EntryRow = Prisma.WaitlistEntryGetPayload<{ include: typeof entryInclude }>
 async function toMyEntries(db: Tx, storage: Storage, rows: EntryRow[], now: Date): Promise<MyWaitlistEntry[]> {
   const kosIds = [...new Set(rows.map((r) => r.kosId))]
   const waiting = await db.waitlistEntry.findMany({ where: { kosId: { in: kosIds }, status: 'WAITING' }, select: { id: true, kosId: true, roomType: true, createdAt: true } })
+  // Live offers held by others: a WAITING entry is told when a room it competes for is out on offer (never to whom).
+  const offers = waiting.length
+    ? await db.waitlistEntry.findMany({ where: { kosId: { in: kosIds }, ...liveOffer(now) }, select: { userId: true, kosId: true, offerExpiresAt: true, offeredRoom: { select: { type: true } } } })
+    : []
   return rows.map((r): MyWaitlistEntry => {
+    const ahead =
+      r.status === 'WAITING'
+        ? offers
+            .filter((o) => o.kosId === r.kosId && o.userId !== r.userId && o.offerExpiresAt && o.offeredRoom && competes(r.roomType, o.offeredRoom.type))
+            .sort((a, b) => a.offerExpiresAt!.getTime() - b.offerExpiresAt!.getTime())[0]
+        : undefined
     // A PENDING application for the offered room holds the offer past its deadline (A-007); a dead one ends it.
     const appStatus = r.application?.status
     const lapsed = r.status === 'OFFERED' && (appStatus === 'REJECTED' || appStatus === 'WITHDRAWN' || (appStatus !== 'PENDING' && (r.offerExpiresAt === null || r.offerExpiresAt < now)))
@@ -114,6 +126,7 @@ async function toMyEntries(db: Tx, storage: Storage, rows: EntryRow[], now: Date
           : null,
       applicationId: r.applicationId ?? null,
       applicationStatus: r.application?.status ?? null,
+      aheadOffer: ahead ? { expiresAt: ahead.offerExpiresAt!.toISOString() } : null,
     }
   })
 }

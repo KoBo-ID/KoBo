@@ -95,12 +95,19 @@ export const campusRouter = router({
   /** Nationwide campus typeahead from our own tables: ILIKE prefix on name and short name, plus aliases. */
   search: publicProcedure.input(campusSearchInput).query(async ({ ctx, input }): Promise<CampusView[]> => {
     const q = likeEscape(input.q.toLowerCase())
+    const scopeFilter =
+      input.scope === 'institution'
+        ? Prisma.sql`"parentId" IS NULL AND NOT (id <> 'binus' AND (id LIKE 'binus-%' OR lower(name) LIKE '%binus%' OR lower(name) LIKE '%bina nusantara%'))`
+        : Prisma.sql`(kind IS NULL OR kind <> 'institution')`
     return ctx.prisma.$queryRaw<CampusView[]>(Prisma.sql`
       SELECT id, name, "shortName", city, lat, lng, kind
       FROM "Campus"
-      WHERE lower(name) LIKE ${`%${q}%`} ESCAPE '\\' OR lower("shortName") LIKE ${`${q}%`} ESCAPE '\\' OR lower(city) = ${input.q.toLowerCase()}
-         OR EXISTS (SELECT 1 FROM unnest(aliases) a WHERE lower(a) LIKE ${`${q}%`} ESCAPE '\\')
-      ORDER BY (lower("shortName") = ${input.q.toLowerCase()}) DESC, (lower(name) LIKE ${`${q}%`} ESCAPE '\\') DESC, name
+      WHERE ${scopeFilter}
+        AND (
+          lower(name) LIKE ${`%${q}%`} ESCAPE '\\' OR lower("shortName") LIKE ${`${q}%`} ESCAPE '\\' OR lower(city) = ${input.q.toLowerCase()}
+          OR EXISTS (SELECT 1 FROM unnest(aliases) a WHERE lower(a) LIKE ${`${q}%`} ESCAPE '\\')
+        )
+      ORDER BY (kind = 'institution') DESC, (lower("shortName") = ${input.q.toLowerCase()}) DESC, (lower(name) LIKE ${`${q}%`} ESCAPE '\\') DESC, name
       LIMIT ${input.limit}`)
   }),
 
@@ -112,6 +119,7 @@ export const campusRouter = router({
       SELECT id, name, "shortName", city, lat, lng, kind
       FROM "Campus"
       WHERE lat BETWEEN ${input.minLat} AND ${input.maxLat} AND lng BETWEEN ${input.minLng} AND ${input.maxLng}
+        AND (kind IS NULL OR kind <> 'institution')
       ORDER BY (lat - ${cLat}) ^ 2 + (lng - ${cLng}) ^ 2
       LIMIT ${input.limit}`)
   }),
@@ -130,8 +138,9 @@ export const campusRouter = router({
     if (!user) return { campusId: null, campusName: null, affiliated: false, verified: false }
     const verified = isStudentVerified(user, new Date())
     const campus = user.verifiedCampusId ? await ctx.prisma.campus.findUnique({ where: { id: user.verifiedCampusId }, select: { id: true, name: true, parentId: true } }) : null
+    const parent = campus?.parentId ? await ctx.prisma.campus.findUnique({ where: { id: campus.parentId }, select: { name: true } }) : null
     const affiliated = verified && !!campus && isAffiliatedCampus(campus, await loadAffiliatedSet(ctx.prisma))
-    return { campusId: campus?.id ?? null, campusName: campus?.name ?? null, affiliated, verified }
+    return { campusId: campus?.id ?? null, campusName: parent?.name ?? campus?.name ?? null, affiliated, verified }
   }),
 })
 

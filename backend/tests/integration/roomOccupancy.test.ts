@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { DEMO_TEMAN_CONNECTION_ID } from '../../src/demo.ts'
 import { resetDemo } from '../../src/demoReset.ts'
 import { resetDb } from '../../src/db/seed.ts'
-import { callerFor, DEMO_STUDENT_ID, prisma } from '../helpers.ts'
+import { callerFor, DEMO_STUDENT_ID, DEMO_TEMAN_A_ID, DEMO_TEMAN_B_ID, prisma } from '../helpers.ts'
 import { err, makeKos, roomInput } from './gap-helpers.ts'
 
 beforeEach(() => resetDb(prisma))
@@ -73,6 +74,7 @@ describe('matching seed and demo reset', () => {
     connections: await prisma.partnerConnection.count(),
     messages: await prisma.partnerMessage.count(),
     readStates: await prisma.connectionReadState.count(),
+    shortlist: await prisma.sharedShortlistItem.count(),
   })
 
   it('seeds profiles, one pending request and one live connection with messages for the demo student', async () => {
@@ -89,6 +91,33 @@ describe('matching seed and demo reset', () => {
     expect(conns[0]!.userAId < conns[0]!.userBId).toBe(true)
     // Every seeded profile belongs to a verified student.
     expect(await prisma.matchingProfile.count({ where: { user: { campusEmailVerifiedAt: null, isDemo: false } } })).toBe(0)
+  })
+
+  it('seeds the two Teman Sekamar demo accounts pre-connected with chat and a shared shortlist', async () => {
+    const [pA, pB] = await Promise.all([
+      prisma.matchingProfile.findUniqueOrThrow({ where: { userId: DEMO_TEMAN_A_ID } }),
+      prisma.matchingProfile.findUniqueOrThrow({ where: { userId: DEMO_TEMAN_B_ID } }),
+    ])
+    expect(pA).toMatchObject({ active: true, gender: 'PEREMPUAN', roomShare: 2, hiddenByReportsAt: null })
+    expect(pB).toMatchObject({ active: true, gender: 'PEREMPUAN', roomShare: 2, hiddenByReportsAt: null })
+
+    const conn = await prisma.partnerConnection.findUniqueOrThrow({
+      where: { id: DEMO_TEMAN_CONNECTION_ID },
+      include: { messages: true, shortlist: true },
+    })
+    expect(conn.endedAt).toBeNull()
+    expect(conn.userAId < conn.userBId).toBe(true)
+    expect([conn.userAId, conn.userBId].sort()).toEqual([DEMO_TEMAN_A_ID, DEMO_TEMAN_B_ID].sort())
+    expect(conn.messages.length).toBeGreaterThanOrEqual(4)
+    expect(conn.shortlist.map((s) => s.kosId)).toEqual(['kos-2'])
+
+    const nadia = callerFor(DEMO_TEMAN_A_ID, { isDemo: true })
+    const clara = callerFor(DEMO_TEMAN_B_ID, { isDemo: true })
+    const candidates = await nadia.matching.shortlist.kosCandidates({ connectionId: DEMO_TEMAN_CONNECTION_ID })
+    expect(candidates.some((c) => c.kosId === 'kos-1' && c.status === 'SHAREABLE' && !c.inShortlist)).toBe(true)
+    expect(candidates.some((c) => c.kosId === 'kos-2' && c.inShortlist)).toBe(true)
+    const note = await clara.matching.shortlist.applicationNoteFor({ connectionId: DEMO_TEMAN_CONNECTION_ID })
+    expect(note.note).toContain('Nadia')
   })
 
   it('resetDb is repeatable: junk matching rows are gone and the seeded set is identical', async () => {
@@ -111,17 +140,20 @@ describe('matching seed and demo reset', () => {
     expect(rooms.some((r) => r.pricePerPersonMonthly == null)).toBe(true)
   })
 
-  it('resetDemo restores the demo student matching rows and leaves other students alone', async () => {
+  it('resetDemo restores all demo student matching and shortlist rows and leaves other students alone', async () => {
     const before = await state()
+    await prisma.sharedShortlistItem.deleteMany({})
     await prisma.partnerMessage.deleteMany({})
     await prisma.partnerConnection.deleteMany({})
     await prisma.partnerRequest.deleteMany({})
     await prisma.matchingProfile.update({ where: { userId: DEMO_STUDENT_ID }, data: { active: false, intro: 'vandal' } })
-    const bystander = await prisma.matchingProfile.findFirstOrThrow({ where: { userId: { not: DEMO_STUDENT_ID } } })
+    await prisma.matchingProfile.update({ where: { userId: DEMO_TEMAN_A_ID }, data: { active: false, intro: 'vandal-a' } })
+    const bystander = await prisma.matchingProfile.findFirstOrThrow({ where: { user: { isDemo: false } } })
     await prisma.matchingProfile.update({ where: { id: bystander.id }, data: { intro: 'edit sah' } })
     await resetDemo(prisma)
     expect(await state()).toEqual(before)
     expect(await prisma.matchingProfile.findUniqueOrThrow({ where: { userId: DEMO_STUDENT_ID } })).toMatchObject({ active: true })
+    expect(await prisma.matchingProfile.findUniqueOrThrow({ where: { userId: DEMO_TEMAN_A_ID } })).toMatchObject({ active: true })
     expect((await prisma.matchingProfile.findUniqueOrThrow({ where: { id: bystander.id } })).intro).toBe('edit sah')
     // Running it twice is harmless.
     await resetDemo(prisma)

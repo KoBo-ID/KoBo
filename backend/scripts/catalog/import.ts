@@ -140,7 +140,7 @@ export async function importCampuses(prisma: PrismaClient, opts: ImportOptions):
                   ${col('kind')}::text[], ${col('parent_id')}::text[], ${col('pddikti_id')}::text[], ${col('osm_id')}::text[], ${col('wikidata_id')}::text[], ${col('desa_code')}::text[],
                   ${col('gate_lat')}::text[], ${col('gate_lng')}::text[], ${col('coord_method')}::text[], ${col('verified_at')}::text[], ${col('website')}::text[], ${col('aliases')}::text[], ${col('data_version')}::text[], ${col('source')}::text[], ${col('licence')}::text[])
            AS t(id, name, short, city, lat, lng, email, kind, parent, pddikti, osm, wikidata, desa, glat, glng, method, verified, website, alias, ver, src, lic)
-      ON CONFLICT (id) DO UPDATE SET kind = EXCLUDED.kind, "parentId" = EXCLUDED."parentId", "pddiktiId" = EXCLUDED."pddiktiId", "osmId" = EXCLUDED."osmId", "wikidataId" = EXCLUDED."wikidataId",
+      ON CONFLICT (id) DO UPDATE SET kind = EXCLUDED.kind, "parentId" = COALESCE("Campus"."parentId", EXCLUDED."parentId"), "pddiktiId" = EXCLUDED."pddiktiId", "osmId" = EXCLUDED."osmId", "wikidataId" = EXCLUDED."wikidataId",
         "desaCode" = EXCLUDED."desaCode", "gateLat" = EXCLUDED."gateLat", "gateLng" = EXCLUDED."gateLng", "coordMethod" = EXCLUDED."coordMethod", "verifiedAt" = EXCLUDED."verifiedAt",
         website = EXCLUDED.website, aliases = EXCLUDED.aliases, "dataVersion" = EXCLUDED."dataVersion"`
     summary.written += batch.length

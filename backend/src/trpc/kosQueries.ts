@@ -23,6 +23,8 @@ export interface KosCard {
   totalRooms: number
   /** Bookable rooms: no ACTIVE tenancy, no unexpired PENDING hold, no live waitlist offer. */
   availableRooms: number
+  /** True when the kos belongs to a demo owner account (SIM-011). */
+  isDemoListing: boolean
 }
 
 // Aggregates are computed on read (spec section 3): nothing cached on Kos.
@@ -35,7 +37,8 @@ const CARD_COLUMNS = Prisma.sql`
   COALESCE(rev.count, 0)::int AS "reviewCount",
   rm."priceMonthlyStart",
   COALESCE(rm.total, 0)::int AS "totalRooms",
-  COALESCE(rm.available, 0)::int AS "availableRooms"`
+  COALESCE(rm.available, 0)::int AS "availableRooms",
+  ou."isDemo" AS "isDemoListing"`
 
 const cardJoins = (mediaBase: string) => Prisma.sql`
   LEFT JOIN LATERAL (
@@ -77,6 +80,8 @@ interface CardQuery {
   mediaBase: string
   /** The viewer's OwnerProfile id: their own kos stay visible while their account waits for approval. */
   viewerOwnerId?: string | null
+  /** When true (DEMO_ISOLATION on and viewer is not a demo account), hide demo-owned kos from discovery queries (SIM-011). */
+  excludeDemo?: boolean
 }
 
 /** The one card query behind kos.list, kos.search, kos.detail and owner.publicProfile. */
@@ -84,8 +89,10 @@ export function queryCards<T = KosCard>(prisma: PrismaClient, q: CardQuery): Pro
   return prisma.$queryRaw<T[]>(Prisma.sql`
     SELECT ${CARD_COLUMNS}${q.extraSelect ? Prisma.sql`, ${q.extraSelect}` : Prisma.empty}
     FROM "Kos" k
-    JOIN "OwnerProfile" op ON op.id = k."ownerId" ${cardJoins(q.mediaBase)}
+    JOIN "OwnerProfile" op ON op.id = k."ownerId"
+    JOIN "User" ou ON ou.id = op."userId" ${cardJoins(q.mediaBase)}
     WHERE k."archivedAt" IS NULL AND (op."verificationStatus" = 'DISETUJUI' OR k."ownerId" = ${q.viewerOwnerId ?? ''})
+    ${q.excludeDemo ? Prisma.sql`AND NOT ou."isDemo"` : Prisma.empty}
     ${q.where ? Prisma.sql`AND (${q.where})` : Prisma.empty}
     ORDER BY ${q.orderBy ? Prisma.sql`${q.orderBy}, ` : Prisma.empty}k."createdAt", k.id
     LIMIT ${q.limit}`)

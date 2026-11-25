@@ -30,7 +30,7 @@ export const FeaturedKos: React.FC<FeaturedKosProps> = ({ onOpenSurvey }) => {
           <div className="featured-head">
             <h2 className="featured-head__title">Kos yang bisa Anda survey</h2>
             <ButtonLink to="/search" variant="outline" size="sm" icon={<ArrowRight size={16} />} iconPosition="right">
-              {data ? `Lihat Semua (${kosList.length})` : 'Lihat Semua'}
+              Lanjut Melihat
             </ButtonLink>
           </div>
 

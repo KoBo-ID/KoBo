@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Send, Star } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { MyReview } from '../../../../backend/src/trpc/router';
@@ -26,13 +26,20 @@ const SUBS: { key: SubKey; label: string }[] = [
   { key: 'quietness', label: 'Ketenangan Jam Belajar' },
 ];
 
-const Stars: React.FC<{ label: string; value: number | null; onChange: (n: number) => void }> = ({ label, value, onChange }) => (
-  <div role="group" aria-label={label} style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+const Stars: React.FC<{
+  label: string;
+  groupLabel?: string;
+  value: number | null;
+  onChange: (n: number) => void;
+  firstRef?: React.Ref<HTMLButtonElement>;
+}> = ({ label, groupLabel, value, onChange, firstRef }) => (
+  <div role="group" aria-label={groupLabel ?? label} style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
     {[1, 2, 3, 4, 5].map((n) => {
       const on = value !== null && value >= n;
       return (
         <button
           key={n}
+          ref={n === 1 ? firstRef : undefined}
           type="button"
           aria-label={`${label}: ${n} bintang`}
           aria-pressed={value === n}
@@ -64,7 +71,9 @@ export const ReviewFormModal: React.FC<ReviewFormModalProps> = ({ onClose, tenan
   const { addToast } = useAppStore();
   const create = useMutation(trpc.review.create.mutationOptions());
   const update = useMutation(trpc.review.update.mutationOptions());
-  const [rating, setRating] = useState(existing?.rating ?? 5);
+  const [rating, setRating] = useState<number | null>(existing?.rating ?? null);
+  const [ratingError, setRatingError] = useState(false);
+  const firstChip = useRef<HTMLButtonElement>(null);
   const [subs, setSubs] = useState<Record<SubKey, number | null>>(existing?.subRatings ?? { cleanliness: null, wifi: null, owner: null, quietness: null });
   const [comment, setComment] = useState(existing?.comment ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +81,11 @@ export const ReviewFormModal: React.FC<ReviewFormModalProps> = ({ onClose, tenan
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (rating === null) {
+      setRatingError(true);
+      firstChip.current?.focus();
+      return;
+    }
     const subRatings = Object.fromEntries(Object.entries(subs).filter(([, v]) => v !== null)) as Partial<Record<SubKey, number>>;
     try {
       if (existing) await update.mutateAsync({ reviewId: existing.id, rating, subRatings, comment });
@@ -91,7 +105,21 @@ export const ReviewFormModal: React.FC<ReviewFormModalProps> = ({ onClose, tenan
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div>
           <span style={{ fontSize: 'var(--step--1)', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>Rating keseluruhan</span>
-          <Stars label="Rating keseluruhan" value={rating} onChange={setRating} />
+          <Stars
+            label="Rating keseluruhan"
+            groupLabel="Rating"
+            value={rating}
+            firstRef={firstChip}
+            onChange={(n) => {
+              setRating(n);
+              setRatingError(false);
+            }}
+          />
+          {ratingError && (
+            <p role="alert" style={{ margin: '0.35rem 0 0', fontSize: 'var(--step--1)', color: 'var(--status-overdue-text)' }}>
+              Pilih rating 1 sampai 5.
+            </p>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.85rem' }}>
@@ -130,7 +158,10 @@ export const ReviewFormModal: React.FC<ReviewFormModalProps> = ({ onClose, tenan
 
         {error && <Notice tone="error">{error}</Notice>}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+        <p style={{ margin: 0, fontSize: 'var(--step--1)', color: 'var(--text-muted)', textAlign: 'right' }}>
+          Ulasan dapat diubah selama 14 hari setelah dikirim.
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '-0.5rem' }}>
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Batal
           </Button>

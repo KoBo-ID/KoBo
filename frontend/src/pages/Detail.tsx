@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { DemoListingBanner } from '../components/kos/DemoListingBanner';
+import { useSession } from '../lib/session';
 import { useQuery } from '@tanstack/react-query';
 import { Star, Share2 } from 'lucide-react';
 import { useAppStore } from '../store/AppContext';
@@ -96,9 +98,16 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
   const waitlist = useWaitlistStatus(kos.id);
   // undefined = not picking a queue; null = any type; a string = that type (set by clicking a full type).
   const [joinType, setJoinType] = useState<string | null | undefined>(undefined);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const { me } = useSession();
+  const [searchParams] = useSearchParams();
   // Bookable = vacant and not held by a daftar tunggu offer for someone else; an offer made to me comes first.
-  const bookable = (r: Room) => r.status === 'vacant' && !r.reservedForWaitlist;
+  const bookable = (r: Room) => (r.status === 'vacant' && !r.reservedForWaitlist) || !!r.offeredToMe;
+  // ?room=<id> (a shared link) preselects that room when it can be booked; otherwise the usual rule applies.
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(() => {
+    const wanted = searchParams.get('room');
+    const room = wanted ? kos.rooms.find((r) => r.id === wanted) : undefined;
+    return room && bookable(room) ? room.id : null;
+  });
   const selectedRoom =
     kos.rooms.find((r) => r.id === selectedRoomId) ??
     kos.rooms.find((r) => r.offeredToMe) ??
@@ -149,6 +158,14 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
           </ol>
         </nav>
 
+        {detail.demoBlocked && (
+          <DemoListingBanner
+            mirror={!detail.isDemoListing}
+            campusId={me?.studentVerification.campusId}
+            campusLabel={me?.studentVerification.campusName}
+          />
+        )}
+
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ minWidth: 0 }}>
             <h1 className="page-title" style={{ fontSize: 'var(--step-3)' }}>{kos.name}</h1>
@@ -189,7 +206,8 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
                     setSelectedRoomId(r.id);
                     setJoinType(undefined);
                   }}
-                  onSelectFullType={setJoinType}
+                  onSelectFullType={detail.demoBlocked ? undefined : setJoinType}
+                  queued={waitlist.data?.mine?.status === 'WAITING' ? { roomType: waitlist.data.mine.roomType } : null}
                 />
               ) : (
                 <p className="detail-card" style={{ color: 'var(--text-muted)' }}>Belum ada kamar yang terdaftar untuk kos ini.</p>
@@ -255,6 +273,7 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
               onSelectLeaseMonths={setLeaseMonths}
               onGoToCheckout={handleGoToCheckout}
               onOpenSurveyModal={() => setSurveyModalOpen(true)}
+              demoBlocked={detail.demoBlocked}
               waitlist={{ status: waitlist.data, joinType, onBookOffer: handleBookOffer, onBackToBooking: () => setJoinType(undefined) }}
             />
           </div>

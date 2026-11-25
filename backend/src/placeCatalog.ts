@@ -102,7 +102,11 @@ export async function nearestCampuses(db: Db, p: LatLng, n = 3, maxMeters = NEAR
   // Gate points sit within a few hundred metres of the campus point, so a box padded by 0.01 degree is safe for both.
   const pad = 0.01
   const rows = await db.campus.findMany({
-    where: { lat: { gte: p.lat - dLat - pad, lte: p.lat + dLat + pad }, lng: { gte: p.lng - dLng - pad, lte: p.lng + dLng + pad } },
+    where: {
+      lat: { gte: p.lat - dLat - pad, lte: p.lat + dLat + pad },
+      lng: { gte: p.lng - dLng - pad, lte: p.lng + dLng + pad },
+      OR: [{ kind: null }, { kind: { not: 'institution' } }],
+    },
     select: { id: true, name: true, shortName: true, city: true, lat: true, lng: true, gateLat: true, gateLng: true },
   })
   return rows

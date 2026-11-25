@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { BellRing, Hourglass, Users } from 'lucide-react';
 import type { MyWaitlistEntry, WaitlistStatusResult } from '../../../../../backend/src/trpc/router';
 import { Button } from '../../ui/Button';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Select } from '../../ui/Select';
 import { useAppStore } from '../../../store/AppContext';
 import { useSession } from '../../../lib/session';
-import { formatTimeLeft, roomTypeLabel, useNow, useWaitlistActions } from '../../../lib/waitlist';
+import { aheadOfferNotice, formatTimeLeft, roomTypeLabel, useNow, useWaitlistActions } from '../../../lib/waitlist';
 import { formatRupiah } from '../../../lib/format';
 const ANY = '__any__';
 
 /** "Anda di antrean #3" card with the way out. */
 export const QueuedCard: React.FC<{ entry: MyWaitlistEntry }> = ({ entry }) => {
   const { leave, busy } = useWaitlistActions();
+  const aheadNotice = aheadOfferNotice(entry);
   return (
     <div data-testid="waitlist-queued" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -19,10 +21,15 @@ export const QueuedCard: React.FC<{ entry: MyWaitlistEntry }> = ({ entry }) => {
           <Hourglass size={18} />
         </span>
         <div>
-          <div style={{ fontSize: 'var(--step-1)', fontWeight: 800, color: 'var(--text-main)' }}>Anda di antrean #{entry.position}</div>
+          <div style={{ fontSize: 'var(--step-1)', fontWeight: 800, color: 'var(--text-main)' }}>{entry.position === 1 && entry.aheadOffer ? 'Antrean berikutnya' : `Anda di antrean #${entry.position}`}</div>
           <div style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>{roomTypeLabel(entry.roomType)}</div>
         </div>
       </div>
+      {aheadNotice && (
+        <p data-testid="waitlist-ahead-offer" role="status" style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+          {aheadNotice}
+        </p>
+      )}
       <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
         Kami kirim email saat kamar tersedia. Anda punya 24 jam untuk mengajukan sewa.
       </p>
@@ -37,6 +44,7 @@ export const QueuedCard: React.FC<{ entry: MyWaitlistEntry }> = ({ entry }) => {
 export const OfferBanner: React.FC<{ entry: MyWaitlistEntry; onBook: (roomId: string) => void }> = ({ entry, onBook }) => {
   const { decline, busy } = useWaitlistActions();
   const now = useNow();
+  const [confirmSkip, setConfirmSkip] = useState(false);
   const offer = entry.offer;
   if (!offer) return null;
   const hasPendingApp = entry.applicationStatus === 'PENDING';
@@ -70,10 +78,21 @@ export const OfferBanner: React.FC<{ entry: MyWaitlistEntry; onBook: (roomId: st
             Ajukan Sewa
           </Button>
           <p style={{ fontSize: 'var(--step--2)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>Tawaran ditahan selama pemilik meninjau pengajuan Anda.</p>
-          <Button variant="outline" size="md" fullWidth disabled={busy} onClick={() => void decline(entry.id)}>
+          <Button variant="outline" size="md" fullWidth disabled={busy} onClick={() => setConfirmSkip(true)}>
             Lewati
           </Button>
         </>
+      )}
+      {confirmSkip && (
+        <ConfirmDialog
+          title="Lewati tawaran ini?"
+          message={`Kamar ${offer.roomNumber} akan ditawarkan ke pengantre berikutnya dan Anda keluar dari daftar tunggu kos ini.`}
+          confirmLabel="Lewati tawaran"
+          danger
+          busy={busy}
+          onCancel={() => setConfirmSkip(false)}
+          onConfirm={() => { void decline(entry.id).finally(() => setConfirmSkip(false)); }}
+        />
       )}
     </div>
   );

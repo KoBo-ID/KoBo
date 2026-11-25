@@ -128,12 +128,15 @@ test('scenario 25: an offer arrives with a banner and an email; declining passes
       await expect(banner.getByRole('button', { name: 'Ajukan Sewa' })).toBeVisible()
       await expect(banner).toContainText('Tawaran ditahan selama pemilik meninjau pengajuan Anda.')
       await second.student.page.goto('/my-kos')
-      await expect(second.student.page.getByTestId('waitlist-entry')).toContainText('Antrean #1')
+      // Audit 2026-11-24: while someone else holds a live offer the card says "Antrean berikutnya" instead of a position.
+      await expect(second.student.page.getByTestId('waitlist-entry')).toContainText('Antrean berikutnya')
+      await expect(second.student.page.getByTestId('waitlist-entry')).toContainText('Kamar sedang ditawarkan ke pengantre sebelum Anda')
       await expect(second.student.page.getByTestId('waitlist-offer')).toHaveCount(0)
     })
 
     await test.step('Lewati declines it: the room moves to the second student at once', async () => {
       await first.student.page.getByTestId('waitlist-offer').getByRole('button', { name: 'Lewati' }).click()
+      await first.student.page.getByRole('dialog', { name: 'Lewati tawaran ini?' }).getByRole('button', { name: 'Lewati tawaran' }).click()
       await expect(toast(first.student.page, 'Penawaran dilewati. Kamar diteruskan ke antrean berikutnya.')).toBeVisible()
       expect((await entryStatus(first.entryId)).status).toBe('DECLINED')
       expect(await entryStatus(second.entryId)).toEqual({ status: 'OFFERED', offeredRoomId: room.id })
