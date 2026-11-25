@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { addDays, todayWIB } from '@kobo/shared/domain'
 import { resetDb } from '../../src/db/seed.ts'
 import { drainOutbox } from '../../src/outbox.ts'
-import { FakeWhatsApp, isQuietHour, reminderKind, scanNotifications } from '../../src/notifications.ts'
+import { FakeWhatsApp, reminderKind, scanNotifications } from '../../src/notifications.ts'
 import { approveApplication, callerFor, newStudent, prisma, vacantRoom } from '../helpers.ts'
 
 beforeEach(async () => {
@@ -32,12 +32,9 @@ async function activeInvoice(over: { phone?: string | null; contact?: boolean; o
 }
 const logs = (invoiceId: string) => prisma.notificationLog.findMany({ where: { invoiceId }, orderBy: [{ kind: 'asc' }, { channel: 'asc' }] })
 
-describe('reminder kinds and quiet hours', () => {
+describe('reminder kinds', () => {
   it('maps days-to-due to H-7, H-3, H-1 and nothing else', () => {
     expect([8, 7, 5, 4, 3, 2, 1, 0, -1].map(reminderKind)).toEqual([null, 'REMINDER_H7', 'REMINDER_H7', 'REMINDER_H7', 'REMINDER_H3', 'REMINDER_H3', 'REMINDER_H1', 'REMINDER_H1', null])
-  })
-  it('treats 20:00 to 07:59 WIB as quiet', () => {
-    expect([wib('2026-11-01', 7), wib('2026-11-01', 8), wib('2026-11-01', 19), wib('2026-11-01', 20), wib('2026-11-01', 23)].map(isQuietHour)).toEqual([true, false, false, true, true])
   })
 })
 
@@ -75,13 +72,12 @@ describe('scanNotifications', () => {
     expect(wa.sent.map((m) => m.kind)).toEqual(['REMINDER_H7', 'REMINDER_H3', 'REMINDER_H1'])
   })
 
-  it('sends nothing at night and sends after 08:00 instead', async () => {
+  it('sends at any hour, including at night, and only once', async () => {
     const inv = await activeInvoice()
     await inv.setDue(addDays(today, 1))
     const wa = new FakeWhatsApp()
-    const night = await scanNotifications(prisma, wib(today, 22), { whatsapp: wa })
-    expect(night.skippedQuietHours).toBe(true)
-    expect(await logs(inv.invoiceId)).toHaveLength(0)
+    await scanNotifications(prisma, wib(today, 22), { whatsapp: wa })
+    expect(wa.sent).toHaveLength(1)
     await scanNotifications(prisma, wib(today, 9), { whatsapp: wa })
     expect(wa.sent).toHaveLength(1)
   })

@@ -111,7 +111,7 @@ describe('owner.kos.create / update / delete', () => {
     expect(new Set(row.rooms.map((r) => r.roomNumber)).size).toBe(6)
     expect(row.images.map((i) => i.url)).toEqual(['https://example.com/a.jpg'])
     expect(row.applicationFee).toBe(25000)
-    const campuses = await prisma.campus.findMany()
+    const campuses = await prisma.campus.findMany({ where: { OR: [{ kind: null }, { kind: { not: 'institution' } }] } })
     const nearest = campuses.map((c) => ({ c, d: haversineMeters({ lat: -6.2005, lng: 106.7855 }, { lat: c.lat, lng: c.lng }) })).sort((x, y) => x.d - y.d)[0]
     expect(row.nearestCampusId).toBe(nearest.c.id)
     expect(row.nearestCampusMeters).toBe(nearest.d)

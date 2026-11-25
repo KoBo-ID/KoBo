@@ -3,7 +3,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { MessageSquare, CheckCircle2, ChevronRight } from 'lucide-react';
-import type { BoardRoom } from '../../../../backend/src/trpc/router';
+import { todayWIB } from '@kobo/shared/domain';
+import type { BoardRoom, TenancyEndPreview } from '../../../../backend/src/trpc/router';
+import { EndTenancyDialog, type ArrearsChoice } from '../../components/owner/EndTenancyDialog';
+import { useAppStore } from '../../store/AppContext';
+import { messageForError } from '../../lib/errors';
+import { daysLate } from '../../lib/billingState';
+import { formatLongDateWIB } from '../../lib/dates';
+import { supportMailto } from '../../lib/support';
 import { OwnerOverview } from '../../components/owner/OwnerOverview';
 import { RoomOccupancyBoard } from '../../components/owner/RoomOccupancyBoard';
 import { ApplicationsPanel } from '../../components/owner/ApplicationsPanel';
@@ -29,7 +36,10 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 const formatLongDate = (d: string | null) =>
   d ? new Date(`${d}T00:00:00+07:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' }) : '-';
 
-const START_STEPS = ['Daftarkan kos', 'Tambah kamar dan harga', 'Terima pengajuan sewa'];
+const CHANGED_NOTICE = 'Tagihan penyewa berubah. Periksa lagi sebelum mengakhiri sewa.';
+const isConflict = (e: unknown) => (e as { data?: { code?: string } } | null)?.data?.code === 'CONFLICT';
+
+const START_STEPS =['Daftarkan kos', 'Tambah kamar dan harga', 'Terima pengajuan sewa'];
 
 
 const DashboardSkeleton: React.FC = () => (
@@ -73,7 +83,8 @@ export const OwnerDashboard: React.FC = () => {
   });
   const visits = useOwnerVisits(selectedKos?.id);
   const applications = useQuery({ ...trpc.application.ownerList.queryOptions({ kosId: selectedKos?.id ?? '' }), enabled: !!selectedKos });
-  const { busyRoomId, markPaid, endTenancy } = useRoomActions(selectedKos?.id);
+  const { busyRoomId, markPaid, endTenancy, previewEnd } = useRoomActions(selectedKos?.id);
+  const { addToast } = useAppStore();
   // Two views of one set of queries: the overview (money, building, room board) and the inbox of things to act on.
   const [searchParams, setSearchParams] = useSearchParams();
   const tab: 'ringkasan' | 'tindakan' = searchParams.get('tab') === 'tindakan' ? 'tindakan' : 'ringkasan';
@@ -90,12 +101,26 @@ export const OwnerDashboard: React.FC = () => {
   const [confirmingRoom, setConfirmingRoom] = useState<BoardRoom | null>(null);
   const [payingRoom, setPayingRoom] = useState<BoardRoom | null>(null);
   const [profileTenancy, setProfileTenancy] = useState<string | null>(null);
+  const [confirmFuture, setConfirmFuture] = useState(false);
+  const [endDialog, setEndDialog] = useState<{ room: BoardRoom; preview: TenancyEndPreview } | null>(null);
+  const [endNotice, setEndNotice] = useState<string | null>(null);
+  const [payingFormer, setPayingFormer] = useState<{ tenancyId: string; roomNumber: string; tenantName: string; invoice: { invoiceId: string; dueDate: string; amount: number } } | null>(null);
+  const [scrollToFormer, setScrollToFormer] = useState(false);
   const confirmRef = useRef<HTMLDivElement>(null);
   const lastTrigger = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (confirmingRoom) confirmRef.current?.focus();
   }, [confirmingRoom]);
+
+  // "Lihat tunggakan" on the Ringkasan tile: once the Perlu tindakan tab has rendered, bring the section into view.
+  useEffect(() => {
+    if (!scrollToFormer || tab !== 'tindakan') return;
+    const el = document.getElementById('former-arrears-title');
+    if (!el) return;
+    el.scrollIntoView({ block: 'start' });
+    setScrollToFormer(false);
+  }, [scrollToFormer, tab, board.data]);
 
   const cancelConfirm = () => {
     setConfirmingRoom(null);
@@ -143,17 +168,80 @@ export const OwnerDashboard: React.FC = () => {
 
   const needsReview = rooms.filter((r) => r.payment?.state === 'NEEDS_REVIEW');
 
-  const askEnd = (room: BoardRoom) => {
+  const OK_PLAIN = 'Sewa diakhiri. Kamar kembali kosong.';
+
+  /** Fetches what ending would leave unpaid, then opens the bar (nothing owed) or the dialog (arrears). A booking cancel is always the bar. */
+  const askEnd = async (room: BoardRoom) => {
     if (!room.tenancyId) return;
     lastTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setConfirmingRoom(room);
+    if (room.status === 'booking') {
+      setConfirmFuture(false);
+      setConfirmingRoom(room);
+      return;
+    }
+    const preview = await previewEnd(room.id, room.tenancyId);
+    if (!preview) return;
+    if (preview.arrearsTotal > 0) {
+      setEndNotice(null);
+      setEndDialog({ room, preview });
+    } else {
+      setConfirmFuture(preview.futureUnpaidCount > 0);
+      setConfirmingRoom(room);
+    }
   };
-  const doEnd = () => {
-    if (confirmingRoom?.tenancyId) void endTenancy(confirmingRoom.id, confirmingRoom.tenancyId);
+  const doEnd = async () => {
+    const room = confirmingRoom;
+    if (!room?.tenancyId) return;
     setConfirmingRoom(null);
+    const result = await endTenancy(room.id, room.tenancyId, { okMessage: OK_PLAIN });
+    if (result.ok) return;
+    if (isConflict(result.error)) {
+      // Arrears appeared after the preview: show them instead of ending silently.
+      const fresh = await previewEnd(room.id, room.tenancyId, { quiet: true });
+      if (fresh && fresh.arrearsTotal > 0) {
+        setEndNotice(CHANGED_NOTICE);
+        setEndDialog({ room, preview: fresh });
+        return;
+      }
+    }
+    addToast(messageForError(result.error), 'error');
+  };
+  const doEndWithArrears = async (choice: ArrearsChoice) => {
+    if (!endDialog?.room.tenancyId) return;
+    const { room, preview } = endDialog;
+    const total = formatRupiah(preview.arrearsTotal);
+    const okMessage = choice.arrears === 'WAIVE'
+      ? `Sewa diakhiri. Tunggakan ${total} dihapus.`
+      : `Sewa diakhiri. Tunggakan ${total} tetap tercatat sebagai tunggakan penyewa lama.`;
+    setEndNotice(null);
+    const result = await endTenancy(room.id, room.tenancyId!, { okMessage, arrears: choice.arrears, waiverReason: choice.waiverReason });
+    if (result.ok) {
+      setEndDialog(null);
+      return;
+    }
+    if (isConflict(result.error)) {
+      const fresh = await previewEnd(room.id, room.tenancyId!, { quiet: true });
+      if (fresh && fresh.arrearsTotal > 0) {
+        setEndDialog({ room, preview: fresh });
+        setEndNotice(CHANGED_NOTICE);
+        return;
+      }
+      if (fresh) {
+        // Nothing is owed any more: fall back to the plain bar.
+        setEndDialog(null);
+        setConfirmFuture(fresh.futureUnpaidCount > 0);
+        setConfirmingRoom(room);
+        return;
+      }
+    }
+    setEndNotice(messageForError(result.error));
   };
   const pay = (room: BoardRoom) => {
     if (room.invoice) setPayingRoom(room);
+  };
+  const showFormerArrears = () => {
+    setScrollToFormer(true);
+    setTab('tindakan');
   };
 
   const hasAttention = attentionRooms.length > 0;
@@ -162,8 +250,11 @@ export const OwnerDashboard: React.FC = () => {
   const applicationCount = applications.data?.length ?? 0;
   const hasApplications = applicationCount > 0;
   const hasLeaseEnded = leaseEndedRooms.length > 0;
-  const allClear = !hasAttention && !hasVisitAttention && !hasApplications && !hasLeaseEnded && needsReview.length === 0;
-  const actionCount = attentionRooms.length + scheduledVisits + applicationCount + needsReview.length + leaseEndedRooms.length;
+  const formerInvoices = summary.formerTenantArrears.flatMap((t) => t.invoices.map((inv) => ({ ...inv, tenancyId: t.tenancyId, roomNumber: t.roomNumber, tenantName: t.tenantName })));
+  const hasFormer = formerInvoices.length > 0;
+  const today = todayWIB(new Date());
+  const allClear = !hasAttention && !hasVisitAttention && !hasApplications && !hasLeaseEnded && needsReview.length === 0 && !hasFormer;
+  const actionCount = attentionRooms.length + scheduledVisits + applicationCount + needsReview.length + leaseEndedRooms.length + formerInvoices.length;
   const showStatus = (status: RoomStatus) => {
     setStatusFilter(status);
     document.getElementById('room-board-title')?.scrollIntoView({ block: 'start' });
@@ -203,10 +294,11 @@ export const OwnerDashboard: React.FC = () => {
           <span>
             {confirmVerb} Kamar {confirmingRoom.roomNumber}
             {confirmingRoom.tenant?.name ? ` (${confirmingRoom.tenant.name})` : ''}?
+            {confirmFuture && confirmingRoom.status !== 'booking' && ' Bulan yang belum jatuh tempo tidak akan ditagih.'}
           </span>
           <span className="od-confirm__actions">
             <Button variant="outline" size="sm" onClick={cancelConfirm}>Batal</Button>
-            <Button variant="danger" size="sm" onClick={doEnd}>{confirmVerb}</Button>
+            <Button variant="danger" size="sm" onClick={() => void doEnd()}>{confirmVerb}</Button>
           </span>
         </div>
       )}
@@ -214,7 +306,7 @@ export const OwnerDashboard: React.FC = () => {
       <div id="od-panel" role="tabpanel" aria-labelledby={`od-tab-${tab}`}>
         {tab === 'ringkasan' ? (
           <>
-            <OwnerOverview summary={summary} kosId={selectedKos.id} onShowStatus={showStatus} />
+            <OwnerOverview summary={summary} kosId={selectedKos.id} onShowStatus={showStatus} onShowFormerArrears={showFormerArrears} />
       <RoomOccupancyBoard
         kosName={selectedKos.name}
         rooms={rooms}
@@ -223,7 +315,8 @@ export const OwnerDashboard: React.FC = () => {
         onFilterStatusChange={setStatusFilter}
         onOpenWhatsApp={setWhatsAppTargetRoom}
         onMarkPaid={pay}
-        onEndTenancy={askEnd}
+        onEndTenancy={(room) => void askEnd(room)}
+        onOpenProfile={setProfileTenancy}
       />
 
           </>
@@ -310,7 +403,7 @@ export const OwnerDashboard: React.FC = () => {
                     size="sm"
                     disabled={busyRoomId === room.id}
                     aria-label={`Akhiri sewa Kamar ${room.roomNumber}`}
-                    onClick={() => askEnd(room)}
+                    onClick={() => void askEnd(room)}
                   >
                     Akhiri sewa
                   </Button>
@@ -321,13 +414,62 @@ export const OwnerDashboard: React.FC = () => {
         </section>
       )}
 
+      {hasFormer && (
+        <section aria-labelledby="former-arrears-title" className="od-section" data-testid="former-arrears-section">
+          <h2 id="former-arrears-title" className="od-section__title">
+            Tunggakan penyewa lama
+            <span className="od-count">{formerInvoices.length}</span>
+          </h2>
+          <p className="od-section__intro">Sewa sudah berakhir. Tunggakan ini tetap tercatat sampai dibayar.</p>
+          <ul className="od-list">
+            {formerInvoices.map((inv) => {
+              const late = daysLate(inv.dueDate, today);
+              return (
+                <li key={inv.invoiceId} className="od-row od-row--attention">
+                  <div className="od-row__main">
+                    <span className="od-row__title">Kamar {inv.roomNumber}</span>
+                    <button type="button" className="od-person od-person--sub" aria-label={`Lihat profil penyewa Kamar ${inv.roomNumber}`} onClick={() => setProfileTenancy(inv.tenancyId)}>
+                      {inv.tenantName || 'Penyewa lama'}
+                      <ChevronRight size={13} aria-hidden="true" />
+                    </button>
+                  </div>
+                  <span className="od-row__amount">{formatRupiah(inv.amount)}</span>
+                  <div className="od-row__due">
+                    <span>Jatuh tempo {formatLongDateWIB(inv.dueDate)}</span>
+                    {late > 0 ? <span className="od-row__late">Terlambat {late} hari</span> : null}
+                  </div>
+                  <div className="od-row__actions">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<CheckCircle2 size={14} />}
+                      disabled={busyRoomId === inv.tenancyId}
+                      aria-label={`Tandai lunas tunggakan Kamar ${inv.roomNumber}, jatuh tempo ${formatLongDateWIB(inv.dueDate)}`}
+                      onClick={() => setPayingFormer({ tenancyId: inv.tenancyId, roomNumber: inv.roomNumber, tenantName: inv.tenantName, invoice: { invoiceId: inv.invoiceId, dueDate: inv.dueDate, amount: inv.amount } })}
+                    >
+                      Tandai lunas
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       <VisitsPanel kosId={selectedKos.id} />
 
-      {needsReview.length > 0 && (
-        <Notice tone="error">
-          Pengembalian dana gagal untuk Kamar {needsReview.map((r) => r.roomNumber).join(', ')}. Dana penyewa belum kembali, jadi mohon hubungi KoBo agar segera ditinjau.
-        </Notice>
-      )}
+      {needsReview.length > 0 && (() => {
+        const rooms = needsReview.map((r) => r.roomNumber).join(', ');
+        return (
+          <Notice tone="error">
+            Pengembalian dana gagal untuk Kamar {rooms}. Dana penyewa belum kembali.{' '}
+            <a href={supportMailto(`Pengembalian dana gagal Kamar ${rooms}`)} style={{ color: 'var(--primary)', fontWeight: 700 }}>
+              Hubungi KoBo agar segera ditinjau
+            </a>
+          </Notice>
+        );
+      })()}
 
             <RemindersLog kosId={selectedKos.id} />
           </>
@@ -336,9 +478,36 @@ export const OwnerDashboard: React.FC = () => {
 
       {profileTenancy && <TenantProfileModal target={{ kosId: selectedKos.id, tenancyId: profileTenancy }} onClose={() => setProfileTenancy(null)} />}
 
+      {endDialog && (
+        <EndTenancyDialog
+          roomNumber={endDialog.room.roomNumber}
+          tenantName={endDialog.room.tenant?.name}
+          preview={endDialog.preview}
+          busy={busyRoomId === endDialog.room.id}
+          notice={endNotice}
+          onCancel={() => { setEndDialog(null); setEndNotice(null); }}
+          onConfirm={(choice) => void doEndWithArrears(choice)}
+        />
+      )}
+
+      {payingFormer && (
+        <ManualPaymentModal
+          title={`Tandai Lunas Kamar ${payingFormer.roomNumber}`}
+          subtitle={`${payingFormer.tenantName} · tagihan jatuh tempo ${formatLongDateWIB(payingFormer.invoice.dueDate)}`}
+          invoice={{ id: payingFormer.invoice.invoiceId, amount: payingFormer.invoice.amount }}
+          busy={busyRoomId === payingFormer.tenancyId}
+          onClose={() => setPayingFormer(null)}
+          onSubmit={async (input) => {
+            if (await markPaid(payingFormer.tenancyId, { invoiceId: payingFormer.invoice.invoiceId, ...input })) setPayingFormer(null);
+          }}
+        />
+      )}
+
       {payingRoom?.invoice && (
         <ManualPaymentModal
-          room={payingRoom}
+          title={`Tandai Lunas Kamar ${payingRoom.roomNumber}`}
+          subtitle={`${payingRoom.tenant?.name || 'Penghuni aktif'} · tagihan jatuh tempo ${formatLongDateWIB(payingRoom.invoice.dueDate)}`}
+          online={payingRoom.payment?.state === 'AWAITING_ONLINE'}
           invoice={payingRoom.invoice}
           busy={busyRoomId === payingRoom.id}
           onClose={() => setPayingRoom(null)}

@@ -12,14 +12,16 @@ interface OwnerOverviewProps {
   kosId?: string;
   /** Jump the room board to the rooms with this status. */
   onShowStatus: (status: RoomStatus) => void;
+  /** Open "Perlu tindakan" at the former tenants' arrears. */
+  onShowFormerArrears: () => void;
 }
 
 /**
  * Three tiles: money collected, money overdue, and the building. Only figures the board query returns.
  * Occupancy is a proportional bar, so it stays the same size for 1 room or 100. The status counts jump to the room board, which holds the per-room and per-floor detail.
  */
-export const OwnerOverview: React.FC<OwnerOverviewProps> = ({ summary, kosId, onShowStatus }) => {
-  const { collectedThisMonth, expectedThisMonth, overdueAmount, counts, totalRooms, occupiedRooms, waitlistCount } = summary;
+export const OwnerOverview: React.FC<OwnerOverviewProps> = ({ summary, kosId, onShowStatus, onShowFormerArrears }) => {
+  const { collectedThisMonth, expectedThisMonth, overdueAmount, counts, totalRooms, occupiedRooms, waitlistCount, formerTenantArrearsTotal } = summary;
   const collectedPct = expectedThisMonth > 0 ? Math.min(100, Math.round((collectedThisMonth / expectedThisMonth) * 100)) : 0;
   const occupancyPct = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
   const segments = LEGEND_ORDER.filter((x) => counts[x] > 0);
@@ -56,8 +58,16 @@ export const OwnerOverview: React.FC<OwnerOverviewProps> = ({ summary, kosId, on
         ) : (
           <>
             <p className="od-figure od-ok">Tidak ada</p>
-            <p className="od-meta">Semua tagihan jatuh tempo sudah dibayar.</p>
+            <p className="od-meta">Tidak ada tunggakan pada penyewa aktif.</p>
           </>
+        )}
+        {formerTenantArrearsTotal > 0 && (
+          <div className="od-meta od-meta--stack">
+            <span>Tunggakan penyewa lama {formatRupiah(formerTenantArrearsTotal)}</span>
+            <button type="button" className="od-link" onClick={onShowFormerArrears}>
+              Lihat tunggakan
+            </button>
+          </div>
         )}
       </div>
 

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTRPC } from './trpc';
 import { messageForError } from './errors';
 import { useAppStore } from '../store/AppContext';
+import type { TenancyEndPreview } from '../../../backend/src/trpc/router';
 
 /**
  * The two things an owner can do to a room's tenancy from the board. "Tandai Lunas" is a real MANUAL payment
@@ -48,7 +49,43 @@ export function useRoomActions(kosId: string | undefined) {
       await run(roomId, async () => { await recordManual.mutateAsync({ kosId, ...input }); ok = true; }, 'Pembayaran dicatat lunas. Kuitansi sudah terbit.');
       return ok;
     },
-    endTenancy: (roomId: string, tenancyId: string) =>
-      kosId ? run(roomId, () => endTenancy.mutateAsync({ kosId, tenancyId }), 'Sewa diakhiri. Kamar kembali kosong.') : Promise.resolve(),
+    /**
+     * Looks up what ending this tenancy would leave unpaid. Marks the room busy meanwhile.
+     * Returns null (after a toast, unless quiet) when the lookup fails, so the caller opens nothing.
+     */
+    previewEnd: async (roomId: string, tenancyId: string, opts: { quiet?: boolean } = {}): Promise<TenancyEndPreview | null> => {
+      if (!kosId) return null;
+      setBusyRoomId(roomId);
+      try {
+        return await qc.fetchQuery({ ...trpc.owner.tenancy.endPreview.queryOptions({ kosId, tenancyId }), staleTime: 0 });
+      } catch {
+        if (!opts.quiet) addToast('Gagal memeriksa tagihan penyewa. Coba lagi.', 'error');
+        return null;
+      } finally {
+        setBusyRoomId(null);
+      }
+    },
+    /**
+     * Ends a tenancy. The caller supplies the success toast; a failure is returned (not toasted) so the caller can show it
+     * where the owner is looking, for instance inside the dialog.
+     */
+    endTenancy: async (
+      roomId: string,
+      tenancyId: string,
+      opts: { okMessage: string; arrears?: 'KEEP' | 'WAIVE'; waiverReason?: string },
+    ): Promise<{ ok: true } | { ok: false; error: unknown }> => {
+      if (!kosId) return { ok: false, error: new Error('Kos belum dipilih.') };
+      setBusyRoomId(roomId);
+      try {
+        await endTenancy.mutateAsync({ kosId, tenancyId, arrears: opts.arrears, waiverReason: opts.waiverReason });
+        addToast(opts.okMessage, 'success');
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error };
+      } finally {
+        setBusyRoomId(null);
+        refresh();
+      }
+    },
   };
 }

@@ -96,6 +96,7 @@ export const ownerTenantRouter = router({
         if (paidAt && compareDates(todayWIB(paidAt), due) > 0) payments.late += 1
         else payments.onTime += 1
       } else if (
+        inv.status === 'UNPAID' &&
         compareDates(today, due) > 0 &&
         (inv.tenancy.status === 'ACTIVE' ||
           (inv.tenancy.status === 'PENDING' && (inv.tenancy.expiresAt === null || inv.tenancy.expiresAt.getTime() > now.getTime())))

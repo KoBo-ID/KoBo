@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageSquare, FileText, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { MessageSquare, FileText, CheckCircle2, MoreHorizontal, ChevronRight } from 'lucide-react';
 import type { BoardRoom } from '../../../../backend/src/trpc/router';
 import { RoomStatus } from '../../types';
 import { Popover } from '../ui/Popover';
@@ -27,6 +27,8 @@ interface RoomOccupancyBoardProps {
   onOpenWhatsApp: (room: BoardRoom) => void;
   onMarkPaid: (room: BoardRoom) => void;
   onEndTenancy: (room: BoardRoom) => void;
+  /** Opens the tenant's profile for this tenancy. */
+  onOpenProfile?: (tenancyId: string) => void;
   /** Optional controlled status filter (the dashboard KPI tiles drive it). */
   filterStatus?: RoomStatus | 'all';
   onFilterStatusChange?: (status: RoomStatus | 'all') => void;
@@ -50,6 +52,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
   onOpenWhatsApp,
   onMarkPaid,
   onEndTenancy,
+  onOpenProfile,
   filterStatus: controlledStatus,
   onFilterStatusChange,
 }) => {
@@ -238,7 +241,20 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                             <span className="kobo-table__muted" aria-label="Belum ada penghuni">&mdash;</span>
                           ) : (
                             <>
-                              <div className="kobo-table__strong od-trunc" title={room.tenant?.name}>{room.tenant?.name || 'Penghuni aktif'}</div>
+                              {room.tenancyId && onOpenProfile ? (
+                                <button
+                                  type="button"
+                                  className="od-person"
+                                  title={room.tenant?.name}
+                                  aria-label={`Lihat profil penyewa Kamar ${room.roomNumber}`}
+                                  onClick={() => onOpenProfile(room.tenancyId!)}
+                                >
+                                  <span className="od-trunc">{room.tenant?.name || 'Penghuni aktif'}</span>
+                                  <ChevronRight size={13} aria-hidden="true" style={{ flex: 'none' }} />
+                                </button>
+                              ) : (
+                                <div className="kobo-table__strong od-trunc" title={room.tenant?.name}>{room.tenant?.name || 'Penghuni aktif'}</div>
+                              )}
                               {room.tenant?.campus && (
                                 <div className="kobo-table__muted od-trunc" style={{ fontSize: 'var(--step--2)' }} title={room.tenant.campus}>
                                   {room.tenant.campus}
@@ -294,6 +310,18 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                               >
                                 {({ close }) => (
                                   <>
+                                    {room.tenancyId && onOpenProfile && (
+                                      <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          onOpenProfile(room.tenancyId!);
+                                          close();
+                                        }}
+                                      >
+                                        Lihat profil penyewa
+                                      </button>
+                                    )}
                                     {room.invoice && (
                                       <button
                                         type="button"
@@ -304,7 +332,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                                           close();
                                         }}
                                       >
-                                        Tandai Lunas
+                                        {room.payment?.state === 'AWAITING_ONLINE' ? 'Tandai Lunas (penyewa sedang membayar online)' : 'Tandai Lunas'}
                                       </button>
                                     )}
                                     {(room.status === 'due' || room.status === 'overdue') && (

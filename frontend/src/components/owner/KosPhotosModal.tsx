@@ -9,7 +9,7 @@ import { SafeImage } from '../ui/SafeImage';
 import { useAppStore } from '../../store/AppContext';
 import { useTRPC } from '../../lib/trpc';
 import { messageForError } from '../../lib/errors';
-import { putToStorage, resizeVariants, UploadError } from '../../lib/imageUpload';
+import { DOCUMENT_IMAGE_ACCEPT, putToStorage, resizeVariants, UploadError } from '../../lib/imageUpload';
 
 interface KosPhotosModalProps {
   kosId: string;
@@ -125,7 +125,7 @@ export const KosPhotosModal: React.FC<KosPhotosModalProps> = ({ kosId, kosName, 
           <input
             ref={fileInput}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept={DOCUMENT_IMAGE_ACCEPT}
             multiple
             hidden
             data-testid="photo-input"

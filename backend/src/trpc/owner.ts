@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
+import { todayWIB } from '@kobo/shared/domain'
 import { amenityArrays, itemsFromArrays } from '@kobo/shared/facilities'
 import type { FacilityItem } from '@kobo/shared/facilities'
-import { idInput, kosCreateInput, ownerRegisterInput, kosIdOnly, kosUpdateInput, roomCreateInput, roomDeleteInput, roomUpdateInput, rulesSetInput, tenancyEndInput, MAX_KOS_PER_OWNER, MAX_ROOMS_PER_KOS } from '@kobo/shared/schemas'
+import { idInput, kosCreateInput, ownerRegisterInput, kosIdOnly, kosUpdateInput, roomCreateInput, roomDeleteInput, roomUpdateInput, rulesSetInput, tenancyEndInput, tenancyEndPreviewInput, MAX_KOS_PER_OWNER, MAX_ROOMS_PER_KOS } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
 import type { PrismaClient } from '../db/client.ts'
 import { Prisma } from '../generated/prisma/client.ts'
@@ -21,8 +22,14 @@ import { ownerWaitlistEntries, ownerWaitlistRouter } from './waitlist.ts'
 import { advanceWaitlist, liveOffer, lockKos } from '../waitlist.ts'
 import { OWNER_UNVERIFIED_MESSAGE, authedProcedure, ownerOnlyProcedure, ownerProcedure, publicProcedure, router } from './trpc.ts'
 
-export type { BoardRoom, BoardSummary } from '../ownerBoard.ts'
+export type { BoardRoom, BoardSummary, FormerTenantArrear } from '../ownerBoard.ts'
 export type { ImagePresign, OwnerImage } from './ownerImages.ts'
+
+export interface TenancyEndPreview {
+  arrears: { invoiceId: string; periodStart: string; dueDate: string; amount: number }[]
+  arrearsTotal: number
+  futureUnpaidCount: number
+}
 
 export interface OwnerReview {
   id: string
@@ -451,9 +458,43 @@ export const ownerRouter = router({
   }),
 
   tenancy: router({
+    /** Previews past-due UNPAID arrears (dueDate <= todayWIB) and future unpaid months before ending a lease (SIM-001). */
+    endPreview: ownerProcedure.input(tenancyEndPreviewInput).query(async ({ ctx, input }): Promise<TenancyEndPreview> => {
+      const t = await ctx.prisma.tenancy.findFirst({
+        where: { id: input.tenancyId, room: { kosId: input.kosId } },
+        select: {
+          id: true,
+          status: true,
+          invoices: {
+            where: { status: 'UNPAID' },
+            orderBy: [{ dueDate: 'asc' }, { id: 'asc' }],
+            select: { id: true, periodStart: true, dueDate: true, amount: true },
+          },
+        },
+      })
+      if (!t) throw new TRPCError({ code: 'NOT_FOUND', message: 'Sewa tidak ditemukan.' })
+      if (t.status === 'ENDED') throw new TRPCError({ code: 'CONFLICT', message: 'Sewa ini sudah berakhir.' })
+      if (t.status === 'PENDING') {
+        return { arrears: [], arrearsTotal: 0, futureUnpaidCount: t.invoices.length }
+      }
+      const today = todayWIB(new Date())
+      const arrears: TenancyEndPreview['arrears'] = []
+      let futureUnpaidCount = 0
+      for (const inv of t.invoices) {
+        const due = inv.dueDate.toISOString().slice(0, 10)
+        if (due <= today) {
+          arrears.push({ invoiceId: inv.id, periodStart: inv.periodStart.toISOString().slice(0, 10), dueDate: due, amount: inv.amount })
+        } else {
+          futureUnpaidCount += 1
+        }
+      }
+      return { arrears, arrearsTotal: arrears.reduce((s, a) => s + a.amount, 0), futureUnpaidCount }
+    }),
+
     /**
      * Move-out (ACTIVE) or cancelling a booking hold (PENDING). The room is free again, and any online payment
-     * still waiting on the tenancy is marked FAILED so a late webhook cannot revive it. Paid history stays.
+     * still waiting on the tenancy is marked FAILED so a late webhook cannot revive it. Past-due UNPAID arrears
+     * on an ACTIVE lease are never silently dropped: the owner must explicitly KEEP or WAIVE them (SIM-001). Paid history stays.
      */
     end: ownerProcedure.input(tenancyEndInput).mutation(async ({ ctx, input }): Promise<{ id: string }> => {
       return ctx.prisma.$transaction(async (tx) => {
@@ -467,10 +508,38 @@ export const ownerRouter = router({
           data: { status: 'FAILED', failureCode: 'TENANCY_ENDED' },
         })
         await tx.$queryRaw`SELECT id FROM "Tenancy" WHERE id = ${t.id} FOR UPDATE`
-        const ended = await tx.tenancy.updateMany({ where: { id: t.id, status: { in: ['ACTIVE', 'PENDING'] } }, data: { status: 'ENDED', endedAt: new Date() } })
-        if (ended.count === 0) throw new TRPCError({ code: 'CONFLICT', message: 'Sewa ini sudah berakhir.' })
+        const cur = await tx.tenancy.findUniqueOrThrow({ where: { id: t.id }, select: { status: true } })
+        if (cur.status === 'ENDED') throw new TRPCError({ code: 'CONFLICT', message: 'Sewa ini sudah berakhir.' })
+        const now = new Date()
+        if (cur.status === 'ACTIVE') {
+          const today = todayWIB(now)
+          const dueCutoff = new Date(`${today}T00:00:00Z`)
+          const arrearsInvoices = await tx.invoice.findMany({
+            where: { tenancyId: t.id, status: 'UNPAID', dueDate: { lte: dueCutoff } },
+            select: { id: true, amount: true },
+          })
+          if (arrearsInvoices.length > 0) {
+            if (!input.arrears) {
+              const total = arrearsInvoices.reduce((s, i) => s + i.amount, 0)
+              throw new TRPCError({
+                code: 'CONFLICT',
+                message: `Sewa ini masih memiliki tunggakan sebesar Rp ${total.toLocaleString('id-ID')}. Pilih apakah tunggakan tetap ditagih atau dihapus sebelum mengakhiri sewa.`, // COPY: reviewed (part 2)
+              })
+            }
+            if (input.arrears === 'WAIVE') {
+              await tx.invoice.updateMany({
+                where: { id: { in: arrearsInvoices.map((i) => i.id) }, status: 'UNPAID' },
+                data: { status: 'WAIVED', waivedAt: now, waivedById: ctx.user.id, waiverReason: input.waiverReason!.trim() },
+              })
+            }
+          }
+        }
+        await tx.tenancy.update({
+          where: { id: t.id },
+          data: { status: 'ENDED', endedAt: now, ...(cur.status === 'ACTIVE' ? { expiresAt: null } : {}) },
+        })
         await tx.room.update({ where: { id: t.roomId }, data: { occupancy: 'VACANT' } })
-        await advanceWaitlist(tx, input.kosId, new Date())
+        await advanceWaitlist(tx, input.kosId, now)
         return { id: t.id }
       })
     }),

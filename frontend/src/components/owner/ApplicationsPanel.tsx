@@ -4,6 +4,7 @@ import { Check, X, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Notice } from '../ui/Notice';
+import { RejectApplicationDialog } from './RejectApplicationDialog';
 import { Skeleton } from '../ui/Skeleton';
 import { TenantProfileModal } from './TenantProfileModal';
 import { messageForError } from '../../lib/errors';
@@ -11,7 +12,7 @@ import { useTRPC } from '../../lib/trpc';
 import { useAppStore } from '../../store/AppContext';
 
 const formatDate = (date: string) =>
-  new Date(`${date}T00:00:00+07:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' });
+  new Date(`${date}T00:00:00+07:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' });
 
 // SHEERID (dev/test only) is never named to owners: SheerID's VSA §3.2(e) bars passing its Result to third parties.
 const VIA_LABEL = { EMAIL: 'email kampus', MICROSOFT: 'akun Microsoft kampus', GOOGLE: 'akun Google kampus', KTM: 'KTM', SHEERID: 'verifikasi kampus' } as const;
@@ -37,7 +38,11 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
 
   const [profileFor, setProfileFor] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<{ applicationId: string; decision: 'APPROVE' | 'REJECT' } | null>(null);
-  const act = (applicationId: string, decision: 'APPROVE' | 'REJECT') => setConfirming({ applicationId, decision });
+  const [rejectError, setRejectError] = useState<string | null>(null);
+  const act = (applicationId: string, decision: 'APPROVE' | 'REJECT') => {
+    setRejectError(null);
+    setConfirming({ applicationId, decision });
+  };
 
   const count = applications.data?.length ?? 0;
   const target = confirming ? applications.data?.find((a) => a.id === confirming.applicationId) : undefined;
@@ -62,17 +67,45 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
 
   return (
     <section aria-labelledby="owner-applications-title" className="od-section">
-      {confirming && target && (
+      {confirming && target && confirming.decision === 'REJECT' && (
+        <RejectApplicationDialog
+          summary={
+            <>
+              <strong>{target.applicant.name}</strong>, Kamar {target.room.roomNumber} ({target.room.type}), mulai {formatDate(target.startDate)} selama {target.durationMonths} bulan.
+              <br />
+              Pengajuan ini akan ditolak dan tidak menahan kamar.
+            </>
+          }
+          busy={decide.isPending}
+          error={rejectError}
+          onCancel={closeConfirm}
+          onSubmit={({ reason, note }) => {
+            const { applicationId } = confirming;
+            const name = target.applicant.name;
+            setRejectError(null);
+            decide.mutate(
+              { kosId, applicationId, decision: 'REJECT', reason, note },
+              {
+                onSuccess: () => {
+                  addToast(`Pengajuan ${name} ditolak.`, 'success');
+                  setConfirming(null);
+                  returnFocus(`${applicationId}:REJECT`, true);
+                },
+                onError: (err) => setRejectError(messageForError(err)),
+              },
+            );
+          }}
+        />
+      )}
+      {confirming && target && confirming.decision === 'APPROVE' && (
         <ConfirmDialog
-          title={confirming.decision === 'APPROVE' ? 'Terima pengajuan?' : 'Tolak pengajuan?'}
+          title="Terima pengajuan?"
           message={
             <>
               <strong>{target.applicant.name}</strong>, Kamar {target.room.roomNumber} ({target.room.type}), mulai {formatDate(target.startDate)} selama {target.durationMonths} bulan.
               <br />
-              {confirming.decision === 'APPROVE'
-                ? `Kamar akan ditahan 24 jam untuk pembayaran ${target.applicant.name}.`
-                : `Pengajuan ini akan ditolak dan tidak menahan kamar.`}
-              {confirming.decision === 'APPROVE' && othersForRoom > 0 && (
+              {`Kamar akan ditahan 24 jam untuk pembayaran ${target.applicant.name}.`}
+              {othersForRoom > 0 && (
                 <>
                   <br />
                   <strong>
@@ -82,16 +115,16 @@ export const ApplicationsPanel: React.FC<{ kosId: string }> = ({ kosId }) => {
               )}
             </>
           }
-          confirmLabel={confirming.decision === 'APPROVE' ? 'Terima Pengajuan' : 'Tolak Pengajuan'}
-          danger={confirming.decision === 'REJECT'}
+          confirmLabel="Terima Pengajuan"
           onCancel={closeConfirm}
           onConfirm={() => {
-            const { applicationId, decision } = confirming;
+            const { applicationId } = confirming;
+            const decision = 'APPROVE' as const;
             const name = target.applicant.name;
             decide.mutate(
               { kosId, applicationId, decision },
               {
-                onSuccess: () => addToast(decision === 'APPROVE' ? `Pengajuan ${name} diterima. Kamar ditahan 24 jam.` : `Pengajuan ${name} ditolak.`, 'success'),
+                onSuccess: () => addToast(`Pengajuan ${name} diterima. Kamar ditahan 24 jam.`, 'success'),
                 onError: (err) => addToast(messageForError(err), 'error'),
               },
             );

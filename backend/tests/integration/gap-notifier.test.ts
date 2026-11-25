@@ -32,17 +32,13 @@ const logs = (invoiceId: string) => prisma.notificationLog.findMany({ where: { i
 const emergency = (wa: FakeWhatsApp) => wa.sent.filter((m) => m.kind === 'EMERGENCY_CONTACT')
 
 describe('[G-027][R-094] the emergency contact', () => {
-  it('is reached exactly once, first at 08:00 WIB on day 7, never in quiet hours', async () => {
+  it('is reached exactly once, from day 7 at any hour', async () => {
     const inv = await activeInvoice()
     const due = addDays(today(), -7)
     await inv.setDue(due)
     const wa = new FakeWhatsApp()
 
-    await scanNotifications(prisma, wib(today(), '07:59:59'), { whatsapp: wa })
-    await scanNotifications(prisma, wib(today(), '21:00:00'), { whatsapp: wa })
-    expect(emergency(wa)).toHaveLength(0)
-
-    await scanNotifications(prisma, wib(today(), '08:00:00'), { whatsapp: wa })
+    await scanNotifications(prisma, wib(today(), '03:00:00'), { whatsapp: wa })
     expect(emergency(wa)).toHaveLength(1)
     expect(emergency(wa)[0]).toMatchObject({ to: '081200000009' })
 

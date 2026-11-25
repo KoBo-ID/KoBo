@@ -1,6 +1,7 @@
 import { addMonths, daysOverdue, deriveRoomStatus, formatReceiptNo, todayWIB } from '@kobo/shared/domain'
 import type { RoomStatus } from '@kobo/shared/types'
 import type { PrismaClient } from './db/client.ts'
+import { isLiveAttempt } from './payment/summary.ts'
 
 /*
  * The owner's view of rooms (spec sections 3 and 4): status is derived on read from today's date, the live
@@ -40,6 +41,18 @@ export interface BoardRoom {
   payment: { state: 'AWAITING_ONLINE' | 'VERIFIED' | 'MANUAL' | 'REFUND_PENDING' | 'REFUNDED' | 'NEEDS_REVIEW'; expiresAt: string | null } | null
 }
 
+export interface FormerTenantArrear {
+  tenancyId: string
+  roomNumber: string
+  tenantName: string
+  /** Sum of all past-due UNPAID invoices of this ended tenancy. */
+  amount: number
+  /** YYYY-MM-DD (WIB calendar day) of the oldest past-due UNPAID invoice. */
+  oldestDueDate: string
+  /** Individual past-due UNPAID invoices (oldest first), for recording manual payment after lease end. */
+  invoices: { invoiceId: string; periodStart: string; dueDate: string; amount: number }[]
+}
+
 export interface BoardSummary {
   counts: Record<RoomStatus, number>
   totalRooms: number
@@ -54,6 +67,10 @@ export interface BoardSummary {
   waitlistCount: number
   /** Rooms whose ACTIVE tenancy reached its lease end (BoardRoom.leaseEnded): the owner's "end this tenancy" action items. */
   leaseEndedCount: number
+  /** Ended tenancies that still hold kept past-due UNPAID invoices (SIM-001). Never merged into overdueAmount. */
+  formerTenantArrears: FormerTenantArrear[]
+  /** Sum of amounts in formerTenantArrears. */
+  formerTenantArrearsTotal: number
 }
 
 /** A completed refund stays on the board this long; pending and failed ones stay until resolved. */
@@ -134,7 +151,7 @@ export async function loadBoardRooms(prisma: PrismaClient, kosIds: string[], now
       invoice: unpaid ? { id: unpaid.id, dueDate: dateOnly(unpaid.dueDate), amount: unpaid.amount } : null,
       daysOverdue: unpaid ? daysOverdue(dateOnly(unpaid.dueDate), now) : 0,
       lastReceipt: last ? { receiptNumber: last.receiptNo, receiptNo: formatReceiptNo(last.receiptNo, last.paidAt!) } : null,
-      payment: boardPayment(live?.invoices.find((i) => i.status === 'UNPAID')?.payments ?? [], refundsByRoom.get(r.id) ?? [], last?.provider, now),
+      payment: boardPayment(unpaid?.payments ?? [], refundsByRoom.get(r.id) ?? [], status === 'paid' ? last?.provider : undefined, now),
     })
   }
   return out
@@ -144,21 +161,59 @@ export async function loadBoardSummary(prisma: PrismaClient, kosId: string, room
   const today = todayWIB(now)
   const monthStart = `${today.slice(0, 7)}-01`
   const monthEnd = addMonths(monthStart, 1)
-  const [month, overdue, waitlistCount] = await Promise.all([
+  const todayDate = new Date(`${today}T00:00:00Z`)
+  const [month, overdue, waitlistCount, formerInvoices] = await Promise.all([
     prisma.invoice.findMany({
       where: {
         dueDate: { gte: new Date(`${monthStart}T00:00:00Z`), lt: new Date(`${monthEnd}T00:00:00Z`) },
         tenancy: { room: { kosId } },
-        OR: [{ status: 'PAID' }, { tenancy: { status: 'ACTIVE' } }],
+        OR: [{ status: 'PAID' }, { status: 'UNPAID', tenancy: { status: 'ACTIVE' } }],
       },
       select: { amount: true, status: true },
     }),
     prisma.invoice.aggregate({
       _sum: { amount: true },
-      where: { status: 'UNPAID', dueDate: { lt: new Date(`${today}T00:00:00Z`) }, tenancy: { status: 'ACTIVE', room: { kosId } } },
+      where: { status: 'UNPAID', dueDate: { lt: todayDate }, tenancy: { status: 'ACTIVE', room: { kosId } } },
     }),
     prisma.waitlistEntry.count({ where: { kosId, status: { in: ['WAITING', 'OFFERED'] } } }),
+    prisma.invoice.findMany({
+      where: {
+        status: 'UNPAID',
+        dueDate: { lte: todayDate },
+        tenancy: { status: 'ENDED', expiresAt: null, room: { kosId } },
+      },
+      orderBy: [{ dueDate: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        tenancyId: true,
+        periodStart: true,
+        dueDate: true,
+        amount: true,
+        tenancy: { select: { room: { select: { roomNumber: true } }, user: { select: { name: true } } } },
+      },
+    }),
   ])
+  const byTenancy = new Map<string, FormerTenantArrear>()
+  for (const inv of formerInvoices) {
+    const due = dateOnly(inv.dueDate)
+    const item = { invoiceId: inv.id, periodStart: dateOnly(inv.periodStart), dueDate: due, amount: inv.amount }
+    const existing = byTenancy.get(inv.tenancyId)
+    if (existing) {
+      existing.amount += inv.amount
+      existing.invoices.push(item)
+    } else {
+      byTenancy.set(inv.tenancyId, {
+        tenancyId: inv.tenancyId,
+        roomNumber: inv.tenancy.room.roomNumber,
+        tenantName: inv.tenancy.user.name,
+        amount: inv.amount,
+        oldestDueDate: due,
+        invoices: [item],
+      })
+    }
+  }
+  const formerTenantArrears = [...byTenancy.values()]
+  const formerTenantArrearsTotal = formerTenantArrears.reduce((s, a) => s + a.amount, 0)
   const counts: Record<RoomStatus, number> = { paid: 0, due: 0, overdue: 0, vacant: 0, booking: 0 }
   for (const r of rooms) counts[r.status]++
   return {
@@ -170,6 +225,8 @@ export async function loadBoardSummary(prisma: PrismaClient, kosId: string, room
     overdueAmount: overdue._sum.amount ?? 0,
     waitlistCount,
     leaseEndedCount: rooms.filter((r) => r.leaseEnded).length,
+    formerTenantArrears,
+    formerTenantArrearsTotal,
   }
 }
 
@@ -177,7 +234,7 @@ type BoardPayment = BoardRoom['payment']
 
 /** Label for the open invoice's attempts only (a paid invoice shows its receipt instead). */
 function boardPayment(payments: { provider: 'XENDIT' | 'MOCK' | 'MANUAL'; status: string; expiresAt: Date | null; createdAt: Date }[], roomRefunds: { status: string }[], lastPaidBy: 'XENDIT' | 'MOCK' | 'MANUAL' | undefined, now: Date): BoardPayment {
-  const live = payments.find((p) => p.provider !== 'MANUAL' && (p.status === 'CREATING' || p.status === 'PENDING') && (!p.expiresAt || p.expiresAt > now))
+  const live = payments.find((p) => isLiveAttempt(p, now))
   if (live) return { state: 'AWAITING_ONLINE', expiresAt: live.expiresAt?.toISOString() ?? null }
   // Worst first: a failed refund needs a person, then one still in flight, then one that is done.
   const refunds = [...payments, ...roomRefunds]

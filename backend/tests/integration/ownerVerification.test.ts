@@ -13,6 +13,7 @@ const err = async (p: Promise<unknown>) => (await p.then(() => null, (e: unknown
 const code = async (p: Promise<unknown>) => (await err(p))?.code
 
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 73, 72, 68, 82])
 const PDF = new TextEncoder().encode('%PDF-1.7\n%....')
 const HTML = new TextEncoder().encode('<html><script>alert(1)</script>')
 type Kind = 'KTP' | 'SHM' | 'SHGB' | 'AJB' | 'GIRIK' | 'SPPT_PBB' | 'SURAT_KUASA' | 'SURAT_KETERANGAN'
@@ -24,7 +25,11 @@ async function newOwner(ownershipType: string | null = 'PEMILIK') {
 }
 
 /** presign + fake upload, returning the key. */
-async function upload(userId: string, bytes: Uint8Array = JPEG, contentType: 'image/jpeg' | 'image/webp' | 'application/pdf' = 'image/jpeg') {
+async function upload(
+  userId: string,
+  bytes: Uint8Array = JPEG,
+  contentType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/avif' | 'image/heic' | 'image/heif' | 'image/bmp' | 'application/pdf' = 'image/jpeg',
+) {
   const p = await callerFor(userId).ownerVerification.presign({ kind: 'KTP', contentType, contentLength: bytes.byteLength })
   storage.putPrivate(p.key, bytes, contentType)
   return p.key
@@ -44,6 +49,8 @@ describe('ownerVerification.presign', () => {
     expect(p.headers['Content-Type']).toBe('application/pdf')
     expect(await code(c.ownerVerification.presign({ kind: 'KTP', contentType: 'image/jpeg', contentLength: 10_000_001 }))).toBe('BAD_REQUEST')
     expect(await code(c.ownerVerification.presign({ kind: 'KTP', contentType: 'image/gif' as never, contentLength: 10 }))).toBe('BAD_REQUEST')
+    expect(await code(c.ownerVerification.presign({ kind: 'KTP', contentType: 'image/svg+xml' as never, contentLength: 10 }))).toBe('BAD_REQUEST')
+    expect((await c.ownerVerification.presign({ kind: 'KTP', contentType: 'image/png', contentLength: 100 })).key).toBeTruthy()
   })
 
   it('refuses a non-owner with an Indonesian message', async () => {
@@ -75,6 +82,14 @@ describe('ownerVerification.submit', () => {
     expect(storage.hasPrivate(foreign)).toBe(true)
     expect(await code(callerFor(a).ownerVerification.submit({ documents: [{ kind: 'KTP', key: 'private/ktm/x/y' }, { kind: 'SHM', key: mine }], consent: true }))).toBe('FORBIDDEN')
     expect(await code(callerFor(a).ownerVerification.submit({ documents: [{ kind: 'KTP', key: `private/owner-docs/${a}/../${b}/z` }, { kind: 'SHM', key: mine }], consent: true }))).toBe('FORBIDDEN')
+  })
+
+  it('accepts PNG documents with valid magic bytes', async () => {
+    const o = await newOwner()
+    const ktp = await upload(o, PNG, 'image/png')
+    const shm = await upload(o, PDF, 'application/pdf')
+    const state = await callerFor(o).ownerVerification.submit({ documents: [{ kind: 'KTP', key: ktp }, { kind: 'SHM', key: shm }], consent: true })
+    expect(state.status).toBe('MENUNGGU')
   })
 
   it('refuses a bad signature and deletes the object', async () => {

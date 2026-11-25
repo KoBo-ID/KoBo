@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetDb } from '../../src/db/seed.ts'
 import { loadBoardRooms } from '../../src/ownerBoard.ts'
-import { toPaymentSummary } from '../../src/payment/summary.ts'
+import { isLiveAttempt, toPaymentSummary } from '../../src/payment/summary.ts'
 import { startPaymentAttempt } from '../../src/payment/attempts.ts'
 import { MockPaymentProvider } from '../../src/payment/mock.ts'
-import { approveApplication, callerFor, cash, newStudent, prisma, vacantRoom } from '../helpers.ts'
+import { applyPaymentEventTx } from '../../src/payment/settlement.ts'
+import { approveApplication, callerFor, cash, newStudent, prisma, TEST_BUSINESS_ID, vacantRoom } from '../helpers.ts'
 import { code } from './gap-helpers.ts'
 
 beforeEach(() => resetDb(prisma))
@@ -98,5 +99,51 @@ describe('[B-08] Rp 0 is rejected', () => {
     const room = await vacantRoom()
     const { invoiceId } = await approveApplication((await newStudent()).id, room.id)
     expect(await code(callerFor(await ownerOf(room)).payment.recordManual(await cash(room.kosId, invoiceId, { confirmedAmount: 0 })))).toBe('BAD_REQUEST')
+  })
+})
+
+describe('stale CREATING attempts and due/overdue board labels', () => {
+  it('treats a CREATING row older than 2 minutes as FAILED/not live even when expiresAt is still ahead', async () => {
+    const now = new Date('2026-11-19T05:05:00Z')
+    const base = { id: 'p1', provider: 'XENDIT' as const, status: 'CREATING' as const, checkoutUrl: null, expiresAt: new Date('2026-11-19T05:30:00Z'), paidAt: null, receiptNo: 1 }
+    const stale = { ...base, createdAt: new Date('2026-11-19T05:02:59Z') }
+    const fresh = { ...base, createdAt: new Date('2026-11-19T05:04:00Z') }
+    expect(isLiveAttempt(stale, now)).toBe(false)
+    expect(toPaymentSummary(stale, now).status).toBe('FAILED')
+    expect(isLiveAttempt(fresh, now)).toBe(true)
+    expect(toPaymentSummary(fresh, now).status).toBe('CREATING')
+
+    const room = await vacantRoom()
+    const { invoiceId } = await approveApplication((await newStudent()).id, room.id)
+    const p = await prisma.payment.create({
+      data: { invoiceId, provider: 'XENDIT', status: 'CREATING', amount: 1000, expiresAt: new Date(Date.now() + 25 * 60_000), createdAt: new Date(Date.now() - 3 * 60_000) },
+    })
+    expect((await boardRoom(room.id, room.kosId)).payment).toBeNull()
+    await prisma.payment.update({ where: { id: p.id }, data: { createdAt: new Date(Date.now() - 30_000) } })
+    expect((await boardRoom(room.id, room.kosId)).payment?.state).toBe('AWAITING_ONLINE')
+  })
+
+  it('does not show VERIFIED or MANUAL on the owner board once the next invoice is due or overdue', async () => {
+    const room = await vacantRoom()
+    const { invoiceId, tenancyId, invoice } = await approveApplication((await newStudent()).id, room.id, { durationMonths: 2 })
+    const p = await prisma.payment.create({
+      data: { invoiceId, provider: 'XENDIT', status: 'PENDING', amount: invoice.amount, providerSessionId: `ps_${invoiceId}`, providerBusinessId: TEST_BUSINESS_ID },
+    })
+    await applyPaymentEventTx(prisma, { provider: 'XENDIT', expectedBusinessId: TEST_BUSINESS_ID }, {
+      kind: 'SESSION_COMPLETED', referenceId: p.id, providerBusinessId: TEST_BUSINESS_ID, amount: invoice.amount, currency: 'IDR', occurredAt: new Date(),
+      providerSessionId: p.providerSessionId!, providerPaymentRequestId: 'pr_m1', providerPaymentId: 'py_m1',
+    })
+    expect((await boardRoom(room.id, room.kosId)).payment?.state).toBe('VERIFIED')
+
+    const month2 = await prisma.invoice.findFirstOrThrow({ where: { tenancyId, status: 'UNPAID' } })
+    const overdueNow = new Date(month2.dueDate.getTime() + 5 * 86_400_000)
+    const overdueRow = await boardRoom(room.id, room.kosId, overdueNow)
+    expect(overdueRow.status).toBe('overdue')
+    expect(overdueRow.payment).toBeNull()
+
+    const dueNow = new Date(month2.dueDate.getTime() - 2 * 86_400_000)
+    const dueRow = await boardRoom(room.id, room.kosId, dueNow)
+    expect(dueRow.status).toBe('due')
+    expect(dueRow.payment).toBeNull()
   })
 })

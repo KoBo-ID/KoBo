@@ -18,9 +18,9 @@ export const OwnerLogin: React.FC = () => {
   const isDemo = !!me?.user.isDemo;
 
   // One CTA, three meanings: sign in, open the workspace, or self-register as an owner.
-  const ctaLabel = !me ? 'Masuk untuk mendaftar' : me.isOwner ? 'Lanjut ke dasbor pemilik' : 'Daftarkan diri sebagai pemilik';
+  const ctaLabel = !me ? 'Masuk atau daftar sebagai pemilik' : me.isOwner ? 'Lanjut ke dasbor pemilik' : 'Daftarkan diri sebagai pemilik';
   const onCta = () => {
-    if (!me) navigate('/masuk?peran=pemilik&next=%2Fowner%2Flogin');
+    if (!me) navigate('/masuk?peran=pemilik&next=%2Fowner%2Fdashboard');
     else if (me.isOwner) navigate('/owner/dashboard');
     else navigate('/masuk?peran=pemilik&langkah=3');
   };

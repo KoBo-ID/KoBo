@@ -71,10 +71,10 @@ export const ownerVerificationRouter = router({
         await ctx.storage.deletePrivate(d.key)
         return bad(message)
       }
-      if (!(OWNER_DOC_TYPES as readonly string[]).includes(head.contentType)) throw await reject('Jenis file tidak didukung. Gunakan JPEG, WebP, atau PDF.')
+      if (!(OWNER_DOC_TYPES as readonly string[]).includes(head.contentType)) throw await reject('Jenis file tidak didukung. Gunakan gambar (JPG, PNG, WebP, HEIC) atau PDF.')
       if (head.contentLength <= 0 || head.contentLength > OWNER_DOC_MAX_BYTES) throw await reject('Ukuran dokumen melebihi batas 10 MB.')
       const first = await ctx.storage.peekPrivate(d.key, 16)
-      if (!first || !hasOwnerDocSignature(head.contentType, first)) throw await reject('Isi file bukan JPEG, WebP, atau PDF yang valid.')
+      if (!first || !hasOwnerDocSignature(head.contentType, first)) throw await reject('Isi file bukan gambar atau PDF yang valid.')
       heads.push({ kind: d.kind, key: d.key, contentType: head.contentType })
     }
 

@@ -1,9 +1,9 @@
-import type { OwnerDocKind } from '@kobo/shared/schemas'
+import { OWNER_DOC_CONTENT_TYPES, type OwnerDocKind } from '@kobo/shared/schemas'
 import { hasImageSignature } from '../storage.ts'
 
 export const OWNER_DOC_PREFIX = 'private/owner-docs/'
 export const OWNER_DOC_MAX_BYTES = 10_000_000
-export const OWNER_DOC_TYPES = ['image/jpeg', 'image/webp', 'application/pdf'] as const
+export const OWNER_DOC_TYPES = OWNER_DOC_CONTENT_TYPES
 export const OWNER_MAX_ATTEMPTS = 3
 /** Files are kept this long after a decision, then purged by the retention job. */
 export const OWNER_DOC_RETENTION_DAYS = 90

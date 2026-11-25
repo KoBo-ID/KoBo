@@ -15,6 +15,7 @@ import { pickKos } from '../../lib/ownerWorkspace';
 import { useOwnerBadges } from '../../lib/ownerBadges';
 import type { OwnerWorkspace } from '../../lib/ownerWorkspace';
 import { ErrorState } from '../ui/QueryState';
+import { Skeleton } from '../ui/Skeleton';
 import { Modal } from '../ui/Modal';
 import { OwnerDocsStep } from '../auth/OwnerDocsStep';
 import { useOwnerGate, useOwnerVerification } from '../../lib/owner';
@@ -92,7 +93,7 @@ export const OwnerLayout: React.FC = () => {
       panelClassName="kobo-menu os-picker-menu"
       trigger={(p) => (
         <button {...p} type="button" className="kobo-control os-picker" style={{ minWidth }}>
-          <span className="os-picker__name" title={selectedKos?.name}>{selectedKos?.name ?? 'Belum ada kos'}</span>
+          <span className="os-picker__name" title={selectedKos?.name}>{kosQuery.isPending ? <Skeleton width="9rem" height="1rem" style={{ display: 'inline-block', verticalAlign: 'middle' }} /> : (selectedKos?.name ?? 'Belum ada kos')}</span>
           <ChevronDown size={14} />
         </button>
       )}
@@ -186,7 +187,7 @@ export const OwnerLayout: React.FC = () => {
             {kosList.length > 1 ? (
               <div className="os-topbar__picker">{renderKosPicker('0', 'kobo-popover-anchor--block')}</div>
             ) : (
-              <span className="os-topbar__name">{selectedKos?.name ?? 'Belum ada kos'}</span>
+              <span className="os-topbar__name">{kosQuery.isPending ? <Skeleton width="9rem" height="1rem" style={{ display: 'inline-block', verticalAlign: 'middle' }} /> : (selectedKos?.name ?? 'Belum ada kos')}</span>
             )}
             {selectedKos && (
               <span className="os-badge">

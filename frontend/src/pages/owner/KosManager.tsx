@@ -524,6 +524,7 @@ export const KosManager: React.FC = () => {
               type="number"
               value={priceMonthly}
               onChange={(e) => setPriceMonthly(Number(e.target.value))}
+              helperText="Penyewa yang sudah ada tetap membayar harga yang disepakati."
               required
             />
             <Select
