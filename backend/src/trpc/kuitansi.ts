@@ -31,6 +31,8 @@ export interface KuitansiView {
 }
 
 const PAID_STATES = ['PAID', 'REFUND_PENDING', 'REFUND_FAILED', 'REFUNDED']
+/** Auto-queued refunds for payments that never settled an invoice (never entitled to a kuitansi). */
+const UNFULFILLED_REFUND = new Set(['HOLD_EXPIRED', 'TENANCY_ENDED', 'INVOICE_ALREADY_PAID', 'INVOICE_WAIVED'])
 
 const dateOnly = (d: Date) => d.toISOString().slice(0, 10)
 
@@ -40,6 +42,7 @@ export const kuitansiRouter = router({
     const p = await ctx.prisma.payment.findUnique({
       where: { receiptNo: input.receiptNo },
       include: {
+        refund: { select: { reason: true } },
         invoice: {
           include: {
             tenancy: {
@@ -52,7 +55,15 @@ export const kuitansiRouter = router({
         },
       },
     })
-    if (!p || !PAID_STATES.includes(p.status) || !p.paidAt) throw new TRPCError({ code: 'NOT_FOUND', message: 'Kuitansi tidak ditemukan.' })
+    if (
+      !p ||
+      !PAID_STATES.includes(p.status) ||
+      !p.paidAt ||
+      p.invoice.status !== 'PAID' ||
+      (p.status !== 'PAID' && !!p.refund && UNFULFILLED_REFUND.has(p.refund.reason))
+    ) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Kuitansi tidak ditemukan.' })
+    }
     const { tenancy } = p.invoice
     const { kos } = tenancy.room
     // Receipt numbers are sequential, so a foreign receipt must look exactly like a missing one (no existence oracle).
@@ -67,7 +78,7 @@ export const kuitansiRouter = router({
       amount: p.amount,
       status: p.status === 'REFUNDED' ? 'REFUNDED' : 'PAID',
       breakdown: { rent: p.invoice.rentAmount, applicationFee: p.invoice.applicationFeeAmount, discount: p.invoice.discountAmount, total: p.amount },
-      reference: p.provider === 'MANUAL' ? null : p.externalId,
+      reference: p.provider === 'XENDIT' ? (p.providerPaymentId ?? p.providerPaymentRequestId ?? p.externalId) : p.provider === 'MOCK' ? p.externalId : null,
       method: p.provider,
       manual: p.provider === 'MANUAL' && p.manualMethod ? { method: p.manualMethod, reference: p.manualReference } : null,
       payer: { name: tenancy.user.name, campus: tenancy.user.campus },

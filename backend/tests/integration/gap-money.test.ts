@@ -14,7 +14,7 @@ const verified = async () => {
 
 /** Pays the first invoice through the real payment.start -> settlement path. */
 async function payFirst(userId: string, invoiceId: string) {
-  const started = await callerFor(userId).payment.start({ invoiceId })
+  const started = await callerFor(userId, { isDemo: true }).payment.start({ invoiceId })
   await settleMock(started.paymentId)
 }
 

@@ -33,12 +33,18 @@ describe('campus.myDiscountStatus', () => {
     expect(await callerFor(s.id).campus.myDiscountStatus()).toEqual({ campusId: null, campusName: null, affiliated: false, verified: false })
   })
 
-  it('reports a verified student at a partner campus as affiliated', async () => {
+  it('reports a verified student at a partner campus as affiliated with institution name', async () => {
     const s = await newStudent()
     await verifyAtCampus(s.id, 'binus-anggrek')
     const r = await callerFor(s.id).campus.myDiscountStatus()
-    expect(r).toMatchObject({ campusId: 'binus-anggrek', affiliated: true, verified: true })
-    expect(r.campusName).toBeTruthy()
+    expect(r).toMatchObject({ campusId: 'binus-anggrek', campusName: 'BINUS University', affiliated: true, verified: true })
+  })
+
+  it('institution search returns only BINUS University, never location-specific BINUS branches', async () => {
+    const inst = await caller.campus.search({ q: 'binus', scope: 'institution' })
+    expect(inst.map((c) => ({ id: c.id, name: c.name }))).toEqual([{ id: 'binus', name: 'BINUS University' }])
+    const loc = await caller.campus.search({ q: 'binus', scope: 'location' })
+    expect(loc.some((c) => c.id === 'binus')).toBe(false)
   })
 
   it('reports a verified student at a non-partner campus as not affiliated', async () => {

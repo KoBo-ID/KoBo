@@ -2,7 +2,8 @@ import type { TRPCError } from '@trpc/server'
 import { addDays, addMonths, formatReceiptNo, todayWIB } from '@kobo/shared/domain'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resetDb } from '../../src/db/seed.ts'
-import { approveApplication, caller, callerFor, createPendingMockPayment, DEMO_STUDENT_ID, prisma, vacantRoom, cash } from '../helpers.ts'
+import { applyPaymentEventTx } from '../../src/payment/settlement.ts'
+import { approveApplication, caller, callerFor, createPendingMockPayment, DEMO_STUDENT_ID, newStudent, prisma, TEST_BUSINESS_ID, vacantRoom, cash } from '../helpers.ts'
 
 beforeEach(() => resetDb(prisma))
 
@@ -56,14 +57,58 @@ describe('kuitansi.get', () => {
     expect((await callerFor(ownerId).kuitansi.get({ receiptNo: paid.receiptNumber })).receiptNumber).toBe(paid.receiptNumber)
   })
 
-  it('reports MOCK for a simulated payment', async () => {
+  it('reports MOCK for a simulated payment without leaking internal mock payment ids', async () => {
     const room = await vacantRoom()
     const student = callerFor(DEMO_STUDENT_ID, { isDemo: true })
     const booked = await approveApplication(DEMO_STUDENT_ID, room.id, { startDate: addDays(todayWIB(new Date()), 2), durationMonths: 2 })
     const payment = await createPendingMockPayment(booked.invoiceId)
     await student.payment.simulate({ paymentId: payment.id })
     const pay = await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })
-    expect((await student.kuitansi.get({ receiptNo: pay.receiptNo })).method).toBe('MOCK')
+    const k = await student.kuitansi.get({ receiptNo: pay.receiptNo })
+    expect(k.method).toBe('MOCK')
+    expect(k.reference).toBeNull()
+  })
+
+  it('exposes the Xendit payment reference on a settled Xendit receipt', async () => {
+    const room = await vacantRoom()
+    const student = await newStudent()
+    const booked = await approveApplication(student.id, room.id, { startDate: addDays(todayWIB(new Date()), 2), durationMonths: 2 })
+    const p = await prisma.payment.create({
+      data: { invoiceId: booked.invoiceId, provider: 'XENDIT', status: 'PENDING', amount: booked.invoice.amount, providerSessionId: 'ps_kui', providerBusinessId: TEST_BUSINESS_ID },
+    })
+    await applyPaymentEventTx(prisma, { provider: 'XENDIT', expectedBusinessId: TEST_BUSINESS_ID }, {
+      kind: 'SESSION_COMPLETED', referenceId: p.id, providerBusinessId: TEST_BUSINESS_ID, amount: booked.invoice.amount, currency: 'IDR', occurredAt: new Date(),
+      providerSessionId: 'ps_kui', providerPaymentRequestId: 'pr_kui_1', providerPaymentId: 'py_kui_1',
+    })
+    const k = await callerFor(student.id).kuitansi.get({ receiptNo: p.receiptNo })
+    expect(k.method).toBe('XENDIT')
+    expect(k.reference).toBe('py_kui_1')
+  })
+
+  it('refuses a kuitansi for an unfulfilled late or duplicate refund payment', async () => {
+    const room = await vacantRoom()
+    const student = await newStudent()
+    const booked = await approveApplication(student.id, room.id, { startDate: addDays(todayWIB(new Date()), 2), durationMonths: 2 })
+    await prisma.tenancy.update({ where: { id: booked.tenancyId }, data: { expiresAt: new Date(Date.now() - 60_000) } })
+    const late = await prisma.payment.create({
+      data: { invoiceId: booked.invoiceId, provider: 'XENDIT', status: 'PENDING', amount: booked.invoice.amount, providerSessionId: 'ps_late_kui', providerBusinessId: TEST_BUSINESS_ID },
+    })
+    await applyPaymentEventTx(prisma, { provider: 'XENDIT', expectedBusinessId: TEST_BUSINESS_ID }, {
+      kind: 'SESSION_COMPLETED', referenceId: late.id, providerBusinessId: TEST_BUSINESS_ID, amount: booked.invoice.amount, currency: 'IDR', occurredAt: new Date(),
+      providerSessionId: 'ps_late_kui', providerPaymentRequestId: 'pr_late_kui', providerPaymentId: 'py_late_kui',
+    })
+    expect(await code(callerFor(student.id).kuitansi.get({ receiptNo: late.receiptNo }))).toBe('NOT_FOUND')
+
+    // Duplicate second payment on an already-PAID invoice also gets no receipt of its own.
+    const { booked: paidBooked, ownerId } = await paidReceipt()
+    const dup = await prisma.payment.create({
+      data: { invoiceId: paidBooked.invoiceId, provider: 'XENDIT', status: 'PENDING', amount: paidBooked.invoice.amount, providerSessionId: 'ps_dup_kui', providerBusinessId: TEST_BUSINESS_ID },
+    })
+    await applyPaymentEventTx(prisma, { provider: 'XENDIT', expectedBusinessId: TEST_BUSINESS_ID }, {
+      kind: 'SESSION_COMPLETED', referenceId: dup.id, providerBusinessId: TEST_BUSINESS_ID, amount: paidBooked.invoice.amount, currency: 'IDR', occurredAt: new Date(),
+      providerSessionId: 'ps_dup_kui', providerPaymentRequestId: 'pr_dup_kui', providerPaymentId: 'py_dup_kui',
+    })
+    expect(await code(callerFor(ownerId).kuitansi.get({ receiptNo: dup.receiptNo }))).toBe('NOT_FOUND')
   })
 
   it('refuses any other signed-in user and another owner with NOT_FOUND (same as a missing receipt)', async () => {

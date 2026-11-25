@@ -152,6 +152,10 @@ test('scenario 26: the student cancels, the owner cannot complete it, and a new 
       await student.page.goto('/my-kos')
       await student.page.getByRole('tab', { name: /Jadwal Survey Gratis/ }).click()
       await student.page.getByRole('button', { name: 'Batalkan Survey' }).click()
+      // Audit 2026-11-24: cancelling now asks first (nothing changes until the student confirms).
+      const confirm = student.page.getByRole('dialog', { name: 'Batalkan survey?' })
+      await expect(confirm).toContainText('Pemilik akan melihat pembatalan ini.')
+      await confirm.getByRole('button', { name: 'Batalkan survey', exact: true }).click()
       await expect(student.page.getByText('Jadwal survey telah dibatalkan.')).toBeVisible()
       await expect(student.page.getByText('Dibatalkan', { exact: true })).toBeVisible()
       await expect(student.page.getByRole('button', { name: 'Batalkan Survey' })).toHaveCount(0)

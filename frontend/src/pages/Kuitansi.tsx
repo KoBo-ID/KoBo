@@ -65,7 +65,7 @@ export const Kuitansi: React.FC = () => {
   if (q.isError) {
     const code = errorCode(q.error);
     // The server answers NOT_FOUND for unknown, foreign and unpaid numbers alike (no existence oracle), so one message covers all three.
-    if (code === 'NOT_FOUND') return <NotFoundState title="Kuitansi belum tersedia" text="Kuitansi tersedia setelah pembayaran lunas." linkTo="/my-kos" linkLabel="Ke Kos Saya" />;
+    if (code === 'NOT_FOUND') return <NotFoundState title="Kuitansi tidak ditemukan" text="Kuitansi tidak ditemukan atau bukan milik akun ini." linkTo="/my-kos" linkLabel="Kembali ke Kos Saya" />;
     if (code === 'FORBIDDEN') return <NotFoundState title="Tidak dapat dibuka" text={messageForError(q.error)} linkTo="/" linkLabel="Ke Beranda" />;
     return <ErrorState message="Gagal memuat kuitansi." onRetry={() => void q.refetch()} />;
   }
@@ -147,9 +147,9 @@ export const Kuitansi: React.FC = () => {
         </Button>
         <span className="kuitansi-hint">Pilih &lsquo;Simpan sebagai PDF&rsquo; di jendela cetak</span>
         {k.viewerRole === 'OWNER' ? (
-          <Link to="/owner/dashboard" className="kuitansi-back">Kembali ke Papan Okupansi</Link>
+          <Link to="/owner/dashboard" className="kuitansi-back" style={{ minHeight: 40, display: 'inline-flex', alignItems: 'center' }}>Kembali ke Papan Okupansi</Link>
         ) : (
-          <Link to="/my-kos" className="kuitansi-back">Kembali ke Kos Saya</Link>
+          <Link to="/my-kos" className="kuitansi-back" style={{ minHeight: 40, display: 'inline-flex', alignItems: 'center' }}>Kembali ke Kos Saya</Link>
         )}
       </div>
     </div>

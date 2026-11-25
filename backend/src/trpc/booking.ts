@@ -1,6 +1,6 @@
 import { addMonths, clampDiscount, computeCheckoutTotal, deriveRoomStatus, formatReceiptNo, MIN_FIRST_INVOICE, todayWIB } from '@kobo/shared/domain'
 export { clampDiscount, MIN_FIRST_INVOICE }
-import type { RoomStatus } from '@kobo/shared/types'
+import type { InvoiceBillingState, RoomStatus } from '@kobo/shared/types'
 import type { Prisma } from '../generated/prisma/client.ts'
 import { isLiveAttempt, toPaymentSummary } from '../payment/summary.ts'
 import type { PaymentSummary } from '../payment/summary.ts'
@@ -35,10 +35,16 @@ export interface ApprovedTenancyObligation {
 
 export interface MyInvoice {
   id: string
-  status: 'UNPAID' | 'PAID'
+  status: 'UNPAID' | 'PAID' | 'WAIVED'
+  /** Server-derived billing state so the UI never re-derives overdue vs waived vs not-billed (SIM-001). */
+  billingState: InvoiceBillingState
   /** YYYY-MM-DD (WIB calendar day) */
   dueDate: string
   amount: number
+  /** ISO timestamp when the owner waived this arrears invoice; null unless WAIVED. */
+  waivedAt: string | null
+  /** Owner's reason for waiving this arrears invoice; null unless WAIVED. */
+  waiverReason: string | null
   /** KB/YYYY/MM/NNNN once paid, else null. */
   receiptNo: string | null
   /** The raw Payment.receiptNo used in /kuitansi/:receiptNo. */
@@ -93,6 +99,24 @@ function endCause(t: { status: 'PENDING' | 'ACTIVE' | 'ENDED'; expiresAt: Date |
   // ENDED: activation clears expiresAt, so a row that still has one never became a rental.
   if (!t.expiresAt) return 'MOVED_OUT'
   return t.endedAt && t.endedAt < t.expiresAt ? 'CANCELLED_BY_OWNER' : 'HOLD_LAPSED'
+}
+
+/** Derives the student-facing billing state per invoice so MyKos never re-derives overdue vs not-billed vs waived. */
+function deriveBillingState(
+  inv: { status: 'UNPAID' | 'PAID' | 'WAIVED'; dueDate: string },
+  tenancy: { status: 'PENDING' | 'ACTIVE' | 'ENDED'; cause: MyTenancy['endCause'] },
+  today: string,
+): InvoiceBillingState {
+  if (inv.status === 'PAID') return 'PAID'
+  if (inv.status === 'WAIVED') return 'WAIVED'
+  if (tenancy.cause !== null) {
+    // Unactivated holds (lapsed or cancelled before payment) were never billed.
+    if (tenancy.cause !== 'MOVED_OUT') return 'NOT_BILLED'
+    // Ended active lease: past-due unpaid invoices remain OVERDUE; future unpaid months are NOT_BILLED.
+    return inv.dueDate <= today ? 'OVERDUE' : 'NOT_BILLED'
+  }
+  if (tenancy.status === 'ACTIVE' && inv.dueDate < today) return 'OVERDUE'
+  return 'OWED'
 }
 
 export const OFFERED_ELSEWHERE = Symbol('offered-elsewhere')
@@ -205,9 +229,11 @@ export const bookingRouter = router({
         review: true,
       },
     })
+    const today = todayWIB(now)
     return rows.map((t): MyTenancy => {
       const oldestUnpaid = t.invoices.find((i) => i.status === 'UNPAID')
       const live = t.status === 'PENDING' && t.expiresAt !== null && t.expiresAt.getTime() > now.getTime()
+      const cause = endCause(t, now)
       const img = t.room.kos.images[0]
       return {
         id: t.id,
@@ -223,7 +249,7 @@ export const bookingRouter = router({
         leaseEndDate: addMonths(todayWIB(t.startDate), t.durationMonths),
         expiresAt: t.expiresAt?.toISOString() ?? null,
         endedAt: t.endedAt?.toISOString() ?? null,
-        endCause: endCause(t, now),
+        endCause: cause,
         kos: {
           id: t.room.kos.id,
           name: t.room.kos.name,
@@ -237,11 +263,15 @@ export const bookingRouter = router({
           const paid = i.payments.find((p) => p.status === 'PAID')
           const active = i.payments.find((p) => isLiveAttempt(p, now))
           const latest = i.payments.at(-1)
+          const due = dateOnly(i.dueDate)
           return {
             id: i.id,
             status: i.status,
-            dueDate: dateOnly(i.dueDate),
+            billingState: deriveBillingState({ status: i.status, dueDate: due }, { status: t.status, cause }, today),
+            dueDate: due,
             amount: i.amount,
+            waivedAt: i.waivedAt?.toISOString() ?? null,
+            waiverReason: i.waiverReason,
             receiptNo: paid?.paidAt ? formatReceiptNo(paid.receiptNo, paid.paidAt) : null,
             receiptNumber: paid ? paid.receiptNo : null,
             activePayment: active ? toPaymentSummary(active, now) : null,

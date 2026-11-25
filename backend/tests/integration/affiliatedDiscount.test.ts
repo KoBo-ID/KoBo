@@ -23,7 +23,7 @@ describe('Diskon Kampus Mitra', () => {
     const rows = await prisma.campusAffiliation.findMany({ where: { active: true } })
     expect(rows.map((r) => r.campusId)).toEqual(expect.arrayContaining(['binus']))
     const demo = await prisma.user.findUniqueOrThrow({ where: { id: 'user-demo-student' } })
-    expect(demo.verifiedCampusId).toBe('binus-syahdan')
+    expect(demo.verifiedCampusId).toBe('binus')
   })
 
   it('gives an affiliated, currently verified student the discount', async () => {

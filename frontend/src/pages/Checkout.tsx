@@ -94,6 +94,10 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
 
   // Before a first application: the emergency contact (with consent) and the current Syarat. The server enforces it too.
   const missingProfile = !!me && me.profileConsentsRequired && (!me.emergencyContact || !me.termsCurrent);
+  // The Syarat are accepted right here (the Profile page no longer carries the button).
+  const acceptTerms = useMutation(trpc.auth.acceptTerms.mutationOptions({
+    onSuccess: () => qc.invalidateQueries({ queryKey: trpc.auth.me.queryKey() }),
+  }));
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -144,7 +148,7 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
           <div className="checkout-split-layout">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <VerifyPrompt what="mengajukan sewa" />
-              <CampusDiscountCard studentDiscountAmount={kos.studentDiscountAmount || undefined} />
+              {kos.studentDiscountAmount > 0 && <CampusDiscountCard studentDiscountAmount={kos.studentDiscountAmount} />}
               <section style={card} aria-labelledby="rental-plan-title">
                 <h2 id="rental-plan-title" style={{ fontSize: 'var(--step-1)', fontWeight: 700, marginBottom: '1rem' }}>Rencana Sewa</h2>
                 <div className="application-form-grid">
@@ -201,12 +205,21 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
                 </div>
               )}
 
-              {missingProfile && (
+              {missingProfile && !me!.emergencyContact && (
                 <Notice tone="error">
-                  Sebelum mengajukan sewa, lengkapi {!me!.emergencyContact ? 'kontak darurat' : ''}{!me!.emergencyContact && !me!.termsCurrent ? ' dan ' : ''}{!me!.termsCurrent ? 'persetujuan syarat' : ''} Anda di halaman <Link to="/profile" style={{ color: 'var(--primary)', fontWeight: 700 }}>Profil</Link>.
+                  Sebelum mengajukan sewa, lengkapi <Link to="/profile/kontak-darurat" style={{ color: 'var(--primary)', fontWeight: 700 }}>kontak darurat</Link> Anda.
                 </Notice>
               )}
-              {create.isError && <Notice tone="error">{messageForError(create.error)}{isStudentGateError(create.error) && <> {' '}<Link to="/profile" style={{ color: 'var(--primary)', fontWeight: 700 }}>Buka Profil</Link></>}</Notice>}
+              {missingProfile && !me!.termsCurrent && (
+                <Notice tone="error">
+                  <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem' }}>
+                    <span>Setujui <Link to="/syarat" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 700 }}>Syarat</Link> dan <Link to="/privasi" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 700 }}>Kebijakan Privasi</Link> versi terbaru untuk mengajukan sewa.</span>
+                    <Button type="button" variant="outline" size="sm" isLoading={acceptTerms.isPending} onClick={() => acceptTerms.mutate({ version: me!.termsVersion })}>Saya menyetujui</Button>
+                  </span>
+                  {acceptTerms.isError && <span style={{ display: 'block', marginTop: '0.35rem' }}>{messageForError(acceptTerms.error)}</span>}
+                </Notice>
+              )}
+              {create.isError && <Notice tone="error">{messageForError(create.error)}{isStudentGateError(create.error) && <> {' '}<Link to="/profile/verifikasi" style={{ color: 'var(--primary)', fontWeight: 700 }}>Verifikasi sekarang</Link></>}</Notice>}
               <Button type="submit" variant="primary" size="lg" fullWidth isLoading={create.isPending} disabled={missingProfile} icon={<Send size={16} />}>{me ? 'Kirim Pengajuan' : 'Masuk untuk Mengajukan'}</Button>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: 'var(--step--2)', color: 'var(--text-muted)' }}>
                 <ShieldCheck size={15} color="var(--primary)" style={{ flexShrink: 0 }} />

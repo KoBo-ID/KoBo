@@ -2,7 +2,7 @@ import { addDays, addMonths, todayWIB } from '@kobo/shared/domain'
 import { itemsFromArrays } from '@kobo/shared/facilities'
 import type { FacilityItem } from '@kobo/shared/facilities'
 import { readFileSync } from 'node:fs'
-import { DEMO_EMAILS } from '../demo.ts'
+import { DEMO_EMAILS, DEMO_TEMAN_CONNECTION_ID } from '../demo.ts'
 import type { PrismaClient } from './client.ts'
 import rawData from './seedData.json' with { type: 'json' }
 
@@ -151,6 +151,24 @@ const ENTRA_TENANT_IDS: Record<string, string[]> = {
   'its-sukolilo': ['1d5169ac-c7cb-4275-9764-bf8c9c364a4c'],
 }
 
+/** Institution-level Campus rows used for student verification (not physical kos-proximity locations). */
+const INSTITUTION_CAMPUSES = [
+  {
+    id: 'binus',
+    name: 'BINUS University',
+    shortName: 'BINUS University',
+    city: '',
+    lat: -6.2001,
+    lng: 106.7852,
+    kind: 'institution',
+    parentId: null,
+    emailDomains: ['binus.ac.id'],
+    studentEmailDomains: ['binus.ac.id'],
+    entraTenantIds: [BINUS_TENANT],
+    aliases: ['binus', 'bina nusantara', 'universitas bina nusantara', 'binus university'],
+  },
+]
+
 const MONTHS: Record<string, number> = {
   Januari: 1, Februari: 2, Maret: 3, April: 4, Mei: 5, Juni: 6, Juli: 7, Agustus: 8,
   September: 9, Oktober: 10, November: 11, Desember: 12,
@@ -229,6 +247,7 @@ export interface SeedRows {
   partnerConnections: { id: string; userAId: string; userBId: string; [k: string]: unknown }[]
   partnerMessages: { id: string; connectionId: string; [k: string]: unknown }[]
   connectionReadStates: { connectionId: string; userId: string; [k: string]: unknown }[]
+  sharedShortlistItems: { id: string; connectionId: string; kosId: string; addedById: string; createdAt: Date }[]
 }
 
 interface Lifestyle {
@@ -278,30 +297,60 @@ const MATCH_PEOPLE: MatchSeedPerson[] = [
   { key: 'putri', name: 'Putri Ayu', gender: 'PEREMPUAN', birthYear: 2003, campusId: 'binus-anggrek', budget: [1_000_000, 1_700_000], moveIn: '2027-02-10', intro: 'Dari Medan, semester 5 Manajemen. Ramah dan gampang cocok.', life: L('NORMAL', 'CUKUP', 'TIDAK_MAU_PEROKOK', 'SERING', 'SEDANG', 'EKSTROVERT', 'DI_LUAR', 'MALAM_SAJA', 'SEBAGIAN') },
 ]
 
+/** Two dedicated demo student accounts (Nadia & Clara, BINUS) paired to demonstrate the full "Cari Kos Bersama" / rent-with-teman flow. */
+const DEMO_TEMAN_PAIR: MatchSeedPerson[] = [
+  {
+    key: 'demo-teman-a',
+    name: 'Nadia',
+    gender: 'PEREMPUAN',
+    birthYear: 2004,
+    campusId: 'binus-syahdan',
+    budget: [1_200_000, 2_200_000],
+    moveIn: '2027-01-15',
+    intro: 'Mahasiswa Manajemen BINUS semester 4. Cari teman sekamar yang rapi dan mau patungan kamar berdua dekat Syahdan.',
+    life: L('NORMAL', 'RAPI', 'TIDAK_MAU_PEROKOK', 'JARANG', 'TENANG', 'SEIMBANG', 'CAMPUR', 'MALAM_SAJA', 'PATUNGAN'),
+  },
+  {
+    key: 'demo-teman-b',
+    name: 'Clara',
+    gender: 'PEREMPUAN',
+    birthYear: 2004,
+    campusId: 'binus-anggrek',
+    budget: [1_300_000, 2_300_000],
+    moveIn: '2027-01-18',
+    intro: 'Jurusan Desain Interior BINUS. Rapi, tidak merokok, dan mau sewa kamar berdua bareng teman dekat kampus.',
+    life: L('NORMAL', 'RAPI', 'TIDAK_MAU_PEROKOK', 'KADANG', 'TENANG', 'SEIMBANG', 'DI_KAMAR', 'MALAM_SAJA', 'PATUNGAN'),
+  },
+]
+
 /** Builds the matching rows and pushes the extra verified students onto `users`. Deterministic for a given `now`. */
 function buildMatchingSeed(
   now: Date,
   baseCreated: Date,
   coords: (campusId: string) => { lat: number; lng: number } | undefined,
   users: { id: string }[],
-): Pick<SeedRows, 'matchingProfiles' | 'partnerRequests' | 'partnerConnections' | 'partnerMessages' | 'connectionReadStates'> {
+  kosIds: Set<string>,
+): Pick<SeedRows, 'matchingProfiles' | 'partnerRequests' | 'partnerConnections' | 'partnerMessages' | 'connectionReadStates' | 'sharedShortlistItems'> {
   const DAYS = 86_400_000
   const ago = (ms: number) => new Date(now.getTime() - ms)
   const campusName: Record<string, string> = { 'binus-syahdan': 'BINUS Syahdan', 'binus-anggrek': 'BINUS Anggrek', 'binus-kijang': 'BINUS Kijang' }
-  const uid = (p: MatchSeedPerson) => (p.key === 'demo' ? 'user-demo-student' : `user-match-${p.key}`)
-  const profiles = [DEMO_MATCH, ...MATCH_PEOPLE].map((p) => {
+  const DEMO_KEYS = new Set(['demo', 'demo-teman-a', 'demo-teman-b'])
+  const uid = (p: MatchSeedPerson) =>
+    p.key === 'demo' ? 'user-demo-student' : p.key === 'demo-teman-a' ? 'user-demo-teman-a' : p.key === 'demo-teman-b' ? 'user-demo-teman-b' : `user-match-${p.key}`
+  // Keep DEMO_MATCH and non-demo MATCH_PEOPLE first, followed by the two Teman Sekamar demo accounts.
+  const profiles = [DEMO_MATCH, ...MATCH_PEOPLE, ...DEMO_TEMAN_PAIR].map((p) => {
     const userId = uid(p)
-    if (p.key !== 'demo') {
+    if (!DEMO_KEYS.has(p.key)) {
       users.push({
         id: userId,
         name: `${p.name} ${p.gender === 'LAKI_LAKI' ? 'Saputra' : 'Lestari'}`,
         email: `match-${p.key}@kobo.test`,
         emailVerified: true,
-        campus: campusName[p.campusId],
+        campus: 'BINUS University',
         campusEmailVerifiedAt: baseCreated,
         campusVerifiedVia: 'KTM',
         campusVerifiedUntil: new Date(now.getTime() + 365 * DAYS),
-        verifiedCampusId: p.campusId,
+        verifiedCampusId: 'binus',
         createdAt: baseCreated,
       } as { id: string })
     }
@@ -314,7 +363,7 @@ function buildMatchingSeed(
       intro: p.intro,
       gender: p.gender,
       birthYear: p.birthYear,
-      campusId: p.campusId,
+      campusId: 'binus',
       active: true,
       lastActiveAt: now,
       budgetMin: p.budget[0],
@@ -332,13 +381,21 @@ function buildMatchingSeed(
   })
 
   const demoId = 'user-demo-student'
-  // One request waiting for the demo student (from Bayu), one accepted request that became a live connection (Fajar).
+  const temanAId = 'user-demo-teman-a'
+  const temanBId = 'user-demo-teman-b'
+  // One request waiting for the demo student (from Bayu), one accepted request that became a live connection (Fajar),
+  // plus one accepted request pairing the two "rent with teman" demo accounts (Nadia & Clara).
   const partnerRequests = [
     { id: 'match-req-pending', fromUserId: 'user-match-bayu', toUserId: demoId, message: 'Halo Dimas, kita sama-sama di Syahdan dan budget mirip. Mau coba cocokkan?', status: 'PENDING', createdAt: ago(1 * DAYS), expiresAt: new Date(now.getTime() + 13 * DAYS) },
     { id: 'match-req-accepted', fromUserId: demoId, toUserId: 'user-match-fajar', message: 'Halo Fajar, saya juga cari kamar tenang untuk semester depan.', status: 'ACCEPTED', createdAt: ago(5 * DAYS), expiresAt: new Date(now.getTime() + 9 * DAYS), decidedAt: ago(4 * DAYS) },
+    { id: 'match-req-demo-teman', fromUserId: temanAId, toUserId: temanBId, message: 'Halo Clara! Budget dan jadwal kuliah kita cocok, mau cari kamar berdua dekat BINUS?', status: 'ACCEPTED', createdAt: ago(3 * DAYS), expiresAt: new Date(now.getTime() + 11 * DAYS), decidedAt: ago(2 * DAYS) },
   ]
   const [a, b] = demoId < 'user-match-fajar' ? [demoId, 'user-match-fajar'] : ['user-match-fajar', demoId]
-  const partnerConnections = [{ id: 'match-conn-1', userAId: a, userBId: b, requestId: 'match-req-accepted', createdAt: ago(4 * DAYS) }]
+  const [ta, tb] = temanAId < temanBId ? [temanAId, temanBId] : [temanBId, temanAId]
+  const partnerConnections = [
+    { id: 'match-conn-1', userAId: a, userBId: b, requestId: 'match-req-accepted', createdAt: ago(4 * DAYS) },
+    { id: DEMO_TEMAN_CONNECTION_ID, userAId: ta, userBId: tb, requestId: 'match-req-demo-teman', createdAt: ago(2 * DAYS) },
+  ]
   const chat: [string, string, number][] = [
     ['user-match-fajar', 'Makasih sudah diterima ya. Kamu biasanya kuliah jam berapa?', 4 * DAYS - 600_000],
     [demoId, 'Sama-sama. Biasanya siang, tapi kadang ada kelas pagi.', 4 * DAYS - 3_600_000],
@@ -346,13 +403,27 @@ function buildMatchingSeed(
     [demoId, 'Nggak masalah, aku pakai headset kalau ngoding. Mau lihat kos bareng minggu ini?', 3 * DAYS - 3_600_000],
     ['user-match-fajar', 'Boleh, nanti kita lihat dua kos dekat Syahdan bareng.', 2 * DAYS],
   ]
-  const partnerMessages = chat.map(([senderId, body, agoMs], i) => ({ id: `match-msg-${i + 1}`, connectionId: 'match-conn-1', senderId, body, createdAt: ago(agoMs) }))
-  // The demo student has read everything except Fajar's last message. lastDigestAt is set so the worker does not mail the demo address about it.
+  const temanChat: [string, string, number][] = [
+    [temanBId, 'Hai Nadia! Cocok banget nih, aku juga cari kamar berdua dekat Anggrek/Syahdan.', 2 * DAYS - 1_200_000],
+    [temanAId, 'Asyik! Aku sudah masukkan Kost Cempaka Anggrek ke daftar kos bersama kita.', 2 * DAYS - 3_600_000],
+    [temanBId, 'Keren, nanti kita cek juga Kost Wisma Sakura di Cari Kos Bersama ya.', 1 * DAYS],
+    [temanAId, 'Siap! Kalau sudah oke, kita langsung ajukan sewa dengan catatan teman sekamar.', 12 * 3_600_000],
+  ]
+  const partnerMessages = [
+    ...chat.map(([senderId, body, agoMs], i) => ({ id: `match-msg-${i + 1}`, connectionId: 'match-conn-1', senderId, body, createdAt: ago(agoMs) })),
+    ...temanChat.map(([senderId, body, agoMs], i) => ({ id: `match-msg-teman-${i + 1}`, connectionId: DEMO_TEMAN_CONNECTION_ID, senderId, body, createdAt: ago(agoMs) })),
+  ]
+  // The demo student has read everything except Fajar's last message. lastDigestAt is set so the worker does not mail demo addresses.
   const connectionReadStates = [
     { connectionId: 'match-conn-1', userId: demoId, lastReadAt: ago(2 * DAYS + 3_600_000), lastDigestAt: now },
     { connectionId: 'match-conn-1', userId: 'user-match-fajar', lastReadAt: now },
+    { connectionId: DEMO_TEMAN_CONNECTION_ID, userId: temanAId, lastReadAt: now, lastDigestAt: now },
+    { connectionId: DEMO_TEMAN_CONNECTION_ID, userId: temanBId, lastReadAt: ago(18 * 3_600_000), lastDigestAt: now },
   ]
-  return { matchingProfiles: profiles, partnerRequests, partnerConnections, partnerMessages, connectionReadStates }
+  const sharedShortlistItems = kosIds.has('kos-2')
+    ? [{ id: 'match-shortlist-demo-1', connectionId: DEMO_TEMAN_CONNECTION_ID, kosId: 'kos-2', addedById: temanAId, createdAt: ago(2 * DAYS - 3_600_000) }]
+    : []
+  return { matchingProfiles: profiles, partnerRequests, partnerConnections, partnerMessages, connectionReadStates, sharedShortlistItems }
 }
 
 export function buildSeed(now: Date): SeedRows {
@@ -361,18 +432,21 @@ export function buildSeed(now: Date): SeedRows {
   const rng = makeRng(20261001)
 
   // ---- campuses
-  const campuses = data.campuses.map((c) => ({
-    id: c.id,
-    name: c.name,
-    shortName: c.shortName,
-    city: c.city,
-    lat: c.coordinates.lat,
-    lng: c.coordinates.lng,
-    emailDomains: EMAIL_DOMAINS[c.id] ?? [],
-    parentId: CAMPUS_PARENT[c.id] ?? null,
-    studentEmailDomains: STUDENT_EMAIL_DOMAINS[c.id] ?? [],
-    entraTenantIds: ENTRA_TENANT_IDS[c.id] ?? [],
-  }))
+  const campuses = [
+    ...INSTITUTION_CAMPUSES,
+    ...data.campuses.map((c) => ({
+      id: c.id,
+      name: c.name,
+      shortName: c.shortName,
+      city: c.city,
+      lat: c.coordinates.lat,
+      lng: c.coordinates.lng,
+      emailDomains: EMAIL_DOMAINS[c.id] ?? [],
+      parentId: CAMPUS_PARENT[c.id] ?? null,
+      studentEmailDomains: STUDENT_EMAIL_DOMAINS[c.id] ?? [],
+      entraTenantIds: ENTRA_TENANT_IDS[c.id] ?? [],
+    })),
+  ]
 
   // ---- users
   type UserRow = {
@@ -454,21 +528,51 @@ export function buildSeed(now: Date): SeedRows {
     }
   }
 
-  users.push({
-    id: 'user-demo-student',
-    name: 'Dimas Pratama',
-    email: DEMO_EMAILS.student,
-    emailVerified: true,
-    campus: 'Binus Syahdan',
-    campusEmail: 'dimas.pratama@binus.ac.id',
-    campusEmailVerifiedAt: baseCreated,
-    campusVerifiedVia: 'EMAIL',
-    // From the real "now", not baseCreated: the seed dates are fixed in the past and the demo student must stay verified.
-    campusVerifiedUntil: new Date(now.getTime() + 365 * 86_400_000),
-    verifiedCampusId: 'binus-syahdan',
-    isDemo: true,
-    createdAt: baseCreated,
-  })
+  users.push(
+    {
+      id: 'user-demo-student',
+      name: 'Dimas Pratama',
+      email: DEMO_EMAILS.student,
+      emailVerified: true,
+      campus: 'BINUS University',
+      campusEmail: 'dimas.pratama@binus.ac.id',
+      campusEmailVerifiedAt: baseCreated,
+      campusVerifiedVia: 'EMAIL',
+      // From the real "now", not baseCreated: the seed dates are fixed in the past and the demo student must stay verified.
+      campusVerifiedUntil: new Date(now.getTime() + 365 * 86_400_000),
+      verifiedCampusId: 'binus',
+      isDemo: true,
+      createdAt: baseCreated,
+    },
+    {
+      id: 'user-demo-teman-a',
+      name: 'Nadia Putri',
+      email: DEMO_EMAILS.temanA,
+      emailVerified: true,
+      campus: 'BINUS University',
+      campusEmail: 'nadia.putri@binus.ac.id',
+      campusEmailVerifiedAt: baseCreated,
+      campusVerifiedVia: 'EMAIL',
+      campusVerifiedUntil: new Date(now.getTime() + 365 * 86_400_000),
+      verifiedCampusId: 'binus',
+      isDemo: true,
+      createdAt: baseCreated,
+    },
+    {
+      id: 'user-demo-teman-b',
+      name: 'Clara Wijaya',
+      email: DEMO_EMAILS.temanB,
+      emailVerified: true,
+      campus: 'BINUS University',
+      campusEmail: 'clara.wijaya@binus.ac.id',
+      campusEmailVerifiedAt: baseCreated,
+      campusVerifiedVia: 'EMAIL',
+      campusVerifiedUntil: new Date(now.getTime() + 365 * 86_400_000),
+      verifiedCampusId: 'binus',
+      isDemo: true,
+      createdAt: baseCreated,
+    },
+  )
 
   // Verified, but at a campus that is NOT on the Kampus Mitra list: sees the discount as "tidak berlaku".
   const nonAffiliatedCampus = data.campuses.find((c) => c.id === 'ui-depok') ?? data.campuses.find((c) => !AFFILIATED_CAMPUSES.some((a) => a.campusId === c.id))
@@ -746,7 +850,13 @@ export function buildSeed(now: Date): SeedRows {
 
   // ---- Teman Sekamar demo data: verified students at the BINUS campuses; the demo student gets a profile, one pending
   // request and one live connection with a short chat (both counterparts are seeded students, never the demo).
-  const matching = buildMatchingSeed(now, baseCreated, (id) => data.campuses.find((c) => c.id === id)?.coordinates, users)
+  const matching = buildMatchingSeed(
+    now,
+    baseCreated,
+    (id) => data.campuses.find((c) => c.id === id)?.coordinates,
+    users,
+    new Set(data.kos.map((k) => k.id)),
+  )
 
   return {
     users,
@@ -789,6 +899,7 @@ export async function seed(prisma: PrismaClient, opts: { now?: Date } = {}): Pro
     prisma.partnerConnection.createMany({ data: d.partnerConnections as never }),
     prisma.partnerMessage.createMany({ data: d.partnerMessages as never }),
     prisma.connectionReadState.createMany({ data: d.connectionReadStates as never }),
+    prisma.sharedShortlistItem.createMany({ data: d.sharedShortlistItems as never }),
   ])
 }
 

@@ -399,6 +399,10 @@ test('scenario 7: rejecting creates nothing, frees the room for others and tells
       const dialog = owner.page.getByRole('dialog')
       await expect(dialog).toContainText('Tolak pengajuan?')
       await expect(dialog).toContainText('Pengajuan ini akan ditolak dan tidak menahan kamar.')
+      // Audit 2026-11-24 (SIM-006): a reason is required before the rejection goes through.
+      await dialog.getByRole('button', { name: 'Tolak Pengajuan' }).click()
+      await expect(dialog.getByText('Pilih alasan penolakan.')).toBeVisible()
+      await dialog.getByRole('radio', { name: 'Memilih pengaju lain' }).check()
       await dialog.getByRole('button', { name: 'Tolak Pengajuan' }).click()
       await expect(ownerRow(owner.page, 'Mahasiswa')).toHaveCount(0)
     })

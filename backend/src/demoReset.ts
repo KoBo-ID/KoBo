@@ -1,4 +1,4 @@
-import { DEMO_EMAILS } from './demo.ts'
+import { DEMO_EMAILS, DEMO_STUDENT_EMAILS } from './demo.ts'
 import type { PrismaClient } from './db/client.ts'
 import { buildSeed } from './db/seed.ts'
 
@@ -29,7 +29,10 @@ const LIVE = ['PENDING', 'ACTIVE'] as const
 
 async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
   const seed = buildSeed(now)
-  const demoStudent = seed.users.find((u) => u.email === DEMO_EMAILS.student)!
+  const demoStudentEmailSet = new Set<string>(DEMO_STUDENT_EMAILS)
+  const demoStudents = seed.users.filter((u) => demoStudentEmailSet.has(u.email as string))
+  const demoStudentIds = demoStudents.map((u) => u.id)
+  const demoStudentIdSet = new Set(demoStudentIds)
   const demoOwnerUser = seed.users.find((u) => u.email === DEMO_EMAILS.owner)!
   const demoProfile = seed.ownerProfiles.find((p) => p.userId === demoOwnerUser.id)!
   const seedKos = seed.kos.filter((k) => k.ownerId === demoProfile.id)
@@ -68,7 +71,7 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
             invoice: {
               tenancy: {
                 OR: [
-                  { userId: demoStudent.id },
+                  { userId: { in: demoStudentIds } },
                   { userId: { in: seedUserIds }, room: { kosId: { in: seedKosIds } } },
                   { room: { kosId: { in: dropped } } },
                 ],
@@ -78,19 +81,19 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
         },
       })
 
-      // 1. Demo student: visits and (below) tenancies.
-      await tx.visit.deleteMany({ where: { userId: demoStudent.id } })
+      // 1. Demo students: visits and (below) tenancies.
+      await tx.visit.deleteMany({ where: { userId: { in: demoStudentIds } } })
 
-      // 2. Tenancies in scope: the demo student's anywhere, and seeded tenants' in the demo owner's kos.
-      const scope = { OR: [{ userId: demoStudent.id }, { userId: { in: seedUserIds }, room: { kosId: { in: seedKosIds } } }] }
+      // 2. Tenancies in scope: demo students' anywhere, and seeded tenants' in the demo owner's kos.
+      const scope = { OR: [{ userId: { in: demoStudentIds } }, { userId: { in: seedUserIds }, room: { kosId: { in: seedKosIds } } }] }
       const doomed = await tx.tenancy.findMany({ where: scope, select: { roomId: true } })
       await tx.tenancy.deleteMany({ where: scope })
 
-      // 3b. Daftar tunggu entries in the same scope: the demo student's anywhere, and seeded users' on the demo owner's kos.
-      await tx.waitlistEntry.deleteMany({ where: { OR: [{ userId: demoStudent.id }, { userId: { in: seedUserIds }, kosId: { in: seedKosIds } }] } })
+      // 3b. Daftar tunggu entries in the same scope: demo students' anywhere, and seeded users' on the demo owner's kos.
+      await tx.waitlistEntry.deleteMany({ where: { OR: [{ userId: { in: demoStudentIds } }, { userId: { in: seedUserIds }, kosId: { in: seedKosIds } }] } })
 
       // 3c. Rental applications in the same scope. Real applicants to demo kos remain untouched.
-      await tx.rentalApplication.deleteMany({ where: { OR: [{ userId: demoStudent.id }, { userId: { in: seedUserIds }, room: { kosId: { in: seedKosIds } } }] } })
+      await tx.rentalApplication.deleteMany({ where: { OR: [{ userId: { in: demoStudentIds } }, { userId: { in: seedUserIds }, room: { kosId: { in: seedKosIds } } }] } })
 
       // 3d. Kos the demo owner added and nobody else used (cascades rooms, photos, ...). Their tenancies were removed above,
       // which the Tenancy -> Room restriction (archive-not-delete rule) requires before a room can go.
@@ -124,8 +127,10 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
       await tx.payment.createMany({ data: seed.payments.filter((p) => invoiceIds.has(p.invoiceId)) as never })
       await tx.review.createMany({ data: seed.reviews.filter((r) => tenancyIds.has(r.tenancyId)) as never })
 
-      // 7. The demo accounts' own profile fields.
-      for (const u of [demoStudent, demoOwnerUser]) {
+      // 7. The demo accounts' own profile fields (only for accounts present in this DB).
+      const present = new Set((await tx.user.findMany({ where: { id: { in: seedUserIds } }, select: { id: true } })).map((u) => u.id))
+      for (const u of [...demoStudents, demoOwnerUser]) {
+        if (!present.has(u.id)) continue
         await tx.user.update({
           where: { id: u.id },
           data: {
@@ -146,18 +151,18 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
       const { id: _id, userId: _userId, ...profileFields } = demoProfile
       await tx.ownerProfile.update({ where: { id: demoProfile.id }, data: { ...profileFields, verificationStatus: 'DISETUJUI', verificationReason: null, verificationAttempts: 0 } as never })
 
-      // 7b. Teman Sekamar: the demo student's profile, requests, connections, chat, blocks and own reports go back to seed. Only the
-      // counterparts that exist are restored (an older demo database may predate the seeded matching students).
-      const demoReqs = { OR: [{ fromUserId: demoStudent.id }, { toUserId: demoStudent.id }] }
-      await tx.userReport.deleteMany({ where: { reporterId: demoStudent.id } })
-      await tx.userBlock.deleteMany({ where: { OR: [{ blockerId: demoStudent.id }, { blockedId: demoStudent.id }] } })
+      // 7b. Teman Sekamar: demo students' profiles, requests, connections, chat, shortlist, blocks and own reports go back to seed.
+      // Only the counterparts that exist are restored (an older demo database may predate the seeded matching students).
+      const presentDemoIds = demoStudentIds.filter((id) => present.has(id))
+      const demoReqs = { OR: [{ fromUserId: { in: presentDemoIds } }, { toUserId: { in: presentDemoIds } }] }
+      await tx.userReport.deleteMany({ where: { reporterId: { in: presentDemoIds } } })
+      await tx.userBlock.deleteMany({ where: { OR: [{ blockerId: { in: presentDemoIds } }, { blockedId: { in: presentDemoIds } }] } })
       // Connections first: PartnerConnection -> PartnerRequest has no cascade. Messages, read states and the shortlist cascade away.
-      await tx.partnerConnection.deleteMany({ where: { OR: [{ userAId: demoStudent.id }, { userBId: demoStudent.id }] } })
+      await tx.partnerConnection.deleteMany({ where: { OR: [{ userAId: { in: presentDemoIds } }, { userBId: { in: presentDemoIds } }] } })
       await tx.partnerRequest.deleteMany({ where: demoReqs })
-      await tx.matchingProfile.deleteMany({ where: { userId: demoStudent.id } })
-      const present = new Set((await tx.user.findMany({ where: { id: { in: seedUserIds } }, select: { id: true } })).map((u) => u.id))
+      await tx.matchingProfile.deleteMany({ where: { userId: { in: presentDemoIds } } })
       const mine = (userId: string) => present.has(userId)
-      await tx.matchingProfile.createMany({ data: seed.matchingProfiles.filter((p) => p.userId === demoStudent.id) as never })
+      await tx.matchingProfile.createMany({ data: seed.matchingProfiles.filter((p) => demoStudentIdSet.has(p.userId) && present.has(p.userId)) as never })
       const requests = seed.partnerRequests.filter((r) => mine(r.fromUserId) && mine(r.toUserId))
       const connections = seed.partnerConnections.filter((c) => mine(c.userAId) && mine(c.userBId))
       const connIds = new Set(connections.map((c) => c.id))
@@ -165,6 +170,7 @@ async function doReset(prisma: PrismaClient, now: Date): Promise<void> {
       await tx.partnerConnection.createMany({ data: connections as never })
       await tx.partnerMessage.createMany({ data: seed.partnerMessages.filter((m) => connIds.has(m.connectionId)) as never })
       await tx.connectionReadState.createMany({ data: seed.connectionReadStates.filter((s) => connIds.has(s.connectionId)) as never })
+      await tx.sharedShortlistItem.createMany({ data: seed.sharedShortlistItems.filter((s) => connIds.has(s.connectionId)) as never })
 
       // 8. Room occupancy follows the tenancies again for every room this reset could have changed.
       const touched = [...new Set([...doomed.map((d) => d.roomId), ...seedRoomIds])]

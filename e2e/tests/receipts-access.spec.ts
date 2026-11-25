@@ -62,8 +62,10 @@ test('scenario 24: everyone else is refused or asked to sign in, and unknown or 
     for (const [who, page] of [['another student', stranger.page], ['another owner', otherOwner.page]] as const) {
       await test.step(`${who} is refused`, async () => {
         await page.goto(`/kuitansi/${receiptNumber}`)
-        await expect(page.getByRole('heading', { name: 'Kuitansi belum tersedia' })).toBeVisible()
-        await expect(page.getByText('Kuitansi tersedia setelah pembayaran lunas.')).toBeVisible()
+        // Audit 2026-11-24 (SIM-021): "not yours" and "does not exist" now read the same, so nothing leaks.
+        await expect(page.getByRole('heading', { name: 'Kuitansi tidak ditemukan' })).toBeVisible()
+        await expect(page.getByText('Kuitansi tidak ditemukan atau bukan milik akun ini.')).toBeVisible()
+        await expect(page.getByRole('link', { name: 'Kembali ke Kos Saya' })).toBeVisible()
         await expect(page.getByTestId('kuitansi-no')).toHaveCount(0)
       })
     }
@@ -79,8 +81,8 @@ test('scenario 24: everyone else is refused or asked to sign in, and unknown or 
     await test.step('an unknown number and an unpaid attempt read the same as not found', async () => {
       for (const n of [999_999_999, attemptNumber]) {
         await held.student.page.goto(`/kuitansi/${n}`)
-        await expect(held.student.page.getByRole('heading', { name: 'Kuitansi belum tersedia' })).toBeVisible()
-        await expect(held.student.page.getByText('Kuitansi tersedia setelah pembayaran lunas.')).toBeVisible()
+        await expect(held.student.page.getByRole('heading', { name: 'Kuitansi tidak ditemukan' })).toBeVisible()
+        await expect(held.student.page.getByText('Kuitansi tidak ditemukan atau bukan milik akun ini.')).toBeVisible()
       }
       await held.student.page.goto('/kuitansi/abc')
       await expect(held.student.page.getByText('Nomor kuitansi tidak valid.')).toBeVisible()
@@ -160,7 +162,7 @@ test('scenario 24: an unpaid invoice has no receipt and says it appears after fu
     const attempt = await trpcPost<{ paymentId: string }>(held.student.ctx, 'payment.start', { invoiceId: held.invoiceId })
     const [{ receiptNo }] = await sql<{ receiptNo: number }>('SELECT "receiptNo" FROM "Payment" WHERE id = $1', [attempt.paymentId])
     await page.goto(`/kuitansi/${receiptNo}`)
-    await expect(page.getByText('tersedia setelah pembayaran lunas')).toBeVisible()
+    await expect(page.getByText('Kuitansi tidak ditemukan atau bukan milik akun ini.')).toBeVisible()
     await expect(page.getByTestId('kuitansi-no')).toHaveCount(0)
     expectHttpErrors(problems, 404)
   } finally {
