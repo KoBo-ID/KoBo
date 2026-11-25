@@ -50,9 +50,15 @@ export const rentalApplicationCreateInput = bookingCreateInput.extend({
   note: z.string().trim().max(500).optional(),
 })
 
+/** Image MIME types accepted directly for private document uploads (KTM, owner KTP/land docs). SVG is never allowed. */
+export const DOCUMENT_IMAGE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/heic', 'image/heif', 'image/bmp'] as const
+export type DocumentImageContentType = (typeof DOCUMENT_IMAGE_CONTENT_TYPES)[number]
+export const OWNER_DOC_CONTENT_TYPES = [...DOCUMENT_IMAGE_CONTENT_TYPES, 'application/pdf'] as const
+export type OwnerDocContentType = (typeof OWNER_DOC_CONTENT_TYPES)[number]
+
 /** KTM upload: the student's card photo goes to private storage. */
 export const ktmPresignInput = z.object({
-  contentType: z.enum(['image/jpeg', 'image/webp']),
+  contentType: z.enum(DOCUMENT_IMAGE_CONTENT_TYPES),
   contentLength: z.number().int().min(1).max(3_000_000),
 })
 /** SheerID (dev/test only): the student picks a campus and gives the separate cross-border transfer consent. */
@@ -74,10 +80,32 @@ export const ktmConfirmInput = z.object({
 })
 export const campusEmailCodeInput = z.object({ code: z.string().regex(/^\d{6}$/) })
 
+export const APPLICATION_DECISION_REASONS = [
+  'KAMAR_TIDAK_TERSEDIA',
+  'MEMILIH_PENGAJU_LAIN',
+  'TANGGAL_TIDAK_COCOK',
+  'LAINNYA',
+] as const
+export const APPLICATION_DECISION_REASON_LABEL: Record<(typeof APPLICATION_DECISION_REASONS)[number], string> = {
+  KAMAR_TIDAK_TERSEDIA: 'Kamar tidak tersedia', // COPY: reviewed (part 2)
+  MEMILIH_PENGAJU_LAIN: 'Memilih pengaju lain', // COPY: reviewed (part 2)
+  TANGGAL_TIDAK_COCOK: 'Tanggal mulai tidak cocok', // COPY: reviewed (part 2)
+  LAINNYA: 'Alasan lain', // COPY: reviewed (part 2)
+}
+/** The sentence the student reads (email and card). Must match frontend/src/lib/decisionReason.ts. */
+export const APPLICATION_DECISION_REASON_STUDENT_TEXT: Record<(typeof APPLICATION_DECISION_REASONS)[number], string> = {
+  KAMAR_TIDAK_TERSEDIA: 'Kamar ini tidak tersedia untuk tanggal yang Anda ajukan.', // COPY: reviewed (part 2)
+  MEMILIH_PENGAJU_LAIN: 'Pemilik menerima pengajuan lain untuk kamar ini.', // COPY: reviewed (part 2)
+  TANGGAL_TIDAK_COCOK: 'Tanggal mulai sewa yang Anda ajukan tidak cocok untuk pemilik.', // COPY: reviewed (part 2)
+  LAINNYA: 'Pemilik menolak dengan alasan lain.', // COPY: reviewed (part 2)
+}
+
 export const rentalApplicationDecisionInput = z.object({
   kosId: z.string().min(1).max(64),
   applicationId: z.string().min(1).max(64),
   decision: z.enum(['APPROVE', 'REJECT']),
+  reason: z.enum(APPLICATION_DECISION_REASONS).optional(),
+  note: z.string().trim().max(200).optional(),
 })
 
 export const paymentIdInput = z.object({ paymentId: z.string().min(1).max(64) })
@@ -197,7 +225,27 @@ export const houseRuleInput = z.object({
 })
 export const rulesSetInput = z.object({ kosId: z.string().min(1).max(64), groups: z.array(houseRuleInput).max(10) })
 
-export const tenancyEndInput = z.object({ kosId: z.string().min(1).max(64), tenancyId: z.string().min(1).max(64) })
+export const tenancyEndPreviewInput = z.object({
+  kosId: z.string().min(1).max(64),
+  tenancyId: z.string().min(1).max(64),
+})
+
+export const tenancyEndInput = z
+  .object({
+    kosId: z.string().min(1).max(64),
+    tenancyId: z.string().min(1).max(64),
+    arrears: z.enum(['KEEP', 'WAIVE']).optional(),
+    waiverReason: z.string().trim().max(200).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.arrears === 'WAIVE' && (v.waiverReason?.length ?? 0) < 5) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['waiverReason'],
+        message: 'Alasan penghapusan tunggakan wajib diisi minimal 5 karakter.', // COPY: reviewed (part 2)
+      })
+    }
+  })
 
 /** The number in /kuitansi/:receiptNo (the raw Payment.receiptNo). */
 export const kuitansiGetInput = z.object({ receiptNo: z.number().int().min(1).max(2_000_000_000) })
@@ -328,7 +376,12 @@ export const campusBoxInput = z.object({
   limit: z.number().int().min(1).max(60).default(40),
 })
 
-export const campusSearchInput = z.object({ q: z.string().trim().min(2).max(60), limit: z.number().int().min(1).max(20).default(10) })
+export const campusSearchInput = z.object({
+  q: z.string().trim().min(2).max(60),
+  limit: z.number().int().min(1).max(20).default(10),
+  /** 'location' returns physical campus pins; 'institution' collapses branches (e.g. BINUS University) for student verification. */
+  scope: z.enum(['location', 'institution']).default('location'),
+})
 
 const PLACE_CATEGORY_ENUM = ['campus', 'food', 'minimarket', 'laundry', 'print', 'atm', 'pharmacy', 'clinic', 'hospital', 'police', 'worship', 'gym', 'cafe', 'transit', 'pasar'] as const
 export const placeCategoryEnum = z.enum(PLACE_CATEGORY_ENUM)
@@ -361,7 +414,7 @@ export const OWNER_PROOF_KINDS = ['SHM', 'SHGB', 'AJB', 'GIRIK', 'SPPT_PBB', 'SU
 
 export const ownerDocPresignInput = z.object({
   kind: z.enum(OWNER_DOC_KINDS),
-  contentType: z.enum(['image/jpeg', 'image/webp', 'application/pdf']),
+  contentType: z.enum(OWNER_DOC_CONTENT_TYPES),
   contentLength: z.number().int().positive().max(10_000_000),
 })
 /** 1..4 documents: a first submit carries KTP + proof, a resubmit only the replacements; the server enforces the per-role set (Q6). */
@@ -460,7 +513,7 @@ export const REPORT_REASON_LABEL: Record<(typeof REPORT_REASONS)[number], string
   SPAM_PENIPUAN: 'Spam atau penipuan',
   PROFIL_PALSU: 'Profil palsu (termasuk gender tidak sesuai)',
   KONTEN_TIDAK_PANTAS: 'Konten tidak pantas',
-  LAINNYA: 'Lainnya',
+  LAINNYA: 'Alasan lain',
 }
 export const reportInput = z.object({
   profileId: rowId,

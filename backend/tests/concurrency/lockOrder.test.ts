@@ -89,7 +89,7 @@ describe('A-001 lock order: Kos first', () => {
     const inv = await prisma.invoice.create({
       data: { tenancyId: f.tenancy.id, periodStart: new Date(), dueDate: new Date(), amount: 100, rentAmount: 100, discountAmount: 0, applicationFeeAmount: 0, ownerReceivableAmount: 100, gatewayFeeBearer: 'PLATFORM', status: 'UNPAID' },
     })
-    const op = () => callerFor(f.ownerUserId).owner.tenancy.end({ kosId: f.kos.id, tenancyId: f.tenancy.id })
+    const op = () => callerFor(f.ownerUserId).owner.tenancy.end({ kosId: f.kos.id, tenancyId: f.tenancy.id, arrears: 'KEEP' })
     const held = await lockedMeanwhile(f.kos.id, op, [{ table: 'Invoice', id: inv.id }, { table: 'Tenancy', id: f.tenancy.id }])
     expect(held).toEqual([])
     expect((await prisma.tenancy.findUniqueOrThrow({ where: { id: f.tenancy.id } })).status).toBe('ENDED')

@@ -5,12 +5,12 @@ import { call, code, err, pendingApplication, snapshot, twoOwners } from './gap-
 
 beforeEach(() => resetDb(prisma))
 
-// The authorization root (spec section 5): the 31 procedures whose input carries a kosId that must belong to the caller.
+// The authorization root (spec section 5): the 32 procedures whose input carries a kosId that must belong to the caller.
 const OWNER_KOS_PROCEDURES = [
   'owner.board', 'owner.reviews', 'owner.images', 'owner.image.presign', 'owner.image.confirm', 'owner.image.delete', 'owner.image.reorder', 'owner.visits',
   'owner.visit.complete', 'owner.waitlistEntries', 'owner.waitlist.remove', 'owner.places.list', 'owner.places.hide', 'owner.places.unhide', 'owner.places.add',
   'owner.places.remove', 'owner.places.refresh', 'owner.places.preview', 'owner.tenant.notifications', 'owner.tenant.tenantProfile', 'owner.kos.update',
-  'owner.kos.delete', 'owner.room.create', 'owner.room.update', 'owner.room.delete', 'owner.rules.set', 'owner.tenancy.end', 'application.ownerList',
+  'owner.kos.delete', 'owner.room.create', 'owner.room.update', 'owner.room.delete', 'owner.rules.set', 'owner.tenancy.endPreview', 'owner.tenancy.end', 'application.ownerList',
   'application.decide', 'payment.recordManual', 'review.reply',
 ]
 // Signed-in-only procedures (any account): anonymous callers get UNAUTHORIZED. 'owner.kos.create' and 'owner.myKos' are checked separately.
@@ -154,7 +154,7 @@ describe('[G-006][R-026][R-027] another user\'s payment', () => {
     const student = await newStudent()
     const stranger = await newStudent()
     const a = await approveApplication(student.id, room.id)
-    const started = await callerFor(student.id).payment.start({ invoiceId: a.invoiceId })
+    const started = await callerFor(student.id, { isDemo: true }).payment.start({ invoiceId: a.invoiceId })
     const paymentId = started.paymentId
     const before = await prisma.payment.findUniqueOrThrow({ where: { id: paymentId } })
 

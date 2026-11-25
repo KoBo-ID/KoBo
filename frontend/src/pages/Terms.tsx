@@ -84,7 +84,7 @@ const SECTIONS: { heading: string; items: React.ReactNode[] }[] = [
       'Survey kos gratis dan tidak mewajibkan pembayaran apa pun. Mengirim pengajuan sewa tidak menahan kamar dan tidak memindahkan uang.',
       'Setelah pemilik menyetujui, kamar ditahan 24 jam agar Anda dapat membayar pembayaran pertama. Jika tidak dibayar dalam waktu itu, kamar dilepas kembali.',
       'Pembayaran pertama terdiri dari sewa bulan pertama, biaya layanan KoBo (sekali), dikurangi Diskon Kampus Mitra bila berlaku (dikonfirmasi saat pemilik menyetujui). Rinciannya tampil sebelum Anda mengirim pengajuan. Bulan berikutnya dibayar sebesar sewa bulanan.',
-      'KoBo dapat mengirim pengingat tagihan lewat email dan WhatsApp antara pukul 08.00 dan 20.00 WIB. Anda dapat mematikannya di halaman Profil.',
+      'KoBo dapat mengirim pengingat tagihan lewat email dan WhatsApp. Anda dapat mematikannya di halaman Profil.',
     ],
   },
   {

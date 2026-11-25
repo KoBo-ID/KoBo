@@ -2,7 +2,14 @@ import React from 'react';
 import { Check } from 'lucide-react';
 
 export interface StepperProps {
-  steps: { id: string; label: string }[];
+  steps: {
+    id: string;
+    label: string;
+    /** Overrides the position-based state (e.g. a KTM under review is 'current', not done). */
+    status?: 'done' | 'current' | 'pending';
+    /** Short state text shown under the label and read by screen readers (e.g. "Menunggu pemeriksaan"). */
+    caption?: string;
+  }[];
   /** 0-based index of the step being shown. */
   current: number;
   /** 0-based index of the furthest step reached; only steps up to it can be clicked. */
@@ -20,8 +27,8 @@ export const Stepper: React.FC<StepperProps> = ({ steps, current, furthest, onSt
     <nav className="stepper" aria-label="Langkah pendaftaran">
       <ol className="stepper__list">
         {steps.map((s, i) => {
-          const done = i < current;
-          const here = i === current;
+          const done = s.status ? s.status === 'done' : i < current;
+          const here = s.status ? s.status === 'current' : i === current;
           const reachable = !!onStepClick && i <= furthest && !here;
           const state = done ? 'done' : here ? 'current' : 'todo';
           const orb = (
@@ -30,7 +37,8 @@ export const Stepper: React.FC<StepperProps> = ({ steps, current, furthest, onSt
                 {done ? <Check size={14} strokeWidth={3} /> : i + 1}
               </span>
               <span className="stepper__label">{s.label}</span>
-              <span className="sr-only">{done ? ' selesai' : here ? '' : ' belum'}</span>
+              {s.caption && <span className="stepper__caption">{s.caption}</span>}
+              <span className="sr-only">{s.caption ? `: ${s.caption}` : done ? ' selesai' : here ? '' : ' belum'}</span>
             </>
           );
           return (
@@ -47,7 +55,7 @@ export const Stepper: React.FC<StepperProps> = ({ steps, current, furthest, onSt
         })}
       </ol>
       <p className="stepper__live" aria-live="polite">
-        Langkah {shown + 1} dari {steps.length}: {steps[shown]?.label}
+        Langkah {shown + 1} dari {steps.length}: {steps[shown]?.label}{steps[shown]?.caption ? ` (${steps[shown]?.caption})` : ''}
       </p>
     </nav>
   );

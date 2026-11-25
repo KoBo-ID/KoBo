@@ -164,8 +164,13 @@
               color var(--duration-fast) var(--ease-out-spring);
 }
 
-.kobo-segmented button:hover {
+.kobo-segmented button:not(:disabled):hover {
   color: var(--text-main);
+}
+
+.kobo-segmented button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .kobo-segmented button[aria-pressed='true'] {
@@ -1010,8 +1015,8 @@
 .room-picker__option:disabled { cursor: not-allowed; }
 .room-picker__title { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2xs) var(--space-xs); font-size: var(--step-0); font-weight: 700; line-height: 1.45; }
 .room-picker__title > span { min-width: 0; overflow-wrap: anywhere; }
-.room-picker__chosen { display: inline-flex; align-items: center; gap: var(--space-3xs); padding: 0.1rem 0.55rem; border-radius: var(--radius-badge); background: var(--primary); color: var(--text-inverse); font-size: var(--step--2); font-weight: 700; line-height: 1.5; }
-.room-picker__chosen svg { flex-shrink: 0; }
+.room-picker__capacity { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.05rem 0.45rem; border-radius: var(--radius-badge); background: var(--primary-light); color: var(--primary); font-size: var(--step--1); font-weight: 700; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.room-picker__capacity svg { flex-shrink: 0; }
 .room-picker__availability { color: var(--status-paid-text); font-size: var(--step--1); font-weight: 600; line-height: 1.4; }
 .room-picker__availability > span { white-space: nowrap; }
 .room-picker__option.is-full .room-picker__availability { color: var(--text-muted); }
@@ -1149,7 +1154,8 @@
 .kobo-modal__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-s); padding: var(--space-s) var(--space-s-m); border-bottom: 1px solid var(--border-subtle); }
 .kobo-modal__header > div:first-child { min-width: 0; }
 .kobo-modal__body { flex: 1; min-height: 0; padding: var(--space-s-m); overflow-y: auto; overscroll-behavior: contain; }
-.kobo-modal__close { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: var(--control-height); height: var(--control-height); border-radius: var(--radius-sm); background-color: var(--bg-muted); color: var(--text-muted); }
+.kobo-modal__close { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: var(--control-height); height: var(--control-height); margin: -0.5rem -0.6rem -0.5rem 0; background: none; color: var(--text-muted); }
+.kobo-modal__close:hover { color: var(--text-main); }
 /* Sign-in dialog: compact header, body and height so the whole form fits without an inner scrollbar. */
 .kobo-modal:has(.auth-body) { max-height: 96vh; max-height: 96dvh; }
 .kobo-modal:has(.auth-body) .kobo-modal__header { padding: 0.85rem 1.25rem; }
@@ -1375,6 +1381,8 @@
 .kobo-header { container-type: inline-size; }
 .kobo-header__inner { gap: var(--space-m); }
 .kobo-header__brand, .kobo-header__nav { min-width: 0; }
+/* SIM-012: the signed-out "Untuk pemilik kos" link only fits a roomy header (em follows the header's own font size, so 200% text hides it too). Phones reach /owner/login from the home owner section and the Pemilik tab on /masuk. */
+@container (max-width: 56em) { .kobo-nav-owner { display: none !important; } }
 @container (max-width: 16em) {
   .kobo-header__inner { gap: var(--space-2xs); padding-inline: var(--space-xs); }
   .kobo-header__nav { gap: var(--space-3xs) !important; }
@@ -1503,3 +1511,25 @@
 .verify-banner__link { color: var(--primary); font-weight: 700; text-decoration: underline; }
 .verify-banner__close { display: inline-flex; align-items: center; justify-content: center; width: 2.5rem; height: 2.5rem; margin: -0.4rem -0.5rem -0.4rem 0; background: none; border: 0; border-radius: 8px; color: inherit; cursor: pointer; }
 .verify-banner__close:hover { background-color: var(--bg-muted); }
+
+/* SIM-009 map cluster */
+.map-cluster { border-color: var(--border-subtle); background-color: var(--bg-surface); color: var(--text-main); font-weight: 700; }
+.map-cluster:hover { border-color: var(--primary); }
+
+/* SIM-018 search tap targets */
+@media (pointer: coarse), (width < 40rem) {
+  .kobo-control { min-height: var(--control-height); }
+  .kobo-optionrow { min-height: var(--control-height); }
+  .kobo-token button { position: relative; }
+  .kobo-token button::after { content: ''; position: absolute; inset: -12px; }
+  .leaflet-bar a, .leaflet-touch .leaflet-bar a { width: var(--control-height); height: var(--control-height); line-height: var(--control-height); }
+}
+
+/* SIM-018 global tap targets */
+@media (pointer: coarse), (width < 40rem) {
+  .kobo-toasts button { min-width: var(--control-height) !important; min-height: var(--control-height) !important; }
+  .auth-main button[type='button']:not(.kobo-btn):not([class]) { min-block-size: var(--control-height); }
+  .mk-link { min-block-size: var(--control-height); }
+  label:has(> input[type='checkbox'], > input[type='radio']) { display: inline-flex; align-items: center; gap: 0.5rem; min-block-size: var(--control-height); }
+  input[type='checkbox'], input[type='radio'] { inline-size: 18px; block-size: 18px; flex-shrink: 0; }
+}

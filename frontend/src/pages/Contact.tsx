@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { InfoPage, InfoSection } from '../components/ui/InfoPage';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { SUPPORT_EMAIL, supportMailto } from '../lib/support';
 
 const link: React.CSSProperties = { color: 'var(--primary)', fontWeight: 600 };
 
@@ -9,6 +10,9 @@ export const Contact: React.FC = () => {
   useDocumentTitle('Hubungi kami');
   return (
     <InfoPage title="Hubungi kami">
+      <InfoSection heading="Email dukungan">
+        <p>Untuk pertanyaan yang belum terjawab di bawah, hubungi kami di <a href={supportMailto('Pertanyaan untuk KoBo')} style={link}>{SUPPORT_EMAIL}</a>.</p>
+      </InfoSection>
       <InfoSection heading="Pengajuan dan pembayaran">
         <p>Status pengajuan, tagihan, dan kuitansi ada di <Link to="/my-kos" style={link}>Kos Saya</Link>. Dari sana Anda juga dapat melanjutkan pembayaran dan melihat jadwal survey.</p>
       </InfoSection>
@@ -20,9 +24,6 @@ export const Contact: React.FC = () => {
       </InfoSection>
       <InfoSection heading="Pemilik kos">
         <p>Kelola kamar, pengajuan, dan tata tertib dari <Link to="/owner/dashboard" style={link}>portal pemilik</Link>. Belum punya akun pemilik? <Link to="/owner/login" style={link}>Daftar atau masuk di sini</Link>.</p>
-      </InfoSection>
-      <InfoSection heading="Email dukungan">
-        <p>Untuk hal lain yang belum terjawab di atas, hubungi kami di <a href="mailto:support@kobo.rent" style={link}>support@kobo.rent</a>.</p>
       </InfoSection>
     </InfoPage>
   );

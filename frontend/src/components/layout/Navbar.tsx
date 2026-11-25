@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../../store/AppContext';
 import { useScheduledVisitCount } from '../../lib/visits';
-import { useAuthActions, useSession } from '../../lib/session';
+import { useAuthActions, useGoogleSignInReturn, useSession } from '../../lib/session';
 import { useLiveTenancyCount } from '../../lib/booking';
 import { MATCH_BASE, useMatchingUnread } from '../../lib/matching';
 
@@ -24,7 +24,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { addToast } = useAppStore();
-  const { me } = useSession();
+  const { me, isLoading: sessionLoading } = useSession();
+  useGoogleSignInReturn();
   const { logout } = useAuthActions();
 
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -262,7 +263,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAuth }) => {
           </Link>
 
           {/* Logged out: a single sign-in chip. Logged in: avatar + menu. */}
-          {!me && (
+          {/* Session still resolving (e.g. back from Google): a neutral placeholder, never the logged-out chip. */}
+          {!me && sessionLoading && (
+            <span aria-hidden="true" className="kobo-header__chip" style={{ width: '5.5rem', height: '2.4rem', borderRadius: '10px', backgroundColor: chipFill, border: `1px solid ${chipBorder}`, opacity: 0.6 }} />
+          )}
+          {!me && !sessionLoading && (
+            <Link
+              to="/owner/login"
+              className="interactive-tap kobo-header__chip kobo-nav-owner"
+              style={{ fontSize: 'var(--step--1)', fontWeight: 600, color: 'var(--text-main)', padding: '0.5rem 0.6rem', whiteSpace: 'nowrap', transition: fade }}
+            >
+              Untuk pemilik kos
+            </Link>
+          )}
+          {!me && !sessionLoading && (
             <button
               type="button"
               onClick={() => onOpenAuth?.()}

@@ -17,7 +17,9 @@ test('[G-058][R-091][R-092] without an emergency contact and the current terms t
   const direct = () => trpcRaw(student.ctx, 'application.create', { roomId: room.id, startDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10), durationMonths: 3, program: 'Mahasiswa' })
   try {
     await openForm()
-    await expect(page.getByRole('alert')).toContainText('kontak darurat dan persetujuan syarat')
+    // Audit 2026-11-24: two separate notices now (emergency contact, terms), the terms one with its own "Saya menyetujui" button.
+    await expect(page.getByRole('alert').filter({ hasText: 'lengkapi kontak darurat' })).toBeVisible()
+    await expect(page.getByRole('alert').filter({ hasText: 'versi terbaru' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Kirim Pengajuan' })).toBeDisabled()
     const bypass = await direct()
     expect([bypass.status, bypass.message]).toEqual([412, 'Lengkapi kontak darurat Anda di halaman Profil sebelum mengajukan sewa.'])
@@ -25,8 +27,8 @@ test('[G-058][R-091][R-092] without an emergency contact and the current terms t
 
     await trpcPost(page, 'auth.updateEmergencyContact', { name: 'Bu Sari', relation: 'Ibu', phone: '081200000009', consent: true })
     await openForm()
-    await expect(page.getByRole('alert')).toContainText('persetujuan syarat')
-    await expect(page.getByRole('alert')).not.toContainText('kontak darurat')
+    await expect(page.getByRole('alert').filter({ hasText: 'versi terbaru' })).toBeVisible()
+    await expect(page.getByRole('alert').filter({ hasText: 'kontak darurat' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Kirim Pengajuan' })).toBeDisabled()
     const stale = await direct()
     expect([stale.status, stale.message]).toEqual([412, 'Setujui Syarat Penggunaan dan Kebijakan Privasi terbaru sebelum mengajukan sewa.'])

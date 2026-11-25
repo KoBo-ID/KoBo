@@ -110,6 +110,8 @@ export interface Kos {
   priceMonthlyStart: number;
   studentDiscountAmount: number;
   studentDiscountLabel: string;
+  /** Listing belongs to a demo owner (shown as "Kos contoh"). */
+  isDemoListing?: boolean;
   applicationFee: number;
   images: string[];
   privateAmenities: string[];

@@ -73,6 +73,8 @@ export const ToastContainer: React.FC = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 padding: '0.2rem',
+                minWidth: 24,
+                minHeight: 24,
                 borderRadius: 'var(--radius-xs)',
               }}
               aria-label="Tutup notifikasi"

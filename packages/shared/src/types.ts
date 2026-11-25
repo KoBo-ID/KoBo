@@ -1,5 +1,8 @@
 // Types only. No runtime code in this entry point.
 export type RoomStatus = 'paid' | 'due' | 'overdue' | 'vacant' | 'booking'
+export type InvoiceStatusName = 'UNPAID' | 'PAID' | 'WAIVED'
+export type InvoiceBillingState = 'PAID' | 'OWED' | 'OVERDUE' | 'WAIVED' | 'NOT_BILLED'
+export type ApplicationDecisionReason = 'KAMAR_TIDAK_TERSEDIA' | 'MEMILIH_PENGAJU_LAIN' | 'TANGGAL_TIDAK_COCOK' | 'LAINNYA'
 export type CampusVerifyMethod = 'EMAIL' | 'MICROSOFT' | 'GOOGLE' | 'KTM' | 'SHEERID'
 export interface StudentVerificationStatus {
   state: 'NONE' | 'PENDING' | 'VERIFIED' | 'REJECTED' | 'EXPIRED'
@@ -15,6 +18,13 @@ export interface StudentVerificationStatus {
   slaText: string
   /** sheerid: dev/test only (refused in production); see backend/src/sheerid.ts. */
   providers: { microsoft: boolean; google: boolean; sheerid?: boolean }
+  /** The account email (lower-cased) when its domain is a curated campus student domain and the user is not verified yet; else null. */
+  accountCampusEmail: string | null
+  /** User.verifiedCampusId and that campus's name. */
+  campusId: string | null
+  campusName: string | null
+  /** The latest rejected KTM's typed fields, only while `state` is REJECTED; else null. */
+  lastRejectedDraft: { campusId: string | null; campusName: string | null; nameOnCard: string | null; nim: string | null; program: string | null } | null
 }
 export type WaitlistStatus = 'WAITING' | 'OFFERED' | 'FULFILLED' | 'EXPIRED' | 'DECLINED' | 'LEFT' | 'REMOVED'
 
@@ -210,6 +220,15 @@ export interface PartnerMessagePage {
 /** `message.send` answer. `needsConfirm` means nothing was saved: contact info was found and `confirmContact` was not set. */
 export type PartnerMessageSendResult = { sent: true; message: PartnerMessageView } | { sent: false; needsConfirm: true }
 
+export interface ShortlistShareableRoom {
+  roomId: string
+  type: string
+  /** Owner-set per-person price when priced per person; null when priced per room (use priceMonthly). */
+  pricePerPerson: number | null
+  priceMonthly: number
+  maxOccupants: number
+}
+
 export interface SharedShortlistEntry {
   kosId: string
   /** "Kamu" or the partner's display name. */
@@ -220,6 +239,8 @@ export interface SharedShortlistEntry {
   district: string
   /** Lowest price per room of the kos. */
   priceFrom: number
+  /** Cheapest vacant shareable room (maxOccupants >= 2), or null if none is vacant (SIM-010). */
+  shareable: ShortlistShareableRoom | null
   addedByMe: boolean
   createdAt: string
 }

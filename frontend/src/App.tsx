@@ -9,6 +9,7 @@ import { OwnerLayout } from './components/layout/OwnerLayout';
 import { OwnerGuard } from './components/layout/OwnerGuard';
 import { AppErrorBoundary } from './components/ui/ErrorBoundary';
 import { ToastContainer } from './components/ui/Toast';
+import { Skeleton } from './components/ui/Skeleton';
 
 // Home stays eagerly imported: it is the landing route, so splitting it would
 // only add a Suspense flash in front of the LCP element.
@@ -110,18 +111,21 @@ const ReviewsManager = lazyWithReload(() =>
 const RouteFallback: React.FC = () => (
   <div
     className="app-container"
-    style={{
-      minHeight: '60vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: '3rem',
-      paddingBottom: '3rem',
-    }}
+    style={{ minHeight: '60vh', paddingTop: '3rem', paddingBottom: '3rem' }}
     role="status"
     aria-live="polite"
   >
-    <span style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Memuat halaman…</span>
+    <span
+      style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}
+    >
+      Memuat halaman
+    </span>
+    <Skeleton width="40%" height="2rem" style={{ marginBottom: '1.5rem' }} />
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 16rem), 1fr))', gap: '1rem' }}>
+      <Skeleton height="10rem" borderRadius="var(--radius-md)" />
+      <Skeleton height="10rem" borderRadius="var(--radius-md)" />
+      <Skeleton height="10rem" borderRadius="var(--radius-md)" />
+    </div>
   </div>
 );
 
@@ -212,6 +216,7 @@ export function App() {
                 <Route path="/checkout/:id" element={<Checkout />} />
                 <Route path="/my-kos" element={<MyKos />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/profile/:section" element={<Profile />} />
                 <Route path="/kuitansi/:receiptNo" element={<Kuitansi />} />
                 <Route path="/teman-sekamar" element={<MatchDiscover />} />
                 <Route path="/teman-sekamar/profil" element={<MatchProfileForm />} />

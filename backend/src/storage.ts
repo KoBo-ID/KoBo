@@ -35,13 +35,23 @@ export interface Storage {
 }
 
 /**
- * True when the leading bytes match the declared image type (WebP: RIFF....WEBP, JPEG: FF D8 FF). A signature check, not
- * a decode: it stops HTML, SVG, scripts and executables declared as images, while re-encoding stays a separate hardening step.
+ * True when the leading bytes match the declared raster image type (JPEG, PNG, WebP, AVIF, HEIC/HEIF, BMP).
+ * A signature check, not a decode: it stops HTML, SVG, scripts and executables declared as images.
  */
 export function hasImageSignature(contentType: string, bytes: Uint8Array): boolean {
   const ascii = (from: number, to: number) => String.fromCharCode(...bytes.slice(from, to))
   if (contentType === 'image/webp') return bytes.length >= 12 && ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP'
   if (contentType === 'image/jpeg') return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+  if (contentType === 'image/png') {
+    return bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 && bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a
+  }
+  if (contentType === 'image/bmp') return bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4d
+  if (contentType === 'image/avif') {
+    return bytes.length >= 12 && ascii(4, 8) === 'ftyp' && ['avif', 'avis', 'mif1'].includes(ascii(8, 12))
+  }
+  if (contentType === 'image/heic' || contentType === 'image/heif') {
+    return bytes.length >= 12 && ascii(4, 8) === 'ftyp' && ['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'mif1', 'msf1'].includes(ascii(8, 12))
+  }
   return false
 }
 

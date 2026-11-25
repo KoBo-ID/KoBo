@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../../src/app.ts'
 import { createPrisma } from '../../src/db/client.ts'
 import { resetDb } from '../../src/db/seed.ts'
-import { prisma } from '../helpers.ts'
+import { paymentService, prisma } from '../helpers.ts'
 
 // Small fixture instead of frontend/dist so the test never depends on a frontend build.
 const distDir = fileURLToPath(new URL('../fixtures/spa', import.meta.url))
-const app = createApp({ prisma, distDir })
+const app = createApp({ prisma, distDir, paymentService })
 
 beforeEach(() => resetDb(prisma))
 
@@ -19,7 +19,7 @@ describe('GET /health', () => {
   })
 
   it('returns 503 when the database is unreachable', async () => {
-    const bad = createApp({ prisma: createPrisma('postgresql://kobo:kobo@127.0.0.1:1/none') })
+    const bad = createApp({ prisma: createPrisma('postgresql://kobo:kobo@127.0.0.1:1/none'), paymentService })
     const res = await bad.request('/health')
     expect(res.status).toBe(503)
   })

@@ -110,7 +110,7 @@ export async function registerAndSignIn(email: string, password = 'Sandi-rahasia
   return cookieFrom(inn)
 }
 
-export async function demoCookie(as: 'student' | 'owner') {
+export async function demoCookie(as: 'student' | 'owner' | 'temanA' | 'temanB') {
   const res = await request('/api/auth/demo-login', { body: { as } })
   if (res.status !== 200) throw new Error(`demo login failed: ${res.status} ${await res.text()}`)
   return cookieFrom(res)
@@ -167,6 +167,8 @@ export const settleMock = async (paymentId: string) => {
 }
 
 export const DEMO_STUDENT_ID = 'user-demo-student'
+export const DEMO_TEMAN_A_ID = 'user-demo-teman-a'
+export const DEMO_TEMAN_B_ID = 'user-demo-teman-b'
 
 /** A room with no live (ACTIVE, or PENDING and unexpired) tenancy and no PENDING row at all. */
 export async function vacantRoom(nth = 0) {

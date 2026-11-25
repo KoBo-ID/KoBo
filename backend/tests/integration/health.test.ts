@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp } from '../../src/app.ts'
 import { beat, buildHealth, configureHeartbeat, DAILY_STALE_MS, heartbeatJob, registerWorker, resetHealthRegistry, snapshot, staleAfter } from '../../src/health.ts'
-import { prisma } from '../helpers.ts'
+import { paymentService, prisma } from '../helpers.ts'
 
 const T0 = Date.UTC(2026, 10, 19, 12, 0, 0)
 
@@ -78,13 +78,13 @@ describe('buildHealth', () => {
 
 describe('GET /api/health', () => {
   it('serves the JSON over HTTP, 200 when the database answers', async () => {
-    const res = await createApp({ prisma }).request('/api/health')
+    const res = await createApp({ prisma, paymentService }).request('/api/health')
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ status: 'ok', db: 'ok', workers: {} })
   })
 
   it('answers 503 on /api/health but keeps the plain /health probe, when the database is down', async () => {
-    const app = createApp({ prisma, checkDb: () => Promise.reject(new Error('down')) })
+    const app = createApp({ prisma, paymentService, checkDb: () => Promise.reject(new Error('down')) })
     const res = await app.request('/api/health')
     expect(res.status).toBe(503)
     expect(await res.json()).toMatchObject({ status: 'degraded', db: 'down' })

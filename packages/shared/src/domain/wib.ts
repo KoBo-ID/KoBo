@@ -1,10 +1,24 @@
+import { isCalendarDay } from './calendarDay.ts'
+
 const WIB_ZONE = 'Asia/Jakarta'
+
+const MONTHS_ID = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+] as const
 
 const wibFormatter = new Intl.DateTimeFormat('en-CA', {
   timeZone: WIB_ZONE,
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
+})
+
+const wibTimeFormatter = new Intl.DateTimeFormat('id-ID', {
+  timeZone: WIB_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
 })
 
 /** Calendar date in WIB (UTC+7, no DST) as 'YYYY-MM-DD'. `now` is always injected. */
@@ -47,4 +61,20 @@ export function diffDays(from: string, to: string): number {
   const [y1, m1, d1] = parse(from)
   const [y2, m2, d2] = parse(to)
   return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86_400_000)
+}
+
+/** Formats a 'YYYY-MM-DD' calendar day as Indonesian long date, e.g. "26 November 2026". Returns null if invalid. */
+export function formatDateID(day: string): string | null {
+  if (!isCalendarDay(day)) return null
+  const [y, m, d] = parse(day)
+  return `${d} ${MONTHS_ID[m - 1]} ${y}`
+}
+
+/** Formats an ISO timestamp or Date in WIB as "26 November 2026 pukul 14.30 WIB". Returns null if invalid. */
+export function formatDateTimeWIB(input: string | Date): string | null {
+  const d = input instanceof Date ? input : new Date(input)
+  if (Number.isNaN(d.getTime())) return null
+  const datePart = formatDateID(todayWIB(d))
+  if (!datePart) return null
+  return `${datePart} pukul ${wibTimeFormatter.format(d).replace(':', '.')} WIB`
 }

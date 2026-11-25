@@ -8,6 +8,8 @@ interface OtpInputProps {
   helperText?: string;
   autoFocus?: boolean;
   disabled?: boolean;
+  /** Id of an element (e.g. the step heading) that gives the field its context. */
+  describedBy?: string;
 }
 
 /**
@@ -15,7 +17,7 @@ interface OtpInputProps {
  * (autocomplete="one-time-code"), pasting the whole code, screen readers and Playwright's fill() all see a
  * single field; the boxes only render its digits and the caret position.
  */
-export const OtpInput: React.FC<OtpInputProps> = ({ label, value, onChange, length = 6, helperText, autoFocus, disabled }) => {
+export const OtpInput: React.FC<OtpInputProps> = ({ label, value, onChange, length = 6, helperText, autoFocus, disabled, describedBy }) => {
   const id = useId();
   const ref = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState(false);
@@ -52,8 +54,10 @@ export const OtpInput: React.FC<OtpInputProps> = ({ label, value, onChange, leng
           pattern="[0-9]*"
           maxLength={length}
           autoFocus={autoFocus}
+          // React does not render the `autofocus` attribute; AuthPage's step focus looks for this one.
+          data-autofocus={autoFocus ? '' : undefined}
           disabled={disabled}
-          aria-describedby={helperText ? `${id}-help` : undefined}
+          aria-describedby={[helperText ? `${id}-help` : '', describedBy ?? ''].filter(Boolean).join(' ') || undefined}
           required
         />
       </div>

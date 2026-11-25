@@ -27,7 +27,9 @@ try {
 
 let failed = false
 for (const { prefix, limitKB } of budgets) {
-  const matches = files.filter((f) => f.startsWith(prefix))
+  // Exactly <prefix><8-char Rolldown hash>.js: a shared chunk named after a module that merely starts with the prefix (e.g.
+  // lucide's building-complex icon, 'building-complex-<hash>.js') is not the budgeted chunk.
+  const matches = files.filter((f) => f.startsWith(prefix) && /^[A-Za-z0-9_-]{8}\.js$/.test(f.slice(prefix.length)))
   if (matches.length !== 1) {
     console.error(`FAIL ${prefix}*.js: expected exactly 1 chunk, found ${matches.length}`)
     failed = true

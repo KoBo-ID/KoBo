@@ -10,6 +10,7 @@ export interface ModalProps {
   children: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl';
   showCloseButton?: boolean;
+  role?: 'dialog' | 'alertdialog';
 }
 
 const openModals: HTMLElement[] = [];
@@ -28,6 +29,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   maxWidth = 'md',
   showCloseButton = true,
+  role = 'dialog',
 }) => {
   // Prevent background scroll and compensate for scrollbar width
   useScrollLock(isOpen);
@@ -102,7 +104,7 @@ export const Modal: React.FC<ModalProps> = ({
         style={{ maxWidth: maxWidthMap[maxWidth], zIndex: 'var(--z-modal)' }}
         onClick={(e) => e.stopPropagation()}
         className="kobo-modal animate-slide-up"
-        role="dialog"
+        role={role}
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         ref={dialogRef}

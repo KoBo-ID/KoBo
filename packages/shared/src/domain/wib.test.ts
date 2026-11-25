@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import fc from 'fast-check'
-import { addDays, addMonths, compareDates, todayWIB } from './wib.ts'
+import { addDays, addMonths, compareDates, formatDateID, formatDateTimeWIB, todayWIB } from './wib.ts'
 
 const dateArb = fc
   .date({ min: new Date('2000-01-01T00:00:00Z'), max: new Date('2100-01-01T00:00:00Z'), noInvalidDate: true })
@@ -69,5 +69,22 @@ describe('addMonths', () => {
         expect(Number(r.slice(8))).toBeLessThanOrEqual(Number(d.slice(8)))
       }),
     )
+  })
+})
+
+describe('formatDateID and formatDateTimeWIB', () => {
+  it('formats YYYY-MM-DD as Indonesian long date and rejects invalid dates', () => {
+    expect(formatDateID('2026-11-26')).toBe('26 November 2026')
+    expect(formatDateID('2026-01-05')).toBe('5 Januari 2026')
+    expect(formatDateID('2026-08-17')).toBe('17 Agustus 2026')
+    expect(formatDateID('2026-02-30')).toBeNull()
+    expect(formatDateID('bad')).toBeNull()
+  })
+
+  it('formats ISO timestamps in WIB as "<day> <Month> <year> pukul HH.mm WIB"', () => {
+    expect(formatDateTimeWIB('2026-11-26T07:30:00.000Z')).toBe('26 November 2026 pukul 14.30 WIB')
+    // 18:15 UTC on Nov 25 is 01:15 WIB on Nov 26.
+    expect(formatDateTimeWIB('2026-11-25T18:15:00.000Z')).toBe('26 November 2026 pukul 01.15 WIB')
+    expect(formatDateTimeWIB('not-a-date')).toBeNull()
   })
 })

@@ -11,6 +11,16 @@ const env = {
   ...process.env,
   NODE_ENV: 'production',
   ALLOW_FAKE_STORAGE: '1', // e2e only: no R2 here, so opt in to the fake storage
+  // Blank every R2 key, as e2e/start-server.mjs does: backend/.env may hold real buckets, and a set private bucket made the
+  // KTM upload PUT to real R2 from the browser (audit-fixes run, 2026-11-25).
+  R2_ENDPOINT: '',
+  R2_PUBLIC_BUCKET: '',
+  R2_PUBLIC_ACCESS_KEY_ID: '',
+  R2_PUBLIC_SECRET_ACCESS_KEY: '',
+  R2_PUBLIC_BASE_URL: '',
+  R2_PRIVATE_BUCKET: '',
+  R2_PRIVATE_ACCESS_KEY_ID: '',
+  R2_PRIVATE_SECRET_ACCESS_KEY: '',
   PORT: process.env.GAP_SERVER_PORT ?? '3101',
   // Auth: the origin check compares requests against this, so it must be the URL the browser uses.
   BETTER_AUTH_URL: process.env.GAP_PUBLIC_URL ?? 'http://localhost:3100', // the URL the browser uses (the proxy), not this server's port

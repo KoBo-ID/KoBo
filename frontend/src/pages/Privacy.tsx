@@ -36,7 +36,7 @@ export const Privacy: React.FC = () => {
         <InfoList
           items={[
             'Menjalankan akun, memproses pengajuan dan pembayaran, mengatur survey dan daftar tunggu (pelaksanaan perjanjian).',
-            'Mengirim pengingat tagihan lewat email dan WhatsApp antara 08.00 dan 20.00 WIB (kepentingan sah dan perjanjian; dapat dimatikan di Profil).',
+            'Mengirim pengingat tagihan lewat email dan WhatsApp (kepentingan sah dan perjanjian; dapat dimatikan di Profil).',
             'Menghubungi kontak darurat bila pembayaran terlambat lebih dari 7 hari (persetujuan Anda, dapat dicabut).',
             'Menampilkan ulasan dan menjaga keamanan akun.',
           ]}
