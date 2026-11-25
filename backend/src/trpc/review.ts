@@ -10,7 +10,7 @@ const DAY_MS = 24 * 3600_000
 export const reviewEditable = (createdAt: Date, now: Date) => now.getTime() - createdAt.getTime() <= REVIEW_EDIT_DAYS * DAY_MS
 
 /** A tenancy may be reviewed once it was activated: ACTIVE, or ENDED after a paid invoice (never a lapsed hold). */
-export const reviewEligible = (t: { status: 'PENDING' | 'ACTIVE' | 'ENDED'; invoices: { status: 'UNPAID' | 'PAID' }[] }) =>
+export const reviewEligible = (t: { status: 'PENDING' | 'ACTIVE' | 'ENDED'; invoices: { status: 'UNPAID' | 'PAID' | 'WAIVED' }[] }) =>
   t.status === 'ACTIVE' || (t.status === 'ENDED' && t.invoices.some((i) => i.status === 'PAID'))
 
 function isUniqueViolation(e: unknown): boolean {

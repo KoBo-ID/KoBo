@@ -14,7 +14,7 @@ test('a student saves an emergency contact with consent, keeps it after a reload
   watch(student.page, problems)
   try {
     const { page } = student
-    await page.goto('/profile')
+    await page.goto('/profile/kontak-darurat')
     const card = page.getByTestId('emergency-contact-card')
     await card.getByRole('button', { name: 'Isi kontak darurat' }).click()
     await card.getByLabel('Nama', { exact: true }).fill('Ibu Sari')
