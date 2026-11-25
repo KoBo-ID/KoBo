@@ -295,9 +295,11 @@ test('REV1-009/011/012 & SIM-016: direct demo checkout gate, month-1 discount wo
     const checkBtn = row.getByRole('button', { name: 'Periksa Status' })
     const resumeBtn = row.getByRole('button', { name: 'Lanjutkan Pembayaran' })
     await expect(checkBtn).toBeVisible()
-    await expect(checkBtn).toHaveClass(/kobo-btn--primary/)
     await expect(resumeBtn).toBeVisible()
-    await expect(resumeBtn).toHaveClass(/kobo-btn--outline/)
+    // Button uses inline VARIANT_STYLES: primary has filled background, outline has transparent background; primary comes first.
+    await expect(checkBtn).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+    await expect(resumeBtn).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+    expect(await row.getByRole('button').allTextContents()).toEqual(['Periksa Status', 'Lanjutkan Pembayaran'])
     expectHttpErrors(problems)
   } finally {
     await Promise.all([owner.ctx.close(), student.ctx.close()])
