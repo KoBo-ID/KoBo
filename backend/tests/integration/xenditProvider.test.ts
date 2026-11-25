@@ -162,14 +162,25 @@ describe('XenditPaymentProvider', () => {
     expect(init.method).toBe('GET')
   })
 
-  it('rejects a provider expiry later than KoBo\'s tenancy hold', async () => {
+  it("clamps small positive provider expiry skew (<= 60s) to KoBo's tenancy hold", async () => {
     const fetchMock = vi.fn(async () => Response.json(session({ expires_at: '2026-10-13T12:00:01.000Z' }), { status: 201 }))
     const { providerBusinessId: _providerBusinessId, splitRuleId: _splitRuleId, ...input } = createInput
 
-    await expect(makeProvider(fetchMock as unknown as typeof fetch).createCheckout(input)).rejects.toMatchObject({
-      code: 'INVALID_RESPONSE',
-      retryable: false,
+    await expect(makeProvider(fetchMock as unknown as typeof fetch).createCheckout(input)).resolves.toMatchObject({
+      expiresAt: input.expiresAt,
     })
+  })
+
+  it("rejects a provider expiry more than 60s later than KoBo's tenancy hold, or already expired", async () => {
+    const { providerBusinessId: _providerBusinessId, splitRuleId: _splitRuleId, ...input } = createInput
+    for (const expires_at of ['2026-10-13T12:01:01.000Z', now.toISOString()]) {
+      const fetchMock = vi.fn(async () => Response.json(session({ expires_at }), { status: 201 }))
+      await expect(makeProvider(fetchMock as unknown as typeof fetch).createCheckout(input)).rejects.toMatchObject({
+        code: 'INVALID_RESPONSE',
+        retryable: false,
+        outcomeUnknown: true,
+      })
+    }
   })
 
   it('rejects checkout links outside documented Xendit hosts', async () => {

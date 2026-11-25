@@ -2,6 +2,7 @@ import type { TRPCError } from '@trpc/server'
 import { addDays, addMonths, todayWIB } from '@kobo/shared/domain'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetDb } from '../../src/db/seed.ts'
+import { renderEmail } from '../../src/emailTemplates.ts'
 import { approveApplication, callerFor, createPendingMockPayment, DEMO_STUDENT_ID, postXenditWebhook, prisma, sessionWebhook, settleMock, TEST_BUSINESS_ID, TEST_CALLBACK_TOKEN, vacantRoom, cash, lapseAttempts } from '../helpers.ts'
 
 beforeEach(() => resetDb(prisma))
@@ -246,5 +247,18 @@ describe('payment.recordManual', () => {
     expect(results.find((e) => e)?.code).toBe('CONFLICT')
     expect(await prisma.payment.count({ where: { invoiceId: invoice.id, status: 'PAID' } })).toBe(1)
     expect(await prisma.emailOutbox.count({ where: { template: 'payment-received' } })).toBe(1)
+  })
+
+  it('queues manual-specific owner email copy that does not claim KoBo verification or payout disclaimer', async () => {
+    const { room, res } = await book(DEMO_STUDENT_ID, 2)
+    const invoice = await prisma.invoice.findFirstOrThrow({ where: { tenancyId: res.tenancyId } })
+    await lapseAttempts(invoice.id)
+    await callerFor(await ownerOf(room.kosId)).payment.recordManual(await cash(room.kosId, invoice.id))
+    const ownerMail = await prisma.emailOutbox.findFirstOrThrow({ where: { template: 'payment-received-owner' } })
+    const rendered = renderEmail('payment-received-owner', ownerMail.payload)!
+    expect(rendered.subject).toContain('dicatat manual')
+    expect(rendered.text).toContain('manual')
+    expect(rendered.text).not.toContain('sudah terverifikasi oleh KoBo')
+    expect(rendered.text).not.toContain('pencairan dana')
   })
 })

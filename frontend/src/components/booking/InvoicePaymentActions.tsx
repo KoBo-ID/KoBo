@@ -7,6 +7,7 @@ import { Notice } from '../ui/Notice';
 import { safeCheckoutUrl } from '../../lib/checkout';
 import { messageForError } from '../../lib/errors';
 import { useSession } from '../../lib/session';
+import { supportMailto } from '../../lib/support';
 import { useTRPC } from '../../lib/trpc';
 
 type Invoice = MyTenancy['invoices'][number];
@@ -120,6 +121,11 @@ export const InvoicePaymentActions: React.FC<{
       onSuccess: (res) => {
         qc.setQueryData(trpc.payment.status.queryKey({ paymentId: res.id }), res);
         setCooldown(RECONCILE_COOLDOWN_S);
+        // When invoked outside an active ?result=success wait, the status query is disabled so the settle effect will not run.
+        if (TERMINAL.has(res.status) && res.id !== waitingFor) {
+          refresh();
+          onResolved?.();
+        }
       },
       onError: (e) => {
         setError(messageForError(e));
@@ -138,6 +144,10 @@ export const InvoicePaymentActions: React.FC<{
     if (inFlight.current) return;
     inFlight.current = true;
     setError(null);
+    setWaitingFor(null);
+    setPolling(false);
+    setCooldown(0);
+    reconcile.reset();
     start.mutate({ invoiceId: invoice.id });
   };
   const check = (paymentId: string) => {
@@ -156,19 +166,34 @@ export const InvoicePaymentActions: React.FC<{
   const lapsed = refundState === 'EXPIRED' || refundState === 'FAILED';
   const why = REFUND_REASON[lastAttempt?.refundReason ?? ''];
 
-  let message: string | null = null;
+  const demoAttempt = isDemo && active?.provider === 'MOCK' && active.status === 'PENDING' ? active : null;
+  const resumeUrl = active?.provider === 'XENDIT' && active.status === 'PENDING' ? active.checkoutUrl : null;
+  const checkId = awaiting ?? (active?.provider === 'XENDIT' && (active.status === 'PENDING' || active.status === 'CREATING') ? active.id : null);
+
+  // After a Xendit return (or while any wait runs) "Periksa Status" is the main action and resuming is secondary (SIM-016).
+  const returnWait = Boolean(returnedPaymentId && returnedResult === 'success') || !!awaiting;
+
+  let message: React.ReactNode = null;
   if (refundState === 'REFUND_PENDING') message = `${why ?? 'Pembayaran Anda sedang dikembalikan.'} Dana sedang dikembalikan.`;
   else if (refundState === 'REFUNDED') message = `${why ?? 'Pembayaran Anda dikembalikan.'} Dana telah dikembalikan.`;
-  else if (refundState === 'REFUND_FAILED') message = `${why ?? 'Pembayaran Anda perlu dikembalikan.'} Pengembalian dana tertunda. Hubungi KoBo.`;
+  else if (refundState === 'REFUND_FAILED') {
+    message = (
+      <>
+        {why ?? 'Pembayaran Anda perlu dikembalikan.'} Pengembalian dana tertunda.{' '}
+        <a href={supportMailto(`Pengembalian dana ${lastAttempt?.id ?? ''}`.trim())} style={{ color: 'var(--primary)', fontWeight: 700 }}>Hubungi KoBo</a>
+      </>
+    );
+  }
   else if (status.isError) message = 'Status pembayaran belum dapat dimuat. Periksa status untuk mencoba lagi.';
   else if (awaiting && polling && Date.now() - startedAt < POLL_WINDOW_MS) message = 'Menunggu konfirmasi pembayaran…';
   else if (awaiting) message = 'Pembayaran belum terkonfirmasi. Periksa status untuk memastikan.';
   else if (lapsed && invoice.canPay) message = 'Sesi pembayaran sebelumnya berakhir. Silakan mulai pembayaran baru.';
   else if (lapsed && invoice.status !== 'PAID') message = 'Sesi pembayaran sebelumnya berakhir.';
-
-  const demoAttempt = isDemo && active?.provider === 'MOCK' && active.status === 'PENDING' ? active : null;
-  const resumeUrl = active?.provider === 'XENDIT' && active.status === 'PENDING' ? active.checkoutUrl : null;
-  const checkId = awaiting ?? (active?.status === 'CREATING' ? active.id : null);
+  else if (reconcile.isSuccess && active?.id === reconcile.data.id && !TERMINAL.has(reconcile.data.status)) {
+    message = resumeUrl
+      ? 'Pembayaran belum terkonfirmasi. Lanjutkan pembayaran atau coba periksa lagi sebentar lagi.'
+      : 'Pembayaran belum terkonfirmasi. Coba periksa lagi sebentar lagi.';
+  }
 
   return (
     <span className="invoice-pay">
@@ -179,12 +204,12 @@ export const InvoicePaymentActions: React.FC<{
           </Button>
         )}
         {invoice.status !== 'PAID' && resumeUrl && !awaiting && (
-          <Button variant="primary" size="sm" onClick={() => { const url = safeCheckoutUrl(resumeUrl); if (url) window.location.assign(url); else setError('Tautan pembayaran tidak valid.'); }}>
+          <Button variant={returnWait ? 'outline' : 'primary'} size="sm" onClick={() => { const url = safeCheckoutUrl(resumeUrl); if (url) window.location.assign(url); else setError('Tautan pembayaran tidak valid.'); }}>
             Lanjutkan Pembayaran
           </Button>
         )}
         {checkId && (!polling || status.isError || Date.now() - startedAt >= POLL_WINDOW_MS || !awaiting) && (
-          <Button variant="outline" size="sm" isLoading={reconcile.isPending} disabled={reconcile.isPending || cooldown > 0} onClick={() => check(checkId)}>
+          <Button variant={returnWait ? 'primary' : 'outline'} size="sm" isLoading={reconcile.isPending} disabled={reconcile.isPending || cooldown > 0} onClick={() => check(checkId)}>
             {cooldown > 0 ? `Periksa Status (${cooldown} dtk)` : 'Periksa Status'}
           </Button>
         )}

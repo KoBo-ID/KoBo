@@ -67,6 +67,7 @@ export async function applyPaymentEvent(tx: Tx, opts: SettlementOptions, event: 
   const isFirstInvoice = tenancy.invoices[0]?.id === invoice.id
   let refundReason: string | null = null
   if (invoice.status === 'PAID') refundReason = 'INVOICE_ALREADY_PAID'
+  else if (invoice.status === 'WAIVED') refundReason = 'INVOICE_WAIVED'
   else if (tenancy.status === 'ENDED') refundReason = 'TENANCY_ENDED'
   else if (tenancy.status === 'PENDING') {
     // The session ends with the hold, so a callback delayed by a retry can land just after it. The payment is honoured

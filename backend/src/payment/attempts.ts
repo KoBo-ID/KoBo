@@ -2,12 +2,11 @@ import { TRPCError } from '@trpc/server'
 import { authEnv } from '../env.ts'
 import { Prisma, type PrismaClient } from '../generated/prisma/client.ts'
 import type { PaymentProvider } from './provider.ts'
+import { CREATING_STALE_MS } from './summary.ts'
 import { MIN_XENDIT_CHECKOUT_WINDOW_MS, XenditError } from './xendit.ts'
 
 const SESSION_MAX_MS = 30 * 60 * 1000
 const MIN_MOCK_WINDOW_MS = 5 * 60 * 1000
-/** A CREATING row older than this lost its provider call (crash/timeout); it is failed before a new attempt opens. */
-const CREATING_STALE_MS = 2 * 60 * 1000
 const ONLINE: ('MOCK' | 'XENDIT')[] = ['MOCK', 'XENDIT']
 const LIVE: ('CREATING' | 'PENDING')[] = ['CREATING', 'PENDING']
 
@@ -73,6 +72,9 @@ export async function startPaymentAttempt(
       const invoice = await tx.invoice.findFirst({ where: { id: invoiceId, tenancy: { userId } }, include: { tenancy: true } })
       if (!invoice) throw new TRPCError({ code: 'NOT_FOUND', message: 'Tagihan tidak ditemukan.' })
       if (invoice.status === 'PAID') throw new TRPCError({ code: 'CONFLICT', message: 'Tagihan ini sudah lunas.' })
+      if (invoice.status === 'WAIVED') {
+        throw new TRPCError({ code: 'CONFLICT', message: 'Tagihan ini sudah dihapus oleh pemilik kos.' }) // COPY: reviewed (part 2)
+      }
 
       await expireStaleAttempts(tx, invoiceId, now)
 

@@ -138,6 +138,7 @@ test('scenario 22: bank transfer needs a valid reference, which the kuitansi kee
       await student.page.goto('/my-kos')
       await student.page.getByRole('link', { name: 'Lihat Kuitansi Resmi' }).click()
       await expect(student.page.getByText('Transfer bank, dicatat oleh pemilik')).toBeVisible()
+      await expect(student.page.getByText('TRF-OWN-001')).toBeVisible()
     })
     expectHttpErrors(problems)
   } finally {

@@ -152,33 +152,40 @@ test('scenario 13: a CREATING attempt whose session lapsed is failed and replace
   }
 })
 
-test('scenario 13: a stale CREATING row that still has session time leaves only a Periksa Status that cannot help', async ({ browser, problems }) => {
+test('scenario 13: a stale CREATING row that still has session time frees the student and owner board immediately', async ({ browser, problems }) => {
   const held = await heldRoom(browser, { label: 'mock-stuck', demo: true })
   const { owner, student } = held
+  const room = owner.rooms[0]
   watch(student.page, problems)
+  watch(owner.page, problems)
   try {
     await student.page.goto('/my-kos')
     const row = bulan1(student.page)
     await row.getByRole('button', { name: 'Bayar Sekarang' }).click()
     await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
     const stuck = await latestPayment(held.invoiceId)
-    await staleCreating(stuck.id) // expiresAt is still ~30 minutes away, so the row counts as a live attempt
+    await staleCreating(stuck.id) // expiresAt is still ~30 minutes away, but createdAt is > 2 minutes old
 
-    await test.step('finding: no pay button and no simulator, only Periksa Status, which asks the provider nothing for MOCK', async () => {
+    await test.step('student sees Bayar Sekarang (not a dead-end Periksa Status) and owner board does not block manual payment', async () => {
       await student.page.reload()
-      await expect(row.getByRole('button', { name: 'Periksa Status' })).toBeVisible()
-      await expect(row.getByRole('button', { name: 'Bayar Sekarang' })).toHaveCount(0)
+      await expect(hint(student.page)).toHaveText('Sesi pembayaran sebelumnya berakhir. Silakan mulai pembayaran baru.')
+      await expect(row.getByRole('button', { name: 'Bayar Sekarang' })).toBeVisible()
+      await expect(row.getByRole('button', { name: 'Periksa Status' })).toHaveCount(0)
       await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toHaveCount(0)
-      await row.getByRole('button', { name: 'Periksa Status' }).click()
-      await expect(row.getByRole('button', { name: /Periksa Status \(\d+ dtk\)/ })).toBeVisible()
-      expect((await attempts(held.invoiceId)).map((r) => r.status)).toEqual(['CREATING'])
+
+      await owner.page.goto(`/owner/dashboard?kos=${owner.kosId}`)
+      const boardRow = owner.page.getByRole('row').filter({ hasText: `Kamar ${room.roomNumber}` })
+      await expect(boardRow.getByText('Dipesan', { exact: true })).toBeVisible()
+      await expect(boardRow.getByTestId('payment-label')).toHaveCount(0)
+      await expect(owner.page.getByRole('button', { name: `Tandai Lunas Kamar ${room.roomNumber}` })).toBeEnabled()
     })
 
-    await test.step('the server itself recovers when payment.start runs: FAILED plus a new PENDING', async () => {
-      await trpcPost(student.ctx, 'payment.start', { invoiceId: held.invoiceId })
-      expect((await attempts(held.invoiceId)).map((r) => r.status)).toEqual(['FAILED', 'PENDING'])
-      await student.page.reload()
+    await test.step('clicking Bayar Sekarang reaps the stale CREATING row and opens a fresh PENDING attempt', async () => {
+      await row.getByRole('button', { name: 'Bayar Sekarang' }).click()
       await expect(row.getByRole('button', { name: 'Selesaikan Pembayaran' })).toBeVisible()
+      expect((await attempts(held.invoiceId)).map((r) => r.status)).toEqual(['FAILED', 'PENDING'])
+      const [{ failureCode }] = await sql<{ failureCode: string }>('SELECT "failureCode" FROM "Payment" WHERE id = $1', [stuck.id])
+      expect(failureCode).toBe('STALE_CREATING')
     })
     expectHttpErrors(problems)
   } finally {

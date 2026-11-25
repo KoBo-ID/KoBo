@@ -87,7 +87,9 @@ test('returning with result=success only waits, then offers Periksa Status; it n
   })
   await page.goto('/my-kos?payment=pay-1&result=success')
   await expect(page.getByText('Menunggu konfirmasi pembayaran')).toBeVisible()
-  await expect(page.getByText('Belum dibayar')).toBeVisible()
+  // Audit 2026-11-24 (SIM-016): the row status reads "Menunggu konfirmasi" in place of "Belum dibayar" while the returned payment is awaited.
+  await expect(page.getByText('Menunggu konfirmasi', { exact: true })).toBeVisible()
+  await expect(page.getByText('Belum dibayar')).toHaveCount(0)
   await page.clock.fastForward(65_000)
   await expect(page.getByRole('button', { name: /Periksa Status/ })).toBeVisible()
   await expect(page.getByText('Lunas')).toHaveCount(0)

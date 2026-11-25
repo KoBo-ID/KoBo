@@ -14,7 +14,7 @@ export const refundBackoffSeconds = (attempt: number) => Math.min(21_600, 60 * 2
 
 export function providerRefundReason(reason: string): CreateRefundInput['reason'] {
   if (reason === 'INVOICE_ALREADY_PAID') return 'DUPLICATE'
-  if (reason === 'HOLD_EXPIRED' || reason === 'TENANCY_ENDED') return 'CANCELLATION'
+  if (reason === 'HOLD_EXPIRED' || reason === 'TENANCY_ENDED' || reason === 'INVOICE_WAIVED') return 'CANCELLATION'
   return 'OTHERS'
 }
 

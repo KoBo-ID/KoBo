@@ -62,6 +62,13 @@ describe('booking.mine payment summaries', () => {
     const [after] = await callerFor(student.id).booking.mine()
     expect(after.invoices[0]).toMatchObject({ canPay: true, activePayment: null, latestPayment: { status: 'EXPIRED' } })
   })
+
+  it('surfaces a stale CREATING attempt (>= 2 min old) as FAILED with canPay true even before expiresAt', async () => {
+    const { student, payment } = await fixture({ status: 'CREATING', checkoutUrl: null, createdAt: new Date(Date.now() - 3 * 60_000) })
+    const [t] = await callerFor(student.id).booking.mine()
+    expect(t.invoices[0]).toMatchObject({ canPay: true, activePayment: null, latestPayment: { status: 'FAILED', checkoutUrl: null } })
+    expect((await callerFor(student.id).payment.status({ paymentId: payment.id })).status).toBe('FAILED')
+  })
 })
 
 describe('payment.status', () => {

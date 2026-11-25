@@ -11,6 +11,8 @@ import type {
 
 const REQUEST_TIMEOUT_MS = 15_000
 export const MIN_XENDIT_CHECKOUT_WINDOW_MS = 11 * 60 * 1000
+/** Small positive clock/rounding grace on provider expires_at; anything larger fails closed and anything inside is clamped to KoBo's hold. */
+const MAX_EXPIRY_SKEW_MS = 60_000
 export type XenditOperation = 'CREATE_SESSION' | 'GET_SESSION' | 'CREATE_REFUND'
 const REFUND_REASONS = new Set(['FRAUDULENT', 'DUPLICATE', 'REQUESTED_BY_CUSTOMER', 'CANCELLATION', 'OTHERS'])
 const CHECKOUT_HOSTS = new Set(['checkout.xendit.co', 'checkout-staging.xendit.co', 'xen.to', 'dev.xen.to'])
@@ -178,13 +180,15 @@ export class XenditPaymentProvider implements PaymentProvider {
     const checkoutUrl = new URL(parsed.payment_link_url)
     if (!CHECKOUT_HOSTS.has(checkoutUrl.hostname.toLowerCase())) throw this.invalidResponse(operation)
     const expiresAt = new Date(parsed.expires_at)
-    if (expiresAt > input.expiresAt) throw this.invalidResponse(operation)
+    if (expiresAt.getTime() <= this.now().getTime() || expiresAt.getTime() > input.expiresAt.getTime() + MAX_EXPIRY_SKEW_MS) {
+      throw this.invalidResponse(operation)
+    }
     return {
       providerSessionId: parsed.payment_session_id,
       providerPaymentRequestId: parsed.payment_request_id ?? parsed.latest_payment_request_id ?? null,
       providerBusinessId: parsed.business_id,
       checkoutUrl: checkoutUrl.toString(),
-      expiresAt,
+      expiresAt: expiresAt.getTime() > input.expiresAt.getTime() ? input.expiresAt : expiresAt,
     }
   }
 

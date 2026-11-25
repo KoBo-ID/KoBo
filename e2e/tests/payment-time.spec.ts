@@ -188,12 +188,20 @@ test('scenario 19: a refund the provider rejects leaves "Pengembalian dana tertu
     expect((await latestPayment(held.invoiceId)).status).toBe('REFUND_FAILED')
 
     await student.page.goto('/my-kos')
-    await expect(student.page.getByTestId('tenancy-card').getByText('Pengembalian dana tertunda. Hubungi KoBo.')).toBeVisible()
+    // Audit 2026-11-24 (SIM-003): "Hubungi KoBo" is now a real mailto link after the sentence.
+    const refundRow = student.page.getByTestId('tenancy-card').getByText('Pengembalian dana tertunda.')
+    await expect(refundRow).toBeVisible()
+    await expect(student.page.getByTestId('tenancy-card').getByRole('link', { name: 'Hubungi KoBo' })).toHaveAttribute('href', /^mailto:support@kobo\.rent\?subject=Pengembalian%20dana/)
     expect(await tenancyStatus(held.tenancyId)).not.toBe('ACTIVE')
 
-    // The owner's "Pengembalian dana gagal, perlu ditinjau" only reads a live tenancy's oldest unpaid invoice, which a lapsed hold is not.
+    // A-003: even after a hold lapses, a failed refund surfaces NEEDS_REVIEW on the board and in the Perlu tindakan tab.
+    const roomNumber = owner.rooms[0].roomNumber
     await openBoard(owner.page, owner.kosId)
-    await expect(owner.page.getByText('Pengembalian dana gagal, perlu ditinjau')).toHaveCount(0)
+    const row = boardRow(owner.page, roomNumber)
+    await expect(row.getByText('Kosong', { exact: true })).toBeVisible()
+    await expect(row.getByTestId('payment-label')).toHaveText('Pengembalian dana gagal, perlu ditinjau')
+    await owner.page.getByRole('tab', { name: /Perlu tindakan/ }).click()
+    await expect(owner.page.getByText(`Pengembalian dana gagal untuk Kamar ${roomNumber}`)).toBeVisible()
     expectHttpErrors(problems)
   } finally {
     await closeAll(owner.ctx, student.ctx)

@@ -1,4 +1,4 @@
-import { formatReceiptNo } from '@kobo/shared/domain'
+import { formatReceiptNo, todayWIB } from '@kobo/shared/domain'
 import { invoiceIdInput, paymentIdInput, recordManualInput } from '@kobo/shared/schemas'
 import { TRPCError } from '@trpc/server'
 import { expireStaleAttempts, hasLiveAttempt, startPaymentAttempt, type StartPaymentResult } from '../payment/attempts.ts'
@@ -36,9 +36,16 @@ async function statusFor(prisma: PrismaClient, userId: string, paymentId: string
 
 export const paymentRouter = router({
   /** Opens (or reuses) the one live online payment attempt for the caller's own unpaid invoice. */
-  start: authedProcedure.input(invoiceIdInput).mutation(
-    ({ ctx, input }): Promise<StartPaymentResult> => startPaymentAttempt(ctx.prisma, ctx.paymentProvider, ctx.user.id, input.invoiceId),
-  ),
+  start: authedProcedure.input(invoiceIdInput).mutation(({ ctx, input }): Promise<StartPaymentResult> => {
+    // MOCK attempts can only be completed by demo accounts; refuse real accounts upfront so they never enter a 30-min dead end that blocks recordManual.
+    if (ctx.paymentProvider.kind === 'MOCK' && ctx.user.isDemo !== true) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'Pembayaran online belum aktif saat ini. Hubungi pemilik kos untuk pembayaran langsung.',
+      })
+    }
+    return startPaymentAttempt(ctx.prisma, ctx.paymentProvider, ctx.user.id, input.invoiceId)
+  }),
 
   /** Polled by checkout. Only the payer can read it; anyone else sees NOT_FOUND. */
   status: authedProcedure.input(paymentIdInput).query(({ ctx, input }): Promise<PaymentStatusResult> => statusFor(ctx.prisma, ctx.user.id, input.paymentId)),
@@ -77,6 +84,9 @@ export const paymentRouter = router({
       const invoice = await tx.invoice.findUnique({ where: { id: input.invoiceId }, include: { tenancy: { include: { room: { select: { kosId: true } } } } } })
       if (!invoice || invoice.tenancy.room.kosId !== input.kosId) throw new TRPCError({ code: 'NOT_FOUND', message: 'Tagihan tidak ditemukan.' })
       if (invoice.status === 'PAID') throw new TRPCError({ code: 'CONFLICT', message: 'Tagihan ini sudah lunas.' })
+      if (invoice.status === 'WAIVED') {
+        throw new TRPCError({ code: 'CONFLICT', message: 'Tagihan ini sudah dihapus dan tidak dapat ditandai lunas.' }) // COPY: reviewed (part 2)
+      }
       if (input.confirmedAmount !== invoice.amount) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Jumlah tidak sesuai dengan tagihan.' })
       const now = new Date()
 
@@ -86,10 +96,15 @@ export const paymentRouter = router({
         throw new TRPCError({ code: 'CONFLICT', message: 'Penyewa sedang membayar secara online. Tunggu hingga sesi pembayaran berakhir.' })
       }
 
-      // A manual payment must not revive a hold that already lapsed or a tenancy that was ended.
+      // A manual payment must not revive a lapsed hold, a cancelled booking, or future unbilled months of an ended lease.
+      // Past-due UNPAID arrears of an activated ended lease (expiresAt === null) may still be recorded as paid (SIM-001).
       await tx.$queryRaw`SELECT id FROM "Tenancy" WHERE id = ${invoice.tenancyId} FOR UPDATE`
       const tenancy = await tx.tenancy.findUniqueOrThrow({ where: { id: invoice.tenancyId }, include: { invoices: { select: { id: true }, orderBy: [{ dueDate: 'asc' }, { id: 'asc' }], take: 1 } } })
-      if (tenancy.status === 'ENDED') throw new TRPCError({ code: 'CONFLICT', message: 'Sewa ini sudah berakhir.' })
+      if (tenancy.status === 'ENDED') {
+        const due = invoice.dueDate.toISOString().slice(0, 10)
+        const isEndedArrear = tenancy.expiresAt === null && due <= todayWIB(now)
+        if (!isEndedArrear) throw new TRPCError({ code: 'CONFLICT', message: 'Sewa ini sudah berakhir.' })
+      }
       if (tenancy.status === 'PENDING' && !(tenancy.invoices[0]?.id === invoice.id && tenancy.expiresAt && tenancy.expiresAt > now)) {
         throw new TRPCError({ code: 'CONFLICT', message: 'Masa tahan kamar sudah berakhir.' })
       }

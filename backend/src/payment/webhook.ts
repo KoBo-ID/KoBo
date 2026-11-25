@@ -50,6 +50,7 @@ const refundData = z.object({
   status: z.string().optional(),
   failure_code: z.string().nullish(),
   updated: iso.optional(),
+  business_id: z.string().min(1).optional(),
 })
 
 export type ParsedWebhook =
@@ -59,14 +60,13 @@ export type ParsedWebhook =
   | { kind: 'MALFORMED' }
 
 /** Pure parser: validates one Xendit callback body and normalises it to what KoBo settlement needs. */
-export function parseXenditWebhook(json: unknown): ParsedWebhook {
+export function parseXenditWebhook(json: unknown, now = new Date()): ParsedWebhook {
   const env = envelope.safeParse(json)
   if (!env.success) return { kind: 'MALFORMED' }
   const { event: eventType, data } = env.data
   const known = ['payment_session.completed', 'payment_session.expired', 'refund.succeeded', 'refund.failed']
   if (!known.includes(eventType)) return { kind: 'UNKNOWN', eventType }
 
-  const created = env.data.created ?? new Date().toISOString()
   if (eventType.startsWith('payment_session.')) {
     const d = sessionData.safeParse(data)
     const businessId = d.success ? (env.data.business_id ?? d.data.business_id) : undefined
@@ -78,9 +78,10 @@ export function parseXenditWebhook(json: unknown): ParsedWebhook {
     // asks Xendit for the authoritative session and settles it.
     if (eventType === 'payment_session.completed' && (d.data.amount === undefined || d.data.currency === undefined)) return { kind: 'REJECTED', eventType, resourceId, reason: 'MISSING_AMOUNT' }
     if (eventType === 'payment_session.completed' && (!requestId || !d.data.payment_id)) return { kind: 'REJECTED', eventType, resourceId, reason: 'MISSING_PAYMENT_IDS' }
-    const updated = d.data.updated ?? created
-    const base = { referenceId: d.data.reference_id, providerBusinessId: businessId, amount: d.data.amount ?? 0, currency: 'IDR' as const, occurredAt: new Date(updated) }
-    const metadata = { sessionId: d.data.payment_session_id, paymentRequestId: d.data.payment_request_id ?? null, amount: d.data.amount ?? null, currency: d.data.currency ?? null, businessId, providerStatus: d.data.status ?? null, providerUpdatedAt: updated }
+    const rawUpdated = d.data.updated ?? env.data.created ?? null
+    const updated = rawUpdated ?? 'no-ts'
+    const base = { referenceId: d.data.reference_id, providerBusinessId: businessId, amount: d.data.amount ?? 0, currency: 'IDR' as const, occurredAt: rawUpdated ? new Date(rawUpdated) : now }
+    const metadata = { sessionId: d.data.payment_session_id, paymentRequestId: requestId ?? null, amount: d.data.amount ?? null, currency: d.data.currency ?? null, businessId, providerStatus: d.data.status ?? null, providerUpdatedAt: rawUpdated }
     if (eventType === 'payment_session.expired') {
       return { kind: 'KNOWN', eventType, resourceId: d.data.payment_session_id, updated, metadata, event: { ...base, kind: 'SESSION_EXPIRED', providerSessionId: d.data.payment_session_id } }
     }
@@ -95,11 +96,12 @@ export function parseXenditWebhook(json: unknown): ParsedWebhook {
   }
 
   const d = refundData.safeParse(data)
-  const businessId = env.data.business_id
+  const businessId = d.success ? (env.data.business_id ?? d.data.business_id) : undefined
   if (!d.success || !businessId || d.data.currency !== 'IDR') return { kind: 'MALFORMED' }
-  const updated = d.data.updated ?? created
-  const base = { referenceId: d.data.reference_id, providerBusinessId: businessId, amount: d.data.amount, currency: 'IDR' as const, occurredAt: new Date(updated), providerRefundId: d.data.id, providerPaymentRequestId: d.data.payment_request_id }
-  const metadata = { refundId: d.data.id, paymentRequestId: d.data.payment_request_id, amount: d.data.amount, currency: d.data.currency, businessId, providerStatus: d.data.status ?? null, providerUpdatedAt: updated, failureCode: d.data.failure_code ?? null }
+  const rawUpdated = d.data.updated ?? env.data.created ?? null
+  const updated = rawUpdated ?? 'no-ts'
+  const base = { referenceId: d.data.reference_id, providerBusinessId: businessId, amount: d.data.amount, currency: 'IDR' as const, occurredAt: rawUpdated ? new Date(rawUpdated) : now, providerRefundId: d.data.id, providerPaymentRequestId: d.data.payment_request_id }
+  const metadata = { refundId: d.data.id, paymentRequestId: d.data.payment_request_id, amount: d.data.amount, currency: d.data.currency, businessId, providerStatus: d.data.status ?? null, providerUpdatedAt: rawUpdated, failureCode: d.data.failure_code ?? null }
   return {
     kind: 'KNOWN',
     eventType,
@@ -137,13 +139,13 @@ export async function handleXenditWebhook(
     return { status: 400, body: { ok: false, error: 'Body bukan JSON.' } }
   }
 
-  const parsed = parseXenditWebhook(json)
+  const parsed = parseXenditWebhook(json, now)
   if (parsed.kind === 'MALFORMED') return { status: 400, body: { ok: false, error: 'Body tidak valid.' } }
   if (parsed.kind === 'REJECTED') {
-    return audit(prisma, { eventType: parsed.eventType, resourceId: parsed.resourceId, fp: sha256(`xendit:${parsed.eventType}:${parsed.resourceId}:${sha256(input.rawBody)}`), result: 'REJECTED', reason: parsed.reason })
+    return audit(prisma, { eventType: parsed.eventType, resourceId: parsed.resourceId, fp: sha256(`xendit:${parsed.eventType}:${parsed.resourceId}:${sha256(input.rawBody)}`), result: 'REJECTED', reason: parsed.reason }, now)
   }
   if (parsed.kind === 'UNKNOWN') {
-    return audit(prisma, { eventType: parsed.eventType, resourceId: 'unknown', fp: sha256(`xendit:${parsed.eventType}:${sha256(input.rawBody)}`), result: 'IGNORED', reason: 'UNKNOWN_EVENT' })
+    return audit(prisma, { eventType: parsed.eventType, resourceId: 'unknown', fp: sha256(`xendit:${parsed.eventType}:${sha256(input.rawBody)}`), result: 'IGNORED', reason: 'UNKNOWN_EVENT' }, now)
   }
 
   const fp = fingerprint(parsed.eventType, parsed.resourceId, parsed.updated, {
@@ -177,10 +179,11 @@ export async function handleXenditWebhook(
 async function audit(
   prisma: PrismaClient,
   row: { eventType: string; resourceId: string; fp: string; result: 'IGNORED' | 'REJECTED'; reason: string },
+  now: Date,
 ): Promise<WebhookResponse> {
   try {
     await prisma.paymentWebhookEvent.createMany({
-      data: [{ provider: 'XENDIT', fingerprint: row.fp, eventType: row.eventType, externalResourceId: row.resourceId, result: row.result, reason: row.reason, processedAt: new Date() }],
+      data: [{ provider: 'XENDIT', fingerprint: row.fp, eventType: row.eventType, externalResourceId: row.resourceId, result: row.result, reason: row.reason, processedAt: now }],
       skipDuplicates: true,
     })
     return { status: 200, body: { ok: true, result: row.result } }

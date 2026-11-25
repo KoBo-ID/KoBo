@@ -1,6 +1,7 @@
 import type { TRPCError } from '@trpc/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetDb } from '../../src/db/seed.ts'
+import { MockPaymentProvider } from '../../src/payment/mock.ts'
 import type { PaymentProvider } from '../../src/payment/provider.ts'
 import { PaymentService } from '../../src/payment/service.ts'
 import { XenditError } from '../../src/payment/xendit.ts'
@@ -149,5 +150,13 @@ describe('payment.start', () => {
     expect(results.some((r) => r.kind === 'PROCESSING')).toBe(true)
     expect(createCheckout).toHaveBeenCalledOnce()
     expect(await prisma.payment.count({ where: { invoiceId, status: { in: ['CREATING', 'PENDING'] } } })).toBe(1)
+  })
+
+  it('refuses a non-demo user when only the MOCK provider is active, creating no blocking attempt', async () => {
+    const { student, invoiceId } = await fixture()
+    const mockOnly = new PaymentService({ defaultProvider: new MockPaymentProvider() })
+    const err = await errorFrom(callerFor(student.id, { paymentService: mockOnly, isDemo: false }).payment.start({ invoiceId }))
+    expect(err?.code).toBe('PRECONDITION_FAILED')
+    expect(await prisma.payment.count({ where: { invoiceId } })).toBe(0)
   })
 })

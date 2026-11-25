@@ -134,11 +134,27 @@ test('scenario 16: Lanjutkan Pembayaran resumes the same hosted session instead 
     expect(sessionUrl).toBe(checkoutUrl)
 
     await page.goto('/my-kos')
+    await expect(bulan1(page).getByRole('button', { name: 'Periksa Status', exact: true })).toBeVisible()
     await expect(bulan1(page).getByRole('button', { name: 'Bayar Sekarang' })).toHaveCount(0)
     await bulan1(page).getByRole('button', { name: 'Lanjutkan Pembayaran' }).click()
     await page.waitForURL(CHECKOUT)
     expect(page.url()).toBe(sessionUrl)
     expect(await statuses(held.invoiceId)).toEqual(['PENDING'])
+
+    // Returning directly to /my-kos (without ?result=success): checking while ACTIVE explains clearly, and COMPLETED refreshes live.
+    await page.goto('/my-kos')
+    await xendit.session(page, attempt.id, 'ACTIVE')
+    await bulan1(page).getByRole('button', { name: 'Periksa Status', exact: true }).click()
+    await expect(hint(page)).toHaveText('Pembayaran belum terkonfirmasi. Lanjutkan pembayaran atau coba periksa lagi sebentar lagi.')
+
+    await sql('UPDATE "Payment" SET "lastReconciledAt" = NULL WHERE id = $1', [attempt.id])
+    await xendit.session(page, attempt.id, 'COMPLETED')
+    await page.reload()
+    await bulan1(page).getByRole('button', { name: 'Periksa Status', exact: true }).click()
+    await expect(bulan1(page)).toContainText('Lunas')
+    await expect(student.page.getByTestId('tenancy-card')).toHaveAttribute('data-status', 'ACTIVE')
+    await bulan1(page).getByRole('link', { name: /^KB\/\d{4}\/\d{2}\/\d{4}$/ }).click()
+    await expect(page.getByText(`py_e2e_${attempt.id}`)).toBeVisible()
     expectHttpErrors(problems)
   } finally {
     await closeAll(owner.ctx, student.ctx)

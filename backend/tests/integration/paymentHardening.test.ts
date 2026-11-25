@@ -95,7 +95,7 @@ describe('webhook route hardening', () => {
     expect(await prisma.paymentWebhookEvent.count()).toBe(0)
   })
 
-  it('settles a completed event that only carries latest_payment_request_id', async () => {
+  it('settles a completed event that only carries latest_payment_request_id and records it in webhook metadata', async () => {
     const { payment, tenancyId } = await fixture()
     const body = sessionWebhook('completed', payment)
     delete (body.data as Record<string, unknown>).payment_request_id
@@ -103,6 +103,33 @@ describe('webhook route hardening', () => {
     expect((await postXenditWebhook(body)).status).toBe(200)
     expect((await prisma.tenancy.findUniqueOrThrow({ where: { id: tenancyId } })).status).toBe('ACTIVE')
     expect((await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).providerPaymentRequestId).toBe('pr_latest')
+    const audit = await prisma.paymentWebhookEvent.findFirstOrThrow({ where: { paymentId: payment.id } })
+    expect((audit.metadata as Record<string, unknown>).paymentRequestId).toBe('pr_latest')
+  })
+
+  it('deduplicates a webhook without created/updated deterministically and keeps metadata.providerUpdatedAt null', async () => {
+    const { payment } = await fixture()
+    const body = sessionWebhook('completed', payment)
+    delete (body as Record<string, unknown>).created
+    delete (body.data as Record<string, unknown>).updated
+    expect((await postXenditWebhook(body)).status).toBe(200)
+    await new Promise((r) => setTimeout(r, 15))
+    expect((await postXenditWebhook(body)).status).toBe(200)
+    const rows = await prisma.paymentWebhookEvent.findMany()
+    expect(rows).toHaveLength(1)
+    expect((rows[0].metadata as Record<string, unknown>).providerUpdatedAt).toBeNull()
+  })
+
+  it('accepts a refund webhook carrying business_id on data when envelope business_id is absent', async () => {
+    const { payment } = await fixture(undefined, { status: 'REFUND_PENDING', providerPaymentId: 'py_x' })
+    await refundRow(payment.id, payment.amount)
+    const callback = {
+      event: 'refund.succeeded',
+      created: '2026-10-14T05:00:00.000Z',
+      data: { id: 'rfd-data-biz', business_id: TEST_BUSINESS_ID, reference_id: `refund_${payment.id}`, payment_request_id: payment.providerPaymentRequestId, amount: payment.amount, currency: 'IDR', status: 'SUCCEEDED', failure_code: null, updated: '2026-10-14T05:00:00.000Z' },
+    }
+    expect((await postXenditWebhook(callback)).status).toBe(200)
+    expect((await prisma.payment.findUniqueOrThrow({ where: { id: payment.id } })).status).toBe('REFUNDED')
   })
 
   it('audits (200) a completed event it cannot verify, instead of a 400 that Xendit would drop after retries', async () => {
@@ -220,9 +247,12 @@ describe('sweepStalePayments', () => {
 })
 
 describe('config', () => {
-  it('rejects a non-https PAYMENT_RETURN_ORIGIN when using Xendit', () => {
+  it('rejects a non-https PAYMENT_RETURN_ORIGIN or fallback BETTER_AUTH_URL when using Xendit', () => {
     const env = { PAYMENT_PROVIDER: 'xendit', XENDIT_SECRET_API_KEY: 'xnd_development_k', XENDIT_CALLBACK_TOKEN: 't', XENDIT_BUSINESS_ID: 'b', NODE_ENV: 'test' }
     expect(() => paymentEnv({ ...env, PAYMENT_RETURN_ORIGIN: 'http://kobo.test' })).toThrow(/https/)
     expect(() => paymentEnv({ ...env, PAYMENT_RETURN_ORIGIN: 'https://kobo.test' })).not.toThrow()
+    expect(() => paymentEnv({ ...env, BETTER_AUTH_URL: 'http://localhost:3000' })).toThrow(/https/)
+    expect(() => paymentEnv({ ...env, BETTER_AUTH_URL: 'https://kobo.test' })).not.toThrow()
+    expect(() => paymentEnv({ ...env, BETTER_AUTH_URL: 'http://localhost:3000', PAYMENT_RETURN_ORIGIN: 'https://kobo.test' })).not.toThrow()
   })
 })

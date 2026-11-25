@@ -58,7 +58,7 @@ export async function settleInvoice(tx: Tx, invoiceId: string, paymentId: string
   })
   if (later.length) await tx.invoice.createMany({ data: later })
 
-  const { receiptNo } = await tx.payment.findUniqueOrThrow({ where: { id: paymentId }, select: { receiptNo: true } })
+  const { receiptNo, provider } = await tx.payment.findUniqueOrThrow({ where: { id: paymentId }, select: { receiptNo: true, provider: true } })
   const origin = (process.env.BETTER_AUTH_URL ?? '').replace(/\/+$/, '')
   await enqueueEmail(tx, {
     to: tenancy.user.email,
@@ -70,6 +70,6 @@ export async function settleInvoice(tx: Tx, invoiceId: string, paymentId: string
   await enqueueEmail(tx, {
     to: owner.email,
     template: 'payment-received-owner',
-    payload: { name: owner.name, url: `${origin}/kuitansi/${receiptNo}`, tenantName: tenancy.user.name, kosName: tenancy.room.kos.name, roomNumber: tenancy.room.roomNumber, amount: invoice.amount },
+    payload: { name: owner.name, url: `${origin}/kuitansi/${receiptNo}`, tenantName: tenancy.user.name, kosName: tenancy.room.kos.name, roomNumber: tenancy.room.roomNumber, amount: invoice.amount, provider },
   })
 }

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import type { BoardRoom } from '../../../../backend/src/trpc/router';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
@@ -13,25 +12,27 @@ const rupiah = (n: number) => `Rp ${n.toLocaleString('id-ID')}`;
  * gives the bank reference. The server re-checks everything; this form only prevents obvious slips.
  */
 export const ManualPaymentModal: React.FC<{
-  room: BoardRoom;
+  title: string;
+  subtitle?: string;
   invoice: { id: string; amount: number };
+  /** A live online attempt blocks manual recording. */
+  online?: boolean;
   busy: boolean;
   onClose: () => void;
   onSubmit: (input: { method: Method; confirmedAmount: number; reference?: string; note?: string }) => Promise<void>;
-}> = ({ room, invoice, busy, onClose, onSubmit }) => {
+}> = ({ title, subtitle, invoice, online = false, busy, onClose, onSubmit }) => {
   const [method, setMethod] = useState<Method>('CASH');
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
   const [note, setNote] = useState('');
 
-  const online = room.payment?.state === 'AWAITING_ONLINE';
   const confirmed = Number(amount.replace(/\D/g, ''));
   const amountOk = confirmed === invoice.amount;
   const refOk = method === 'CASH' || /^[A-Za-z0-9 ./_-]{3,64}$/.test(reference.trim());
   const canSubmit = !busy && !online && amountOk && refOk && note.length <= 500;
 
   return (
-    <Modal isOpen onClose={onClose} title={`Tandai Lunas Kamar ${room.roomNumber}`} subtitle={room.tenant?.name ?? undefined} maxWidth="sm">
+    <Modal isOpen onClose={onClose} title={title} subtitle={subtitle} maxWidth="sm">
       <form
         style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
         onSubmit={(e) => {
