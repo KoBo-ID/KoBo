@@ -26,7 +26,7 @@ export const SheerIdPanel: React.FC = () => {
     const t = setTimeout(() => setDebouncedQ(q.trim()), 250);
     return () => clearTimeout(t);
   }, [q]);
-  const campuses = useQuery({ ...trpc.campus.search.queryOptions({ q: debouncedQ, limit: 8 }), enabled: open && !picked && debouncedQ.length >= 2 });
+  const campuses = useQuery({ ...trpc.campus.search.queryOptions({ q: debouncedQ, limit: 8, scope: 'institution' }), enabled: open && !picked && debouncedQ.length >= 2 });
   const start = useMutation(trpc.studentVerification.sheeridStart.mutationOptions());
 
   const submit = async (e: React.FormEvent) => {
@@ -56,7 +56,7 @@ export const SheerIdPanel: React.FC = () => {
           <div role="listbox" aria-label="Hasil pencarian kampus" style={{ border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
             {campuses.data!.map((c) => (
               <button type="button" role="option" aria-selected={false} key={c.id} className="student-verif__option" onClick={() => setPicked({ id: c.id, name: c.name })}>
-                {c.name} <span style={muted}>· {c.city}</span>
+                {c.name}{c.city ? <> <span style={muted}>· {c.city}</span></> : null}
               </button>
             ))}
           </div>

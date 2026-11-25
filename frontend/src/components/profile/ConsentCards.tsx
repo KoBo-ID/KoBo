@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BellRing, FileCheck2, PhoneCall } from 'lucide-react';
+import { BellRing, PhoneCall } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -110,15 +110,13 @@ export const EmergencyContactCard: React.FC = () => {
   );
 };
 
-/** Reminders to the student themselves, and the terms version they agreed to. */
-export const RemindersAndTermsCard: React.FC = () => {
+/** Reminders to the student themselves (terms acceptance is recorded at signup and gated server-side at application). */
+export const RemindersCard: React.FC = () => {
   const { me } = useSession();
   const { addToast } = useAppStore();
   const trpc = useTRPC();
   const qc = useQueryClient();
   const pref = useMutation(trpc.auth.setNotifyOptOut.mutationOptions());
-  const accept = useMutation(trpc.auth.acceptTerms.mutationOptions());
-  const [error, setError] = useState<string | null>(null);
   if (!me) return null;
   const refresh = () => qc.invalidateQueries({ queryKey: trpc.auth.me.queryKey() });
 
@@ -131,48 +129,15 @@ export const RemindersAndTermsCard: React.FC = () => {
           checked={!me.notifyOptOut}
           disabled={pref.isPending}
           onChange={async (e) => {
-            await pref.mutateAsync({ optOut: !e.target.checked });
+            const on = e.target.checked; // read before any await: React may reset the controlled box meanwhile
+            await pref.mutateAsync({ optOut: !on });
             await refresh();
-            addToast(e.target.checked ? 'Pengingat dinyalakan.' : 'Pengingat dimatikan.', 'info');
+            addToast(on ? 'Pengingat dinyalakan.' : 'Pengingat dimatikan.', 'info');
           }}
           style={{ marginTop: '0.2rem' }}
         />
-        <span>Kirim pengingat 7, 3, dan 1 hari sebelum jatuh tempo lewat email dan WhatsApp (08.00 sampai 20.00 WIB).</span>
+        <span>Kirim pengingat 7, 3, dan 1 hari sebelum jatuh tempo lewat email dan WhatsApp.</span>
       </label>
-
-      <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <FileCheck2 size={16} color="var(--primary)" />
-          <strong style={{ fontSize: 'var(--step--1)' }}>Syarat dan Kebijakan Privasi</strong>
-        </div>
-        {me.termsCurrent ? (
-          <p style={hint}>Anda sudah menyetujui versi {me.termsVersion}. Baca <Link to="/syarat" style={{ color: 'var(--primary)', fontWeight: 600 }}>Syarat</Link> dan <Link to="/privasi" style={{ color: 'var(--primary)', fontWeight: 600 }}>Privasi</Link>.</p>
-        ) : (
-          <>
-            <p style={hint}>Versi {me.termsVersion} belum Anda setujui. Baca <Link to="/syarat" style={{ color: 'var(--primary)', fontWeight: 600 }}>Syarat</Link> dan <Link to="/privasi" style={{ color: 'var(--primary)', fontWeight: 600 }}>Privasi</Link>, lalu setujui sebelum mengajukan sewa.</p>
-            {error && <Notice tone="error">{error}</Notice>}
-            <div>
-              <Button
-                variant="outline"
-                size="sm"
-                isLoading={accept.isPending}
-                onClick={async () => {
-                  setError(null);
-                  try {
-                    await accept.mutateAsync({ version: me.termsVersion });
-                    await refresh();
-                    addToast('Persetujuan tersimpan.', 'success');
-                  } catch (err) {
-                    setError(messageForError(err));
-                  }
-                }}
-              >
-                Saya menyetujui
-              </Button>
-            </div>
-          </>
-        )}
-      </div>
     </div>
   );
 };

@@ -80,6 +80,8 @@ export const CampusDiscountCard: React.FC<CampusDiscountCardProps> = ({ studentD
   const affiliated = !!status.data?.affiliated;
   const active = verified && affiliated;
   const amount = studentDiscountAmount ? formatRupiah(studentDiscountAmount) : null;
+  // No discount on this kos: no "Diskon Kampus Mitra ... Aktif" card.
+  if (!studentDiscountAmount || studentDiscountAmount <= 0) return null;
 
   let text: React.ReactNode;
   if (!me) text = amount ? `Masuk dan verifikasi status mahasiswa untuk ${DISCOUNT_LABEL} ${amount} di pembayaran pertama.` : `${DISCOUNT_LABEL} berlaku untuk mahasiswa kampus mitra KoBo.`;

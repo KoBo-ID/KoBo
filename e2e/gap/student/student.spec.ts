@@ -33,7 +33,7 @@ test('an unverified student is guided to verify, is refused by the server, then 
     expect(await applications()).toHaveLength(0)
     expectHttpErrors(problems, 412)
 
-    await page.goto('/profile')
+    await page.goto('/profile/verifikasi') // the profile is split into sections now (audit 2026-11-24)
     const campusEmail = `mhs-${Date.now()}@binus.ac.id`
     await page.getByLabel('Email Kampus').fill(campusEmail)
     await page.getByRole('button', { name: 'Kirim kode' }).click()
@@ -58,7 +58,7 @@ test('a KTM upload reaches "KTM sedang ditinjau" and can be withdrawn', async ({
   const { page } = student
   watch(page, problems)
   try {
-    await page.goto('/profile')
+    await page.goto('/profile/verifikasi')
     await page.getByRole('button', { name: /Unggah KTM/ }).click()
     await page.getByLabel('Kampus', { exact: true }).fill('Binus')
     await page.getByRole('option').first().click()

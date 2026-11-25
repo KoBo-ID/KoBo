@@ -273,6 +273,20 @@ describe('demo login', () => {
     expect(session?.campusVerified).toBe(true)
   })
 
+  it('signs in the two pre-paired Teman Sekamar demo students', async () => {
+    for (const [persona, email] of [
+      ['temanA', 'nadia.putri@kobo.test'],
+      ['temanB', 'clara.wijaya@kobo.test'],
+    ] as const) {
+      const session = await me(await demoCookie(persona))
+      expect(session?.user.email).toBe(email)
+      expect(session?.user.isDemo).toBe(true)
+      expect(session?.isOwner).toBe(false)
+      expect(session?.ownerProfileId).toBeNull()
+      expect(session?.campusVerified).toBe(true)
+    }
+  })
+
   it('rejects an unknown persona', async () => {
     const res = await request('/api/auth/demo-login', { body: { as: 'admin' } })
     expect(res.status).toBe(400)

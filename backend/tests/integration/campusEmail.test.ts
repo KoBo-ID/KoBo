@@ -97,7 +97,8 @@ describe('campus-email verification', () => {
     const days = (user.campusVerifiedUntil!.getTime() - Date.now()) / 86_400_000
     expect(days).toBeGreaterThan(364)
     expect(days).toBeLessThanOrEqual(365)
-    expect(user.campus).toMatch(/^Binus/) // mapped from Campus.studentEmailDomains
+    expect(user.campus).toBe('BINUS University') // mapped to institution Campus row, not a branch
+    expect(user.verifiedCampusId).toBe('binus')
     expect((await me(cookie))?.campusVerified).toBe(true)
   })
 

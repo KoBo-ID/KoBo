@@ -1,6 +1,7 @@
 import type { CampusVerifyMethod, StudentVerificationStatus } from '@kobo/shared/types'
 import { isStudentVerified, STUDENT_VERIFICATION_MAX_DAYS } from '@kobo/shared/domain'
 import type { PrismaClient } from '../db/client.ts'
+import { campusForDomain, emailDomain } from '../campusEmail.ts'
 import { ktmAutoReviewSeconds } from '../env.ts'
 import type { Prisma } from '../generated/prisma/client.ts'
 
@@ -47,6 +48,7 @@ export async function applyVerification(tx: Prisma.TransactionClient, userId: st
     u.campusVerifiedVia !== input.via &&
     (u.campusVerifiedUntil === null || u.campusVerifiedUntil.getTime() > until.getTime())
   if (!keep) {
+    // Legacy column name: intentionally written for every verification method (including KTM) because isStudentVerified checks it (SIM-030).
     data.campusEmailVerifiedAt = now
     data.campusVerifiedVia = input.via
     data.campusVerifiedUntil = until
@@ -63,17 +65,45 @@ export async function getStudentVerificationStatus(
 ): Promise<StudentVerificationStatus> {
   const u = await prisma.user.findUniqueOrThrow({
     where: { id: userId },
-    select: { campus: true, campusEmailVerifiedAt: true, campusVerifiedVia: true, campusVerifiedUntil: true },
+    select: { email: true, verifiedCampusId: true, campus: true, campusEmailVerifiedAt: true, campusVerifiedVia: true, campusVerifiedUntil: true },
   })
   const rejected = await prisma.studentDocument.count({ where: countedRejectionWhere(userId) })
   const slaText = ktmAutoReviewSeconds() ? 'Biasanya selesai dalam ±20 menit' : 'Biasanya selesai dalam 1×24 jam'
-  const base = { via: u.campusVerifiedVia, until: u.campusVerifiedUntil?.toISOString() ?? null, campus: u.campus, reason: null, providers, attemptsLeft: Math.max(0, KTM_MAX_ATTEMPTS - rejected), submittedAt: null as string | null, slaText }
+  const campusNameOf = async (id: string | null): Promise<string | null> =>
+    id ? ((await prisma.campus.findUnique({ where: { id }, select: { name: true } }))?.name ?? null) : null
+  const base = {
+    via: u.campusVerifiedVia,
+    until: u.campusVerifiedUntil?.toISOString() ?? null,
+    campus: u.campus,
+    reason: null,
+    providers,
+    attemptsLeft: Math.max(0, KTM_MAX_ATTEMPTS - rejected),
+    submittedAt: null as string | null,
+    slaText,
+    accountCampusEmail: null as string | null,
+    campusId: u.verifiedCampusId,
+    campusName: await campusNameOf(u.verifiedCampusId),
+    lastRejectedDraft: null as StudentVerificationStatus['lastRejectedDraft'],
+  }
   if (isStudentVerified(u, now)) return { ...base, state: 'VERIFIED' }
-  const docs = await prisma.studentDocument.findMany({ where: { userId, deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 20, select: { status: true, reason: true, createdAt: true } })
+  const domain = emailDomain(u.email)
+  if (domain) {
+    const campuses = await prisma.campus.findMany({ where: { studentEmailDomains: { has: domain } }, select: { studentEmailDomains: true }, take: 50 })
+    if (campusForDomain(domain, campuses)) base.accountCampusEmail = u.email.toLowerCase()
+  }
+  const docs = await prisma.studentDocument.findMany({
+    where: { userId, deletedAt: null },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+    select: { status: true, reason: true, createdAt: true, campusId: true, nameOnCard: true, nim: true, program: true },
+  })
   const pending = docs.find((d) => d.status === 'PENDING')
   if (pending) return { ...base, state: 'PENDING', submittedAt: pending.createdAt.toISOString() }
   const last = docs[0]
-  if (last && last.status === 'REJECTED' && (!u.campusEmailVerifiedAt || last.createdAt > u.campusEmailVerifiedAt)) return { ...base, state: 'REJECTED', reason: last.reason }
+  if (last && last.status === 'REJECTED' && (!u.campusEmailVerifiedAt || last.createdAt > u.campusEmailVerifiedAt)) {
+    const lastRejectedDraft = { campusId: last.campusId, campusName: await campusNameOf(last.campusId), nameOnCard: last.nameOnCard, nim: last.nim, program: last.program }
+    return { ...base, state: 'REJECTED', reason: last.reason, lastRejectedDraft }
+  }
   if (u.campusEmailVerifiedAt) return { ...base, state: 'EXPIRED' }
   return { ...base, state: 'NONE', via: null, until: null }
 }

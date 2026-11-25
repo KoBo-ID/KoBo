@@ -1,0 +1,41 @@
+/* Renter settings (/profile/*): identity header, grouped sidebar, content pane. Collapses to a scrolling tab strip on phones. */
+.ps { max-width: 62rem; margin-inline: auto; padding: var(--space-l, 2rem) var(--space-s, 1rem) 4rem; }
+.ps__identity { display: flex; align-items: center; gap: 1rem; padding-bottom: 1.25rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-subtle); }
+.ps__identity-text { min-width: 0; }
+.ps__name { font-size: var(--step-1); font-weight: 800; color: var(--text-main); letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.ps__email { font-size: var(--step--1); color: var(--text-muted); overflow-wrap: anywhere; }
+.ps__badge { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.4rem; background: var(--primary-light); color: var(--primary); padding: 0.2rem 0.6rem; border-radius: var(--radius-badge); font-size: var(--step--2); font-weight: 700; }
+.ps__back { display: inline-flex; align-items: center; min-height: 44px; margin-bottom: 0.5rem; font-weight: 700; color: var(--primary); }
+
+.ps__layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+.ps__groups { display: flex; gap: 0.25rem; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; border-bottom: 1px solid var(--border-subtle); }
+.ps__groups::-webkit-scrollbar { display: none; }
+.ps__group ul { list-style: none; margin: 0; padding: 0; display: contents; }
+.ps__group-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ps__group { display: contents; }
+.ps__link { display: flex; align-items: center; gap: 0.6rem; min-height: 44px; padding: 0.5rem 0.85rem; white-space: nowrap; scroll-snap-align: start; color: var(--text-muted); font-size: var(--step--1); font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 150ms ease-out, background-color 150ms ease-out; }
+.ps__link:hover { color: var(--text-main); background: var(--bg-muted); }
+.ps__link[aria-current='page'] { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+.ps__link:focus-visible { outline: 2px solid var(--border-focus); outline-offset: -2px; border-radius: var(--radius-sm); }
+
+.ps__pane { min-width: 0; display: flex; flex-direction: column; gap: 1.25rem; }
+.ps__pane-head { padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-subtle); }
+.ps__pane-title { font-size: var(--step-1); font-weight: 800; color: var(--text-main); letter-spacing: -0.01em; }
+.ps__pane-desc { font-size: var(--step--1); color: var(--text-muted); margin-top: 0.2rem; }
+.ps__card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+.ps__row { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: 0.65rem; border-bottom: 1px solid var(--border-subtle); font-size: var(--step--1); }
+.ps__row dt { color: var(--text-muted); }
+.ps__row dd { font-weight: 600; margin: 0; text-align: right; overflow-wrap: anywhere; }
+
+@media (width >= 48rem) {
+  .ps__layout { grid-template-columns: 15rem minmax(0, 1fr); gap: 2.5rem; }
+  .ps__nav { position: sticky; top: 5.5rem; }
+  .ps__groups { flex-direction: column; overflow: visible; border-bottom: 0; gap: 0; }
+  .ps__group { display: block; }
+  .ps__group ul { display: flex; flex-direction: column; gap: 0.1rem; }
+  .ps__group + .ps__group { display: block; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-subtle); }
+  .ps__group-title { position: static; width: auto; height: auto; clip-path: none; padding: 0 0.85rem 0.35rem; font-size: var(--step--2); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-subtle); }
+  .ps__link { border-bottom: 0; margin-bottom: 0; border-left: 3px solid transparent; border-radius: 0 var(--radius-md) var(--radius-md) 0; padding-left: 0.85rem; }
+  .ps__link[aria-current='page'] { border-left-color: var(--primary); background: var(--primary-light); }
+}
+@media (prefers-reduced-motion: reduce) { .ps__link { transition: none; } }

@@ -87,7 +87,7 @@ export const VerifyCodeStep: React.FC<VerifyCodeStepProps> = ({ email, onVerifie
       <div className="verify-code__stack">
         {error && <Notice tone="error">{error}</Notice>}
         {notice && <Notice tone="success">{notice}</Notice>}
-        <OtpInput label="Kode verifikasi" value={code} onChange={setCode} autoFocus />
+        <OtpInput label="Kode verifikasi" value={code} onChange={setCode} autoFocus describedBy="auth-step-heading" />
       </div>
       <div className="verify-code__stack">
         <Button type="submit" variant="primary" fullWidth isLoading={busy === 'verify'} disabled={code.length !== 6 || busy !== null}>

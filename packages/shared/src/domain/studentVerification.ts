@@ -9,6 +9,7 @@ export function isStudentVerified(
   u: { campusEmailVerifiedAt: Date | string | null; campusVerifiedUntil?: Date | string | null },
   now: Date,
 ): boolean {
+  // Legacy column name: set on every verification method (email, IdP, KTM, SheerID) to mark verified status (SIM-030).
   if (!u.campusEmailVerifiedAt) return false
   if (u.campusVerifiedUntil == null) return true
   return new Date(u.campusVerifiedUntil).getTime() > now.getTime()

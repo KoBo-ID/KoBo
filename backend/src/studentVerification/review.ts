@@ -94,8 +94,9 @@ export async function approveDocument(
       data: { status: 'APPROVED', decidedAt: now, reviewer: opts.reviewer, validUntil: new Date(`${opts.validUntil}T00:00:00.000Z`), deleteAfter: new Date(now.getTime() + KTM_RETENTION_DAYS * DAY) },
     })
     if (res.count !== 1) throw new ReviewError('Hanya dokumen berstatus PENDING yang bisa diputuskan.')
-    const campus = d.campusId ? await tx.campus.findUnique({ where: { id: d.campusId }, select: { id: true, shortName: true } }) : null
-    await applyVerification(tx, d.userId, { via: 'KTM', until, campusShortName: campus?.shortName, campusId: campus?.id }, now)
+    const campus = d.campusId ? await tx.campus.findUnique({ where: { id: d.campusId }, select: { id: true, shortName: true, parentId: true } }) : null
+    const parent = campus?.parentId ? await tx.campus.findUnique({ where: { id: campus.parentId }, select: { id: true, shortName: true } }) : null
+    await applyVerification(tx, d.userId, { via: 'KTM', until, campusShortName: parent?.shortName ?? campus?.shortName, campusId: parent?.id ?? campus?.id }, now)
     const u = await tx.user.findUniqueOrThrow({ where: { id: d.userId }, select: { email: true, name: true } })
     await enqueueEmail(tx, { to: u.email, template: 'student-approved', payload: { name: u.name, url: appUrl('/search') } })
     return { userId: d.userId, until }

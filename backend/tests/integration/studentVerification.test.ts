@@ -10,6 +10,10 @@ const err = async (p: Promise<unknown>) => (await p.then(() => null, (e: unknown
 const code = async (p: Promise<unknown>) => (await err(p))?.code
 
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 73, 72, 68, 82])
+const AVIF = new Uint8Array([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66, 0, 0, 0, 0])
+const HEIC = new Uint8Array([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x68, 0x65, 0x69, 0x63, 0, 0, 0, 0])
+const BMP = new Uint8Array([0x42, 0x4d, 0x36, 0, 0, 0, 0, 0, 0, 0, 0x36, 0, 0, 0, 0x28, 0])
 const HTML = new TextEncoder().encode('<html><script>alert(1)</script>')
 
 async function campusId() {
@@ -18,7 +22,11 @@ async function campusId() {
 const confirmInput = async (key: string) => ({ key, campusId: await campusId(), nim: '2501234567', nameOnCard: 'Tester Satu', consent: true as const })
 
 /** presign + fake upload, returning the key. */
-async function upload(userId: string, bytes: Uint8Array = JPEG, contentType: 'image/jpeg' | 'image/webp' = 'image/jpeg') {
+async function upload(
+  userId: string,
+  bytes: Uint8Array = JPEG,
+  contentType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/avif' | 'image/heic' | 'image/heif' | 'image/bmp' = 'image/jpeg',
+) {
   const p = await callerFor(userId).studentVerification.ktmPresign({ contentType, contentLength: bytes.byteLength })
   storage.putPrivate(p.key, bytes, contentType)
   return p.key
@@ -38,9 +46,14 @@ describe('studentVerification.ktmPresign', () => {
     expect(p.key).toMatch(new RegExp(`^private/ktm/${s.id}/[0-9a-f-]{36}\\.jpg$`))
     expect(p.headers['Content-Type']).toBe('image/jpeg')
     expect((await c.studentVerification.ktmPresign({ contentType: 'image/webp', contentLength: 3_000_000 })).key).toMatch(/\.webp$/)
+    expect((await c.studentVerification.ktmPresign({ contentType: 'image/png', contentLength: 1000 })).key).toMatch(/\.png$/)
+    expect((await c.studentVerification.ktmPresign({ contentType: 'image/avif', contentLength: 1000 })).key).toMatch(/\.avif$/)
+    expect((await c.studentVerification.ktmPresign({ contentType: 'image/heic', contentLength: 1000 })).key).toMatch(/\.heic$/)
+    expect((await c.studentVerification.ktmPresign({ contentType: 'image/bmp', contentLength: 1000 })).key).toMatch(/\.bmp$/)
     expect(await code(c.studentVerification.ktmPresign({ contentType: 'image/jpeg', contentLength: 3_000_001 }))).toBe('BAD_REQUEST')
     expect(await code(c.studentVerification.ktmPresign({ contentType: 'image/jpeg', contentLength: 0 }))).toBe('BAD_REQUEST')
     expect(await code(c.studentVerification.ktmPresign({ contentType: 'image/gif' as never, contentLength: 10 }))).toBe('BAD_REQUEST')
+    expect(await code(c.studentVerification.ktmPresign({ contentType: 'image/svg+xml' as never, contentLength: 10 }))).toBe('BAD_REQUEST')
   })
 
   it('refuses demo users, verified users and users with a PENDING document', async () => {
@@ -124,6 +137,24 @@ describe('studentVerification.ktmConfirm', () => {
     // The presign already refuses; a direct confirm hits the one-PENDING index.
     expect(await code(callerFor(s.id).studentVerification.ktmConfirm(await confirmInput(second)))).toBe('CONFLICT')
     expect(await prisma.studentDocument.count({ where: { userId: s.id } })).toBe(1)
+  })
+
+  it('accepts PNG, AVIF, HEIC and BMP with valid magic bytes and refuses mismatched signatures', async () => {
+    for (const [ct, bytes] of [
+      ['image/png', PNG],
+      ['image/avif', AVIF],
+      ['image/heic', HEIC],
+      ['image/bmp', BMP],
+    ] as const) {
+      const s = await newStudent()
+      const key = await upload(s.id, bytes, ct)
+      const status = await callerFor(s.id).studentVerification.ktmConfirm(await confirmInput(key))
+      expect(status.state, ct).toBe('PENDING')
+    }
+    const s = await newStudent()
+    const badPng = await upload(s.id, JPEG, 'image/png')
+    expect(await code(callerFor(s.id).studentVerification.ktmConfirm(await confirmInput(badPng)))).toBe('BAD_REQUEST')
+    expect(storage.hasPrivate(badPng)).toBe(false)
   })
 
   it('refuses demo users', async () => {

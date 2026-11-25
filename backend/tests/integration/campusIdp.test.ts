@@ -250,7 +250,8 @@ describe('campus account callback', () => {
     expect(to).toContain('campus=verified')
     const u = await userRow('sari@example.com')
     expect([u.campusIdpTenant, u.campusIdpSubject, u.campusVerifiedVia]).toEqual(['google:binus.ac.id', 'sub-sari', 'GOOGLE'])
-    expect(u.campus).toMatch(/^Binus/)
+    expect(u.campus).toBe('BINUS University')
+    expect(u.verifiedCampusId).toBe('binus')
     expect(await prisma.account.count({ where: { userId: u.id, providerId: { not: 'credential' } } })).toBe(0)
   })
 

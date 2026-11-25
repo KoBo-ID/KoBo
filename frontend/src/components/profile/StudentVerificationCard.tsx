@@ -10,12 +10,11 @@ import { Notice } from '../ui/Notice';
 import { useSession } from '../../lib/session';
 import { useTRPC } from '../../lib/trpc';
 import { messageForError } from '../../lib/errors';
-import { putToStorage, UploadError } from '../../lib/imageUpload';
+import { DOCUMENT_IMAGE_ACCEPT, prepareDocumentImage, putToStorage, UploadError } from '../../lib/imageUpload';
 import { useAppStore } from '../../store/AppContext';
 import { SheerIdPanel } from './SheerIdPanel';
 
 const KTM_MAX_BYTES = 3_000_000;
-const KTM_TYPES = ['image/jpeg', 'image/webp'];
 const VIA_LABEL: Record<CampusVerifyMethod, string> = { EMAIL: 'email kampus', MICROSOFT: 'akun Microsoft kampus', GOOGLE: 'akun Google kampus', KTM: 'KTM', SHEERID: 'SheerID (mode uji)' };
 
 const box: React.CSSProperties = { backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '0.85rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' };
@@ -52,12 +51,16 @@ export const StudentVerificationCard: React.FC = () => {
   const [busy, setBusy] = useState<'request' | 'confirm' | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
 
-  const [ktmOpen, setKtmOpen] = useState(false);
+  // After a rejection the form opens by itself, prefilled with the last attempt's text (never the photo or the consent).
+  const rejected = me?.studentVerification.state === 'REJECTED';
+  const draft = rejected ? me?.studentVerification.lastRejectedDraft ?? null : null;
+  const [ktmOpen, setKtmOpen] = useState(rejected);
   const [campusQ, setCampusQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
-  const [picked, setPicked] = useState<{ id: string; name: string } | null>(null);
-  const [nim, setNim] = useState('');
-  const [nameOnCard, setNameOnCard] = useState('');
+  const [picked, setPicked] = useState<{ id: string; name: string } | null>(draft?.campusId && draft.campusName ? { id: draft.campusId, name: draft.campusName } : null);
+  const [nim, setNim] = useState(draft?.nim ?? '');
+  const [program, setProgram] = useState(draft?.program ?? '');
+  const [nameOnCard, setNameOnCard] = useState(draft?.nameOnCard ?? '');
   const [file, setFile] = useState<File | null>(null);
   const [consent, setConsent] = useState(false);
   const [ktmBusy, setKtmBusy] = useState(false);
@@ -74,7 +77,7 @@ export const StudentVerificationCard: React.FC = () => {
     const t = setTimeout(() => setDebouncedQ(campusQ.trim()), 250);
     return () => clearTimeout(t);
   }, [campusQ]);
-  const campuses = useQuery({ ...trpc.campus.search.queryOptions({ q: debouncedQ, limit: 8 }), enabled: ktmOpen && !picked && debouncedQ.length >= 2 });
+  const campuses = useQuery({ ...trpc.campus.search.queryOptions({ q: debouncedQ, limit: 8, scope: 'institution' }), enabled: ktmOpen && !picked && debouncedQ.length >= 2 });
   const presign = useMutation(trpc.studentVerification.ktmPresign.mutationOptions());
   const confirmKtm = useMutation(trpc.studentVerification.ktmConfirm.mutationOptions());
   const withdraw = useMutation(trpc.studentVerification.ktmWithdraw.mutationOptions());
@@ -133,14 +136,13 @@ export const StudentVerificationCard: React.FC = () => {
     setKtmField(null);
     if (!picked) return failKtm('campus', 'Pilih kampus Anda dari daftar.');
     if (!file) return failKtm('file', 'Pilih foto KTM.');
-    if (!KTM_TYPES.includes(file.type)) return failKtm('file', 'Foto KTM harus berformat JPEG atau WebP.');
-    if (file.size > KTM_MAX_BYTES) return failKtm('file', 'Foto KTM maksimal 3 MB.');
     if (!consent) return failKtm('consent', 'Centang persetujuan penyimpanan foto KTM.');
     setKtmBusy(true);
     try {
-      const p = await presign.mutateAsync({ contentType: file.type as 'image/jpeg' | 'image/webp', contentLength: file.size });
-      await putToStorage(p.url, p.headers, file);
-      await confirmKtm.mutateAsync({ key: p.key, campusId: picked.id, nim: nim.trim(), nameOnCard: nameOnCard.trim(), consent: true });
+      const prepared = await prepareDocumentImage(file, KTM_MAX_BYTES);
+      const p = await presign.mutateAsync({ contentType: prepared.contentType, contentLength: prepared.blob.size });
+      await putToStorage(p.url, p.headers, prepared.blob);
+      await confirmKtm.mutateAsync({ key: p.key, campusId: picked.id, nim: nim.trim(), nameOnCard: nameOnCard.trim(), consent: true, ...(program.trim() ? { program: program.trim() } : {}) });
       await refreshMe();
       setKtmOpen(false);
       setFile(null);
@@ -182,7 +184,11 @@ export const StudentVerificationCard: React.FC = () => {
   } else if (sv.state === 'PENDING') {
     status = <Notice tone="success">KTM sedang ditinjau</Notice>;
   } else if (sv.state === 'REJECTED') {
-    status = <Notice tone="error">Ditolak: {sv.reason ?? 'tidak ada alasan yang dicatat'}</Notice>;
+    const reason = (sv.reason ?? 'tidak ada alasan yang dicatat').trim();
+    const used = Math.min(3, 3 - sv.attemptsLeft);
+    status = ktmExhausted
+      ? <Notice tone="error">Ditolak: {reason}</Notice>
+      : <Notice tone="error">KTM ditolak: {/[.!?]$/.test(reason) ? reason : `${reason}.`} Unggah ulang foto yang sudah diperbaiki. Percobaan {used} dari 3.</Notice>;
   } else if (sv.state === 'EXPIRED') {
     status = (
       <Notice tone="error">
@@ -193,7 +199,7 @@ export const StudentVerificationCard: React.FC = () => {
   }
 
   return (
-    <section data-testid="student-verification" aria-labelledby="student-verif-title" style={{ backgroundColor: verified ? 'var(--primary-light)' : 'var(--bg-page)', border: `1.5px solid ${verified ? 'var(--primary)' : 'var(--border-strong)'}`, borderRadius: 'var(--radius-lg)', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <section id="verifikasi" data-testid="student-verification" aria-labelledby="student-verif-title" style={{ backgroundColor: verified ? 'var(--primary-light)' : 'var(--bg-page)', border: `1.5px solid ${verified ? 'var(--primary)' : 'var(--border-strong)'}`, borderRadius: 'var(--radius-lg)', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
         <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: verified ? 'var(--primary)' : 'var(--bg-muted)', color: verified ? 'white' : 'var(--text-muted)' }}>
           <GraduationCap size={22} />
@@ -281,7 +287,7 @@ export const StudentVerificationCard: React.FC = () => {
                 <div id={listId} role="listbox" aria-label="Hasil pencarian kampus" hidden={!listVisible} style={{ border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
                   {listVisible && campuses.data!.map((c, i) => (
                     <div role="option" id={`${listId}-${i}`} aria-selected={i === active} key={c.id} className="student-verif__option" style={i === active ? { backgroundColor: 'var(--primary-light)' } : undefined} onMouseDown={(e) => e.preventDefault()} onClick={() => { setPicked({ id: c.id, name: c.name }); setActive(-1); }}>
-                      {c.name} <span style={muted}>· {c.city}</span>
+                      {c.name}{c.city ? <> <span style={muted}>· {c.city}</span></> : null}
                     </div>
                   ))}
                 </div>
@@ -289,9 +295,10 @@ export const StudentVerificationCard: React.FC = () => {
               </div>
               <Input label="NIM" value={nim} onChange={(e) => setNim(e.target.value)} minLength={3} maxLength={30} required />
               <Input label="Nama di KTM" value={nameOnCard} onChange={(e) => setNameOnCard(e.target.value)} minLength={2} maxLength={80} required />
+              <Input label="Program studi (opsional)" value={program} onChange={(e) => setProgram(e.target.value)} maxLength={80} autoComplete="off" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <label htmlFor="ktm-file" style={{ fontSize: 'var(--step--1)', fontWeight: 600 }}>Foto KTM (JPEG atau WebP, maksimal 3 MB)</label>
-                <input id="ktm-file" type="file" accept="image/jpeg,image/webp" aria-invalid={ktmField === 'file' ? true : undefined} aria-describedby={ktmField === 'file' && ktmError ? ktmErrorId : undefined} onChange={(e) => setFile(e.target.files?.[0] ?? null)} required />
+                <label htmlFor="ktm-file" style={{ fontSize: 'var(--step--1)', fontWeight: 600 }}>Foto KTM (JPG, PNG, WebP, HEIC, maks. 3 MB)</label>
+                <input id="ktm-file" type="file" accept={DOCUMENT_IMAGE_ACCEPT} aria-invalid={ktmField === 'file' ? true : undefined} aria-describedby={ktmField === 'file' && ktmError ? ktmErrorId : undefined} onChange={(e) => setFile(e.target.files?.[0] ?? null)} required />
               </div>
               <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: 'var(--step--1)' }}>
                 <input type="checkbox" aria-invalid={ktmField === 'consent' ? true : undefined} aria-describedby={ktmField === 'consent' && ktmError ? ktmErrorId : undefined} checked={consent} onChange={(e) => setConsent(e.target.checked)} style={{ marginTop: '0.2rem' }} />

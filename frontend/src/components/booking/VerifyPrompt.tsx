@@ -10,11 +10,11 @@ export function useNeedsVerification(): boolean {
   return !!me && me.studentVerificationRequired && !me.user.isDemo && !me.isOwner && !me.campusVerified;
 }
 
-/** `/profile?next=<this page>` so verifying brings the student back here. Never loops back to /profile itself. */
+/** `/profile/verifikasi?next=<this page>` so verifying brings the student back here. Never loops back to /profile itself. */
 export function useVerifyLink(): string {
   const { pathname, search } = useLocation();
   const next = safeNext(`${pathname}${search}`, '/');
-  return next === '/' || next.startsWith('/profile') ? '/profile' : `/profile?next=${encodeURIComponent(next)}`;
+  return next === '/' || next.startsWith('/profile') ? '/profile/verifikasi' : `/profile/verifikasi?next=${encodeURIComponent(next)}`;
 }
 
 const submittedLabel = (iso: string) => `${new Date(iso).toLocaleString('id-ID', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' })} WIB`;

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { isStudentVerified, todayWIB } from '@kobo/shared/domain'
-import { ktmConfirmInput, ktmPresignInput, sheeridStartInput } from '@kobo/shared/schemas'
+import { DOCUMENT_IMAGE_CONTENT_TYPES, ktmConfirmInput, ktmPresignInput, sheeridStartInput, type DocumentImageContentType } from '@kobo/shared/schemas'
 import type { StudentVerificationStatus } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
 import { HOUR, limiterFor } from '../rateLimit.ts'
@@ -10,7 +10,16 @@ import { countedRejectionWhere, getStudentVerificationStatus, KTM_MAX_ATTEMPTS }
 import { authedProcedure, router, type Context } from './trpc.ts'
 
 const KTM_MAX_BYTES = 3_000_000
-const KTM_TYPES = ['image/jpeg', 'image/webp'] as const
+const KTM_TYPES = DOCUMENT_IMAGE_CONTENT_TYPES
+const KTM_EXT: Record<DocumentImageContentType, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/avif': 'avif',
+  'image/heic': 'heic',
+  'image/heif': 'heif',
+  'image/bmp': 'bmp',
+}
 
 export interface KtmPresign {
   key: string
@@ -44,7 +53,7 @@ export const studentVerificationRouter = router({
       throw new TRPCError({ code: 'CONFLICT', message: 'KTM Anda sedang ditinjau.' })
     }
     if (await tooManyRejections(ctx)) throw new TRPCError({ code: 'FORBIDDEN', message: OUT_OF_ATTEMPTS })
-    const key = `private/ktm/${ctx.user.id}/${randomUUID()}.${input.contentType === 'image/webp' ? 'webp' : 'jpg'}`
+    const key = `private/ktm/${ctx.user.id}/${randomUUID()}.${KTM_EXT[input.contentType]}`
     const signed = await ctx.storage.presignPrivatePut(key, input.contentType, input.contentLength)
     return { key, url: signed.url, headers: signed.headers, expiresInSeconds: PRESIGN_EXPIRES_SECONDS }
   }),
@@ -80,7 +89,7 @@ export const studentVerificationRouter = router({
     if (!head) throw bad('Foto KTM belum terunggah. Silakan coba unggah ulang.')
     if (!(KTM_TYPES as readonly string[]).includes(head.contentType)) {
       await ctx.storage.deletePrivate(input.key)
-      throw bad('Jenis file tidak didukung. Gunakan JPEG atau WebP.')
+      throw bad('Jenis file tidak didukung. Gunakan JPG, PNG, WebP, AVIF, HEIC, atau BMP.')
     }
     if (head.contentLength <= 0 || head.contentLength > KTM_MAX_BYTES) {
       await ctx.storage.deletePrivate(input.key)
@@ -89,7 +98,7 @@ export const studentVerificationRouter = router({
     const first = await ctx.storage.peekPrivate(input.key, 16)
     if (!first || !hasImageSignature(head.contentType, first)) {
       await ctx.storage.deletePrivate(input.key)
-      throw bad('Isi file bukan foto yang valid. Gunakan JPEG atau WebP.')
+      throw bad('Isi file bukan foto yang valid. Gunakan JPG, PNG, WebP, AVIF, HEIC, atau BMP.')
     }
     const now = new Date()
     try {

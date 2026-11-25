@@ -9,14 +9,13 @@ import { ErrorState } from '../ui/QueryState';
 import { useTRPC } from '../../lib/trpc';
 import { useSession } from '../../lib/session';
 import { messageForError } from '../../lib/errors';
-import { UploadError } from '../../lib/imageUpload';
+import { DOCUMENT_IMAGE_ACCEPT, prepareDocumentImage, UploadError, type DocumentImageType } from '../../lib/imageUpload';
 import { recalledOwnershipType, useOwnerVerification, type OwnershipType } from '../../lib/owner';
 import '../../styles/owner-form.css';
 
 const MAX_BYTES = 10_000_000;
-const TYPES = ['image/jpeg', 'image/webp', 'application/pdf'] as const;
-type DocType = (typeof TYPES)[number];
-const FORMAT_ERROR = 'Format tidak didukung. Gunakan JPG, WebP atau PDF.';
+type DocType = DocumentImageType | 'application/pdf';
+const OWNER_DOC_ACCEPT = `${DOCUMENT_IMAGE_ACCEPT},application/pdf`;
 
 /** Labels and one-line glosses; the label wording matches OWNER_DOC_LABEL in @kobo/shared (kept local so zod stays out of the bundle). */
 const KIND: Record<OwnerDocKind, { label: string; gloss: string }> = {
@@ -51,7 +50,7 @@ const DOC_STATUS: Record<'PENDING' | 'APPROVED' | 'REJECTED', string> = { PENDIN
 type Upload = { phase: 'uploading'; name: string; progress: number } | { phase: 'done'; name: string; key: string } | { phase: 'error'; name: string; message: string; file: File | null };
 
 /** PUT with progress (fetch has no upload progress). The headers (Content-Type) are part of the signature. */
-function putWithProgress(url: string, headers: Record<string, string>, file: File, onProgress: (pct: number) => void): Promise<void> {
+function putWithProgress(url: string, headers: Record<string, string>, blob: Blob, onProgress: (pct: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', url);
@@ -61,7 +60,7 @@ function putWithProgress(url: string, headers: Record<string, string>, file: Fil
     };
     xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new UploadError('Penyimpanan menolak unggahan. Coba lagi beberapa saat.')));
     xhr.onerror = () => reject(new UploadError('Gagal mengunggah. Periksa koneksi Anda lalu coba lagi.'));
-    xhr.send(file);
+    xhr.send(blob);
   });
 }
 
@@ -147,15 +146,19 @@ export const OwnerDocsStep: React.FC<{ onDone: () => void; onLater?: () => void 
     });
 
   const start = async (slot: Slot, file: File) => {
-    if (!(TYPES as readonly string[]).includes(file.type)) return setUpload(slot.id, { phase: 'error', name: file.name, message: FORMAT_ERROR, file: null });
-    if (file.size > MAX_BYTES) return setUpload(slot.id, { phase: 'error', name: file.name, message: 'Ukuran file maksimal 10 MB.', file: null });
+    const isPdf = file.type === 'application/pdf' || (!file.type && /\.pdf$/i.test(file.name));
+    if (isPdf && file.size > MAX_BYTES) return setUpload(slot.id, { phase: 'error', name: file.name, message: 'Ukuran file maksimal 10 MB.', file: null });
     setUpload(slot.id, { phase: 'uploading', name: file.name, progress: 0 });
     try {
-      const p = await presign.mutateAsync({ kind: kindOf(slot), contentType: file.type as DocType, contentLength: file.size });
-      await putWithProgress(p.url, p.headers, file, (progress) => setUpload(slot.id, { phase: 'uploading', name: file.name, progress }));
+      const prepared: { blob: Blob; contentType: DocType } = isPdf
+        ? { blob: file, contentType: 'application/pdf' }
+        : await prepareDocumentImage(file, MAX_BYTES);
+      const p = await presign.mutateAsync({ kind: kindOf(slot), contentType: prepared.contentType, contentLength: prepared.blob.size });
+      await putWithProgress(p.url, p.headers, prepared.blob, (progress) => setUpload(slot.id, { phase: 'uploading', name: file.name, progress }));
       setUpload(slot.id, { phase: 'done', name: file.name, key: p.key });
     } catch (err) {
-      setUpload(slot.id, { phase: 'error', name: file.name, message: err instanceof UploadError ? err.message : messageForError(err), file });
+      const retryable = !(err instanceof UploadError) || /koneksi|Penyimpanan/i.test(err.message);
+      setUpload(slot.id, { phase: 'error', name: file.name, message: err instanceof UploadError ? err.message : messageForError(err), file: retryable ? file : null });
     }
   };
 
@@ -219,11 +222,11 @@ export const OwnerDocsStep: React.FC<{ onDone: () => void; onLater?: () => void 
               ) : null}
               <p className="odoc-slot__gloss">{KIND[kind].gloss}</p>
               <div className="odoc-slot__file">
-                <label htmlFor={inputId} className="odoc-label">Berkas (JPG, WebP, atau PDF, maks. 10 MB)</label>
+                <label htmlFor={inputId} className="odoc-label">Berkas (JPG, PNG, WebP, HEIC, atau PDF, maks. 10 MB)</label>
                 <input
                   id={inputId}
                   type="file"
-                  accept="image/jpeg,image/webp,application/pdf"
+                  accept={OWNER_DOC_ACCEPT}
                   disabled={u?.phase === 'uploading' || submit.isPending}
                   aria-invalid={u?.phase === 'error' ? true : undefined}
                   aria-describedby={u ? msgId : undefined}

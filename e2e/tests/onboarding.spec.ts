@@ -98,7 +98,9 @@ test('forgot password shows a confirmation, and the emailed link sets a new pass
   await page.getByLabel('Kata Sandi Baru', { exact: true }).fill('Sandi-baru-456')
   await page.getByLabel('Ulangi Kata Sandi Baru').fill('Sandi-baru-456')
   await page.getByRole('button', { name: 'Simpan Kata Sandi Baru' }).click()
-  await expect(page.getByRole('heading', { name: 'Kata sandi diperbarui' })).toBeVisible()
+  // Audit 2026-11-24: no dead-end "Kata sandi diperbarui" page any more; the reset goes straight back to /masuk with a toast.
+  await expect(page.getByText('Kata sandi diperbarui. Silakan masuk.')).toBeVisible()
+  await expect(page).toHaveURL(/\/masuk/)
 })
 
 test('the reset page rejects a missing token', async ({ page }) => {
@@ -108,7 +110,7 @@ test('the reset page rejects a missing token', async ({ page }) => {
 
 test('campus-email form shows for a real student and rejects a domain that is not a campus', async ({ page, problems }) => {
   await signUpVerified(page, 'kampus')
-  await page.goto('/profile')
+  await page.goto('/profile/verifikasi')
   await expect(page.getByLabel('Email Kampus')).toBeVisible()
   await page.getByLabel('Email Kampus').fill('budi@gmail.com')
   await page.getByRole('button', { name: 'Kirim kode' }).click()
@@ -120,7 +122,7 @@ test('campus-email form shows for a real student and rejects a domain that is no
 
 test('campus-email code verifies the student and the profile shows it', async ({ page }) => {
   await signUpVerified(page, 'kampus2')
-  await page.goto('/profile')
+  await page.goto('/profile/verifikasi')
   const campus = `mhs-${Date.now()}@binus.ac.id`
   await page.getByLabel('Email Kampus').fill(campus)
   await page.getByRole('button', { name: 'Kirim kode' }).click()
@@ -132,13 +134,13 @@ test('campus-email code verifies the student and the profile shows it', async ({
 
 test('an invalid campus link shows an error on the profile form', async ({ page }) => {
   await signUpVerified(page, 'kampus3')
-  await page.goto('/profile?campus=invalid')
+  await page.goto('/profile/verifikasi?campus=invalid')
   await expect(page.getByRole('alert')).toContainText('tidak berhasil')
 })
 
 test('the demo student has no campus form (pre-verified)', async ({ page }) => {
   await loginAs(page, 'student')
-  await page.goto('/profile')
+  await page.goto('/profile/verifikasi')
   await expect(page.getByText('Terverifikasi lewat').first()).toBeVisible()
   await expect(page.getByLabel('Email Kampus')).toHaveCount(0)
 })
@@ -168,7 +170,7 @@ test('a signed-in student can register as an owner from /owner/login and reach t
 test('mobile /masuk keeps Kembali and the brand, stacks the demo buttons, and never fetches the hidden photo', async ({ page }) => {
   const photoRequests: string[] = []
   page.on('request', (r) => {
-    if (/room-(survey|living)/.test(r.url())) photoRequests.push(r.url())
+    if (/room-(survey|living)[^/]*\.(webp|jpe?g|png|avif)(\?|$)/.test(r.url())) photoRequests.push(r.url())
   })
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/masuk')

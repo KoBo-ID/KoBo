@@ -145,7 +145,8 @@ function koboPlugin(prisma: PrismaClient, secret: string, { mx, idp, idpProvider
     if (!challenge || challenge.consumedAt || challenge.expiresAt <= now || challenge.userId !== userId) return false
     const taken = await prisma.user.findFirst({ where: { campusEmail: challenge.email, campusEmailVerifiedAt: { not: null }, id: { not: challenge.userId } }, select: { id: true } })
     if (taken) return false
-    const campuses = await prisma.campus.findMany({ select: { id: true, shortName: true, studentEmailDomains: true }, take: CAMPUS_SCAN_CAP })
+    const campuses = await prisma.campus.findMany({ select: { id: true, shortName: true, kind: true, parentId: true, studentEmailDomains: true }, take: CAMPUS_SCAN_CAP })
+    campuses.sort((a, b) => Number(b.kind === 'institution') - Number(a.kind === 'institution') || Number(a.parentId !== null) - Number(b.parentId !== null))
     const campus = campusForDomain(emailDomain(challenge.email) ?? '', campuses)
     try {
       await prisma.$transaction(async (tx) => {
@@ -169,7 +170,7 @@ function koboPlugin(prisma: PrismaClient, secret: string, { mx, idp, idpProvider
        * One-click demo sign-in. The seeded demo users have no credential account, so there is no password to
        * leak or guess. We mint a real session row and cookie for the fixed demo user directly.
        */
-      demoLogin: createAuthEndpoint('/demo-login', { method: 'POST', body: z.object({ as: z.enum(['student', 'owner']) }) }, async (ctx) => {
+      demoLogin: createAuthEndpoint('/demo-login', { method: 'POST', body: z.object({ as: z.enum(['student', 'owner', 'temanA', 'temanB']) }) }, async (ctx) => {
         const found = await ctx.context.internalAdapter.findUserByEmail(DEMO_EMAILS[ctx.body.as])
         const user = found?.user
         if (!user || !(user as { isDemo?: boolean }).isDemo) throw new APIError('NOT_FOUND', { message: 'Masuk cepat belum tersedia.', code: 'DEMO_NOT_SEEDED' })
@@ -282,7 +283,8 @@ function koboPlugin(prisma: PrismaClient, secret: string, { mx, idp, idpProvider
             throw ctx.redirect('/profile?campus=idp-invalid')
           }
 
-          const campuses = await prisma.campus.findMany({ select: { id: true, shortName: true, entraTenantIds: true, studentEmailDomains: true }, take: CAMPUS_SCAN_CAP })
+          const campuses = await prisma.campus.findMany({ select: { id: true, shortName: true, kind: true, parentId: true, entraTenantIds: true, studentEmailDomains: true }, take: CAMPUS_SCAN_CAP })
+          campuses.sort((a, b) => Number(b.kind === 'institution') - Number(a.kind === 'institution') || Number(a.parentId !== null) - Number(b.parentId !== null))
           const campus =
             claims.provider === 'microsoft'
               ? campuses.find((c) => c.entraTenantIds.some((t) => t.toLowerCase() === claims.tid))

@@ -1,5 +1,4 @@
 import type { Page } from '@playwright/test'
-import path from 'node:path'
 import { test, expect } from './fixtures'
 import { outboxCode, ownIp } from './accounts'
 import { trpcGet } from './seams'
@@ -9,7 +8,6 @@ import { trpcGet } from './seams'
 
 test.skip(!!process.env.BASE_URL, 'needs the e2e database')
 
-const KTM = path.join(__dirname, '..', 'fixtures', 'dokumen.jpg')
 const NEXT = '/kos/kos-1'
 const PASSWORD = 'Sandi-rahasia-123'
 
@@ -27,6 +25,9 @@ async function registerToStep3(page: Page, prefix: string, start = `/masuk?next=
   await form.getByLabel(/Saya menyetujui/).check()
   await form.getByRole('button', { name: 'Daftar Sekarang' }).click()
   await expect(page).toHaveURL(/langkah=2/)
+  await expect(page.locator('.auth-page__role')).toHaveAttribute('data-locked', 'true')
+  await expect(page.getByRole('button', { name: 'Mahasiswa', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Pemilik kos', exact: true })).toBeDisabled()
   await expect(form.getByText(`Masukkan kode 6 digit yang kami kirim ke ${email}`)).toBeVisible()
   await form.getByLabel('Kode verifikasi').fill(await outboxCode(email, 'verify-email'))
   await form.getByRole('button', { name: 'Verifikasi', exact: true }).click()
@@ -38,7 +39,11 @@ async function registerToStep3(page: Page, prefix: string, start = `/masuk?next=
 async function pickCampus(page: Page) {
   const campus = page.getByRole('combobox', { name: 'Kampus' })
   await campus.fill('Binus')
-  await page.getByRole('option', { name: /BINUS/i }).first().click()
+  const options = page.getByRole('option')
+  await expect(options).toHaveCount(1)
+  await expect(options.first()).toContainText('BINUS University')
+  await expect(options.first()).not.toContainText('Anggrek')
+  await options.first().click()
 }
 
 test('student sign-up: account, emailed code, KTM, pending card; next survives', async ({ page }) => {
@@ -54,10 +59,11 @@ test('student sign-up: account, emailed code, KTM, pending card; next survives',
     await expect(items.nth(1)).toHaveAttribute('data-state', 'done')
   })
 
-  await test.step('submit the KTM', async () => {
+  await test.step('submit the KTM (including PNG support)', async () => {
     await pickCampus(page)
     await page.getByLabel('NIM').fill('2501234567')
-    await page.getByLabel(/Foto KTM/).setInputFiles(KTM)
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+    await page.getByLabel(/Foto KTM/).setInputFiles({ name: 'ktm.png', mimeType: 'image/png', buffer: png })
     await page.getByLabel(/Saya setuju foto KTM/).check()
     await page.getByRole('button', { name: 'Kirim untuk diperiksa' }).click()
   })
@@ -139,7 +145,10 @@ test('"Nanti saja" lands on next (or /search) and the VerifyBanner reminds the s
   })
 
   await registerToStep3(page, 'nanti')
-  await page.getByRole('button', { name: 'Nanti saja' }).click()
+  const skip = page.getByRole('button', { name: 'Nanti saja' })
+  // Primary button styling check: filled background, not transparent ghost.
+  await expect(skip).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await skip.click()
   await expect(page).toHaveURL(new RegExp(`${NEXT}$`))
   await expect(page.getByTestId('verify-banner')).toContainText('Verifikasi status mahasiswa untuk bisa menyewa')
 

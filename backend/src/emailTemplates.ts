@@ -1,8 +1,50 @@
-/** Indonesian copy for every outbox template. Payload shape per template: { name: string, url: string }, except verify-email and campus-email which are code-only { name, code } (no link: mail scanners open links); waitlist-offer adds { kosName, roomNumber, expiresAt }. */
+import { formatDateID, formatDateTimeWIB } from '@kobo/shared/domain'
+
+/** Indonesian copy for every outbox template. Payload shape per template: { name: string, url: string }, except verify-email and campus-email which are code-only { name, code } (no link: mail scanners open links); waitlist-offer adds { kosName, roomNumber, expiresAt }; application-* and hold-expiring use their own typed payloads. */
 export interface RenderedEmail {
   subject: string
   html: string
   text: string
+}
+
+export interface ApplicationNewPayload {
+  ownerName: string
+  studentName: string
+  kosName: string
+  roomNumber: string
+  /** 'YYYY-MM-DD' */
+  startDate: string
+  durationMonths: number
+  dashboardUrl: string
+}
+
+export interface ApplicationApprovedPayload {
+  studentName: string
+  kosName: string
+  roomNumber: string
+  amount: number
+  /** ISO timestamp of the 24-hour payment hold deadline. */
+  holdExpiresAt: string
+  myKosUrl: string
+}
+
+export interface ApplicationRejectedPayload {
+  studentName: string
+  kosName: string
+  roomNumber: string
+  reasonText?: string
+  note?: string
+  searchUrl: string
+}
+
+export interface HoldExpiringPayload {
+  studentName: string
+  kosName: string
+  roomNumber: string
+  amount: number
+  /** ISO timestamp of the 24-hour payment hold deadline. */
+  holdExpiresAt: string
+  myKosUrl: string
 }
 
 interface LinkPayload {
@@ -129,14 +171,9 @@ Tim KoBo`
   return { subject: copy.subject, html, text }
 }
 
-const WIB_DATE = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', day: 'numeric', month: 'long', year: 'numeric' })
-const WIB_TIME = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-
 /** "3 Oktober 2026 pukul 14.30 WIB" */
 function deadlineWIB(iso: string): string | null {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return null
-  return `${WIB_DATE.format(d)} pukul ${WIB_TIME.format(d).replace(':', '.')} WIB`
+  return formatDateTimeWIB(iso)
 }
 
 /** The daftar tunggu offer names the kos, the room and the deadline, so its copy is built per payload. */
@@ -157,6 +194,7 @@ interface OwnerPaymentPayload extends LinkPayload {
   kosName: string
   roomNumber: string
   amount: number
+  provider?: 'XENDIT' | 'MOCK' | 'MANUAL'
 }
 
 interface StudentRejectedPayload extends LinkPayload {
@@ -179,9 +217,17 @@ function studentRejectedCopy(p: Partial<StudentRejectedPayload>): Copy | null {
 
 const rupiah = (n: number) => `Rp ${n.toLocaleString('id-ID')}`
 
-/** Tells the owner a rent payment was verified. It deliberately says nothing about payout timing. */
+/** Tells the owner a rent payment was settled. Online copy never promises payout timing; manual copy never claims KoBo verification. */
 function ownerPaymentCopy(p: Partial<OwnerPaymentPayload>): Copy | null {
   if (typeof p.tenantName !== 'string' || typeof p.kosName !== 'string' || typeof p.roomNumber !== 'string' || typeof p.amount !== 'number') return null
+  if (p.provider === 'MANUAL') {
+    return {
+      subject: `Pembayaran dicatat manual - Kamar ${p.roomNumber}`,
+      intro: `Pembayaran ${rupiah(p.amount)} dari ${p.tenantName} untuk kamar ${p.roomNumber} di ${p.kosName} telah Anda catat secara manual. Kamar kini berstatus terisi.`,
+      action: 'Lihat Kuitansi',
+      outro: 'Email ini adalah salinan pencatatan manual Anda di KoBo. Pembayaran tunai atau transfer langsung tidak diverifikasi oleh KoBo.',
+    }
+  }
   return {
     subject: `Pembayaran terverifikasi - Kamar ${p.roomNumber}`,
     intro: `${p.tenantName} membayar ${rupiah(p.amount)} untuk kamar ${p.roomNumber} di ${p.kosName}, dan pembayaran ini sudah terverifikasi oleh KoBo. Kamar kini berstatus terisi.`,
@@ -203,23 +249,131 @@ interface ReminderPayload extends LinkPayload {
 /** H-7 / H-3 / H-1 payment reminder to the student. */
 function reminderCopy(p: Partial<ReminderPayload>): Copy | null {
   if (typeof p.kosName !== 'string' || typeof p.roomNumber !== 'string' || typeof p.amount !== 'number' || typeof p.dueDate !== 'string' || typeof p.days !== 'number') return null
+  const dueText = formatDateID(p.dueDate) ?? p.dueDate
   const when = p.days <= 0 ? 'hari ini' : p.days === 1 ? 'besok' : `${p.days} hari lagi`
   return {
     subject: `Pengingat: tagihan sewa kamar ${p.roomNumber} jatuh tempo ${when}`,
-    intro: `Tagihan sewa ${rupiah(p.amount)} untuk kamar ${p.roomNumber} di ${p.kosName} jatuh tempo ${when} (${p.dueDate}). Bayar lewat KoBo agar kamar Anda tetap aman.`,
+    intro: `Tagihan sewa ${rupiah(p.amount)} untuk kamar ${p.roomNumber} di ${p.kosName} jatuh tempo ${when} (${dueText}). Bayar lewat KoBo agar kamar Anda tetap aman.`,
     action: 'Bayar di KoBo',
     outro: 'Abaikan email ini jika Anda sudah membayar. Anda dapat mematikan pengingat di halaman Profil.',
   }
 }
 
-export function renderEmail(template: string, payload: unknown): RenderedEmail | null {
-  const codeCopy = CODE_COPY[template]
-  if (codeCopy) return payload && typeof payload === 'object' ? renderCodeEmail(codeCopy, payload) : null
-  const p = payload as (Partial<OfferPayload> & Partial<OwnerPaymentPayload> & Partial<ReminderPayload> & Partial<StudentRejectedPayload> & { from?: unknown }) | null
-  const copy = template === 'waitlist-offer' ? (p ? offerCopy(p) : null) : template === 'payment-received-owner' ? (p ? ownerPaymentCopy(p) : null) : template === 'invoice-reminder' ? (p ? reminderCopy(p) : null) : template === 'matching-digest' ? (p ? matchingDigestCopy(p) : null) : template === 'student-rejected' ? (p ? studentRejectedCopy(p) : null) : COPY[template]
-  if (!copy || !p || typeof p.url !== 'string') return null
-  const name = typeof p.name === 'string' && p.name.trim() ? p.name.trim() : 'Pengguna KoBo'
-  const text = `Halo ${name},\n\n${copy.intro}\n\n${copy.action}: ${p.url}\n\n${copy.outro}\n\nTim KoBo`
+interface CustomTemplateResult {
+  name: string
+  url: string
+  copy: Copy
+}
+
+/** N1: new rental application notification to the owner. */
+function applicationNewCopy(p: Partial<ApplicationNewPayload>): CustomTemplateResult | null {
+  if (
+    typeof p.ownerName !== 'string' ||
+    typeof p.studentName !== 'string' ||
+    typeof p.kosName !== 'string' ||
+    typeof p.roomNumber !== 'string' ||
+    typeof p.startDate !== 'string' ||
+    typeof p.durationMonths !== 'number' ||
+    typeof p.dashboardUrl !== 'string'
+  ) {
+    return null
+  }
+  const startFormatted = formatDateID(p.startDate)
+  if (!startFormatted) return null
+  return {
+    name: p.ownerName,
+    url: p.dashboardUrl,
+    copy: {
+      subject: `Pengajuan sewa baru untuk Kamar ${p.roomNumber}, ${p.kosName}`, // COPY: reviewed (part 2)
+      intro: `${p.studentName} mengajukan sewa Kamar ${p.roomNumber} di ${p.kosName}, mulai ${startFormatted} selama ${p.durationMonths} bulan. Kamar belum ditahan sampai Anda menerima pengajuan ini.`, // COPY: reviewed (part 2)
+      action: 'Tinjau Pengajuan', // COPY: reviewed (part 2)
+      outro: 'Jika Anda menerima, kamar ditahan 24 jam untuk pembayaran tagihan pertama. Pengajuan lain untuk kamar yang sama akan otomatis ditolak.', // COPY: reviewed (part 2)
+    },
+  }
+}
+
+/** N2: application approved notification to the student, with the 24-hour payment hold deadline. */
+function applicationApprovedCopy(p: Partial<ApplicationApprovedPayload>): CustomTemplateResult | null {
+  if (
+    typeof p.studentName !== 'string' ||
+    typeof p.kosName !== 'string' ||
+    typeof p.roomNumber !== 'string' ||
+    typeof p.amount !== 'number' ||
+    typeof p.holdExpiresAt !== 'string' ||
+    typeof p.myKosUrl !== 'string'
+  ) {
+    return null
+  }
+  const deadline = deadlineWIB(p.holdExpiresAt)
+  if (!deadline) return null
+  return {
+    name: p.studentName,
+    url: p.myKosUrl,
+    copy: {
+      subject: `Pengajuan diterima: bayar sebelum ${deadline}`, // COPY: reviewed (part 2)
+      intro: `Pengajuan sewa Anda untuk Kamar ${p.roomNumber} di ${p.kosName} diterima pemilik. Kamar ditahan untuk Anda sampai ${deadline}. Bayar tagihan pertama sebesar ${rupiah(p.amount)} sebelum batas waktu itu agar sewa aktif.`, // COPY: reviewed (part 2)
+      action: 'Bayar Tagihan Pertama', // COPY: reviewed (part 2)
+      outro: 'Jika tagihan belum dibayar sampai batas waktu, kamar dilepas untuk pengaju lain. Pembayaran yang masuk setelah batas waktu dikembalikan.', // COPY: reviewed (part 2)
+    },
+  }
+}
+
+/** N3: application rejected notification to the student (manual rejection or auto-rejected sibling). */
+function applicationRejectedCopy(p: Partial<ApplicationRejectedPayload>): CustomTemplateResult | null {
+  if (
+    typeof p.studentName !== 'string' ||
+    typeof p.kosName !== 'string' ||
+    typeof p.roomNumber !== 'string' ||
+    typeof p.searchUrl !== 'string'
+  ) {
+    return null
+  }
+  const reasonText = typeof p.reasonText === 'string' && p.reasonText.trim() ? p.reasonText.trim() : null
+  const note = typeof p.note === 'string' && p.note.trim() ? p.note.trim() : null
+  const endSentence = (t: string) => (/[.!?]$/.test(t) ? t : `${t}.`)
+  const reasonPart = reasonText ? ` Alasan: ${endSentence(reasonText)}` : ''
+  const notePart = note ? ` Catatan pemilik: "${note}"` : ''
+  return {
+    name: p.studentName,
+    url: p.searchUrl,
+    copy: {
+      subject: `Pengajuan sewa Kamar ${p.roomNumber} di ${p.kosName} tidak diterima`, // COPY: reviewed (part 2)
+      intro: `Mohon maaf, pengajuan sewa Anda untuk Kamar ${p.roomNumber} di ${p.kosName} tidak diterima pemilik.${reasonPart}${notePart} Tidak ada biaya yang ditagihkan untuk pengajuan ini.`, // COPY: reviewed (part 2)
+      action: 'Cari Kos Lain', // COPY: reviewed (part 2)
+      outro: 'Anda dapat mengajukan sewa ke kos lain kapan saja. Status pengajuan ini juga tersimpan di halaman Kos Saya.', // COPY: reviewed (part 2)
+    },
+  }
+}
+
+/** N4: hold-expiring reminder (~6 hours left) to the student while invoice #1 is still unpaid. */
+function holdExpiringCopy(p: Partial<HoldExpiringPayload>): CustomTemplateResult | null {
+  if (
+    typeof p.studentName !== 'string' ||
+    typeof p.kosName !== 'string' ||
+    typeof p.roomNumber !== 'string' ||
+    typeof p.amount !== 'number' ||
+    typeof p.holdExpiresAt !== 'string' ||
+    typeof p.myKosUrl !== 'string'
+  ) {
+    return null
+  }
+  const deadline = deadlineWIB(p.holdExpiresAt)
+  if (!deadline) return null
+  return {
+    name: p.studentName,
+    url: p.myKosUrl,
+    copy: {
+      subject: `Pengingat: bayar Kamar ${p.roomNumber} sebelum ${deadline}`, // COPY: reviewed (part 2)
+      intro: `Kamar ${p.roomNumber} di ${p.kosName} masih ditahan untuk Anda, tetapi tagihan pertama sebesar ${rupiah(p.amount)} belum dibayar. Batas pembayaran: ${deadline}.`, // COPY: reviewed (part 2)
+      action: 'Bayar Sekarang', // COPY: reviewed (part 2)
+      outro: 'Setelah batas waktu, kamar dilepas untuk pengaju lain dan pengajuan Anda tidak lagi berlaku. Abaikan email ini jika Anda sudah membayar.', // COPY: reviewed (part 2)
+    },
+  }
+}
+
+function renderLinkEmail(copy: Copy, rawName: unknown, url: string): RenderedEmail {
+  const name = typeof rawName === 'string' && rawName.trim() ? rawName.trim() : 'Pengguna KoBo'
+  const text = `Halo ${name},\n\n${copy.intro}\n\n${copy.action}: ${url}\n\n${copy.outro}\n\nTim KoBo`
   // A full document with <title> and a hidden preheader (the inbox preview line) reads less like bulk mail to filters.
   const html = `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(copy.subject)}</title></head>
 <body style="margin:0;background:#f6f8f8;font-family:Arial,Helvetica,sans-serif;color:#1b2a2a">
@@ -229,10 +383,38 @@ export function renderEmail(template: string, payload: unknown): RenderedEmail |
 <div style="background:#ffffff;border-radius:12px;padding:28px;border:1px solid #e3eaea">
 <p style="margin:0 0 12px">Halo ${esc(name)},</p>
 <p style="margin:0 0 24px;line-height:1.55">${esc(copy.intro)}</p>
-<p style="margin:0 0 24px"><a href="${esc(p.url)}" style="display:inline-block;background:#0f9d92;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:8px">${esc(copy.action)}</a></p>
-<p style="margin:0 0 8px;font-size:13px;color:#5b6b6b;line-height:1.5">Atau salin tautan ini ke peramban Anda:<br><span style="word-break:break-all">${esc(p.url)}</span></p>
+<p style="margin:0 0 24px"><a href="${esc(url)}" style="display:inline-block;background:#0f9d92;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:8px">${esc(copy.action)}</a></p>
+<p style="margin:0 0 8px;font-size:13px;color:#5b6b6b;line-height:1.5">Atau salin tautan ini ke peramban Anda:<br><span style="word-break:break-all">${esc(url)}</span></p>
 <p style="margin:16px 0 0;font-size:13px;color:#5b6b6b;line-height:1.5">${esc(copy.outro)}</p>
 <p style="margin:16px 0 0">Tim KoBo</p>
 </div></div></body></html>`
   return { subject: copy.subject, html, text }
+}
+
+export function renderEmail(template: string, payload: unknown): RenderedEmail | null {
+  const codeCopy = CODE_COPY[template]
+  if (codeCopy) return payload && typeof payload === 'object' ? renderCodeEmail(codeCopy, payload) : null
+  if (!payload || typeof payload !== 'object') return null
+
+  if (template === 'application-new') {
+    const built = applicationNewCopy(payload as Partial<ApplicationNewPayload>)
+    return built ? renderLinkEmail(built.copy, built.name, built.url) : null
+  }
+  if (template === 'application-approved') {
+    const built = applicationApprovedCopy(payload as Partial<ApplicationApprovedPayload>)
+    return built ? renderLinkEmail(built.copy, built.name, built.url) : null
+  }
+  if (template === 'application-rejected') {
+    const built = applicationRejectedCopy(payload as Partial<ApplicationRejectedPayload>)
+    return built ? renderLinkEmail(built.copy, built.name, built.url) : null
+  }
+  if (template === 'hold-expiring') {
+    const built = holdExpiringCopy(payload as Partial<HoldExpiringPayload>)
+    return built ? renderLinkEmail(built.copy, built.name, built.url) : null
+  }
+
+  const p = payload as Partial<OfferPayload> & Partial<OwnerPaymentPayload> & Partial<ReminderPayload> & Partial<StudentRejectedPayload> & { from?: unknown }
+  const copy = template === 'waitlist-offer' ? offerCopy(p) : template === 'payment-received-owner' ? ownerPaymentCopy(p) : template === 'invoice-reminder' ? reminderCopy(p) : template === 'matching-digest' ? matchingDigestCopy(p) : template === 'student-rejected' ? studentRejectedCopy(p) : COPY[template]
+  if (!copy || typeof p.url !== 'string') return null
+  return renderLinkEmail(copy, p.name, p.url)
 }

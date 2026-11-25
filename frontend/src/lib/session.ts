@@ -1,5 +1,6 @@
-import { useCallback, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTRPC } from './trpc';
 import { useAppStore } from '../store/AppContext';
 
@@ -7,6 +8,40 @@ import { useAppStore } from '../store/AppContext';
 export const GOOGLE_RETURN_FLAG = 'google';
 /** The full sign-in page. It reads the failed-return flag itself instead of reopening the dialog over it. */
 export const AUTH_PAGE_PATH = '/masuk';
+
+const GOOGLE_TERMS_KEY = 'kobo.google.terms';
+const GOOGLE_PENDING_KEY = 'kobo.google.pending';
+
+function storage<T>(fn: (s: Storage) => T, fallback: T): T {
+  try {
+    return fn(sessionStorage);
+  } catch {
+    return fallback;
+  }
+}
+/** Terms version ticked in the Google dialog, waiting to be recorded once the round trip returns. */
+export const readPendingGoogleTerms = (): string | null => storage((s) => s.getItem(GOOGLE_TERMS_KEY), null);
+export const clearPendingGoogleTerms = (): void => storage((s) => s.removeItem(GOOGLE_TERMS_KEY), undefined);
+/** Set right before leaving for Google: the page that comes back waits for the session instead of flashing logged-out. */
+export function markGoogleRoundTrip(termsVersion: string): void {
+  storage((s) => {
+    s.setItem(GOOGLE_TERMS_KEY, termsVersion);
+    // The page the round trip started on: a duplicate callback lands on `/?error=` instead of the callbackURL.
+    s.setItem(GOOGLE_PENDING_KEY, window.location.pathname + window.location.search);
+  }, undefined);
+}
+export const clearGoogleRoundTrip = (): void =>
+  storage((s) => {
+    s.removeItem(GOOGLE_TERMS_KEY);
+    s.removeItem(GOOGLE_PENDING_KEY);
+  }, undefined);
+export const isGoogleRoundTrip = (): boolean => storage((s) => s.getItem(GOOGLE_PENDING_KEY) !== null, false);
+/** Where the round trip started, if it was a same-site path. */
+const googleRoundTripOrigin = (): string | null =>
+  storage((s) => {
+    const v = s.getItem(GOOGLE_PENDING_KEY);
+    return v && v.startsWith('/') && !v.startsWith('//') ? v : null;
+  }, null);
 
 let googleReturnError: string | null = null;
 let signedOutAt = 0;
@@ -46,6 +81,67 @@ export function useSession() {
   return { me: q.data ?? null, isLoading: q.isPending };
 }
 
+/**
+ * Mounted app-wide (Navbar). On the first answer after a Google round trip: record the Terms ticked in the dialog,
+ * send an owner to their dashboard (a page already inside /owner stays), and drop a stray `?error=` left by a duplicate
+ * callback while the user is in fact signed in. /masuk does all this itself (AuthPage).
+ */
+export function useGoogleSignInReturn() {
+  const trpc = useTRPC();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { openAuthModal } = useAppStore();
+  const acceptTerms = useMutation(trpc.auth.acceptTerms.mutationOptions());
+  const { me, isLoading } = useSession();
+  const handled = useRef(false);
+  const rechecked = useRef(false);
+  const [recheckDone, setRecheckDone] = useState(false);
+  useEffect(() => {
+    if (isLoading || handled.current) return;
+    const url = new URL(window.location.href);
+    if (url.pathname === AUTH_PAGE_PATH) {
+      handled.current = true;
+      return;
+    }
+    const wasRoundTrip = isGoogleRoundTrip();
+    // A round trip that answers "signed out" is asked once more before it counts as a failure: the session cookie
+    // from the callback can race the first /me.
+    if (!me && wasRoundTrip && !rechecked.current) {
+      rechecked.current = true;
+      void qc.refetchQueries({ queryKey: trpc.auth.me.queryKey() }).finally(() => setRecheckDone(true));
+      return;
+    }
+    handled.current = true;
+    const stray = url.pathname === '/' && url.searchParams.has('error') && !url.searchParams.has(GOOGLE_RETURN_FLAG);
+    const dropError = () => {
+      for (const key of ['error', 'error_description']) url.searchParams.delete(key);
+      window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    };
+    if (!me) {
+      if (wasRoundTrip) clearGoogleRoundTrip();
+      if (wasRoundTrip && stray) {
+        googleReturnError = 'Masuk dengan Google belum berhasil. Silakan coba lagi.';
+        dropError();
+        openAuthModal();
+      }
+      return;
+    }
+    if (stray) dropError();
+    if (!wasRoundTrip) return;
+    const pendingTerms = readPendingGoogleTerms();
+    const origin = googleRoundTripOrigin();
+    clearGoogleRoundTrip();
+    if (me.isOwner && !url.pathname.startsWith('/owner/')) navigate('/owner/dashboard', { replace: true });
+    // A duplicate callback dropped the renter on `/?error=`: put them back where they started.
+    else if (!me.isOwner && stray && origin && origin !== '/') navigate(origin, { replace: true });
+    if (!me.user.isDemo && !me.termsCurrent && pendingTerms === me.termsVersion) {
+      acceptTerms.mutate({ version: me.termsVersion }, { onSettled: () => void qc.invalidateQueries({ queryKey: trpc.auth.me.queryKey() }) });
+    }
+  }, [isLoading, me, recheckDone]); // eslint-disable-line react-hooks/exhaustive-deps -- decided once, on the first answer (or after the one recheck)
+}
+
+export type DemoLoginAs = 'student' | 'owner' | 'temanA' | 'temanB';
+
 export function useAuthActions() {
   const trpc = useTRPC();
   const qc = useQueryClient();
@@ -57,7 +153,7 @@ export function useAuthActions() {
 
   /** One-click demo sign-in: a plain fetch, so it needs no auth-client chunk. Resolves to an error message or null; the caller refreshes the session. */
   const demoLogin = useCallback(
-    async (as: 'student' | 'owner'): Promise<string | null> => {
+    async (as: DemoLoginAs): Promise<string | null> => {
       try {
         const res = await fetch('/api/auth/demo-login', {
           method: 'POST',

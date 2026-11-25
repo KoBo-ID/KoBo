@@ -1,22 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { Link, useSearchParams } from 'react-router-dom';
-import { ShieldCheck, Building2 } from 'lucide-react';
+import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { BellRing, GraduationCap, Lock, PhoneCall, ShieldCheck, UserRound } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAppStore } from '../store/AppContext';
-import { Button, ButtonLink } from '../components/ui/Button';
+import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Notice } from '../components/ui/Notice';
 import { Avatar } from '../components/ui/Avatar';
 import { AccountSecurityCard } from '../components/auth/AccountSecurityCard';
 import { StudentVerificationCard } from '../components/profile/StudentVerificationCard';
-import { EmergencyContactCard, RemindersAndTermsCard } from '../components/profile/ConsentCards';
+import { EmergencyContactCard, RemindersCard } from '../components/profile/ConsentCards';
+import { SettingsNav, type SettingsNavGroup } from '../components/profile/SettingsNav';
 import { useSession } from '../lib/session';
 import { safeNext } from '../lib/safeNext';
 import { useMyDiscountStatus } from '../components/booking/CampusDiscountCard';
-import { BecomeOwnerModal } from '../components/owner/BecomeOwnerModal';
 import { useTRPC } from '../lib/trpc';
 import { CAMPUS_RETURN_MESSAGES, messageForError } from '../lib/errors';
+import '../styles/profile-settings.css';
 
 /** "Kampus terverifikasi: X" with the Kampus Mitra status (the discount applies only to partner campuses). */
 const MitraStatusLine: React.FC = () => {
@@ -34,14 +35,23 @@ const MitraStatusLine: React.FC = () => {
   );
 };
 
+const TITLES: Record<string, { title: string; desc: string }> = {
+  '': { title: 'Profil', desc: 'Nama, nomor WhatsApp, dan kampus yang tampil di pengajuan sewa Anda.' },
+  verifikasi: { title: 'Verifikasi mahasiswa', desc: 'KoBo khusus mahasiswa. Verifikasi dulu untuk menjadwalkan survey dan mengajukan sewa.' },
+  'kontak-darurat': { title: 'Kontak darurat', desc: 'Wajib diisi sebelum pengajuan sewa pertama.' },
+  notifikasi: { title: 'Notifikasi', desc: 'Pengingat tagihan untuk Anda sendiri.' },
+  keamanan: { title: 'Keamanan akun', desc: 'Kata sandi dan akun yang tertaut.' },
+};
+
 export const Profile: React.FC = () => {
   useDocumentTitle('Profil');
   const { addToast, openAuthModal } = useAppStore();
   const { me, isLoading } = useSession();
-  const [registering, setRegistering] = useState(false);
   const trpc = useTRPC();
   const qc = useQueryClient();
   const save = useMutation(trpc.auth.updateProfile.mutationOptions());
+  const { section = '' } = useParams<{ section?: string }>();
+  const { search } = useLocation();
 
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState('');
@@ -89,6 +99,30 @@ export const Profile: React.FC = () => {
     );
   }
   const user = me.user;
+  const isDemo = !!me.user.isDemo;
+
+  // Demo accounts keep the reduced page; owners are verified through the owner flow, so they get no student verification.
+  const groups: SettingsNavGroup[] = [
+    {
+      title: 'Akun',
+      items: [
+        { slug: '', label: 'Profil', Icon: UserRound },
+        ...(me.isOwner ? [] : [{ slug: 'verifikasi', label: 'Verifikasi mahasiswa', Icon: GraduationCap }]),
+        ...(isDemo ? [] : [{ slug: 'kontak-darurat', label: 'Kontak darurat', Icon: PhoneCall }]),
+      ],
+    },
+    ...(isDemo ? [] : [
+      { title: 'Preferensi', items: [{ slug: 'notifikasi', label: 'Notifikasi', Icon: BellRing }] },
+      { title: 'Keamanan', items: [{ slug: 'keamanan', label: 'Keamanan akun', Icon: Lock }] },
+    ]),
+  ];
+  const allowed = groups.flatMap((g) => g.items.map((i) => i.slug));
+  // Return flows that still point at bare /profile (?campus=, ?sheerid=, ?next=) belong to verification.
+  if (section === '' && allowed.includes('verifikasi') && (params.has('campus') || params.has('sheerid') || params.has('next'))) {
+    return <Navigate to={`/profile/verifikasi${search}`} replace />;
+  }
+  if (!allowed.includes(section)) return <Navigate to={`/profile${search}`} replace />;
+  const head = TITLES[section]!;
 
   const startEdit = () => {
     setName(user.name);
@@ -112,187 +146,67 @@ export const Profile: React.FC = () => {
   };
 
   return (
-    <div className="app-container" style={{ maxWidth: '960px', paddingTop: '2.5rem', paddingBottom: '4rem' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 className="page-title">
-          Profil Akun & Verifikasi Kampus
-        </h1>
-        <p style={{ fontSize: 'var(--step-0)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-          Kelola informasi identitas dan verifikasi status mahasiswa Anda.
-        </p>
-        {backToKos && (
-          <Link to={backToKos} data-testid="back-to-kos" style={{ display: 'inline-flex', alignItems: 'center', minHeight: '40px', marginTop: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>
-            Kembali ke kos
-          </Link>
-        )}
-      </div>
+    <div className="ps">
+      <header className="ps__identity">
+        <Avatar src={user.image} name={user.name} size={64} style={{ border: '3px solid var(--primary-light)' }} />
+        <div className="ps__identity-text">
+          <h1 className="ps__name">{user.name}</h1>
+          <p className="ps__email">{user.email}</p>
+          {me.campusVerified && (
+            <span className="ps__badge"><ShieldCheck size={14} aria-hidden="true" /><span>Mahasiswa Terverifikasi</span></span>
+          )}
+          {me.campusVerified && <MitraStatusLine />}
+        </div>
+      </header>
+      {backToKos && (
+        <Link to={backToKos} data-testid="back-to-kos" className="ps__back">Kembali ke kos</Link>
+      )}
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr)',
-          gap: '2rem',
-          alignItems: 'start',
-        }}
-        className="profile-split-layout"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        {/* User Card */}
-        <div
-          style={{
-            backgroundColor: 'var(--bg-surface)',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border-subtle)',
-            padding: '1.75rem',
-            boxShadow: 'var(--shadow-sm)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.5rem',
-          }}
-        >
-          {/* Avatar & Header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-            <Avatar src={user.image} name={user.name} size={72} style={{ border: '3px solid var(--primary-light)' }} />
-            <div>
-              <h2 style={{ fontSize: 'var(--step-1)', fontWeight: 800, color: 'var(--text-main)' }}>
-                {user.name}
-              </h2>
-              <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>
-                {user.email}
-              </p>
-
-              {me?.campusVerified && (
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    backgroundColor: 'var(--primary-light)',
-                    color: 'var(--primary)',
-                    padding: '0.2rem 0.6rem',
-                    borderRadius: 'var(--radius-badge)',
-                    fontSize: 'var(--step--2)',
-                    fontWeight: 700,
-                    marginTop: '0.5rem',
-                  }}
-                >
-                  <ShieldCheck size={14} />
-                  <span>Mahasiswa Terverifikasi</span>
-                </div>
-              )}
-              {me?.campusVerified && <MitraStatusLine />}
-            </div>
+      <div className="ps__layout">
+        <SettingsNav groups={groups} base="/profile" />
+        <main className="ps__pane" aria-labelledby="ps-title">
+          <div className="ps__pane-head">
+            <h2 id="ps-title" className="ps__pane-title">{head.title}</h2>
+            <p className="ps__pane-desc">{head.desc}</p>
           </div>
 
-          {/* Profile Form */}
-          {isEditing ? (
-            <form onSubmit={(e) => void handleSaveProfile(e)} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <Input
-                label="Nama Lengkap"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-              <Input
-                label="Nomor WhatsApp"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-              <Input
-                label="Asal Kampus / Universitas"
-                value={campus}
-                onChange={(e) => setCampus(e.target.value)}
-              />
-              {error && <Notice tone="error">{error}</Notice>}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(false)}>
-                  Batal
-                </Button>
-                <Button type="submit" variant="primary" size="sm" isLoading={save.isPending}>
-                  Simpan Perubahan
-                </Button>
-              </div>
-            </form>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: 'var(--step--1)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.65rem', borderBottom: '1px solid var(--border-subtle)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Asal Kampus:</span>
-                <span style={{ fontWeight: 600 }}>{user.campus ?? '-'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.65rem', borderBottom: '1px solid var(--border-subtle)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Nomor WhatsApp:</span>
-                <span style={{ fontWeight: 600 }}>{user.phone ?? '-'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.65rem', borderBottom: '1px solid var(--border-subtle)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Peran Akun:</span>
-                <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>
-                  {me.isOwner ? 'Pemilik Kos' : 'Pencari Kos / Mahasiswa'}
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-                <Button variant="outline" size="sm" onClick={startEdit}>
-                  Ubah Profil
-                </Button>
-              </div>
+          {section === '' && (
+            <div className="ps__card">
+              {isEditing ? (
+                <form onSubmit={(e) => void handleSaveProfile(e)} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <Input label="Nama Lengkap" value={name} onChange={(e) => setName(e.target.value)} required />
+                  <Input label="Nomor WhatsApp" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  <Input label="Asal Kampus / Universitas" value={campus} onChange={(e) => setCampus(e.target.value)} />
+                  {error && <Notice tone="error">{error}</Notice>}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Batal</Button>
+                    <Button type="submit" variant="primary" size="sm" isLoading={save.isPending}>Simpan Perubahan</Button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <dl style={{ margin: 0, display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                    <div className="ps__row"><dt>Asal Kampus</dt><dd>{user.campus ?? '-'}</dd></div>
+                    <div className="ps__row"><dt>Nomor WhatsApp</dt><dd>{user.phone ?? '-'}</dd></div>
+                    <div className="ps__row"><dt>Peran Akun</dt><dd>{me.isOwner ? 'Pemilik Kos' : 'Pencari Kos / Mahasiswa'}</dd></div>
+                  </dl>
+                  <div><Button variant="outline" size="sm" onClick={startEdit}>Ubah Profil</Button></div>
+                </>
+              )}
             </div>
           )}
-        </div>
 
-        {campusNotice && <Notice tone={campusNotice.tone}>{campusNotice.text}</Notice>}
-        {!me.isOwner && <StudentVerificationCard />}
-
-        {me && !me.user.isDemo && (
-          <section aria-labelledby="profile-consent-title">
-            <h3 id="profile-consent-title" className="sr-only">Kontak darurat dan persetujuan</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <EmergencyContactCard />
-              <RemindersAndTermsCard />
-            </div>
-          </section>
-        )}
-
-        {me && !me.user.isDemo && <AccountSecurityCard />}
-
-        {me && !me.user.isDemo && (
-          <div
-            style={{
-              backgroundColor: 'var(--bg-surface)',
-              borderRadius: 'var(--radius-lg)',
-              border: '1px solid var(--border-subtle)',
-              padding: '1.25rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Building2 size={18} color="var(--primary)" aria-hidden="true" />
-              <h2 style={{ fontSize: 'var(--step-0)', fontWeight: 700 }}>Punya kos?</h2>
-            </div>
-            {me.isOwner ? (
-              <>
-                <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Akun Anda sudah terdaftar sebagai pemilik.</p>
-                <div>
-                  <ButtonLink to="/owner/dashboard" variant="outline" size="sm">Buka Dasbor Pemilik</ButtonLink>
-                </div>
-              </>
-            ) : (
-              <>
-                <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)' }}>Kelola kamar, tagihan, dan kuitansi dari dashboard pemilik. Gratis.</p>
-                <div>
-                  <Button variant="primary" size="sm" onClick={() => setRegistering(true)}>
-                    Daftarkan diri sebagai pemilik
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-        </div>
-
+          {section === 'verifikasi' && (
+            <>
+              {campusNotice && <Notice tone={campusNotice.tone}>{campusNotice.text}</Notice>}
+              <StudentVerificationCard />
+            </>
+          )}
+          {section === 'kontak-darurat' && <EmergencyContactCard />}
+          {section === 'notifikasi' && <RemindersCard />}
+          {section === 'keamanan' && <AccountSecurityCard />}
+        </main>
       </div>
-      {registering && <BecomeOwnerModal onClose={() => setRegistering(false)} />}
     </div>
   );
 };

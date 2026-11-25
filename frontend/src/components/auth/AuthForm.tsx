@@ -1,12 +1,13 @@
 import React, { useEffect, useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { User, Lock, Mail, Phone, Building2, GraduationCap, CheckCircle2, MailCheck } from 'lucide-react';
+import { User, Users, Lock, Mail, Phone, Building2, GraduationCap, CheckCircle2, MailCheck } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { Modal } from '../ui/Modal';
 import { Notice } from '../ui/Notice';
 import { useAppStore } from '../../store/AppContext';
-import { GOOGLE_RETURN_FLAG, useAuthActions, type useSession } from '../../lib/session';
+import { GOOGLE_RETURN_FLAG, clearGoogleRoundTrip, clearPendingGoogleTerms, markGoogleRoundTrip, readPendingGoogleTerms, useAuthActions, type DemoLoginAs, type useSession } from '../../lib/session';
 import { useTRPC } from '../../lib/trpc';
 import { TERMS_VERSION } from '@kobo/shared/domain';
 import { messageForError } from '../../lib/errors';
@@ -28,6 +29,7 @@ type SessionMe = ReturnType<typeof useSession>['me'];
 
 /** Non-sensitive sign-up progress that survives a refresh. Never the password, the OTP or a file. */
 const SIGNUP_KEY = 'kobo.signup';
+export { readPendingGoogleTerms, clearPendingGoogleTerms };
 export interface SignupDraft {
   name: string;
   email: string;
@@ -62,9 +64,16 @@ export function clearSignup(): void {
 
 /** Where the emailed password-reset link lands (a lazy SPA page). */
 const RESET_REDIRECT = '/reset-password';
+/** On /masuk?next=X the reset link keeps X (through safeNext) so the whole trip ends where it began. */
+const resetRedirect = (): string => {
+  const raw = new URLSearchParams(window.location.search).get('next');
+  if (!raw) return RESET_REDIRECT;
+  const next = safeNext(raw);
+  return next === '/' ? RESET_REDIRECT : `${RESET_REDIRECT}?next=${encodeURIComponent(next)}`;
+};
 
-const GoogleMark: React.FC = () => (
-  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+const GoogleMark: React.FC<{ mono?: boolean }> = ({ mono = false }) => (
+  <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" focusable="false" style={mono ? { filter: 'brightness(0) invert(1)' } : undefined}>
     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
     <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
     <path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.01 24.01 0 0 0 0 21.56l7.98-6.19z" />
@@ -111,7 +120,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
   const isPage = variant === 'page';
   const saved = isPage ? readSignup() : {};
   const [view, setViewState] = useState<AuthView>(() => (isPage && signupStep === 1 ? 'register' : isPage && signupStep === 2 ? (saved.email ? 'verify-sent' : 'register') : 'login'));
-  const [busy, setBusy] = useState<'form' | 'student' | 'owner' | 'google' | null>(null);
+  const [busy, setBusy] = useState<'form' | DemoLoginAs | 'google' | null>(null);
   const [error, setError] = useState<string | null>(initialError);
   const providers = useQuery({ ...trpc.auth.providers.queryOptions(), staleTime: Infinity });
   const [notice, setNotice] = useState<string | null>(null);
@@ -121,6 +130,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
   const [phone, setPhone] = useState(saved.phone ?? '');
   const [password, setPassword] = useState('');
   const [agreed, setAgreed] = useState(false);
+  const [googleTermsOpen, setGoogleTermsOpen] = useState(false);
+  const [googleAgreed, setGoogleAgreed] = useState(false);
 
   const isRegister = view === 'register';
 
@@ -147,27 +158,24 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
     });
   }, [signupStep]); // eslint-disable-line react-hooks/exhaustive-deps -- only a step change from outside should move the view
 
-  const finish = async (welcome: string) => {
+  const finish = async (welcome: string, defaultDest?: string) => {
     await refreshSession();
     const me = qc.getQueryData(trpc.auth.me.queryKey());
     addToast(welcome, 'success');
-    // Read before onDone navigates away. An owner lands in their workspace unless the page they were sent from
-    // (`?next`, anything but the plain home page) says otherwise; everyone else stays where they were.
+    // Read before onDone navigates away. An owner always lands on their dashboard unless a route guard sent them
+    // to a specific `?next=/owner/...` page; a renter stays where they were.
     const nextParam = isPage ? new URLSearchParams(window.location.search).get('next') : null;
-    const hasOwnNext = safeNext(nextParam) !== '/';
+    const hasOwnNext = /^\/owner(\/|$)/.test(safeNext(nextParam));
     if (onDone(me) === true) return;
     if (me?.isOwner && !hasOwnNext) navigate('/owner/dashboard');
+    else if (defaultDest && !hasOwnNext) navigate(defaultDest, { replace: true });
   };
 
   /** Full-page round trip to Google and back to this page. better-auth stays out of the initial chunk. */
-  const handleGoogle = async () => {
+  const startGoogle = async () => {
     setError(null);
-    // Not configured on the server: no round trip, just say so.
-    if (providers.data && !providers.data.google) {
-      setError('Masuk dengan Google belum tersedia saat ini.');
-      return;
-    }
     setBusy('google');
+    markGoogleRoundTrip(TERMS_VERSION);
     try {
       const { authClient } = await import('../../lib/authClient');
       const here = new URL(window.location.href);
@@ -177,12 +185,30 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
       const res = await authClient.signIn.social({ provider: 'google', callbackURL: here.href, errorCallbackURL: failed.href });
       if (res.error) throw new Error(res.error.message);
     } catch {
+      clearGoogleRoundTrip();
       setError('Masuk dengan Google belum berhasil. Silakan coba lagi.');
       setBusy(null);
+      setGoogleTermsOpen(false);
     }
   };
 
-  const handleDemo = async (as: 'student' | 'owner') => {
+  /** Require Terms & Privacy agreement before redirecting out to Google OAuth. */
+  const handleGoogle = () => {
+    setError(null);
+    // Not configured on the server: no round trip, just say so.
+    if (providers.data && !providers.data.google) {
+      setError('Masuk dengan Google belum tersedia saat ini.');
+      return;
+    }
+    if (isRegister && agreed) {
+      void startGoogle();
+      return;
+    }
+    setGoogleAgreed(false);
+    setGoogleTermsOpen(true);
+  };
+
+  const handleDemo = async (as: DemoLoginAs) => {
     setBusy(as);
     setError(null);
     const failure = await demoLogin(as);
@@ -191,7 +217,16 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
       setBusy(null);
       return;
     }
-    await finish(as === 'owner' ? 'Masuk sebagai Pemilik.' : 'Masuk sebagai Mahasiswa.');
+    const toast =
+      as === 'owner'
+        ? 'Masuk sebagai Pemilik.'
+        : as === 'temanA'
+          ? 'Masuk sebagai Nadia (Teman Sekamar 1).'
+          : as === 'temanB'
+            ? 'Masuk sebagai Clara (Teman Sekamar 2).'
+            : 'Masuk sebagai Mahasiswa.';
+    const dest = as === 'temanA' || as === 'temanB' ? '/teman-sekamar/pesan/match-conn-demo-teman' : undefined;
+    await finish(toast, dest);
     setBusy(null);
   };
 
@@ -204,7 +239,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
       // The auth client is a separate chunk, fetched only when someone actually submits.
       const { authClient } = await import('../../lib/authClient');
       if (view === 'forgot') {
-        const { error: err } = await authClient.requestPasswordReset({ email: email.trim(), redirectTo: RESET_REDIRECT });
+        const { error: err } = await authClient.requestPasswordReset({ email: email.trim(), redirectTo: resetRedirect() });
         // The server answers the same for unknown emails, so this never reveals who has an account.
         if (err) setError(messageForError(err));
         else setView('forgot-sent');
@@ -258,7 +293,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
   const ownerSide = role === 'owner' && (view === 'login' || view === 'register');
   const heading = isPage && (
     <>
-      <h1 className="auth-title" tabIndex={-1} data-step-heading>
+      <h1 id="auth-step-heading" className="auth-title" tabIndex={-1} data-step-heading>
         {ownerSide ? (isRegister ? 'Daftar Akun Pemilik Kos' : 'Masuk ke Portal Pemilik Kos') : AUTH_TITLES[view]}
       </h1>
     </>
@@ -476,9 +511,77 @@ export const AuthForm: React.FC<AuthFormProps> = ({ variant, role = 'seeker', on
             >
               Masuk sebagai Pemilik
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              fullWidth
+              icon={<Users size={15} />}
+              isLoading={busy === 'temanA'}
+              disabled={busy !== null}
+              style={{ backgroundColor: 'var(--bg-surface)', whiteSpace: 'nowrap', paddingInline: '0.5rem' }}
+              onClick={() => handleDemo('temanA')}
+            >
+              Teman Sekamar 1 (Nadia)
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              fullWidth
+              icon={<Users size={15} />}
+              isLoading={busy === 'temanB'}
+              disabled={busy !== null}
+              style={{ backgroundColor: 'var(--bg-surface)', whiteSpace: 'nowrap', paddingInline: '0.5rem' }}
+              onClick={() => handleDemo('temanB')}
+            >
+              Teman Sekamar 2 (Clara)
+            </Button>
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={googleTermsOpen}
+        onClose={() => { if (busy !== 'google') setGoogleTermsOpen(false); }}
+        title="Syarat dan Ketentuan"
+        maxWidth="sm"
+      >
+        <div style={column('1rem')}>
+          <p style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', lineHeight: 1.55, margin: 0 }}>
+            Sebelum melanjutkan dengan Google, baca dan setujui Syarat dan Ketentuan serta Kebijakan Privasi KoBo.
+          </p>
+          <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', fontSize: 'var(--step--1)', lineHeight: 1.5, color: 'var(--text-main)' }}>
+            <input
+              type="checkbox"
+              checked={googleAgreed}
+              disabled={busy === 'google'}
+              onChange={(e) => setGoogleAgreed(e.target.checked)}
+              style={{ marginTop: '0.2rem', flexShrink: 0 }}
+            />
+            <span>
+              Saya menyetujui{' '}
+              <Link to="/syarat" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Syarat dan Ketentuan</Link>
+              {' '}dan{' '}
+              <Link to="/privasi" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Kebijakan Privasi</Link>.
+            </span>
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: '0.6rem' }}>
+            <Button type="button" variant="danger" fullWidth disabled={busy === 'google'} onClick={() => setGoogleTermsOpen(false)}>
+              Batal
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              fullWidth
+              icon={<GoogleMark mono />}
+              isLoading={busy === 'google'}
+              disabled={!googleAgreed || busy !== null}
+              onClick={() => void startGoogle()}
+            >
+              Setuju & Lanjutkan
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

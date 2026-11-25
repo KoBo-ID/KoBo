@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { KeyRound, Lock, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { KeyRound, Lock, ShieldAlert } from 'lucide-react';
 import { AuthCard } from '../components/auth/AuthCard';
 import { EmailActionForm } from '../components/auth/EmailActionForm';
 import { Button } from '../components/ui/Button';
@@ -9,6 +9,8 @@ import { Notice } from '../components/ui/Notice';
 import { useAuthActions } from '../lib/session';
 import { messageForError } from '../lib/errors';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { safeNext } from '../lib/safeNext';
+import { useAppStore } from '../store/AppContext';
 
 /** Landing page of the emailed reset link: /reset-password?token=... (or ?error=INVALID_TOKEN). */
 export const ResetPassword: React.FC = () => {
@@ -18,12 +20,16 @@ export const ResetPassword: React.FC = () => {
   const token = params.get('token');
   const linkError = params.get('error');
   const { refreshSession } = useAuthActions();
+  const { addToast } = useAppStore();
+  // `next` rides the emailed link (SIM-022); it always goes through safeNext.
+  const nextRaw = params.get('next');
+  const next = nextRaw ? safeNext(nextRaw) : null;
+  const nextQuery = next && next !== '/' ? `?next=${encodeURIComponent(next)}` : '';
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +44,8 @@ export const ResetPassword: React.FC = () => {
         setError(messageForError(err));
       } else {
         await refreshSession().catch(() => {});
-        setDone(true);
+        addToast('Kata sandi diperbarui. Silakan masuk.', 'success');
+        navigate(`/masuk${nextQuery}`, { replace: true });
       }
     } catch (err) {
       setError(messageForError(err));
@@ -46,17 +53,6 @@ export const ResetPassword: React.FC = () => {
       setBusy(false);
     }
   };
-
-  if (done) {
-    return (
-      <AuthCard icon={<CheckCircle2 size={40} color="var(--primary)" />} title="Kata sandi diperbarui">
-        <p style={{ color: 'var(--text-muted)', lineHeight: 1.55 }}>Kata sandi baru Anda sudah aktif. Silakan masuk dengan kata sandi tersebut.</p>
-        <Button variant="primary" fullWidth onClick={() => navigate('/masuk', { replace: true })}>
-          Masuk
-        </Button>
-      </AuthCard>
-    );
-  }
 
   if (!token || linkError) {
     return (
@@ -69,7 +65,7 @@ export const ResetPassword: React.FC = () => {
           successText="Jika email terdaftar, tautan baru sudah kami kirim. Periksa kotak masuk Anda."
           send={async (email) => {
             const { authClient } = await import('../lib/authClient');
-            const { error: err } = await authClient.requestPasswordReset({ email, redirectTo: '/reset-password' });
+            const { error: err } = await authClient.requestPasswordReset({ email, redirectTo: `/reset-password${nextQuery}` });
             return err ?? null;
           }}
         />

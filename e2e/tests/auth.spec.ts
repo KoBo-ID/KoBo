@@ -33,6 +33,34 @@ test('demo student signs in, sees their account in the navbar, and can sign out'
   await expect(page.getByRole('button', { name: 'Masuk', exact: true })).toBeVisible()
 })
 
+test('demo Teman Sekamar pair buttons sign into Nadia and Clara pre-connected chat and shared shortlist', async ({ browser }) => {
+  const ctxA = await browser.newContext()
+  const ctxB = await browser.newContext()
+  const pageA = await ctxA.newPage()
+  const pageB = await ctxB.newPage()
+  ownIp(pageA)
+  ownIp(pageB)
+
+  await pageA.goto('/masuk')
+  await pageA.getByRole('button', { name: 'Teman Sekamar 1 (Nadia)' }).click()
+  await expect(pageA).toHaveURL(/\/teman-sekamar\/pesan\/match-conn-demo-teman$/)
+  await expect(pageA.getByRole('heading', { level: 2, name: 'Clara' })).toBeVisible()
+
+  await pageB.goto('/masuk')
+  await pageB.getByRole('button', { name: 'Teman Sekamar 2 (Clara)' }).click()
+  await expect(pageB).toHaveURL(/\/teman-sekamar\/pesan\/match-conn-demo-teman$/)
+  await expect(pageB.getByRole('heading', { level: 2, name: 'Nadia' })).toBeVisible()
+
+  // Both see the seeded shared shortlist and can open Cari kos bersama.
+  await pageA.getByRole('link', { name: 'Cari kos bersama' }).click()
+  await expect(pageA).toHaveURL(/\/teman-sekamar\/kos\/match-conn-demo-teman$/)
+  await expect(pageA.getByText('Kost Cempaka Anggrek Premium').first()).toBeVisible()
+  await expect(pageA.getByText('Kost Wisma Sakura Syahdan').first()).toBeVisible()
+
+  await ctxA.close()
+  await ctxB.close()
+})
+
 for (const route of ['/owner/dashboard', '/owner/kos', '/owner/reviews']) {
   test(`${route} redirects to the owner sign-in page and returns after login`, async ({ page }) => {
     await page.goto(route)
@@ -85,6 +113,29 @@ for (const [label, open] of [
     expect(leftSite).toBe(false)
   })
 }
+
+test('Google OAuth requires agreeing to Syarat dan Ketentuan before starting sign-in', async ({ page }) => {
+  await page.route('**/api/trpc/auth.providers*', async (route) => {
+    const res = await route.fetch()
+    await route.fulfill({ response: res, body: (await res.text()).replace('"google":false', '"google":true') })
+  })
+  let socialCalls = 0
+  await page.route('**/api/auth/sign-in/social*', async (route) => {
+    socialCalls++
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ redirect: false }) })
+  })
+  await page.goto('/masuk')
+  await page.getByRole('button', { name: 'Lanjutkan dengan Google' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Syarat dan Ketentuan' })
+  await expect(dialog).toBeVisible()
+  const proceed = dialog.getByRole('button', { name: 'Setuju & Lanjutkan' })
+  await expect(proceed).toBeDisabled()
+  expect(socialCalls).toBe(0)
+  await dialog.getByLabel(/Saya menyetujui/).check()
+  await expect(proceed).toBeEnabled()
+  await proceed.click()
+  await expect.poll(() => socialCalls).toBe(1)
+})
 
 test('/masuk role toggle keeps the typed email and honours ?peran and ?next', async ({ page }) => {
   await page.goto('/masuk?peran=pemilik&next=%2Fowner%2Fkos')

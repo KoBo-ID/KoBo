@@ -1,15 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Check } from 'lucide-react';
-import { AuthForm, clearSignup, readSignup, writeSignup } from '../components/auth/AuthForm';
+import { useMutation } from '@tanstack/react-query';
+import { AuthForm, clearPendingGoogleTerms, clearSignup, readPendingGoogleTerms, readSignup, writeSignup } from '../components/auth/AuthForm';
 import { OwnerDataStep } from '../components/auth/OwnerDataStep';
 import { OwnerDocsStep } from '../components/auth/OwnerDocsStep';
 import { clearKtmDraft, searchTarget, StudentPendingCard, StudentVerifyStep } from '../components/auth/StudentVerifyStep';
 import { Button } from '../components/ui/Button';
+import { Notice } from '../components/ui/Notice';
 import { Stepper } from '../components/ui/Stepper';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { messageForError } from '../lib/errors';
 import { safeNext } from '../lib/safeNext';
-import { GOOGLE_RETURN_FLAG, takeGoogleReturnError, useAuthActions, useSession } from '../lib/session';
+import { GOOGLE_RETURN_FLAG, clearGoogleRoundTrip, takeGoogleReturnError, useAuthActions, useSession } from '../lib/session';
+import { useTRPC } from '../lib/trpc';
 import seekerPhoto from '../assets/room-survey.webp';
 import ownerPhoto from '../assets/room-living.webp';
 import '../styles/auth-page.css';
@@ -54,7 +58,13 @@ export const AuthPage: React.FC = () => {
   const [params, setParams] = useSearchParams();
   const { me, isLoading } = useSession();
   const { refreshSession } = useAuthActions();
+  const trpc = useTRPC();
+  const acceptTerms = useMutation(trpc.auth.acceptTerms.mutationOptions());
   const [stored] = useState(() => readSignup());
+  const [needsTerms, setNeedsTerms] = useState(false);
+  const [termsChecked, setTermsChecked] = useState(false);
+  const [termsError, setTermsError] = useState<string | null>(null);
+  const [termsSaving, setTermsSaving] = useState(false);
 
   const urlStep = Math.max(0, Math.floor(Number(params.get('langkah'))) || 0);
   const role: AuthRole = (params.get('peran') ?? (urlStep > 0 && stored.role === 'owner' ? 'pemilik' : '')) === 'pemilik' ? 'owner' : 'seeker';
@@ -62,7 +72,14 @@ export const AuthPage: React.FC = () => {
   // "Kembali" must never land on a page that bounces straight back here: the owner workspace is behind OwnerGuard,
   // so a visitor sent from it goes home instead (F-08).
   const backTo = OWNER_WORKSPACE.test(next) ? '/' : next;
-  const steps = role === 'owner' ? OWNER_STEPS : STUDENT_STEPS;
+  const baseSteps = role === 'owner' ? OWNER_STEPS : STUDENT_STEPS;
+  // A KTM under review (or sent back) is not "done": step 3 stays current and says so (SIM-030).
+  const svState = me?.studentVerification.state;
+  const steps: { id: string; label: string; status?: 'done' | 'current' | 'pending'; caption?: string }[] =
+    role === 'seeker' && me && !me.campusVerified && (svState === 'PENDING' || svState === 'REJECTED')
+      ? baseSteps.map((s) => (s.id === 'mahasiswa' ? { ...s, status: 'current' as const, caption: svState === 'PENDING' ? 'Menunggu pemeriksaan' : 'Perlu diperbaiki' } : s))
+      : baseSteps;
+  const toCheckout = next.startsWith('/checkout/');
   const doneIdx = steps.length + 1;
 
   // Furthest step reached (1-based). Server state raises it; a vanished session caps it at the code step.
@@ -131,8 +148,19 @@ export const AuthPage: React.FC = () => {
   /** Owner resume point for a signed-in account: no OwnerProfile yet is step 3, documents not sent is step 4. Demo accounts never resume. */
   const ownerResume = (m: NonNullable<typeof me>): number | null => (m.user.isDemo ? null : !m.isOwner ? 3 : m.ownerStatus === 'BELUM_KIRIM' ? 4 : null);
 
+  /** Proceed after an already-signed-in arrival (or after recording Terms acceptance for a Google sign-in). */
+  const proceedSignedIn = (m: NonNullable<typeof me>) => {
+    const resume = role === 'owner' ? ownerResume(m) : null;
+    if (resume) {
+      reach(resume);
+      go(resume, 'replace');
+    } else if (!(role === 'seeker' && urlStep >= 3) && urlStep !== doneIdx) {
+      navigate(m.isOwner && !/^\/owner(\/|$)/.test(next) ? '/owner/dashboard' : next, { replace: true });
+    }
+  };
+
   // Someone who arrives already signed in (or back from a successful Google trip) goes straight on, unless the server
-  // says they are mid sign-up. Signing in through the form is handled by onDone, so only the first answer counts.
+  // says they are mid sign-up or still need to accept the current Terms. Signing in through the form is handled by onDone.
   const arrivedSignedIn = useRef<boolean | null>(null);
   const arrivalHandled = useRef(false);
   useEffect(() => {
@@ -149,13 +177,31 @@ export const AuthPage: React.FC = () => {
       }
     }
     if (!arrivedSignedIn.current || !me) return;
-    const resume = role === 'owner' ? ownerResume(me) : null;
-    if (resume) {
-      reach(resume);
-      go(resume, 'replace');
-    } else if (!(role === 'seeker' && urlStep >= 3) && urlStep !== doneIdx) {
-      navigate(me.isOwner && next === '/' ? '/owner/dashboard' : next, { replace: true });
+    const pendingTerms = readPendingGoogleTerms();
+    clearGoogleRoundTrip();
+    if (!me.user.isDemo && !me.termsCurrent) {
+      if (pendingTerms === me.termsVersion) {
+        setTermsSaving(true);
+        void acceptTerms
+          .mutateAsync({ version: me.termsVersion })
+          .then(async () => {
+            await refreshSession();
+            setTermsSaving(false);
+            proceedSignedIn(me);
+          })
+          .catch((err) => {
+            setTermsSaving(false);
+            setTermsError(messageForError(err));
+            setNeedsTerms(true);
+          });
+        return;
+      }
+      if (urlStep === 0) {
+        setNeedsTerms(true);
+        return;
+      }
     }
+    proceedSignedIn(me);
   }, [isLoading, me]); // eslint-disable-line react-hooks/exhaustive-deps -- decided once, on the first answer
 
   // Signing out clears the draft.
@@ -166,6 +212,7 @@ export const AuthPage: React.FC = () => {
       wasSignedIn.current = false;
       clearSignup();
       clearKtmDraft();
+      clearPendingGoogleTerms();
     }
   }, [me]);
 
@@ -176,7 +223,10 @@ export const AuthPage: React.FC = () => {
       firstStep.current = false;
       return;
     }
-    document.querySelector<HTMLElement>('.auth-shell__panel [data-step-heading]')?.focus();
+    // A step that opens on an input (the email code) puts focus there; every other step focuses its heading.
+    const panel = document.querySelector<HTMLElement>('.auth-shell__panel');
+    const target = panel?.querySelector<HTMLElement>('[autofocus], [data-autofocus]') ?? panel?.querySelector<HTMLElement>('[data-step-heading]');
+    target?.focus();
   }, [step]);
 
   // Completion: nothing left to resume.
@@ -208,15 +258,51 @@ export const AuthPage: React.FC = () => {
   const inSignup = step >= 1;
   const heading = (text: string, sub?: string) => (
     <div>
-      <h1 className="auth-title" tabIndex={-1} data-step-heading>{text}</h1>
+      <h1 id="auth-step-heading" className="auth-title" tabIndex={-1} data-step-heading>{text}</h1>
       {sub && <p className="auth-step__muted" style={{ textAlign: 'center', marginTop: '0.35rem' }}>{sub}</p>}
     </div>
   );
   const resumeStep = Math.min(Math.max(furthest, 3), steps.length);
 
   let body: React.ReactNode;
-  if (isLoading && urlStep >= 3) {
+  if (termsSaving || (isLoading && urlStep >= 3)) {
     body = <p role="status" className="auth-step__muted">Memuat…</p>;
+  } else if (me && needsTerms) {
+    body = (
+      <form
+        className="auth-step"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (!termsChecked || acceptTerms.isPending) return;
+          setTermsError(null);
+          try {
+            await acceptTerms.mutateAsync({ version: me.termsVersion });
+            await refreshSession();
+            setNeedsTerms(false);
+            proceedSignedIn(me);
+          } catch (err) {
+            setTermsError(messageForError(err));
+          }
+        }}
+      >
+        {heading('Setujui Syarat dan Ketentuan', 'Lengkapi persetujuan ini satu kali untuk melanjutkan dengan akun Google Anda.')}
+        <div className="auth-step__card">
+          {termsError && <Notice tone="error">{termsError}</Notice>}
+          <label className="auth-step__consent">
+            <input type="checkbox" checked={termsChecked} onChange={(e) => setTermsChecked(e.target.checked)} />
+            <span>
+              Saya menyetujui{' '}
+              <Link to="/syarat" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Syarat dan Ketentuan</Link>
+              {' '}dan{' '}
+              <Link to="/privasi" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>Kebijakan Privasi</Link>.
+            </span>
+          </label>
+          <Button type="submit" variant="primary" fullWidth isLoading={acceptTerms.isPending} disabled={!termsChecked || acceptTerms.isPending}>
+            Setuju & Lanjutkan
+          </Button>
+        </div>
+      </form>
+    );
   } else if (me && step === doneIdx) {
     if (role === 'owner') {
       const submitted = me.isOwner && me.ownerStatus !== 'BELUM_KIRIM';
@@ -237,14 +323,14 @@ export const AuthPage: React.FC = () => {
         <div className="auth-step" data-testid="signup-done">
           {heading(me.campusVerified ? 'Status mahasiswa terverifikasi' : 'Akun Anda siap')}
           {me.campusVerified ? (
-            <Button variant="primary" fullWidth onClick={() => navigate(searchTarget(next), { replace: true })}>Cari kos</Button>
+            <Button variant="primary" fullWidth onClick={() => navigate(searchTarget(next), { replace: true })}>{toCheckout ? 'Lanjutkan pengajuan' : 'Cari kos'}</Button>
           ) : sv.state === 'PENDING' ? (
             <StudentPendingCard slaText={sv.slaText} next={next} />
           ) : (
             <>
               <p className="auth-step__muted" style={{ textAlign: 'center' }}>Anda bisa mencari kos sekarang. Mengajukan sewa butuh verifikasi mahasiswa.</p>
               <Button variant="primary" fullWidth onClick={() => navigate(`/profile?next=${encodeURIComponent(next)}`, { replace: true })}>Verifikasi nanti di Profil</Button>
-              <Button variant="outline" fullWidth onClick={() => navigate(searchTarget(next), { replace: true })}>Cari kos</Button>
+              <Button variant="outline" fullWidth onClick={() => navigate(searchTarget(next), { replace: true })}>{toCheckout ? 'Lanjutkan pengajuan' : 'Cari kos'}</Button>
             </>
           )}
         </div>
@@ -255,7 +341,7 @@ export const AuthPage: React.FC = () => {
     body =
       id === 'mahasiswa' ? (
         <div className="auth-step">
-          {heading('Verifikasi status mahasiswa', 'Opsional. Verifikasi diperlukan untuk mengajukan sewa; Anda bisa melakukannya nanti di Profil.')}
+          {heading('Verifikasi status mahasiswa', 'Verifikasi diperlukan saat mengajukan sewa. Anda bisa melakukannya sekarang atau nanti di Profil.')}
           <StudentVerifyStep next={next} onContinue={() => advance(doneIdx)} onLater={studentLater} />
         </div>
       ) : id === 'pemilik' ? (
@@ -354,7 +440,14 @@ export const AuthPage: React.FC = () => {
             </Link>
           </div>
           {/* The role is fixed once the code step is reached: the steps differ per role. */}
-          <div className="kobo-segmented auth-page__role" data-role={role} role="group" aria-label="Masuk sebagai">
+          <div
+            className="kobo-segmented auth-page__role"
+            data-role={role}
+            data-locked={step >= 2 ? 'true' : undefined}
+            aria-disabled={step >= 2 ? 'true' : undefined}
+            role="group"
+            aria-label="Masuk sebagai"
+          >
             <button type="button" aria-pressed={role === 'seeker'} disabled={step >= 2} onClick={() => setRole('seeker')}>Mahasiswa</button>
             <button type="button" aria-pressed={role === 'owner'} disabled={step >= 2} onClick={() => setRole('owner')}>Pemilik kos</button>
           </div>
