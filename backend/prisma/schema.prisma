@@ -244,9 +244,17 @@ enum RentalApplicationStatus {
   WITHDRAWN
 }
 
+enum ApplicationDecisionReason {
+  KAMAR_TIDAK_TERSEDIA
+  MEMILIH_PENGAJU_LAIN
+  TANGGAL_TIDAK_COCOK
+  LAINNYA
+}
+
 enum InvoiceStatus {
   UNPAID
   PAID
+  WAIVED
 }
 
 enum PaymentProvider {
@@ -560,6 +568,8 @@ model RentalApplication {
   program        String?
   semester       Int?
   note           String?
+  decisionReason ApplicationDecisionReason?
+  decisionNote   String?
   tenancyId      String?                 @unique
   tenancy        Tenancy?                @relation(fields: [tenancyId], references: [id], onDelete: SetNull)
   waitlistEntry  WaitlistEntry?
@@ -584,6 +594,9 @@ model Invoice {
   ownerReceivableAmount Int
   gatewayFeeBearer      GatewayFeeBearer
   status                InvoiceStatus    @default(UNPAID)
+  waivedAt              DateTime?        @db.Timestamptz(3)
+  waivedById            String?
+  waiverReason          String?
 
   payments      Payment[]
   notifications NotificationLog[]
