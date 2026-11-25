@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BadgeCheck, LogIn, Users } from 'lucide-react';
+import { BadgeCheck, Inbox, LogIn, MessageCircle, Search, Settings, UserRound, Users, type LucideIcon } from 'lucide-react';
 import { ButtonLink } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
 import { ErrorState } from '../ui/QueryState';
@@ -13,12 +13,13 @@ import '../../styles/matching.css';
 
 export type MatchingTab = 'cari' | 'permintaan' | 'pesan' | 'profil' | 'pengaturan';
 
-const TABS: { id: MatchingTab; to: string; label: string; }[] = [
-  { id: 'cari', to: MATCH_BASE, label: 'Cari' },
-  { id: 'permintaan', to: `${MATCH_BASE}/permintaan`, label: 'Permintaan' },
-  { id: 'pesan', to: `${MATCH_BASE}/pesan`, label: 'Pesan' },
-  { id: 'profil', to: `${MATCH_BASE}/profil`, label: 'Profil' },
-  { id: 'pengaturan', to: `${MATCH_BASE}/pengaturan`, label: 'Pengaturan' },
+/** `short` is the label on phones (the full `label` stays for screen readers); the icon only shows on phones. */
+const TABS: { id: MatchingTab; to: string; label: string; short?: string; Icon: LucideIcon }[] = [
+  { id: 'cari', to: MATCH_BASE, label: 'Cari', Icon: Search },
+  { id: 'permintaan', to: `${MATCH_BASE}/permintaan`, label: 'Permintaan', Icon: Inbox },
+  { id: 'pesan', to: `${MATCH_BASE}/pesan`, label: 'Pesan', Icon: MessageCircle },
+  { id: 'profil', to: `${MATCH_BASE}/profil`, label: 'Profil', Icon: UserRound },
+  { id: 'pengaturan', to: `${MATCH_BASE}/pengaturan`, label: 'Pengaturan', short: 'Atur', Icon: Settings },
 ];
 
 const EXPLAINER =
@@ -42,7 +43,7 @@ export const MatchingGate: React.FC<{ kind: 'signed-out' | 'unverified' }> = ({ 
     <MatchEmptyState
       icon={<BadgeCheck size={40} />}
       title="Verifikasi status mahasiswa dulu"
-      actions={<ButtonLink to="/profile" variant="primary" icon={<BadgeCheck size={16} />}>Verifikasi status mahasiswa</ButtonLink>}
+      actions={<ButtonLink to="/profile/verifikasi" variant="primary" icon={<BadgeCheck size={16} />}>Verifikasi status mahasiswa</ButtonLink>}
     >
       {EXPLAINER} Fitur ini hanya untuk mahasiswa terverifikasi supaya tiap profil nyata dan satu kampus dengan kamu.
     </MatchEmptyState>
@@ -93,7 +94,13 @@ export const MatchingShell: React.FC<{ active: MatchingTab; title: string; lead?
             const n = counts[t.id] ?? 0;
             return (
               <Link key={t.id} to={t.to} className="mt-nav__link" aria-current={t.id === active ? 'page' : undefined}>
-                {t.label}
+                <t.Icon size={18} className="mt-nav__icon" aria-hidden="true" />
+                {t.short ? (
+                  <>
+                    <span className="mt-nav__long">{t.label}</span>
+                    <span className="mt-nav__short" aria-hidden="true">{t.short}</span>
+                  </>
+                ) : t.label}
                 {n > 0 && <span className="mt-count" aria-label={`${n} belum dibaca`}>{n > 99 ? '99+' : n}</span>}
               </Link>
             );

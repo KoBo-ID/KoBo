@@ -23,7 +23,7 @@ const NEAR_BOTTOM_PX = 80;
 
 const endedNotice = (c: PartnerConnectionView): string =>
   c.endReason === 'BLOCKED'
-    ? 'Obrolan ini hanya bisa dibaca karena salah satu pihak diblokir.'
+    ? 'Kamu sudah memblokir pengguna ini. Obrolan hanya bisa dibaca.'
     : c.endReason === 'PROFILE_DELETED'
       ? 'Obrolan ini hanya bisa dibaca karena profil lawan bicara sudah dihapus.'
       : 'Koneksi ini sudah berakhir, jadi obrolan hanya bisa dibaca.';
@@ -157,7 +157,7 @@ export const ChatThread: React.FC<{ connection: PartnerConnectionView }> = ({ co
           {live && <Link to={`${MATCH_BASE}/kos/${id}`} className="mc-link">Cari kos bersama</Link>}
           {live && <Button size="sm" variant="outline" onClick={() => { setEndError(null); setEndOpen(true); }}>Akhiri koneksi</Button>}
           {profileId && <Button size="sm" variant="ghost" icon={<Flag size={14} />} onClick={() => setReport({})}>Laporkan</Button>}
-          {profileId && <BlockButton profileId={profileId} displayName={partner.displayName} variant="ghost" />}
+          {profileId && connection.endReason !== 'BLOCKED' && <BlockButton profileId={profileId} displayName={partner.displayName} variant="ghost" />}
         </div>
       </header>
 

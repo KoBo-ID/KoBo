@@ -186,6 +186,9 @@ export function toCandidate(mine: MatchingProfile, other: MatchingProfile, campu
 export async function campusNamesFor(db: Db, ids: (string | null)[]): Promise<Map<string, string>> {
   const uniq = [...new Set(ids.filter((x): x is string => !!x))]
   if (uniq.length === 0) return new Map()
-  const rows = await db.campus.findMany({ where: { id: { in: uniq } }, select: { id: true, name: true } })
-  return new Map(rows.map((r) => [r.id, r.name]))
+  const rows = await db.campus.findMany({ where: { id: { in: uniq } }, select: { id: true, name: true, parentId: true } })
+  const parentIds = [...new Set(rows.map((r) => r.parentId).filter((x): x is string => !!x))]
+  const parents = parentIds.length ? await db.campus.findMany({ where: { id: { in: parentIds } }, select: { id: true, name: true } }) : []
+  const parentMap = new Map(parents.map((p) => [p.id, p.name]))
+  return new Map(rows.map((r) => [r.id, (r.parentId && parentMap.get(r.parentId)) || r.name]))
 }

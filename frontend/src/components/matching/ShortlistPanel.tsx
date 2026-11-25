@@ -63,12 +63,22 @@ export const ShortlistPanel: React.FC<{ connectionId: string; live: boolean }> =
               <div className="mt-card__top">
                 <div style={{ minWidth: 0 }}>
                   <Link to={`/kos/${e.kosId}`} className="mt-card__name mc-link">{e.name}</Link>
-                  <div className="mt-card__sub">{e.district}, {e.city} · mulai {formatRupiah(e.priceFrom)} / kamar</div>
+                  <div className="mt-card__sub">
+                    {e.district}, {e.city}
+                    {e.shareable && ` · ${e.shareable.type} · ${formatRupiah(e.shareable.pricePerPerson ?? Math.round(e.shareable.priceMonthly / 2))} / orang (${formatRupiah(e.shareable.priceMonthly)} / kamar)`}
+                  </div>
                 </div>
               </div>
-              <p className="mt-help">Ditambahkan oleh {e.addedBy}</p>
+              <p className={e.shareable ? 'mt-help' : 'mt-help mt-muted'}>
+                {e.shareable ? 'Bisa berdua' : 'Belum ada kamar kosong untuk berdua'}
+                {' · '}Ditambahkan oleh {e.addedBy === 'Kamu' ? 'kamu' : e.addedBy}
+              </p>
               <div className="mt-row">
-                <ButtonLink to={`/kos/${e.kosId}`} size="sm" variant="primary">Lamar kos ini</ButtonLink>
+                {e.shareable ? (
+                  <ButtonLink to={`/kos/${e.kosId}?room=${encodeURIComponent(e.shareable.roomId)}`} size="sm" variant="primary">Lamar kamar ini</ButtonLink>
+                ) : (
+                  <ButtonLink to={`/kos/${e.kosId}`} size="sm" variant="outline">Lihat kos</ButtonLink>
+                )}
                 {live && (
                   <Button
                     size="sm"

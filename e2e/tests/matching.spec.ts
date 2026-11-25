@@ -200,7 +200,7 @@ test('an unverified student gets the verify CTA', async ({ page, problems }) => 
   await signUpVerified(page, 'mt-unverified')
   await page.goto(MATCH)
   await expect(page.getByRole('heading', { name: 'Verifikasi status mahasiswa dulu' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Verifikasi status mahasiswa' })).toHaveAttribute('href', '/profile')
+  await expect(page.getByRole('link', { name: 'Verifikasi status mahasiswa' })).toHaveAttribute('href', '/profile/verifikasi')
   expectHttpErrors(problems, 403)
 })
 

@@ -40,7 +40,8 @@ export const formatKm = (km: number): string => `${km.toLocaleString('id-ID', { 
 
 /** ISO day of last activity as "Aktif hari ini" / "Aktif 3 hari lalu". */
 export function activeAgo(day: string, now: Date = new Date()): string {
-  const days = Math.max(0, Math.round((now.getTime() - new Date(`${day}T00:00:00+07:00`).getTime()) / 86_400_000));
+  // Whole calendar days since the start of that WIB day. Rounding made a profile active this afternoon read "1 hari lalu".
+  const days = Math.max(0, Math.floor((now.getTime() - new Date(`${day}T00:00:00+07:00`).getTime()) / 86_400_000));
   return days === 0 ? 'Aktif hari ini' : `Aktif ${days} hari lalu`;
 }
 

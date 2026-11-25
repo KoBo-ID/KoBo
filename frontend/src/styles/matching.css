@@ -83,7 +83,9 @@
 .mt-reasons label:has(input:checked) { border-color: var(--primary); background: var(--primary-light); }
 .mt-reasons input { margin-top: 0.2rem; accent-color: var(--primary); }
 .mt-switch { display: flex; align-items: center; justify-content: space-between; gap: var(--space-s); }
-.mt-switch__text { min-width: 0; }
+.mt-switch__text { min-width: 0; flex: 1 1 0; }
+.mt-stack > .mt-card, .mt-stack > section { flex: none; }
+.mt-req { color: var(--status-overdue-text); margin-inline-start: 0.15rem; }
 .mt-switch input { width: 1.4rem; height: 1.4rem; flex: none; accent-color: var(--primary); cursor: pointer; }
 .mt-list { display: flex; flex-direction: column; gap: 0; margin: 0; padding: 0; list-style: none; }
 .mt-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-xs); padding: var(--space-xs) 0; border-top: 1px solid var(--border-subtle); min-width: 0; }
@@ -105,7 +107,22 @@
   .mt-nav__link { padding: 0 0.65rem; }
 }
 
+.mt-nav__icon, .mt-nav__short { display: none; }
+
 @media (width < 40rem) {
+  /* Five equal tabs, icon above a short label, no horizontal scroller. */
+  .mt-nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); overflow: visible; padding: 3px; padding-inline-end: 3px; box-shadow: none; }
+  .mt-nav__link { position: relative; flex-direction: column; justify-content: center; gap: 2px; height: auto; min-height: 44px; padding: 4px 2px; font-size: var(--step--1); text-align: center; min-width: 0; }
+  .mt-nav__icon { display: block; }
+  .mt-nav__short { display: inline; }
+  .mt-nav__long { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .mt-nav .mt-count { position: absolute; top: 1px; right: 4px; min-width: 1rem; height: 1rem; padding: 0 0.2rem; }
   .mt-form { grid-template-columns: minmax(0, 1fr); }
   .mt-title { font-size: var(--step-2); }
+}
+
+@media (width < 22rem) {
+  .mt-nav { padding: 2px; gap: 0; }
+  .mt-nav__link { font-size: var(--step--2); padding-inline: 0; overflow: hidden; }
+  .mt-nav__link[aria-current='page'] { font-weight: 600; }
 }

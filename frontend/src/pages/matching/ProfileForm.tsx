@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
+import { useAppStore } from '../../store/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { LIFESTYLE_LABEL, LIFESTYLE_VALUES, LIFESTYLE_VALUE_LABEL, MIN_MATCH_AGE, containsContactInfo } from '@kobo/shared/domain';
@@ -74,13 +75,13 @@ function validateCore(d: Draft, now: Date = new Date()): Errors {
 
 const Choices: React.FC<{
   legend: string; name: string; value: string | number | null; options: { value: string | number; label: string }[];
-  onChange: (v: string) => void; error?: string; help?: string;
-}> = ({ legend, name, value, options, onChange, error, help }) => (
+  onChange: (v: string) => void; error?: string; help?: string; required?: boolean;
+}> = ({ legend, name, value, options, onChange, error, help, required }) => (
   <fieldset className="mt-choices" aria-describedby={error || help ? `${name}-note` : undefined}>
-    <legend>{legend}</legend>
+    <legend>{legend}{required && <span className="mt-req" aria-hidden="true"> *</span>}</legend>
     {options.map((o) => (
       <label key={o.value} className="mt-choice">
-        <input type="radio" name={name} value={o.value} checked={String(value) === String(o.value)} onChange={() => onChange(String(o.value))} />
+        <input type="radio" name={name} value={o.value} aria-required={required ? true : undefined} checked={String(value) === String(o.value)} onChange={() => onChange(String(o.value))} />
         <span>{o.label}</span>
       </label>
     ))}
@@ -118,6 +119,14 @@ const FormBody: React.FC = () => {
   const [saved, setSaved] = useState<string | null>(null);
   const [anchorText, setAnchorText] = useState(existing?.anchorLabel ?? '');
   const textRef = useRef(anchorText);
+  const { addToast } = useAppStore();
+  // Saving swaps the form for the shorter second step; keep the reader's scroll position instead of jumping to the end.
+  const scrollKeep = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (scrollKeep.current === null) return;
+    window.scrollTo({ top: scrollKeep.current, behavior: 'instant' });
+    scrollKeep.current = null;
+  }, [step]);
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => { setDraft((d) => ({ ...d, [key]: value })); setSaved(null); };
 
   const gender = draft.gender;
@@ -156,8 +165,16 @@ const FormBody: React.FC = () => {
     if (Object.keys(found).length) return;
     const data = payload();
     if (!data) return;
+    const keepY = window.scrollY;
     upsert.mutate(data, {
-      onSuccess: () => { void invalidate(); setSaved('Profilmu aktif. Lengkapi preferensi supaya skornya lebih akurat, atau lewati.'); setFurthest(1); setStep(1); },
+      onSuccess: () => {
+        void invalidate();
+        addToast('Profil disimpan.', 'success');
+        setSaved('Profilmu aktif. Lengkapi preferensi supaya skornya lebih akurat, atau lewati.');
+        setFurthest(1);
+        scrollKeep.current = keepY;
+        setStep(1);
+      },
     });
   };
 
@@ -178,7 +195,7 @@ const FormBody: React.FC = () => {
       return;
     }
     setErrors({});
-    upsert.mutate(data, { onSuccess: () => { void invalidate(); navigate(MATCH_BASE); } });
+    upsert.mutate(data, { onSuccess: () => { void invalidate(); addToast('Profil disimpan.', 'success'); navigate(MATCH_BASE); } });
   };
 
   const onAnchorText = (text: string) => {
@@ -245,7 +262,7 @@ const FormBody: React.FC = () => {
             {errors.moveInDate && <span className="mt-error" role="alert">{errors.moveInDate}</span>}
           </div>
           <div className="mt-form__full">
-            <Choices legend="Merokok" name="smoking" value={draft.smoking} error={errors.smoking}
+            <Choices legend="Merokok" name="smoking" required value={draft.smoking} error={errors.smoking}
               help="Dipakai sebagai penyaring: perokok tidak dipasangkan dengan yang menolak teman perokok."
               options={LIFESTYLE_VALUES.smoking.map((v) => ({ value: v, label: LIFESTYLE_VALUE_LABEL.smoking[v] }))}
               onChange={(v) => set('smoking', v as SmokingValue)} />

@@ -1,7 +1,8 @@
 // Shared kos shortlist of a connection, and "Cari kos bersama" candidates near the midpoint of the two anchors.
 import { haversineMeters } from '@kobo/shared/domain'
-import type { KosCandidate, SharedShortlistEntry } from '@kobo/shared/types'
+import type { KosCandidate, SharedShortlistEntry, ShortlistShareableRoom } from '@kobo/shared/types'
 import { TRPCError } from '@trpc/server'
+import { demoIsolationOn } from '../demoIsolation.ts'
 import type { Kos, PartnerConnection, Prisma, Room } from '../generated/prisma/client.ts'
 import { isBlockedEither } from './eligibility.ts'
 import { partnerName, partnerUserId, requireMyConnection } from './messages.ts'
@@ -26,12 +27,70 @@ async function requireLive(db: Db, me: string, connectionId: string): Promise<Pa
 
 const lowest = (rooms: Pick<Room, 'priceMonthly'>[]): number => (rooms.length ? Math.min(...rooms.map((r) => r.priceMonthly)) : 0)
 
+type FitRoom = Pick<Room, 'priceMonthly' | 'pricePerPersonMonthly' | 'maxOccupants'>
+interface Fit {
+  total: number
+  price: number
+  unit: KosCandidate['priceUnit']
+}
+
+/**
+ * Single definition of a shareable room (maxOccupants >= 2) and its pair cost (per-person x2 when set, else monthly rent),
+ * reused by both kosCandidates (KosCandidateCard) and listShortlist (SIM-010).
+ */
+function shareableCost(r: FitRoom): Fit | null {
+  if (r.maxOccupants < 2) return null
+  const perPerson = r.pricePerPersonMonthly
+  return perPerson ? { total: perPerson * 2, price: perPerson, unit: 'PER_ORANG' } : { total: r.priceMonthly, price: r.priceMonthly, unit: 'PER_KAMAR' }
+}
+
+/** Cheapest vacant shareable room (maxOccupants >= 2) in a kos, or null if none is available. */
+function cheapestShareable(
+  rooms: (Pick<Room, 'id' | 'type' | 'priceMonthly' | 'pricePerPersonMonthly' | 'maxOccupants' | 'occupancy'> & { tenancies: { id: string }[] })[],
+): ShortlistShareableRoom | null {
+  let best: { room: (typeof rooms)[number]; total: number } | null = null
+  for (const r of rooms) {
+    if (r.occupancy !== 'VACANT' || r.tenancies.length > 0) continue
+    const cost = shareableCost(r)
+    if (!cost) continue
+    if (!best || cost.total < best.total || (cost.total === best.total && r.id < best.room.id)) {
+      best = { room: r, total: cost.total }
+    }
+  }
+  if (!best) return null
+  return {
+    roomId: best.room.id,
+    type: best.room.type,
+    pricePerPerson: best.room.pricePerPersonMonthly,
+    priceMonthly: best.room.priceMonthly,
+    maxOccupants: best.room.maxOccupants,
+  }
+}
+
 export async function listShortlist(db: Db, me: string, connectionId: string): Promise<ShortlistEntry[]> {
   const conn = await requireMyConnection(db, me, connectionId)
+  const now = new Date()
   const items = await db.sharedShortlistItem.findMany({
     where: { connectionId: conn.id, kos: publicKosWhere },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    include: { kos: { include: { rooms: { where: { archivedAt: null }, select: { priceMonthly: true } } } } },
+    include: {
+      kos: {
+        include: {
+          rooms: {
+            where: { archivedAt: null },
+            select: {
+              id: true,
+              type: true,
+              priceMonthly: true,
+              pricePerPersonMonthly: true,
+              maxOccupants: true,
+              occupancy: true,
+              tenancies: { where: { OR: [{ status: 'ACTIVE' }, { status: 'PENDING', expiresAt: { gt: now } }] }, select: { id: true }, take: 1 },
+            },
+          },
+        },
+      },
+    },
   })
   const name = await partnerName(db, partnerUserId(conn, me))
   return items.map((i) => ({
@@ -41,6 +100,7 @@ export async function listShortlist(db: Db, me: string, connectionId: string): P
     city: i.kos.city,
     district: i.kos.district,
     priceFrom: lowest(i.kos.rooms),
+    shareable: cheapestShareable(i.kos.rooms),
     addedByMe: i.addedById === me,
     addedBy: i.addedById === me ? 'Kamu' : name,
     createdAt: i.createdAt.toISOString(),
@@ -76,19 +136,10 @@ export async function applicationNoteFor(db: Db, me: string, connectionId: strin
   return { note: `Calon teman sekamar: ${await partnerName(db, partnerUserId(conn, me))}` }
 }
 
-type FitRoom = Pick<Room, 'priceMonthly' | 'pricePerPersonMonthly' | 'maxOccupants'>
-interface Fit {
-  total: number
-  price: number
-  unit: KosCandidate['priceUnit']
-}
-
 /** What a room costs the pair, or null when it does not fit. Shared rooms use the per-person price (x2) when the owner set one. */
 function shareableFit(r: FitRoom, combined: number): Fit | null {
-  if (r.maxOccupants < 2) return null
-  const perPerson = r.pricePerPersonMonthly
-  const f: Fit = perPerson ? { total: perPerson * 2, price: perPerson, unit: 'PER_ORANG' } : { total: r.priceMonthly, price: r.priceMonthly, unit: 'PER_KAMAR' }
-  return f.total <= combined ? f : null
+  const f = shareableCost(r)
+  return f && f.total <= combined ? f : null
 }
 const unknownFit = (r: FitRoom, combined: number): Fit | null =>
   r.maxOccupants < 2 && r.priceMonthly <= combined ? { total: r.priceMonthly, price: r.priceMonthly, unit: 'PER_KAMAR' } : null
@@ -97,9 +148,10 @@ const cheapest = (fits: Fit[]): Fit => fits.reduce((a, b) => (b.total < a.total 
 
 export async function kosCandidates(db: Db, me: string, connectionId: string): Promise<KosCandidate[]> {
   const conn = await requireMyConnection(db, me, connectionId)
-  const [a, b] = await Promise.all([
+  const [a, b, viewer] = await Promise.all([
     db.matchingProfile.findUnique({ where: { userId: conn.userAId } }),
     db.matchingProfile.findUnique({ where: { userId: conn.userBId } }),
+    db.user.findUnique({ where: { id: me }, select: { isDemo: true } }),
   ])
   if (!a || !b) return []
 
@@ -110,11 +162,14 @@ export async function kosCandidates(db: Db, me: string, connectionId: string): P
   // Bounding box first (1 degree of latitude is about 111 km), exact distance after.
   const dLat = radiusM / 111_000
   const dLng = radiusM / (111_000 * Math.max(0.1, Math.cos((mid.lat * Math.PI) / 180)))
+  const ownerWhere: Prisma.KosWhereInput =
+    demoIsolationOn() && !viewer?.isDemo ? { owner: { verificationStatus: 'DISETUJUI', user: { isDemo: false } } } : publicKosWhere
 
   const [kosList, saved] = await Promise.all([
     db.kos.findMany({
       where: {
         ...publicKosWhere,
+        ...ownerWhere,
         gender: { in: kosGenders },
         lat: { gte: mid.lat - dLat, lte: mid.lat + dLat },
         lng: { gte: mid.lng - dLng, lte: mid.lng + dLng },
