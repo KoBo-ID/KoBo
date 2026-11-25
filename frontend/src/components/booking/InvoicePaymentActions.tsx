@@ -22,6 +22,7 @@ const TERMINAL = new Set(['PAID', 'EXPIRED', 'FAILED', 'REFUND_PENDING', 'REFUND
 const REFUND_REASON: Record<string, string> = {
   HOLD_EXPIRED: 'Pembayaran diterima setelah masa tahan berakhir.',
   INVOICE_ALREADY_PAID: 'Tagihan ini sudah lunas, jadi pembayaran kedua dikembalikan.',
+  INVOICE_WAIVED: 'Tagihan ini sudah dihapus oleh pemilik, jadi pembayaran dikembalikan.',
   TENANCY_ENDED: 'Sewa sudah berakhir sebelum pembayaran ini diterima.',
 };
 
@@ -171,7 +172,9 @@ export const InvoicePaymentActions: React.FC<{
   const checkId = awaiting ?? (active?.provider === 'XENDIT' && (active.status === 'PENDING' || active.status === 'CREATING') ? active.id : null);
 
   // After a Xendit return (or while any wait runs) "Periksa Status" is the main action and resuming is secondary (SIM-016).
-  const returnWait = Boolean(returnedPaymentId && returnedResult === 'success') || !!awaiting;
+  const isSuccessReturn = Boolean(returnedPaymentId && returnedResult === 'success');
+  const returnWait = isSuccessReturn || !!awaiting;
+  const pollingActive = Boolean(awaiting && polling && Date.now() - startedAt < POLL_WINDOW_MS);
 
   let message: React.ReactNode = null;
   if (refundState === 'REFUND_PENDING') message = `${why ?? 'Pembayaran Anda sedang dikembalikan.'} Dana sedang dikembalikan.`;
@@ -179,13 +182,13 @@ export const InvoicePaymentActions: React.FC<{
   else if (refundState === 'REFUND_FAILED') {
     message = (
       <>
-        {why ?? 'Pembayaran Anda perlu dikembalikan.'} Pengembalian dana tertunda.{' '}
+        {why ?? 'Pembayaran Anda perlu dikembalikan.'} Pengembalian dana gagal diproses.{' '}
         <a href={supportMailto(`Pengembalian dana ${lastAttempt?.id ?? ''}`.trim())} style={{ color: 'var(--primary)', fontWeight: 700 }}>Hubungi KoBo</a>
       </>
     );
   }
   else if (status.isError) message = 'Status pembayaran belum dapat dimuat. Periksa status untuk mencoba lagi.';
-  else if (awaiting && polling && Date.now() - startedAt < POLL_WINDOW_MS) message = 'Menunggu konfirmasi pembayaran…';
+  else if (pollingActive) message = isSuccessReturn ? 'Memeriksa status secara otomatis…' : 'Menunggu konfirmasi pembayaran…';
   else if (awaiting) message = 'Pembayaran belum terkonfirmasi. Periksa status untuk memastikan.';
   else if (lapsed && invoice.canPay) message = 'Sesi pembayaran sebelumnya berakhir. Silakan mulai pembayaran baru.';
   else if (lapsed && invoice.status !== 'PAID') message = 'Sesi pembayaran sebelumnya berakhir.';
@@ -195,6 +198,19 @@ export const InvoicePaymentActions: React.FC<{
       : 'Pembayaran belum terkonfirmasi. Coba periksa lagi sebentar lagi.';
   }
 
+  const showResume = invoice.status !== 'PAID' && !!resumeUrl && (!pollingActive || status.isError);
+  const showCheck = Boolean(checkId && (!pollingActive || status.isError));
+  const resumeBtn = showResume ? (
+    <Button key="resume" variant={returnWait ? 'outline' : 'primary'} size="sm" onClick={() => { const url = safeCheckoutUrl(resumeUrl!); if (url) window.location.assign(url); else setError('Tautan pembayaran tidak valid.'); }}>
+      Lanjutkan Pembayaran
+    </Button>
+  ) : null;
+  const checkBtn = showCheck ? (
+    <Button key="check" variant={returnWait ? 'primary' : 'outline'} size="sm" isLoading={reconcile.isPending} disabled={reconcile.isPending || cooldown > 0} onClick={() => check(checkId!)}>
+      {cooldown > 0 ? `Periksa Status (${cooldown} dtk)` : 'Periksa Status'}
+    </Button>
+  ) : null;
+
   return (
     <span className="invoice-pay">
       <span className="invoice-pay__actions">
@@ -203,15 +219,16 @@ export const InvoicePaymentActions: React.FC<{
             Bayar Sekarang
           </Button>
         )}
-        {invoice.status !== 'PAID' && resumeUrl && !awaiting && (
-          <Button variant={returnWait ? 'outline' : 'primary'} size="sm" onClick={() => { const url = safeCheckoutUrl(resumeUrl); if (url) window.location.assign(url); else setError('Tautan pembayaran tidak valid.'); }}>
-            Lanjutkan Pembayaran
-          </Button>
-        )}
-        {checkId && (!polling || status.isError || Date.now() - startedAt >= POLL_WINDOW_MS || !awaiting) && (
-          <Button variant={returnWait ? 'primary' : 'outline'} size="sm" isLoading={reconcile.isPending} disabled={reconcile.isPending || cooldown > 0} onClick={() => check(checkId)}>
-            {cooldown > 0 ? `Periksa Status (${cooldown} dtk)` : 'Periksa Status'}
-          </Button>
+        {returnWait ? (
+          <>
+            {checkBtn}
+            {resumeBtn}
+          </>
+        ) : (
+          <>
+            {resumeBtn}
+            {checkBtn}
+          </>
         )}
         {demoAttempt && (
           <Button variant="accent" size="sm" isLoading={simulate.isPending} onClick={() => simulate.mutate({ paymentId: demoAttempt.id })} icon={<CreditCard size={15} />}>

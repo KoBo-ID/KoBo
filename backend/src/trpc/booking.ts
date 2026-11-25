@@ -104,7 +104,7 @@ function endCause(t: { status: 'PENDING' | 'ACTIVE' | 'ENDED'; expiresAt: Date |
 /** Derives the student-facing billing state per invoice so MyKos never re-derives overdue vs not-billed vs waived. */
 function deriveBillingState(
   inv: { status: 'UNPAID' | 'PAID' | 'WAIVED'; dueDate: string },
-  tenancy: { status: 'PENDING' | 'ACTIVE' | 'ENDED'; cause: MyTenancy['endCause'] },
+  tenancy: { status: 'PENDING' | 'ACTIVE' | 'ENDED'; cause: MyTenancy['endCause']; endedAt: Date | null },
   today: string,
 ): InvoiceBillingState {
   if (inv.status === 'PAID') return 'PAID'
@@ -112,8 +112,9 @@ function deriveBillingState(
   if (tenancy.cause !== null) {
     // Unactivated holds (lapsed or cancelled before payment) were never billed.
     if (tenancy.cause !== 'MOVED_OUT') return 'NOT_BILLED'
-    // Ended active lease: past-due unpaid invoices remain OVERDUE; future unpaid months are NOT_BILLED.
-    return inv.dueDate <= today ? 'OVERDUE' : 'NOT_BILLED'
+    // Ended active lease: only invoices already due on or before the move-out WIB day stay OVERDUE; future unpaid months remain NOT_BILLED (REV1-008).
+    const cutoff = tenancy.endedAt ? todayWIB(tenancy.endedAt) : today
+    return inv.dueDate <= cutoff ? 'OVERDUE' : 'NOT_BILLED'
   }
   if (tenancy.status === 'ACTIVE' && inv.dueDate < today) return 'OVERDUE'
   return 'OWED'
@@ -267,7 +268,7 @@ export const bookingRouter = router({
           return {
             id: i.id,
             status: i.status,
-            billingState: deriveBillingState({ status: i.status, dueDate: due }, { status: t.status, cause }, today),
+            billingState: deriveBillingState({ status: i.status, dueDate: due }, { status: t.status, cause, endedAt: t.endedAt }, today),
             dueDate: due,
             amount: i.amount,
             waivedAt: i.waivedAt?.toISOString() ?? null,

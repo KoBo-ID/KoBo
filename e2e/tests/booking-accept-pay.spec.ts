@@ -187,7 +187,7 @@ test('full workflow: kos detail -> ajukan sewa -> owner accepts -> Xendit checko
       // Student returns with ?result=success -> client MUST wait and NOT claim payment before webhook.
       await student.page.getByRole('link', { name: 'Bayar (simulasi)' }).click()
       await student.page.waitForURL(/\/my-kos\?payment=.*&result=success/)
-      await expect(invoiceRow(student.page, 1).getByRole('status')).toHaveText('Menunggu konfirmasi pembayaran…')
+      await expect(invoiceRow(student.page, 1).getByRole('status')).toHaveText('Memeriksa status secara otomatis…')
       await expect(invoiceRow(student.page, 1)).toContainText('Menunggu konfirmasi') // SIM-016: replaces "Belum dibayar" while the returned payment is awaited
       await expect(invoiceRow(student.page, 1)).not.toContainText('Lunas')
     })
@@ -343,7 +343,7 @@ test('full workflow recovery: signed-out visitor -> sign-in redirect -> apply ->
     await test.step('4. Webhook is lost -> background sweep recovers from provider and live polling settles the UI', async () => {
       await visitor.page.getByRole('link', { name: 'Bayar (simulasi)' }).click()
       await visitor.page.waitForURL(/\/my-kos\?payment=.*&result=success/)
-      await expect(invoiceRow(visitor.page, 1).getByRole('status')).toHaveText('Menunggu konfirmasi pembayaran…')
+      await expect(invoiceRow(visitor.page, 1).getByRole('status')).toHaveText('Memeriksa status secara otomatis…')
       // Audit 2026-11-24 (SIM-016): while waiting for a returned payment the row status reads "Menunggu konfirmasi", not "Belum dibayar".
       await expect(invoiceRow(visitor.page, 1)).toContainText('Menunggu konfirmasi')
       await expect(invoiceRow(visitor.page, 1)).not.toContainText('Belum dibayar')

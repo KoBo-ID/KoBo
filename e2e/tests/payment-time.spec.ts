@@ -168,7 +168,7 @@ test('scenario 19: money that arrives after the hold lapsed is refunded, never t
   }
 })
 
-test('scenario 19: a refund the provider rejects leaves "Pengembalian dana tertunda. Hubungi KoBo."', async ({ browser, problems }) => {
+test('scenario 19: a refund the provider rejects leaves "Pengembalian dana gagal diproses. Hubungi KoBo."', async ({ browser, problems }) => {
   const held = await heldRoom(browser, { label: 'time-refundfail' })
   const { owner, student } = held
   watch(student.page, problems)
@@ -188,8 +188,8 @@ test('scenario 19: a refund the provider rejects leaves "Pengembalian dana tertu
     expect((await latestPayment(held.invoiceId)).status).toBe('REFUND_FAILED')
 
     await student.page.goto('/my-kos')
-    // Audit 2026-11-24 (SIM-003): "Hubungi KoBo" is now a real mailto link after the sentence.
-    const refundRow = student.page.getByTestId('tenancy-card').getByText('Pengembalian dana tertunda.')
+    // Audit 2026-11-24 (SIM-003 / REV1-007): "Hubungi KoBo" is a real mailto link, and student/owner both report refund failure.
+    const refundRow = student.page.getByTestId('tenancy-card').getByText('Pengembalian dana gagal diproses.')
     await expect(refundRow).toBeVisible()
     await expect(student.page.getByTestId('tenancy-card').getByRole('link', { name: 'Hubungi KoBo' })).toHaveAttribute('href', /^mailto:support@kobo\.rent\?subject=Pengembalian%20dana/)
     expect(await tenancyStatus(held.tenancyId)).not.toBe('ACTIVE')
@@ -243,14 +243,14 @@ test('scenario 20: after month 1 the months are in order, fall due, turn overdue
       await expect(boardRow(owner.page, room.roomNumber).getByText('Jatuh tempo', { exact: true })).toBeVisible()
     })
 
-    await test.step('five days later: Menunggak and Telat 3 hari', async () => {
+    await test.step('five days later: Menunggak and Terlambat 3 hari', async () => {
       await shiftDueDates(held.tenancyId, 5)
       await student.page.reload()
       await expect(card.getByText('Menunggak', { exact: true })).toBeVisible()
       await owner.page.reload()
       const row = boardRow(owner.page, room.roomNumber)
       await expect(row.getByText('Menunggak', { exact: true })).toBeVisible()
-      await expect(row.getByText('Telat 3 hari')).toBeVisible()
+      await expect(row.getByText('Terlambat 3 hari')).toBeVisible()
     })
 
     await test.step('the student pays month 2 with the simulator; month 3 stays open', async () => {

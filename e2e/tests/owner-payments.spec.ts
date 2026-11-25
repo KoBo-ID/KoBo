@@ -229,7 +229,7 @@ test('scenario 23: the billing reminder opens a WhatsApp message with the invoic
     await openBoard(owner.page, owner.kosId)
     const row = boardRow(owner.page, room.roomNumber)
     await expect(row.getByText('Menunggak', { exact: true })).toBeVisible()
-    await expect(row).toContainText(/Telat \d+ hari/)
+    await expect(row).toContainText(/Terlambat \d+ hari/)
     await row.getByRole('button', { name: `Kirim tagihan WhatsApp Kamar ${room.roomNumber}` }).click()
 
     const dialog = owner.page.getByRole('dialog')

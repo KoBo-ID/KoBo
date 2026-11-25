@@ -11,6 +11,7 @@ import { useTRPC } from '../lib/trpc';
 import { errorCode } from '../lib/queryErrors';
 import { isStudentGateError, messageForError } from '../lib/errors';
 import { VerifyPrompt } from '../components/booking/VerifyPrompt';
+import { DemoListingBanner } from '../components/kos/DemoListingBanner';
 import { Button, ButtonLink } from '../components/ui/Button';
 import { BackButton } from '../components/ui/BackButton';
 import { Input } from '../components/ui/Input';
@@ -131,7 +132,13 @@ const ApplicationForm: React.FC<{ kos: KosDetail; room: KosDetail['rooms'][numbe
         <p style={{ fontSize: 'var(--step-0)', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Kirim rencana sewa untuk ditinjau pemilik. Pembayaran baru tersedia setelah pengajuan diterima.</p>
       </div>
 
-      {!room ? (
+      {kos.demoBlocked ? (
+        <DemoListingBanner
+          mirror={!kos.isDemoListing}
+          campusId={me?.studentVerification.campusId ?? kos.nearestCampus?.id}
+          campusLabel={me?.studentVerification.campusName ?? kos.nearestCampus?.shortName}
+        />
+      ) : !room ? (
         <div style={{ ...card, textAlign: 'center', padding: '2.5rem 1.5rem' }} role="status" data-testid="checkout-pick-room">
           <h2 style={{ fontSize: 'var(--step-1)', fontWeight: 700 }}>Pilih kamar terlebih dahulu</h2>
           <p style={{ color: 'var(--text-muted)', margin: '0.4rem auto 1.25rem', maxWidth: '380px' }}>Pengajuan sewa dibuat untuk satu kamar. Buka halaman kos, pilih kamar yang kosong, lalu ajukan sewa.</p>

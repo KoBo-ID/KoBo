@@ -76,8 +76,8 @@ const COPY: Record<string, Copy> = {
     outro: 'Tautan ini berlaku satu jam. Jika bukan Anda yang meminta, abaikan email ini dan kata sandi Anda tetap aman.',
   },
   'payment-received': {
-    subject: 'Pembayaran diterima - KoBo',
-    intro: 'Pembayaran sewa kamar Anda sudah kami terima. Kuitansi digital Anda siap dilihat dan dicetak.',
+    subject: 'Pembayaran terverifikasi - KoBo',
+    intro: 'Pembayaran sewa kamar Anda sudah terverifikasi. Kuitansi digital Anda siap dilihat dan dicetak.',
     action: 'Lihat Kuitansi',
     outro: 'Simpan email ini sebagai bukti pembayaran. Tagihan bulan berikutnya tersedia di halaman Kos Saya.',
   },
@@ -182,8 +182,8 @@ function offerCopy(p: Partial<OfferPayload>): Copy | null {
   const deadline = deadlineWIB(p.expiresAt)
   if (!deadline) return null
   return {
-    subject: `Kamar di ${p.kosName} tersedia untukmu`,
-    intro: `Kabar baik: kamar ${p.roomNumber} di ${p.kosName} sekarang tersedia dan kami simpan khusus untukmu. Ajukan sewa sebelum ${deadline}. Tawaran ini ditahan selama pemilik meninjau pengajuan Anda; jika tidak ada pengajuan sampai batas itu, kamar ditawarkan ke pengantre berikutnya.`,
+    subject: `Kamar di ${p.kosName} tersedia untuk Anda`,
+    intro: `Kabar baik: kamar ${p.roomNumber} di ${p.kosName} sekarang tersedia dan kami simpan khusus untuk Anda. Ajukan sewa sebelum ${deadline}. Tawaran ini ditahan selama pemilik meninjau pengajuan Anda; jika tidak ada pengajuan sampai batas itu, kamar ditawarkan ke pengantre berikutnya.`,
     action: 'Ajukan Sewa',
     outro: 'Anda tidak perlu membalas email ini. Jika sudah tidak berminat, abaikan saja atau pilih Lewati di halaman kos.',
   }

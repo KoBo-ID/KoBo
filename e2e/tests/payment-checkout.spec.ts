@@ -86,8 +86,8 @@ test('returning with result=success only waits, then offers Periksa Status; it n
     'payment.status': (r) => r.fulfill(trpc({ ...payment(), invoiceId: 'inv-1', amount: 1_000_000, tenancyStatus: 'PENDING', refund: null })),
   })
   await page.goto('/my-kos?payment=pay-1&result=success')
-  await expect(page.getByText('Menunggu konfirmasi pembayaran')).toBeVisible()
-  // Audit 2026-11-24 (SIM-016): the row status reads "Menunggu konfirmasi" in place of "Belum dibayar" while the returned payment is awaited.
+  await expect(page.getByText('Memeriksa status secara otomatis…')).toBeVisible()
+  // Audit 2026-11-24 (SIM-016): the row status reads "Menunggu konfirmasi" in place of "Belum dibayar" without duplicating the wording.
   await expect(page.getByText('Menunggu konfirmasi', { exact: true })).toBeVisible()
   await expect(page.getByText('Belum dibayar')).toHaveCount(0)
   await page.clock.fastForward(65_000)

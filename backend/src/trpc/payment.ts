@@ -102,7 +102,9 @@ export const paymentRouter = router({
       const tenancy = await tx.tenancy.findUniqueOrThrow({ where: { id: invoice.tenancyId }, include: { invoices: { select: { id: true }, orderBy: [{ dueDate: 'asc' }, { id: 'asc' }], take: 1 } } })
       if (tenancy.status === 'ENDED') {
         const due = invoice.dueDate.toISOString().slice(0, 10)
-        const isEndedArrear = tenancy.expiresAt === null && due <= todayWIB(now)
+        // Only invoices already due on or before the move-out WIB day are kept arrears; post-move-out months are unbilled (REV1-008).
+        const cutoff = tenancy.endedAt ? todayWIB(tenancy.endedAt) : todayWIB(now)
+        const isEndedArrear = tenancy.expiresAt === null && due <= cutoff
         if (!isEndedArrear) throw new TRPCError({ code: 'CONFLICT', message: 'Sewa ini sudah berakhir.' })
       }
       if (tenancy.status === 'PENDING' && !(tenancy.invoices[0]?.id === invoice.id && tenancy.expiresAt && tenancy.expiresAt > now)) {

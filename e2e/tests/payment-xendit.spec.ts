@@ -44,7 +44,7 @@ test('scenario 11: the wait ends after a minute, Periksa Status has a cooldown, 
     await page.waitForURL(RETURN)
 
     await test.step('right after the return: waiting message, no Periksa Status, nothing claimed', async () => {
-      await expect(hint(page)).toHaveText('Menunggu konfirmasi pembayaran…')
+      await expect(hint(page)).toHaveText('Memeriksa status secara otomatis…')
       await expect(bulan1(page).getByRole('button', { name: 'Periksa Status' })).toHaveCount(0)
       await expect(bulan1(page)).not.toContainText('Lunas')
     })
