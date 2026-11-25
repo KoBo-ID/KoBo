@@ -161,8 +161,8 @@ const DetailView: React.FC<{ detail: KosDetail }> = ({ detail }) => {
         {detail.demoBlocked && (
           <DemoListingBanner
             mirror={!detail.isDemoListing}
-            campusId={me?.studentVerification.campusId}
-            campusLabel={me?.studentVerification.campusName}
+            campusId={me?.studentVerification.campusId ?? detail.nearestCampus?.id}
+            campusLabel={me?.studentVerification.campusName ?? detail.nearestCampus?.shortName}
           />
         )}
 

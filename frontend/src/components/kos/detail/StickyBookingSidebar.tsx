@@ -169,12 +169,12 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
           </span>
           {hasDiscount && affiliated && !!me && quote.discount > 0 && (
             <p data-testid="sidebar-price-eligible" style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: 'var(--accent-strong)', fontWeight: 600 }}>
-              Harga Anda: {formatRupiah(selectedRoom.priceMonthly - quote.discount)} / bulan ({DISCOUNT_LABEL}).
+              Bulan pertama Anda: {formatRupiah(selectedRoom.priceMonthly - quote.discount)} ({DISCOUNT_LABEL}).
             </p>
           )}
           {hasDiscount && !affiliated && !notAffiliated && (
             <p data-testid="sidebar-price-discount-hint" style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Mahasiswa kampus mitra hemat {formatRupiah(kos.studentDiscountAmount)} per bulan setelah verifikasi.
+              Mahasiswa kampus mitra hemat {formatRupiah(kos.studentDiscountAmount)} di bulan pertama setelah verifikasi.
             </p>
           )}
         </div>
@@ -256,7 +256,7 @@ export const StickyBookingSidebar: React.FC<StickyBookingSidebarProps> = ({
               <p role="status" style={{ margin: 0, fontSize: 'var(--step--1)', color: 'var(--text-main)', lineHeight: 1.5 }}>
                 Anda sudah mengajukan sewa kos ini. Pemilik sedang meninjau pengajuan Anda.
               </p>
-              <ButtonLink to="/my-kos" variant="primary" size="lg" fullWidth style={{ minHeight: '44px' }}>Lihat pengajuan</ButtonLink>
+              <ButtonLink to="/my-kos?tab=applications" variant="primary" size="lg" fullWidth style={{ minHeight: '44px' }}>Lihat pengajuan</ButtonLink>
             </div>
           )}
           {showBooking && !offerEntry && !hasPendingApplication && needsVerification && isVacant && (

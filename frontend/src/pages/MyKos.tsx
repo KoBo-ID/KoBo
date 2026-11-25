@@ -233,7 +233,12 @@ export const MyKos: React.FC = () => {
   const rawResult = searchParams.get('result');
   const returnedResult: 'success' | 'cancel' | null = rawResult === 'success' || rawResult === 'cancel' ? rawResult : null;
   const cancelToastShown = useRef<string | null>(null);
-  const [chosenTab, setActiveTab] = useState<TabId | null>(null);
+  const rawTab = searchParams.get('tab');
+  const urlTab: TabId | null = rawTab === 'visits' || rawTab === 'applications' || rawTab === 'rentals' ? rawTab : null;
+  const [chosenTab, setActiveTab] = useState<TabId | null>(urlTab);
+  useEffect(() => {
+    if (urlTab) setActiveTab(urlTab);
+  }, [urlTab]);
   const [reviewing, setReviewing] = useState<{ tenancyId: string; kosName: string; existing: MyReview | null } | null>(null);
 
   const mine = useQuery({ ...trpc.booking.mine.queryOptions(), enabled: !!me });
