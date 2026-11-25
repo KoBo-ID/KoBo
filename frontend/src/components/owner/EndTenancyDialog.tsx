@@ -144,8 +144,8 @@ export const EndTenancyDialog: React.FC<{
             />
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: 'var(--step--1)' }}>
               {reasonError ? (
-                <span id={reasonErrId} style={{ color: 'var(--status-overdue-text)', fontWeight: 500 }}>
-                  <span className="sr-only">Error: </span>{reasonError}
+                <span id={reasonErrId} role="alert" style={{ color: 'var(--status-overdue-text)', fontWeight: 500 }}>
+                  {reasonError}
                 </span>
               ) : <span />}
               <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginLeft: 'auto' }}>{reason.length}/{MAX_REASON}</span>

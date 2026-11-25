@@ -211,4 +211,50 @@ describe('[SIM-001] owner.tenancy.end, board formerTenantArrears, MyKos billingS
     // Month 1 Kuitansi remains untouched.
     expect((await callerFor(student.id).kuitansi.get({ receiptNo: firstPaid.receiptNumber })).status).toBe('PAID')
   })
+
+  it('[REV1-008] future unpaid months of an ended lease never turn into overdue debt, formerTenantArrears, or manual-payable invoices as time advances', async () => {
+    const startNow = new Date('2026-11-25T05:00:00Z') // 2026-11-25 12:00 WIB
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(startNow)
+
+    // Case A: cleanly ended lease (month 2 due in 10 days, month 3 due in 40 days -> 0 arrears at move-out).
+    const clean = await activeLeaseWithMonths({
+      now: startNow,
+      month2Due: '2026-12-05',
+      month3Due: '2027-01-04',
+    })
+    await clean.ownerCaller.owner.tenancy.end({ kosId: clean.k.kos.id, tenancyId: clean.tenancyId })
+
+    // Case B: lease ended with KEEP on month 2 (past due at move-out), while month 3 is still future.
+    const kept = await activeLeaseWithMonths({
+      now: startNow,
+      month2Due: '2026-11-20',
+      month3Due: '2026-12-20',
+    })
+    await kept.ownerCaller.owner.tenancy.end({ kosId: kept.k.kos.id, tenancyId: kept.tenancyId, arrears: 'KEEP' })
+
+    // Advance 45 days (2027-01-09 WIB): past BOTH month 2 and month 3 due dates for both tenancies.
+    vi.setSystemTime(new Date('2027-01-09T05:00:00Z'))
+
+    // Cleanly ended lease: months 2 and 3 remain NOT_BILLED, zero formerTenantArrears, recordManual refuses both.
+    const cleanMine = (await callerFor(clean.student.id).booking.mine()).find((t) => t.id === clean.tenancyId)!
+    expect(cleanMine.invoices.map((i) => i.billingState)).toEqual(['PAID', 'NOT_BILLED', 'NOT_BILLED'])
+    const cleanBoard = await clean.ownerCaller.owner.board({ kosId: clean.k.kos.id })
+    expect(cleanBoard.summary.formerTenantArrears).toEqual([])
+    expect(cleanBoard.summary.formerTenantArrearsTotal).toBe(0)
+    expect(cleanBoard.summary.overdueAmount).toBe(0)
+    expect((await err(clean.ownerCaller.payment.recordManual(await cash(clean.k.kos.id, clean.m2.id))))?.code).toBe('CONFLICT')
+    expect((await err(clean.ownerCaller.payment.recordManual(await cash(clean.k.kos.id, clean.m3.id))))?.code).toBe('CONFLICT')
+
+    // Kept-arrear lease: month 2 stays OVERDUE and in formerTenantArrears (recordable); month 3 stays NOT_BILLED and refused.
+    const keptMine = (await callerFor(kept.student.id).booking.mine()).find((t) => t.id === kept.tenancyId)!
+    expect(keptMine.invoices.map((i) => i.billingState)).toEqual(['PAID', 'OVERDUE', 'NOT_BILLED'])
+    const keptBoard = await kept.ownerCaller.owner.board({ kosId: kept.k.kos.id })
+    expect(keptBoard.summary.formerTenantArrears).toHaveLength(1)
+    expect(keptBoard.summary.formerTenantArrears[0]!.invoices.map((i) => i.invoiceId)).toEqual([kept.m2.id])
+    expect(keptBoard.summary.formerTenantArrearsTotal).toBe(kept.rent)
+    expect((await err(kept.ownerCaller.payment.recordManual(await cash(kept.k.kos.id, kept.m3.id))))?.code).toBe('CONFLICT')
+    const paidM2 = await kept.ownerCaller.payment.recordManual(await cash(kept.k.kos.id, kept.m2.id))
+    expect(paidM2.receiptNo).toMatch(/^KB\//)
+  })
 })

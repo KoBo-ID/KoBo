@@ -221,8 +221,10 @@ export const OwnerLayout: React.FC = () => {
 
         <main id="main" tabIndex={-1} className="os-main-content">
           {kosQuery.isPending ? (
-            <div role="status" aria-live="polite" className="os-status">
-              <span>Memuat properti Anda…</span>
+            <div role="status" aria-busy="true" aria-label="Memuat properti Anda" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-s)', paddingBlock: 'var(--space-s)' }}>
+              <Skeleton width="16rem" height="2rem" />
+              <Skeleton width="100%" height="7rem" borderRadius="var(--radius-card)" />
+              <Skeleton width="100%" height="12rem" borderRadius="var(--radius-card)" />
             </div>
           ) : kosQuery.isError ? (
             <ErrorState message="Gagal memuat properti Anda." onRetry={() => void kosQuery.refetch()} />

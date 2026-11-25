@@ -271,7 +271,7 @@ export const RoomOccupancyBoard: React.FC<RoomOccupancyBoardProps> = ({
                               <span className="kobo-table__num">{formatDueDate(room.invoice?.dueDate)}</span>
                               {late > 0 && (
                                 <div style={{ color: 'var(--status-overdue-text)', fontSize: 'var(--step--2)', fontWeight: 700 }}>
-                                  Telat {late} hari
+                                  Terlambat {late} hari
                                 </div>
                               )}
                             </>

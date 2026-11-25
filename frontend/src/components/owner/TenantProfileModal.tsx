@@ -36,7 +36,7 @@ export const TenantProfileModal: React.FC<{ target: Target; onClose: () => void 
           <div style={row}>
             <span style={label}>WhatsApp</span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-              {p.phone ? (<><Phone size={14} aria-hidden="true" />{p.phone}</>) : <span style={label}>Terbuka setelah disetujui</span>}
+              {p.phone ? (<><Phone size={14} aria-hidden="true" />{p.phone}</>) : <span style={label}>{p.accepted ? 'Belum diisi' : 'Terbuka setelah disetujui'}</span>}
             </span>
           </div>
           <div style={row}>

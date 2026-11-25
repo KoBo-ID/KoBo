@@ -297,4 +297,16 @@ describe('[SIM-002] N4 hold-expiring worker & [SIM-033] Indonesian reminder date
     expect(rendered!.html).toContain('26 November 2026')
     expect(rendered!.html).not.toContain('2026-11-26')
   })
+
+  it('[REV1-002] payment-received email uses "Pembayaran terverifikasi" and never implies KoBo holds funds', () => {
+    const rendered = renderEmail('payment-received', {
+      name: 'Dimas',
+      url: 'https://kobo.rent/kuitansi/12',
+    })
+    expect(rendered).not.toBeNull()
+    expect(rendered!.subject).toBe('Pembayaran terverifikasi - KoBo')
+    expect(rendered!.text).toContain('terverifikasi')
+    expect(rendered!.text).not.toContain('kami terima')
+    expect(rendered!.html).not.toContain('kami terima')
+  })
 })

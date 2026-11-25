@@ -56,6 +56,8 @@ test('SIM-001 end lease, KEEP: the debt stays on the board as "Tunggakan penyewa
     const former = owner.page.getByTestId('former-arrears-section')
     await expect(former).toContainText('Tunggakan penyewa lama')
     await expect(former).toContainText(`Kamar ${room.roomNumber}`)
+    // REV1-010: the sidebar "Papan okupansi" badge counts former-tenant arrears just like the "Perlu tindakan" tab.
+    await expect(owner.page.getByRole('navigation').getByRole('link', { name: /Papan okupansi/ }).first()).toContainText('1')
 
     await student.page.goto('/my-kos')
     const card = student.page.getByTestId('tenancy-card')
@@ -212,13 +214,90 @@ test('the tenant name on the owner board opens the tenant profile and the openin
   try {
     const before = await sql('SELECT id FROM "TenantProfileView" WHERE "kosId" = $1 AND "tenantUserId" = $2', [owner.kosId, student.userId])
     expect(before).toHaveLength(0)
+    // REV1-004: an accepted tenant with no phone number reads "Belum diisi", not "Terbuka setelah disetujui".
+    await sql('UPDATE "User" SET phone = NULL WHERE id = $1', [student.userId])
     await owner.page.goto(`/owner/dashboard?kos=${owner.kosId}`)
     await boardRow(owner.page, room.roomNumber).getByRole('button', { name: `Lihat profil penyewa Kamar ${room.roomNumber}` }).click()
     const dialog = owner.page.getByRole('dialog', { name: 'Profil penyewa' })
     await expect(dialog.getByTestId('tenant-profile')).toBeVisible()
     await expect(dialog).toContainText('Penguji E2E')
+    await expect(dialog).toContainText('Belum diisi')
+    await expect(dialog).not.toContainText('Terbuka setelah disetujui')
     // TenantProfileView is what the student's profileViewsOfMe reads: opening the profile must leave one row for this owner and kos.
     await expect.poll(async () => (await sql('SELECT id FROM "TenantProfileView" WHERE "kosId" = $1 AND "tenantUserId" = $2 AND "ownerUserId" = $3', [owner.kosId, student.userId, owner.userId])).length).toBe(1)
+    expectHttpErrors(problems)
+  } finally {
+    await Promise.all([owner.ctx.close(), student.ctx.close()])
+  }
+})
+
+test('REV1-009/011/012 & SIM-016: direct demo checkout gate, month-1 discount wording, ?tab=applications, and return-wait button hierarchy', async ({ browser, problems }) => {
+  const owner = await newOwnerWorld(browser, { label: 'af-r1-own', rooms: 2, price: 1_500_000, discount: 100_000 })
+  const student = await newStudent(browser, { label: 'af-r1-stu', campus: true })
+  watch(student.page, problems)
+  try {
+    // REV1-009: sidebar discount copy says month 1, never "per bulan".
+    await student.page.goto(`/kos/${owner.kosId}`)
+    const eligible = student.page.getByTestId('sidebar-price-eligible')
+    await expect(eligible).toContainText('Bulan pertama Anda:')
+    await expect(eligible).not.toContainText('/ bulan')
+
+    // REV1-012: after applying, "Lihat pengajuan" goes to /my-kos?tab=applications and opens Pengajuan Sewa.
+    await apply(student, owner.rooms[0].id)
+    await student.page.goto(`/kos/${owner.kosId}`)
+    const viewApp = student.page.getByRole('link', { name: 'Lihat pengajuan' })
+    await expect(viewApp).toHaveAttribute('href', '/my-kos?tab=applications')
+    await viewApp.click()
+    await expect(student.page.getByRole('tab', { name: /Pengajuan Sewa/ })).toHaveAttribute('aria-selected', 'true')
+
+    // REV1-011: direct /checkout/:id on a demoBlocked listing renders DemoListingBanner instead of the application form.
+    await student.page.route('**/api/trpc/kos.detail*', async (route) => {
+      const res = await route.fetch()
+      const body = await res.json()
+      body.result.data.demoBlocked = true
+      body.result.data.isDemoListing = true
+      await route.fulfill({ response: res, json: body })
+    })
+    await student.page.goto(`/checkout/${owner.kosId}?room=${owner.rooms[1].id}`)
+    await expect(student.page.getByTestId('demo-listing-banner')).toBeVisible()
+    await expect(student.page.getByRole('button', { name: 'Kirim Pengajuan' })).toHaveCount(0)
+    await student.page.unroute('**/api/trpc/kos.detail*')
+
+    // SIM-016: on ?payment=...&result=success, status has no doubled text, and after 60s Periksa Status is primary and Lanjutkan Pembayaran is outline.
+    await student.ctx.clock.install()
+    const pay = { id: 'pay-r1', provider: 'XENDIT', status: 'PENDING', checkoutUrl: 'https://checkout-staging.xendit.co/web/r1', expiresAt: new Date(Date.now() + 20 * 60_000).toISOString(), paidAt: null, receiptNumber: null, receiptNo: null, refundReason: null }
+    await student.page.route('**/api/trpc/booking.mine*', (r) =>
+      r.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          result: {
+            data: [{
+              id: 't-r1', status: 'PENDING', derivedStatus: 'booking', startDate: '2026-11-26', durationMonths: 1, leaseEndDate: '2026-12-26',
+              expiresAt: new Date(Date.now() + 6 * 3600_000).toISOString(), endedAt: null, endCause: null,
+              kos: { id: owner.kosId, name: owner.kosName, address: 'Jl. Uji', image: null, ownerName: 'Pemilik', ownerPhone: null },
+              room: { id: owner.rooms[0].id, roomNumber: owner.rooms[0].roomNumber, floor: 1, type: 'Standar', priceMonthly: 1_500_000 },
+              invoices: [{ id: 'inv-r1', status: 'UNPAID', billingState: 'OWED', dueDate: '2026-11-26', amount: 1_500_000, waivedAt: null, waiverReason: null, receiptNo: null, receiptNumber: null, activePayment: pay, latestPayment: pay, canPay: false }],
+              canReview: false, review: null,
+            }],
+          },
+        }),
+      }),
+    )
+    await student.page.route('**/api/trpc/payment.status*', (r) =>
+      r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ result: { data: { ...pay, invoiceId: 'inv-r1', amount: 1_500_000, tenancyStatus: 'PENDING', refund: null } } }) }),
+    )
+    await student.page.goto('/my-kos?payment=pay-r1&result=success')
+    const row = student.page.getByRole('row').filter({ hasText: 'Bulan 1' })
+    await expect(row.getByText('Menunggu konfirmasi', { exact: true })).toBeVisible()
+    await expect(row.getByRole('status')).toHaveText('Memeriksa status secara otomatis…')
+    await student.page.clock.runFor(61_000)
+    const checkBtn = row.getByRole('button', { name: 'Periksa Status' })
+    const resumeBtn = row.getByRole('button', { name: 'Lanjutkan Pembayaran' })
+    await expect(checkBtn).toBeVisible()
+    await expect(checkBtn).toHaveClass(/kobo-btn--primary/)
+    await expect(resumeBtn).toBeVisible()
+    await expect(resumeBtn).toHaveClass(/kobo-btn--outline/)
     expectHttpErrors(problems)
   } finally {
     await Promise.all([owner.ctx.close(), student.ctx.close()])

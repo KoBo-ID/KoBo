@@ -32,7 +32,7 @@ test('a real student pays through the stubbed hosted checkout and is only Lunas 
     await page.getByRole('link', { name: 'Bayar (simulasi)' }).click()
     await page.waitForURL(/\/my-kos\?payment=/)
     const back = page.getByRole('row').filter({ hasText: 'Bulan 1' })
-    await expect(back.getByRole('status')).toContainText(/Menunggu konfirmasi pembayaran|Pembayaran belum terkonfirmasi/)
+    await expect(back.getByRole('status')).toContainText(/Memeriksa status secara otomatis|Menunggu konfirmasi pembayaran|Pembayaran belum terkonfirmasi/)
     await expect(back).not.toContainText('Lunas')
     expect((await latestPayment(held.invoiceId)).status).toBe('PENDING')
 

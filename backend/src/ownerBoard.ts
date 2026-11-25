@@ -189,13 +189,16 @@ export async function loadBoardSummary(prisma: PrismaClient, kosId: string, room
         periodStart: true,
         dueDate: true,
         amount: true,
-        tenancy: { select: { room: { select: { roomNumber: true } }, user: { select: { name: true } } } },
+        tenancy: { select: { endedAt: true, room: { select: { roomNumber: true } }, user: { select: { name: true } } } },
       },
     }),
   ])
   const byTenancy = new Map<string, FormerTenantArrear>()
   for (const inv of formerInvoices) {
     const due = dateOnly(inv.dueDate)
+    // Future months whose dueDate was strictly after the move-out WIB day were never billed (REV1-008).
+    const cutoff = inv.tenancy.endedAt ? todayWIB(inv.tenancy.endedAt) : today
+    if (due > cutoff) continue
     const item = { invoiceId: inv.id, periodStart: dateOnly(inv.periodStart), dueDate: due, amount: inv.amount }
     const existing = byTenancy.get(inv.tenancyId)
     if (existing) {

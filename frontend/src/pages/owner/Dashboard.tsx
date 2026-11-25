@@ -353,8 +353,8 @@ export const OwnerDashboard: React.FC = () => {
                 </div>
                 <span className="od-row__amount">{formatRupiah(room.invoice?.amount ?? room.priceMonthly)}</span>
                 <div className="od-row__due">
-                  <span>Jatuh tempo {formatDueDate(room.invoice?.dueDate)}</span>
-                  {room.daysOverdue > 0 ? <span className="od-row__late">Telat {room.daysOverdue} hari</span> : null}
+                  <span>Jatuh tempo {room.invoice?.dueDate ? formatLongDateWIB(room.invoice.dueDate) : formatDueDate(room.invoice?.dueDate)}</span>
+                  {room.daysOverdue > 0 ? <span className="od-row__late">Terlambat {room.daysOverdue} hari</span> : null}
                 </div>
                 <div className="od-row__actions">
                   <Button variant="outline" size="sm" icon={<MessageSquare size={14} />} onClick={() => setWhatsAppTargetRoom(room)}>

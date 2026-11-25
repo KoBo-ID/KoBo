@@ -40,7 +40,7 @@ export const RejectApplicationDialog: React.FC<{
 
   return (
     <Modal isOpen onClose={busy ? () => {} : onCancel} title="Tolak pengajuan?" maxWidth="sm">
-      <form onSubmit={submit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <form onSubmit={submit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
         <div style={{ fontSize: 'var(--step--1)', color: 'var(--text-muted)', lineHeight: 1.55 }}>{summary}</div>
 
         <fieldset style={{ border: 0, margin: 0, padding: 0, minInlineSize: 0 }} aria-describedby={reasonError ? reasonErrorId : undefined}>
@@ -55,7 +55,7 @@ export const RejectApplicationDialog: React.FC<{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.65rem',
-                  minHeight: '44px',
+                  minHeight: '40px',
                   padding: '0 0.6rem',
                   borderRadius: 'var(--radius-sm)',
                   cursor: 'pointer',
